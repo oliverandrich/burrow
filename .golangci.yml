@@ -1,0 +1,82 @@
+version: "2"
+linters:
+  enable:
+    - bodyclose
+    - dupl
+    - errcheck
+    - errorlint
+    - exhaustive
+    - gocyclo
+    - gosec
+    - govet
+    - misspell
+    - modernize
+    - nilerr
+    - noctx
+    - prealloc
+    - revive
+    - sqlclosecheck
+    - testifylint
+    - unparam
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false # Allow explicit _ = Close() for cleanup-on-error
+    govet:
+      enable-all: true
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+          disabled: true
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: package-comments
+          disabled: true
+        - name: unexported-return
+    staticcheck:
+      checks:
+        - all
+        - "-ST1000" # Package comments not needed for internal packages
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - errcheck
+          - gosec
+        path: _test\.go
+      - linters:
+          - errcheck
+        text: "Error return value of .*.Render` is not checked"
+      - linters:
+          - gosec
+        text: "G104:" # Duplicate of errcheck, which we've configured
+      - linters:
+          - errcheck
+        text: "Error return value of `w.Write` is not checked"
+      - linters:
+          - errcheck
+        text: "Error return value of .*.Encode` is not checked"
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -1,0 +1,83 @@
+package staticfiles
+
+import (
+	"context"
+	"io/fs"
+	"net/http"
+	"strings"
+
+	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"github.com/labstack/echo/v5"
+)
+
+// App implements the staticfiles contrib app for serving static assets.
+type App struct {
+	manifest map[string]string // original path → hashed path
+	fsys     fs.FS
+	hfs      *hashedFS // serves hashed URLs from original files
+	prefix   string
+}
+
+// Option configures the staticfiles app.
+type Option func(*App)
+
+// WithPrefix sets the URL prefix for static files (default: "/static/").
+func WithPrefix(prefix string) Option {
+	return func(a *App) {
+		a.prefix = prefix
+	}
+}
+
+// New creates a staticfiles app that serves files from the given filesystem.
+// It walks the FS at creation time, computing content hashes for all files.
+func New(fsys fs.FS, opts ...Option) *App {
+	a := &App{
+		fsys:   fsys,
+		prefix: "/static/",
+	}
+	for _, opt := range opts {
+		opt(a)
+	}
+
+	manifest, files := buildManifest(fsys)
+	a.manifest = manifest
+	a.hfs = &hashedFS{fsys: fsys, files: files}
+
+	return a
+}
+
+func (a *App) Name() string                     { return "staticfiles" }
+func (a *App) Register(_ *core.AppConfig) error { return nil }
+
+func (a *App) Middleware() []echo.MiddlewareFunc {
+	return []echo.MiddlewareFunc{a.contextMiddleware, a.cacheHeadersMiddleware}
+}
+
+func (a *App) Routes(e *echo.Echo) {
+	pattern := a.prefix + "*"
+	e.GET(pattern, echo.WrapHandler(
+		http.StripPrefix(a.prefix, http.FileServer(http.FS(a.hfs))),
+	))
+}
+
+func (a *App) contextMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c *echo.Context) error {
+		ctx := context.WithValue(c.Request().Context(), ctxKeyApp{}, a)
+		c.SetRequest(c.Request().WithContext(ctx))
+		return next(c)
+	}
+}
+
+func (a *App) cacheHeadersMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c *echo.Context) error {
+		path := c.Request().URL.Path
+		if strings.HasPrefix(path, a.prefix) {
+			if isHashedAsset(path) {
+				c.Response().Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			} else {
+				c.Response().Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			}
+		}
+		return next(c)
+	}
+}

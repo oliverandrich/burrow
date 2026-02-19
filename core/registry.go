@@ -1,0 +1,151 @@
+package core
+
+import (
+	"context"
+	"fmt"
+	"sort"
+
+	"github.com/labstack/echo/v5"
+	"github.com/uptrace/bun"
+	"github.com/urfave/cli/v3"
+)
+
+// Registry holds registered apps in insertion order.
+type Registry struct {
+	index map[string]App
+	db    *bun.DB
+	apps  []App
+}
+
+// NewRegistry creates an empty Registry.
+func NewRegistry() *Registry {
+	return &Registry{
+		index: make(map[string]App),
+	}
+}
+
+// Add registers an app. It panics if an app with the same name
+// has already been registered (a programming error caught at startup).
+func (r *Registry) Add(app App) {
+	name := app.Name()
+	if _, exists := r.index[name]; exists {
+		panic(fmt.Sprintf("core: duplicate app name %q", name))
+	}
+	r.apps = append(r.apps, app)
+	r.index[name] = app
+}
+
+// Get returns the app with the given name, or false if not found.
+func (r *Registry) Get(name string) (App, bool) {
+	app, ok := r.index[name]
+	return app, ok
+}
+
+// Apps returns all registered apps in the order they were added.
+func (r *Registry) Apps() []App {
+	result := make([]App, len(r.apps))
+	copy(result, r.apps)
+	return result
+}
+
+// Bootstrap calls Register on each app in order, passing
+// the shared AppConfig. It stops and returns on the first error.
+func (r *Registry) Bootstrap(db *bun.DB) error {
+	r.db = db
+	cfg := &AppConfig{
+		DB:       db,
+		Registry: r,
+	}
+	for _, app := range r.apps {
+		if err := app.Register(cfg); err != nil {
+			return fmt.Errorf("register app %q: %w", app.Name(), err)
+		}
+	}
+	return nil
+}
+
+// AllNavItems collects NavItems from all HasNavItems apps
+// and returns them sorted by Position (stable sort preserves
+// insertion order for equal positions).
+func (r *Registry) AllNavItems() []NavItem {
+	var items []NavItem
+	for _, app := range r.apps {
+		if provider, ok := app.(HasNavItems); ok {
+			items = append(items, provider.NavItems()...)
+		}
+	}
+	sort.SliceStable(items, func(i, j int) bool {
+		return items[i].Position < items[j].Position
+	})
+	return items
+}
+
+// RegisterMiddleware applies middleware from all HasMiddleware apps
+// to the Echo instance, in app registration order.
+func (r *Registry) RegisterMiddleware(e *echo.Echo) {
+	for _, app := range r.apps {
+		if provider, ok := app.(HasMiddleware); ok {
+			for _, mw := range provider.Middleware() {
+				e.Use(mw)
+			}
+		}
+	}
+}
+
+// AllFlags collects CLI flags from all Configurable apps.
+func (r *Registry) AllFlags() []cli.Flag {
+	var flags []cli.Flag
+	for _, app := range r.apps {
+		if provider, ok := app.(Configurable); ok {
+			flags = append(flags, provider.Flags()...)
+		}
+	}
+	return flags
+}
+
+// Configure calls Configure on each Configurable app.
+// It stops and returns on the first error.
+func (r *Registry) Configure(cmd *cli.Command) error {
+	for _, app := range r.apps {
+		if provider, ok := app.(Configurable); ok {
+			if err := provider.Configure(cmd); err != nil {
+				return fmt.Errorf("configure app %q: %w", app.Name(), err)
+			}
+		}
+	}
+	return nil
+}
+
+// AllCLICommands collects CLI subcommands from all HasCLICommands apps.
+func (r *Registry) AllCLICommands() []*cli.Command {
+	var cmds []*cli.Command
+	for _, app := range r.apps {
+		if provider, ok := app.(HasCLICommands); ok {
+			cmds = append(cmds, provider.CLICommands()...)
+		}
+	}
+	return cmds
+}
+
+// RegisterRoutes calls Routes on each HasRoutes app,
+// allowing apps to register their HTTP handlers.
+func (r *Registry) RegisterRoutes(e *echo.Echo) {
+	for _, app := range r.apps {
+		if provider, ok := app.(HasRoutes); ok {
+			provider.Routes(e)
+		}
+	}
+}
+
+// Seed calls Seed on each Seedable app in order.
+// It stops and returns on the first error.
+func (r *Registry) Seed(ctx context.Context) error {
+	for _, app := range r.apps {
+		if provider, ok := app.(Seedable); ok {
+			if err := provider.Seed(ctx); err != nil {
+				return fmt.Errorf("seed app %q: %w", app.Name(), err)
+			}
+		}
+	}
+	return nil
+}
