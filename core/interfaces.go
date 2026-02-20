@@ -45,3 +45,10 @@ type HasRoutes interface {
 type Seedable interface {
 	Seed(ctx context.Context) error
 }
+
+// HasDependencies is implemented by apps that require other apps
+// to be registered first. Dependencies() returns the names of
+// required apps; registration panics if any are missing.
+type HasDependencies interface {
+	Dependencies() []string
+}

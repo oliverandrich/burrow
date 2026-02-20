@@ -37,6 +37,8 @@ func New() *App {
 
 func (a *App) Name() string { return "admin" }
 
+func (a *App) Dependencies() []string { return []string{"auth"} }
+
 func (a *App) Register(cfg *core.AppConfig) error {
 	authApp, ok := cfg.Registry.Get("auth")
 	if !ok {

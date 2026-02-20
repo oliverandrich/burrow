@@ -86,6 +86,8 @@ func New() *App {
 
 func (a *App) Name() string { return "notes" }
 
+func (a *App) Dependencies() []string { return []string{"auth"} }
+
 func (a *App) Register(cfg *core.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 	a.handlers = NewHandlers(a.repo)

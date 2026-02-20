@@ -21,11 +21,12 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ core.App           = (*App)(nil)
-	_ core.Migratable    = (*App)(nil)
-	_ core.Configurable  = (*App)(nil)
-	_ core.HasMiddleware = (*App)(nil)
-	_ core.HasRoutes     = (*App)(nil)
+	_ core.App             = (*App)(nil)
+	_ core.Migratable      = (*App)(nil)
+	_ core.Configurable    = (*App)(nil)
+	_ core.HasMiddleware   = (*App)(nil)
+	_ core.HasRoutes       = (*App)(nil)
+	_ core.HasDependencies = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {

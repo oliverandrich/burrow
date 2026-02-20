@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
+	"codeberg.org/oliverandrich/go-webapp-template/contrib/session"
 	"codeberg.org/oliverandrich/go-webapp-template/core"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -15,10 +16,11 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ core.App            = (*App)(nil)
-	_ core.HasNavItems    = (*App)(nil)
-	_ core.HasRoutes      = (*App)(nil)
-	_ core.HasCLICommands = (*App)(nil)
+	_ core.App             = (*App)(nil)
+	_ core.HasNavItems     = (*App)(nil)
+	_ core.HasRoutes       = (*App)(nil)
+	_ core.HasCLICommands  = (*App)(nil)
+	_ core.HasDependencies = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -30,7 +32,8 @@ func TestAppRegister(t *testing.T) {
 	app := New()
 	registry := core.NewRegistry()
 
-	// Register auth app and bootstrap it so Repo() is available.
+	// Register session (auth depends on it) and auth, then bootstrap.
+	registry.Add(&session.App{})
 	authApp := auth.New(nil)
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))
@@ -45,16 +48,13 @@ func TestAppRegister(t *testing.T) {
 	assert.NotNil(t, app.authRepo)
 }
 
-func TestAppRegisterMissingAuth(t *testing.T) {
-	app := New()
+func TestAppRegisterMissingAuthPanics(t *testing.T) {
 	registry := core.NewRegistry()
 
-	err := app.Register(&core.AppConfig{
-		Registry: registry,
-	})
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "auth")
+	assert.PanicsWithValue(t,
+		`core: app "admin" requires "auth" to be registered first`,
+		func() { registry.Add(New()) },
+	)
 }
 
 func TestNavItems(t *testing.T) {

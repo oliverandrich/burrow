@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sort"
 
 	"github.com/labstack/echo/v5"
@@ -25,14 +26,51 @@ func NewRegistry() *Registry {
 }
 
 // Add registers an app. It panics if an app with the same name
-// has already been registered (a programming error caught at startup).
+// has already been registered or if a declared dependency is missing
+// (programming errors caught at startup).
 func (r *Registry) Add(app App) {
 	name := app.Name()
 	if _, exists := r.index[name]; exists {
 		panic(fmt.Sprintf("core: duplicate app name %q", name))
 	}
+
+	if dep, ok := app.(HasDependencies); ok {
+		for _, required := range dep.Dependencies() {
+			if _, exists := r.index[required]; !exists {
+				panic(fmt.Sprintf("core: app %q requires %q to be registered first", name, required))
+			}
+		}
+	}
+
 	r.apps = append(r.apps, app)
 	r.index[name] = app
+
+	var caps []string
+	if _, ok := app.(Migratable); ok {
+		caps = append(caps, "migrations")
+	}
+	if _, ok := app.(HasRoutes); ok {
+		caps = append(caps, "routes")
+	}
+	if _, ok := app.(HasMiddleware); ok {
+		caps = append(caps, "middleware")
+	}
+	if _, ok := app.(HasNavItems); ok {
+		caps = append(caps, "nav")
+	}
+	if _, ok := app.(Configurable); ok {
+		caps = append(caps, "config")
+	}
+	if _, ok := app.(HasCLICommands); ok {
+		caps = append(caps, "commands")
+	}
+	if _, ok := app.(Seedable); ok {
+		caps = append(caps, "seed")
+	}
+	if _, ok := app.(HasDependencies); ok {
+		caps = append(caps, "dependencies")
+	}
+	slog.Debug("app registered", "name", name, "capabilities", caps)
 }
 
 // Get returns the app with the given name, or false if not found.

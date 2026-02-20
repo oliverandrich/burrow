@@ -62,6 +62,8 @@ func New(renderer Renderer) *App {
 
 func (a *App) Name() string { return "auth" }
 
+func (a *App) Dependencies() []string { return []string{"session"} }
+
 func (a *App) Register(cfg *core.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 	a.globalConfig = cfg.Config

@@ -1,9 +1,11 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -97,15 +99,16 @@ func (a *failingApp) Seed(_ context.Context) error {
 
 // Compile-time interface assertions.
 var (
-	_ App            = (*minimalApp)(nil)
-	_ App            = (*fullApp)(nil)
-	_ Migratable     = (*fullApp)(nil)
-	_ HasMiddleware  = (*fullApp)(nil)
-	_ HasNavItems    = (*fullApp)(nil)
-	_ Configurable   = (*fullApp)(nil)
-	_ HasCLICommands = (*fullApp)(nil)
-	_ Seedable       = (*fullApp)(nil)
-	_ HasRoutes      = (*fullApp)(nil)
+	_ App             = (*minimalApp)(nil)
+	_ App             = (*fullApp)(nil)
+	_ Migratable      = (*fullApp)(nil)
+	_ HasMiddleware   = (*fullApp)(nil)
+	_ HasNavItems     = (*fullApp)(nil)
+	_ Configurable    = (*fullApp)(nil)
+	_ HasCLICommands  = (*fullApp)(nil)
+	_ Seedable        = (*fullApp)(nil)
+	_ HasRoutes       = (*fullApp)(nil)
+	_ HasDependencies = (*dependentApp)(nil)
 )
 
 func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
@@ -205,6 +208,79 @@ func TestRegistryAddDuplicatePanics(t *testing.T) {
 		`core: duplicate app name "minimal"`,
 		func() { reg.Add(&minimalApp{}) },
 	)
+}
+
+// dependentApp implements App + HasDependencies.
+type dependentApp struct {
+	deps []string
+}
+
+func (a *dependentApp) Name() string                { return "dependent" }
+func (a *dependentApp) Register(_ *AppConfig) error { return nil }
+func (a *dependentApp) Dependencies() []string      { return a.deps }
+
+func TestRegistryAddPanicsOnMissingDependency(t *testing.T) {
+	reg := NewRegistry()
+
+	assert.PanicsWithValue(t,
+		`core: app "dependent" requires "session" to be registered first`,
+		func() {
+			reg.Add(&dependentApp{deps: []string{"session"}})
+		},
+	)
+}
+
+func TestRegistryAddSucceedsWhenDependencySatisfied(t *testing.T) {
+	reg := NewRegistry()
+	reg.Add(&minimalApp{}) // name = "minimal"
+
+	assert.NotPanics(t, func() {
+		reg.Add(&dependentApp{deps: []string{"minimal"}})
+	})
+
+	_, ok := reg.Get("dependent")
+	assert.True(t, ok)
+}
+
+func TestRegistryAddLogsCapabilities(t *testing.T) {
+	// Capture slog output.
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(handler))
+	t.Cleanup(func() { slog.SetDefault(oldLogger) })
+
+	reg := NewRegistry()
+	reg.Add(&fullApp{})
+
+	output := buf.String()
+	assert.Contains(t, output, "app registered")
+	assert.Contains(t, output, "full")
+	assert.Contains(t, output, "migrations")
+	assert.Contains(t, output, "routes")
+	assert.Contains(t, output, "middleware")
+	assert.Contains(t, output, "nav")
+	assert.Contains(t, output, "config")
+	assert.Contains(t, output, "commands")
+	assert.Contains(t, output, "seed")
+}
+
+func TestRegistryAddLogsMinimalCapabilities(t *testing.T) {
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(handler))
+	t.Cleanup(func() { slog.SetDefault(oldLogger) })
+
+	reg := NewRegistry()
+	reg.Add(&minimalApp{})
+
+	output := buf.String()
+	assert.Contains(t, output, "app registered")
+	assert.Contains(t, output, "minimal")
+	// Minimal app has no capabilities — shouldn't list any.
+	assert.NotContains(t, output, "migrations")
+	assert.NotContains(t, output, "routes")
 }
 
 func TestRegistryBootstrapCallsRegister(t *testing.T) {
