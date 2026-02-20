@@ -1,4 +1,4 @@
-// Package admin provides user management as a webstack contrib app.
+// Package admin provides user management as a burrow contrib app.
 package admin
 
 import (
@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"github.com/labstack/echo/v5"
 	"github.com/urfave/cli/v3"
 )
@@ -39,7 +39,7 @@ func (a *App) Name() string { return "admin" }
 
 func (a *App) Dependencies() []string { return []string{"auth"} }
 
-func (a *App) Register(cfg *core.AppConfig) error {
+func (a *App) Register(cfg *burrow.AppConfig) error {
 	authApp, ok := cfg.Registry.Get("auth")
 	if !ok {
 		return fmt.Errorf("admin app requires auth app to be registered")
@@ -56,8 +56,8 @@ func (a *App) Register(cfg *core.AppConfig) error {
 	return nil
 }
 
-func (a *App) NavItems() []core.NavItem {
-	return []core.NavItem{
+func (a *App) NavItems() []burrow.NavItem {
+	return []burrow.NavItem{
 		{
 			Label:     "Users",
 			URL:       "/admin/users",

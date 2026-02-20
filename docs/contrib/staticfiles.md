@@ -2,7 +2,7 @@
 
 Content-hashed static file serving with cache-busting URLs, similar to Django's `ManifestStaticFilesStorage`.
 
-**Package:** `codeberg.org/oliverandrich/go-webapp-template/contrib/staticfiles`
+**Package:** `codeberg.org/oliverandrich/burrow/contrib/staticfiles`
 
 ## Setup
 
@@ -14,7 +14,7 @@ var staticFS embed.FS
 
 sfApp := staticfiles.New(staticFS)
 
-srv := core.NewServer(
+srv := burrow.NewServer(
     sfApp,
     // ... other apps
 )
@@ -78,6 +78,6 @@ All files are walked recursively. The manifest maps original paths to hashed pat
 
 | Interface | Description |
 |-----------|-------------|
-| `core.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()`, `Register()` |
 | `HasRoutes` | Static file serving route |
 | `HasMiddleware` | Context injection and cache header middleware |

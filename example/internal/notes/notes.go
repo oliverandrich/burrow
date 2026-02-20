@@ -1,4 +1,4 @@
-// Package notes is an example custom app demonstrating the webstack framework.
+// Package notes is an example custom app demonstrating the burrow framework.
 package notes
 
 import (
@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"github.com/labstack/echo/v5"
 	"github.com/uptrace/bun"
 )
@@ -88,7 +88,7 @@ func (a *App) Name() string { return "notes" }
 
 func (a *App) Dependencies() []string { return []string{"auth"} }
 
-func (a *App) Register(cfg *core.AppConfig) error {
+func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 	a.handlers = NewHandlers(a.repo)
 	return nil
@@ -99,8 +99,8 @@ func (a *App) MigrationFS() fs.FS {
 	return sub
 }
 
-func (a *App) NavItems() []core.NavItem {
-	return []core.NavItem{
+func (a *App) NavItems() []burrow.NavItem {
+	return []burrow.NavItem{
 		{
 			Label:    "Notes",
 			URL:      "/notes",

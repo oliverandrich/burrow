@@ -1,7 +1,7 @@
-site_name: Go Webapp Template
+site_name: Burrow
 site_description: A modular Go web framework built on Echo, Bun/SQLite, and Templ
-repo_url: https://codeberg.org/oliverandrich/go-webapp-template
-repo_name: oliverandrich/go-webapp-template
+repo_url: https://codeberg.org/oliverandrich/burrow
+repo_name: oliverandrich/burrow
 
 theme:
   name: material

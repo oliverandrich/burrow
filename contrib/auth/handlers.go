@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/session"
+	"codeberg.org/oliverandrich/burrow/contrib/session"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"

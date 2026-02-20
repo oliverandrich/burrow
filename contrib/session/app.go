@@ -3,7 +3,7 @@ package session
 import (
 	"strings"
 
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
 	"github.com/gorilla/securecookie"
 	"github.com/labstack/echo/v5"
 	"github.com/urfave/cli/v3"
@@ -12,12 +12,12 @@ import (
 // App implements the session contrib app.
 type App struct {
 	manager *Manager
-	config  *core.Config
+	config  *burrow.Config
 }
 
 func (a *App) Name() string { return "session" }
 
-func (a *App) Register(cfg *core.AppConfig) error {
+func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.config = cfg.Config
 	return nil
 }

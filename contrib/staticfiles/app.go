@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
 	"github.com/labstack/echo/v5"
 )
 
@@ -46,8 +46,8 @@ func New(fsys fs.FS, opts ...Option) *App {
 	return a
 }
 
-func (a *App) Name() string                     { return "staticfiles" }
-func (a *App) Register(_ *core.AppConfig) error { return nil }
+func (a *App) Name() string                       { return "staticfiles" }
+func (a *App) Register(_ *burrow.AppConfig) error { return nil }
 
 func (a *App) Middleware() []echo.MiddlewareFunc {
 	return []echo.MiddlewareFunc{a.contextMiddleware, a.cacheHeadersMiddleware}

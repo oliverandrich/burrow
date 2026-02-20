@@ -1,4 +1,4 @@
-// Package auth provides authentication as a webstack contrib app.
+// Package auth provides authentication as a burrow contrib app.
 package auth
 
 import (
@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/session"
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/labstack/echo/v5"
 	"github.com/urfave/cli/v3"
 )
@@ -43,7 +43,7 @@ type App struct {
 	handlers     *Handlers
 	renderer     Renderer
 	config       *Config
-	globalConfig *core.Config
+	globalConfig *burrow.Config
 }
 
 // Config holds auth-specific configuration.
@@ -64,7 +64,7 @@ func (a *App) Name() string { return "auth" }
 
 func (a *App) Dependencies() []string { return []string{"session"} }
 
-func (a *App) Register(cfg *core.AppConfig) error {
+func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 	a.globalConfig = cfg.Config
 	return nil

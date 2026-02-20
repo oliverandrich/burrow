@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,11 +20,11 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ core.App             = (*App)(nil)
-	_ core.Migratable      = (*App)(nil)
-	_ core.HasRoutes       = (*App)(nil)
-	_ core.HasNavItems     = (*App)(nil)
-	_ core.HasDependencies = (*App)(nil)
+	_ burrow.App             = (*App)(nil)
+	_ burrow.Migratable      = (*App)(nil)
+	_ burrow.HasRoutes       = (*App)(nil)
+	_ burrow.HasNavItems     = (*App)(nil)
+	_ burrow.HasDependencies = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -59,7 +59,7 @@ func openTestDB(t *testing.T) *bun.DB {
 
 	// Run notes migration.
 	app := New()
-	err = core.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+	err = burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
 	require.NoError(t, err)
 
 	return db

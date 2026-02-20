@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"github.com/labstack/echo/v5"
 )
 

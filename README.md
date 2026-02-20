@@ -1,4 +1,4 @@
-# go-webapp-template
+# Burrow
 
 A Go web framework library built on [Echo v5](https://echo.labstack.com/), [Bun](https://bun.uptrace.dev/)/SQLite, and [Templ](https://templ.guide/). Designed around composable apps with a Django-inspired architecture.
 
@@ -22,15 +22,15 @@ import (
     "log"
     "os"
 
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/healthcheck"
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/session"
-    "codeberg.org/oliverandrich/go-webapp-template/core"
+    "codeberg.org/oliverandrich/burrow"
+    "codeberg.org/oliverandrich/burrow/contrib/auth"
+    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
+    "codeberg.org/oliverandrich/burrow/contrib/session"
     "github.com/urfave/cli/v3"
 )
 
 func main() {
-    srv := core.NewServer(
+    srv := burrow.NewServer(
         &session.App{},
         auth.New(nil),
         &healthcheck.App{},
@@ -51,7 +51,6 @@ func main() {
 ## Architecture
 
 ```
-core/           Framework core (Server, Config, Registry, Migrations, Render)
 contrib/        Reusable apps
   auth/         WebAuthn passkeys, recovery codes, email verification
   session/      Cookie-based sessions
@@ -64,7 +63,7 @@ example/        Example application with a notes app
 
 ### The App Interface
 
-Every app implements `core.App`:
+Every app implements `burrow.App`:
 
 ```go
 type App interface {
@@ -90,7 +89,7 @@ Apps can optionally implement additional interfaces:
 The framework provides two layout slots for wrapping page content:
 
 ```go
-srv.SetLayouts(core.Layouts{
+srv.SetLayouts(burrow.Layouts{
     App:   appLayout,   // User-facing pages
     Admin: adminLayout, // Admin pages
 })
@@ -105,8 +104,8 @@ type LayoutFunc func(title string, content templ.Component) templ.Component
 Layouts access framework values from the request context:
 
 ```go
-core.NavItems(ctx)    // Navigation items from all apps
-core.CSRFToken(ctx)   // CSRF token for forms
+burrow.NavItems(ctx)    // Navigation items from all apps
+burrow.CSRFToken(ctx)   // CSRF token for forms
 ```
 
 ### Configuration

@@ -1,5 +1,5 @@
 // Command server demonstrates how to build an application
-// using the webstack framework with contrib apps.
+// using the burrow framework with contrib apps.
 package main
 
 import (
@@ -8,11 +8,11 @@ import (
 	"log"
 	"os"
 
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/healthcheck"
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/session"
-	"codeberg.org/oliverandrich/go-webapp-template/core"
-	"codeberg.org/oliverandrich/go-webapp-template/example/internal/notes"
+	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
+	"codeberg.org/oliverandrich/burrow/contrib/session"
+	"codeberg.org/oliverandrich/burrow/example/internal/notes"
 	"github.com/a-h/templ"
 	"github.com/urfave/cli/v3"
 )
@@ -30,7 +30,7 @@ func appLayout(title string, content templ.Component) templ.Component {
 		_, _ = io.WriteString(w, "</title></head><body>")
 
 		// Render navigation from context.
-		for _, item := range core.NavItems(ctx) {
+		for _, item := range burrow.NavItems(ctx) {
 			_, _ = io.WriteString(w, `<a href="`)
 			_, _ = io.WriteString(w, item.URL)
 			_, _ = io.WriteString(w, `">`)
@@ -50,7 +50,7 @@ func appLayout(title string, content templ.Component) templ.Component {
 func main() {
 	// Create the server with apps in dependency order.
 	// Session must come before auth (auth depends on session).
-	srv := core.NewServer(
+	srv := burrow.NewServer(
 		&session.App{},
 		auth.New(nil), // nil renderer = no HTML pages, API-only
 		&healthcheck.App{},
@@ -59,13 +59,13 @@ func main() {
 
 	// Provide layouts. The App layout wraps user-facing pages,
 	// the Admin layout wraps admin pages. Both are optional (nil = no wrapping).
-	srv.SetLayouts(core.Layouts{
+	srv.SetLayouts(burrow.Layouts{
 		App: appLayout,
 	})
 
 	cmd := &cli.Command{
 		Name:    "example",
-		Usage:   "Example application using the webstack framework",
+		Usage:   "Example application using the burrow framework",
 		Version: version,
 		Flags:   srv.Flags(nil),
 		Action:  srv.Run,

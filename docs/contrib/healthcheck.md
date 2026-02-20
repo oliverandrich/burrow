@@ -2,12 +2,12 @@
 
 A minimal health check endpoint that reports server and database status.
 
-**Package:** `codeberg.org/oliverandrich/go-webapp-template/contrib/healthcheck`
+**Package:** `codeberg.org/oliverandrich/burrow/contrib/healthcheck`
 
 ## Setup
 
 ```go
-srv := core.NewServer(
+srv := burrow.NewServer(
     &healthcheck.App{},
     // ... other apps
 )
@@ -55,5 +55,5 @@ Use this endpoint for:
 
 | Interface | Description |
 |-----------|-------------|
-| `core.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()`, `Register()` |
 | `HasRoutes` | `/healthz` endpoint |

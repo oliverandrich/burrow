@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/session"
+	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

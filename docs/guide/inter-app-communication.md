@@ -7,7 +7,7 @@ Apps can interact with each other through the `Registry` and by declaring depend
 Use `Registry.Get()` to retrieve another app by name, then type-assert to access its methods:
 
 ```go
-func (a *App) Register(cfg *core.AppConfig) error {
+func (a *App) Register(cfg *burrow.AppConfig) error {
     authApp, ok := cfg.Registry.Get("auth")
     if !ok {
         return fmt.Errorf("auth app not registered")
@@ -41,14 +41,14 @@ If a dependency is missing when `NewServer` processes your app, it panics at sta
 
     ```go
     // Correct: session before auth, auth before notes
-    srv := core.NewServer(
+    srv := burrow.NewServer(
         &session.App{},
         auth.New(nil),
         notes.New(),
     )
 
     // Wrong: notes before auth — panics at startup
-    srv := core.NewServer(
+    srv := burrow.NewServer(
         notes.New(),   // needs "auth"
         auth.New(nil), // not registered yet!
     )
@@ -75,7 +75,7 @@ func (h *Handlers) List(c *echo.Context) error {
 Read and write session values from any app:
 
 ```go
-import "codeberg.org/oliverandrich/go-webapp-template/contrib/session"
+import "codeberg.org/oliverandrich/burrow/contrib/session"
 
 // Read a value.
 userID := session.GetInt64(c, "user_id")

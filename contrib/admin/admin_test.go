@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
-	"codeberg.org/oliverandrich/go-webapp-template/contrib/session"
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,11 +16,11 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ core.App             = (*App)(nil)
-	_ core.HasNavItems     = (*App)(nil)
-	_ core.HasRoutes       = (*App)(nil)
-	_ core.HasCLICommands  = (*App)(nil)
-	_ core.HasDependencies = (*App)(nil)
+	_ burrow.App             = (*App)(nil)
+	_ burrow.HasNavItems     = (*App)(nil)
+	_ burrow.HasRoutes       = (*App)(nil)
+	_ burrow.HasCLICommands  = (*App)(nil)
+	_ burrow.HasDependencies = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -30,7 +30,7 @@ func TestAppName(t *testing.T) {
 
 func TestAppRegister(t *testing.T) {
 	app := New()
-	registry := core.NewRegistry()
+	registry := burrow.NewRegistry()
 
 	// Register session (auth depends on it) and auth, then bootstrap.
 	registry.Add(&session.App{})
@@ -38,7 +38,7 @@ func TestAppRegister(t *testing.T) {
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))
 
-	err := app.Register(&core.AppConfig{
+	err := app.Register(&burrow.AppConfig{
 		Registry: registry,
 	})
 
@@ -49,10 +49,10 @@ func TestAppRegister(t *testing.T) {
 }
 
 func TestAppRegisterMissingAuthPanics(t *testing.T) {
-	registry := core.NewRegistry()
+	registry := burrow.NewRegistry()
 
 	assert.PanicsWithValue(t,
-		`core: app "admin" requires "auth" to be registered first`,
+		`burrow: app "admin" requires "auth" to be registered first`,
 		func() { registry.Add(New()) },
 	)
 }

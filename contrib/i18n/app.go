@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"strings"
 
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
 	"github.com/BurntSushi/toml"
 	"github.com/labstack/echo/v5"
 	i18nlib "github.com/nicksnyder/go-i18n/v2/i18n"
@@ -20,8 +20,8 @@ type App struct {
 	defaultLang language.Tag
 }
 
-func (a *App) Name() string                     { return "i18n" }
-func (a *App) Register(_ *core.AppConfig) error { return nil }
+func (a *App) Name() string                       { return "i18n" }
+func (a *App) Register(_ *burrow.AppConfig) error { return nil }
 
 func (a *App) Flags() []cli.Flag {
 	return []cli.Flag{

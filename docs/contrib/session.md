@@ -2,12 +2,12 @@
 
 Cookie-based session management using `gorilla/securecookie`.
 
-**Package:** `codeberg.org/oliverandrich/go-webapp-template/contrib/session`
+**Package:** `codeberg.org/oliverandrich/burrow/contrib/session`
 
 ## Setup
 
 ```go
-srv := core.NewServer(
+srv := burrow.NewServer(
     &session.App{},
     // ... other apps
 )
@@ -18,7 +18,7 @@ The session app provides middleware that automatically parses and manages sessio
 ## Reading Values
 
 ```go
-import "codeberg.org/oliverandrich/go-webapp-template/contrib/session"
+import "codeberg.org/oliverandrich/burrow/contrib/session"
 
 // Get a string value.
 locale := session.GetString(c, "locale")
@@ -101,6 +101,6 @@ func TestMyHandler(t *testing.T) {
 
 | Interface | Description |
 |-----------|-------------|
-| `core.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()`, `Register()` |
 | `Configurable` | CLI flags for cookie name, max age, keys |
 | `HasMiddleware` | Session parsing middleware |

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,9 +15,9 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ core.App           = (*App)(nil)
-	_ core.HasMiddleware = (*App)(nil)
-	_ core.HasRoutes     = (*App)(nil)
+	_ burrow.App           = (*App)(nil)
+	_ burrow.HasMiddleware = (*App)(nil)
+	_ burrow.HasRoutes     = (*App)(nil)
 )
 
 // testFS uses unhashed filenames — the App computes content hashes itself.
@@ -39,7 +39,7 @@ func TestAppName(t *testing.T) {
 
 func TestRegisterIsNoop(t *testing.T) {
 	app := New(testFS)
-	err := app.Register(&core.AppConfig{})
+	err := app.Register(&burrow.AppConfig{})
 	require.NoError(t, err)
 }
 

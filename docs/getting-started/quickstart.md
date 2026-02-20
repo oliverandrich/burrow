@@ -7,7 +7,7 @@ Build a working application with session management, authentication, and a healt
 ```bash
 mkdir myapp && cd myapp
 go mod init myapp
-go get codeberg.org/oliverandrich/go-webapp-template@latest
+go get codeberg.org/oliverandrich/burrow@latest
 ```
 
 ## 2. Write main.go
@@ -21,10 +21,10 @@ import (
     "log"
     "os"
 
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/healthcheck"
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/session"
-    "codeberg.org/oliverandrich/go-webapp-template/core"
+    "codeberg.org/oliverandrich/burrow"
+    "codeberg.org/oliverandrich/burrow/contrib/auth"
+    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
+    "codeberg.org/oliverandrich/burrow/contrib/session"
     "github.com/a-h/templ"
     "github.com/urfave/cli/v3"
 )
@@ -37,7 +37,7 @@ func appLayout(title string, content templ.Component) templ.Component {
         _, _ = io.WriteString(w, "</title></head><body>")
 
         // Render navigation from context.
-        for _, item := range core.NavItems(ctx) {
+        for _, item := range burrow.NavItems(ctx) {
             _, _ = io.WriteString(w, `<a href="`)
             _, _ = io.WriteString(w, item.URL)
             _, _ = io.WriteString(w, `">`)
@@ -57,13 +57,13 @@ func appLayout(title string, content templ.Component) templ.Component {
 func main() {
     // Create the server with apps in dependency order.
     // Session must come before auth (auth depends on session).
-    srv := core.NewServer(
+    srv := burrow.NewServer(
         &session.App{},
         auth.New(nil), // nil renderer = API-only, no HTML pages
         &healthcheck.App{},
     )
 
-    srv.SetLayouts(core.Layouts{
+    srv.SetLayouts(burrow.Layouts{
         App: appLayout,
     })
 

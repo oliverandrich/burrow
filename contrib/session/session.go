@@ -1,4 +1,4 @@
-// Package session provides cookie-based session management as a webstack contrib app.
+// Package session provides cookie-based session management as a burrow contrib app.
 package session
 
 import (

@@ -2,14 +2,14 @@
 
 WebAuthn (passkey) authentication with recovery codes, email verification, and invite-only registration.
 
-**Package:** `codeberg.org/oliverandrich/go-webapp-template/contrib/auth`
+**Package:** `codeberg.org/oliverandrich/burrow/contrib/auth`
 
 **Depends on:** `session`
 
 ## Setup
 
 ```go
-srv := core.NewServer(
+srv := burrow.NewServer(
     &session.App{},       // Must come first
     auth.New(renderer),   // Pass nil for API-only (no HTML pages)
     // ... other apps
@@ -174,7 +174,7 @@ type EmailService interface {
 
 | Interface | Description |
 |-----------|-------------|
-| `core.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()`, `Register()` |
 | `Migratable` | User, credential, recovery code, invite tables |
 | `HasRoutes` | Auth and invite routes |
 | `HasMiddleware` | User loading from session |

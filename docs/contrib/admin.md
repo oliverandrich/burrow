@@ -2,7 +2,7 @@
 
 User management panel with CLI commands for promoting users and creating invites.
 
-**Package:** `codeberg.org/oliverandrich/go-webapp-template/contrib/admin`
+**Package:** `codeberg.org/oliverandrich/burrow/contrib/admin`
 
 **Depends on:** `auth`
 
@@ -11,7 +11,7 @@ User management panel with CLI commands for promoting users and creating invites
 ```go
 adminApp := admin.New()
 
-srv := core.NewServer(
+srv := burrow.NewServer(
     &session.App{},
     auth.New(authRenderer),
     adminApp,
@@ -89,7 +89,7 @@ Call `adminApp.SetHandlers(renderer)` after `Register()` to enable HTML pages. W
 
 | Interface | Description |
 |-----------|-------------|
-| `core.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()`, `Register()` |
 | `HasRoutes` | Admin user management routes |
 | `HasNavItems` | "Users" admin navigation entry |
 | `HasCLICommands` | `promote`, `demote`, `create-invite` |

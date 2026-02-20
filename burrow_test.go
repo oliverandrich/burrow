@@ -1,4 +1,4 @@
-package core
+package burrow
 
 import (
 	"bytes"
@@ -205,7 +205,7 @@ func TestRegistryAddDuplicatePanics(t *testing.T) {
 	reg.Add(&minimalApp{})
 
 	assert.PanicsWithValue(t,
-		`core: duplicate app name "minimal"`,
+		`burrow: duplicate app name "minimal"`,
 		func() { reg.Add(&minimalApp{}) },
 	)
 }
@@ -223,7 +223,7 @@ func TestRegistryAddPanicsOnMissingDependency(t *testing.T) {
 	reg := NewRegistry()
 
 	assert.PanicsWithValue(t,
-		`core: app "dependent" requires "session" to be registered first`,
+		`burrow: app "dependent" requires "session" to be registered first`,
 		func() {
 			reg.Add(&dependentApp{deps: []string{"session"}})
 		},

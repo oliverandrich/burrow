@@ -1,4 +1,4 @@
-// Package i18n provides internationalization as a webstack contrib app.
+// Package i18n provides internationalization as a burrow contrib app.
 package i18n
 
 import (

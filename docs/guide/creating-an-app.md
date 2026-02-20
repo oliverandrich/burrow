@@ -4,7 +4,7 @@ This guide walks through building a custom app from scratch, using a "notes" app
 
 ## The App Interface
 
-Every app implements `core.App`:
+Every app implements `burrow.App`:
 
 ```go
 type App interface {
@@ -163,7 +163,7 @@ func (a *App) Name() string { return "notes" }
 
 func (a *App) Dependencies() []string { return []string{"auth"} } // (1)!
 
-func (a *App) Register(cfg *core.AppConfig) error {
+func (a *App) Register(cfg *burrow.AppConfig) error {
     a.repo = NewRepository(cfg.DB)
     a.handlers = NewHandlers(a.repo)
     return nil
@@ -174,8 +174,8 @@ func (a *App) MigrationFS() fs.FS { // (2)!
     return sub
 }
 
-func (a *App) NavItems() []core.NavItem { // (3)!
-    return []core.NavItem{
+func (a *App) NavItems() []burrow.NavItem { // (3)!
+    return []burrow.NavItem{
         {
             Label:    "Notes",
             URL:      "/notes",
@@ -203,7 +203,7 @@ func (a *App) Routes(e *echo.Echo) { // (4)!
 In `main.go`:
 
 ```go
-srv := core.NewServer(
+srv := burrow.NewServer(
     &session.App{},
     auth.New(nil),
     &healthcheck.App{},
@@ -223,7 +223,7 @@ Your app can implement any combination of these interfaces:
 | `Migratable` | `MigrationFS() fs.FS` | Provide SQL migrations |
 | `HasRoutes` | `Routes(e *echo.Echo)` | Register HTTP handlers |
 | `HasMiddleware` | `Middleware() []echo.MiddlewareFunc` | Add global middleware |
-| `HasNavItems` | `NavItems() []core.NavItem` | Contribute navigation entries |
+| `HasNavItems` | `NavItems() []burrow.NavItem` | Contribute navigation entries |
 | `Configurable` | `Flags() []cli.Flag` + `Configure(cmd *cli.Command) error` | Add CLI flags |
 | `HasCLICommands` | `CLICommands() []*cli.Command` | Add CLI subcommands |
 | `Seedable` | `Seed(ctx context.Context) error` | Seed initial data |

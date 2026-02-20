@@ -1,4 +1,4 @@
-// Package staticfiles provides static file serving as a webstack contrib app.
+// Package staticfiles provides static file serving as a burrow contrib app.
 // It computes content hashes at startup and serves files under hashed URLs
 // for cache busting, similar to Django's ManifestStaticFilesStorage.
 package staticfiles

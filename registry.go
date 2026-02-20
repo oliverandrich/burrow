@@ -1,4 +1,4 @@
-package core
+package burrow
 
 import (
 	"context"
@@ -31,13 +31,13 @@ func NewRegistry() *Registry {
 func (r *Registry) Add(app App) {
 	name := app.Name()
 	if _, exists := r.index[name]; exists {
-		panic(fmt.Sprintf("core: duplicate app name %q", name))
+		panic(fmt.Sprintf("burrow: duplicate app name %q", name))
 	}
 
 	if dep, ok := app.(HasDependencies); ok {
 		for _, required := range dep.Dependencies() {
 			if _, exists := r.index[required]; !exists {
-				panic(fmt.Sprintf("core: app %q requires %q to be registered first", name, required))
+				panic(fmt.Sprintf("burrow: app %q requires %q to be registered first", name, required))
 			}
 		}
 	}

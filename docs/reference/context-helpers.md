@@ -4,7 +4,7 @@ The framework and contrib apps store values in the request context. These helper
 
 ## Core Helpers
 
-Defined in `codeberg.org/oliverandrich/go-webapp-template/core`.
+Defined in `codeberg.org/oliverandrich/burrow`.
 
 ### NavItems
 
@@ -49,7 +49,7 @@ Generic context value helpers. `ContextValue` is a typed getter that returns the
 
 ## Auth Helpers
 
-Defined in `codeberg.org/oliverandrich/go-webapp-template/contrib/auth`.
+Defined in `codeberg.org/oliverandrich/burrow/contrib/auth`.
 
 !!! note
     Auth helpers use the Echo context (`*echo.Context`), not `context.Context`, because the user is stored in Echo's key-value store rather than the request context.
@@ -80,7 +80,7 @@ Stores the user in the Echo context. Used internally by the auth middleware.
 
 ## Session Helpers
 
-Defined in `codeberg.org/oliverandrich/go-webapp-template/contrib/session`.
+Defined in `codeberg.org/oliverandrich/burrow/contrib/session`.
 
 ### Getters
 
@@ -113,7 +113,7 @@ Sets up session state in the Echo context without the full middleware. Intended 
 
 ## i18n Helpers
 
-Defined in `codeberg.org/oliverandrich/go-webapp-template/contrib/i18n`.
+Defined in `codeberg.org/oliverandrich/burrow/contrib/i18n`.
 
 ### Translation
 
@@ -135,7 +135,7 @@ Returns the current locale (e.g., `"en"`, `"de"`). Defaults to `"en"`.
 
 ## Static Files Helpers
 
-Defined in `codeberg.org/oliverandrich/go-webapp-template/contrib/staticfiles`.
+Defined in `codeberg.org/oliverandrich/burrow/contrib/staticfiles`.
 
 ### URL
 

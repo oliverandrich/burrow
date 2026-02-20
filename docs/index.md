@@ -1,4 +1,4 @@
-# Go Webapp Template
+# Burrow
 
 A modular Go web framework built on [Echo v5](https://echo.labstack.com/), [Bun/SQLite](https://bun.uptrace.dev/), and [Templ](https://templ.guide/) templates.
 
@@ -23,14 +23,14 @@ import (
     "log"
     "os"
 
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/healthcheck"
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/session"
-    "codeberg.org/oliverandrich/go-webapp-template/core"
+    "codeberg.org/oliverandrich/burrow"
+    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
+    "codeberg.org/oliverandrich/burrow/contrib/session"
     "github.com/urfave/cli/v3"
 )
 
 func main() {
-    srv := core.NewServer(
+    srv := burrow.NewServer(
         &session.App{},
         &healthcheck.App{},
     )

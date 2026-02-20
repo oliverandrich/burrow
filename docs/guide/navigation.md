@@ -7,8 +7,8 @@ Apps contribute navigation items that are collected and made available to layout
 Implement the `HasNavItems` interface:
 
 ```go
-func (a *App) NavItems() []core.NavItem {
-    return []core.NavItem{
+func (a *App) NavItems() []burrow.NavItem {
+    return []burrow.NavItem{
         {
             Label:    "Notes",
             URL:      "/notes",
@@ -33,12 +33,12 @@ func (a *App) NavItems() []core.NavItem {
 
 ## Reading Nav Items in Layouts
 
-The framework injects nav items into every request context via middleware. Read them with `core.NavItems(ctx)`:
+The framework injects nav items into every request context via middleware. Read them with `burrow.NavItems(ctx)`:
 
 ```go
 func appLayout(title string, content templ.Component) templ.Component {
     return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-        for _, item := range core.NavItems(ctx) {
+        for _, item := range burrow.NavItems(ctx) {
             // Render navigation link...
         }
         // ...
@@ -53,7 +53,7 @@ The framework provides the raw nav items — filtering based on `AuthOnly` and `
 
 ```go
 user := auth.GetUser(c)
-for _, item := range core.NavItems(ctx) {
+for _, item := range burrow.NavItems(ctx) {
     if item.AuthOnly && user == nil {
         continue
     }

@@ -1,6 +1,6 @@
 # Core Interfaces
 
-All interfaces are defined in the `core` package (`codeberg.org/oliverandrich/go-webapp-template/core`).
+All interfaces are defined in the `burrow` package (`codeberg.org/oliverandrich/burrow`).
 
 ## Required
 

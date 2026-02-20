@@ -8,17 +8,17 @@
 ## Install the Module
 
 ```bash
-go get codeberg.org/oliverandrich/go-webapp-template@latest
+go get codeberg.org/oliverandrich/burrow@latest
 ```
 
-This pulls the `core` package and all `contrib` apps. Import only what you need:
+This pulls the `burrow` package and all `contrib` apps. Import only what you need:
 
 ```go
 import (
-    "codeberg.org/oliverandrich/go-webapp-template/core"
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/session"
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/auth"
-    "codeberg.org/oliverandrich/go-webapp-template/contrib/healthcheck"
+    "codeberg.org/oliverandrich/burrow"
+    "codeberg.org/oliverandrich/burrow/contrib/session"
+    "codeberg.org/oliverandrich/burrow/contrib/auth"
+    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
 )
 ```
 

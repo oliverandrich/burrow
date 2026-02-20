@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,9 +18,9 @@ var testHashKey = hex.EncodeToString(make([]byte, 32))
 
 // Compile-time interface assertions.
 var (
-	_ core.App           = (*App)(nil)
-	_ core.Configurable  = (*App)(nil)
-	_ core.HasMiddleware = (*App)(nil)
+	_ burrow.App           = (*App)(nil)
+	_ burrow.Configurable  = (*App)(nil)
+	_ burrow.HasMiddleware = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -46,7 +46,7 @@ func TestAppFlags(t *testing.T) {
 func configuredApp(t *testing.T) *App {
 	t.Helper()
 	app := &App{}
-	_ = app.Register(&core.AppConfig{})
+	_ = app.Register(&burrow.AppConfig{})
 
 	cmd := &cli.Command{
 		Name:  "test",

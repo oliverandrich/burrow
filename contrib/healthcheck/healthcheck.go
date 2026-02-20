@@ -1,15 +1,15 @@
-// Package healthcheck provides a minimal health check app for core.
+// Package healthcheck provides a minimal health check app for burrow.
 package healthcheck
 
 import (
 	"net/http"
 
-	"codeberg.org/oliverandrich/go-webapp-template/core"
+	"codeberg.org/oliverandrich/burrow"
 	"github.com/labstack/echo/v5"
 	"github.com/uptrace/bun"
 )
 
-// App implements the core.App and core.HasRoutes interfaces.
+// App implements the burrow.App and burrow.HasRoutes interfaces.
 // It registers a /healthz endpoint that returns the server and database status.
 type App struct {
 	db *bun.DB
@@ -17,7 +17,7 @@ type App struct {
 
 func (a *App) Name() string { return "healthcheck" }
 
-func (a *App) Register(cfg *core.AppConfig) error {
+func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.db = cfg.DB
 	return nil
 }

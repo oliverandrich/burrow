@@ -1,4 +1,4 @@
-module codeberg.org/oliverandrich/go-webapp-template
+module codeberg.org/oliverandrich/burrow
 
 go 1.25.0
 

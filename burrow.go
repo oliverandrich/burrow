@@ -1,4 +1,4 @@
-package core
+package burrow
 
 import "github.com/uptrace/bun"
 

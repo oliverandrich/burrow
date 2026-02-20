@@ -15,7 +15,7 @@ type LayoutFunc func(title string, content templ.Component) templ.Component
 The `Layouts` struct holds two optional layout slots:
 
 ```go
-srv.SetLayouts(core.Layouts{
+srv.SetLayouts(burrow.Layouts{
     App:   appLayout,   // User-facing pages (login, dashboard, etc.)
     Admin: adminLayout, // Admin pages (user management, etc.)
 })
@@ -31,8 +31,8 @@ Layouts read framework values from the request context:
 func appLayout(title string, content templ.Component) templ.Component {
     return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
         // Read framework context values.
-        navItems := core.NavItems(ctx)
-        csrfToken := core.CSRFToken(ctx)
+        navItems := burrow.NavItems(ctx)
+        csrfToken := burrow.CSRFToken(ctx)
 
         _, _ = io.WriteString(w, "<!DOCTYPE html><html><head><title>")
         _, _ = io.WriteString(w, title)
@@ -68,7 +68,7 @@ templ AppLayout(title string, content templ.Component) {
     <head><title>{ title }</title></head>
     <body>
         <nav>
-            for _, item := range core.NavItems(ctx) {
+            for _, item := range burrow.NavItems(ctx) {
                 <a href={ templ.SafeURL(item.URL) }>{ item.Label }</a>
             }
         </nav>
@@ -80,22 +80,22 @@ templ AppLayout(title string, content templ.Component) {
 
 ## Rendering in Handlers
 
-Use `core.Render()` to render a Templ component with a status code:
+Use `burrow.Render()` to render a Templ component with a status code:
 
 ```go
 func (h *Handlers) HomePage(c *echo.Context) error {
-    return core.Render(c, http.StatusOK, homePageComponent())
+    return burrow.Render(c, http.StatusOK, homePageComponent())
 }
 ```
 
-`core.Render()` calls `component.Render()` with the request context, so all context values (nav items, CSRF token, locale, current user) are available to the template.
+`burrow.Render()` calls `component.Render()` with the request context, so all context values (nav items, CSRF token, locale, current user) are available to the template.
 
 ## Available Context Values
 
 | Helper | Type | Set By |
 |--------|------|--------|
-| `core.NavItems(ctx)` | `[]NavItem` | Framework (from all `HasNavItems` apps) |
-| `core.CSRFToken(ctx)` | `string` | CSRF middleware |
+| `burrow.NavItems(ctx)` | `[]NavItem` | Framework (from all `HasNavItems` apps) |
+| `burrow.CSRFToken(ctx)` | `string` | CSRF middleware |
 | `i18n.Locale(ctx)` | `string` | i18n middleware |
 | `i18n.T(ctx, key)` | `string` | i18n middleware |
 | `staticfiles.URL(ctx, name)` | `string` | staticfiles middleware |
