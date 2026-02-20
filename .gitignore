@@ -16,6 +16,9 @@ Thumbs.db
 *.out
 coverage.html
 
+# Documentation build output
+site/
+
 # Claude Code
 CLAUDE.md
 AGENTS.md

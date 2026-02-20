@@ -1,0 +1,69 @@
+site_name: Go Webapp Template
+site_description: A modular Go web framework built on Echo, Bun/SQLite, and Templ
+repo_url: https://codeberg.org/oliverandrich/go-webapp-template
+repo_name: oliverandrich/go-webapp-template
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+      - Project Structure: getting-started/project-structure.md
+  - Guide:
+      - Creating an App: guide/creating-an-app.md
+      - Configuration: guide/configuration.md
+      - Layouts & Rendering: guide/layouts.md
+      - Migrations: guide/migrations.md
+      - Navigation: guide/navigation.md
+      - Inter-App Communication: guide/inter-app-communication.md
+  - Contrib Apps:
+      - Session: contrib/session.md
+      - Auth: contrib/auth.md
+      - Admin: contrib/admin.md
+      - i18n: contrib/i18n.md
+      - Healthcheck: contrib/healthcheck.md
+      - Static Files: contrib/staticfiles.md
+  - Reference:
+      - Core Interfaces: reference/interfaces.md
+      - Server & Registry: reference/server.md
+      - Configuration Reference: reference/configuration.md
+      - Context Helpers: reference/context-helpers.md

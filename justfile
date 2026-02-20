@@ -57,3 +57,11 @@ tidy:
 # Run the example application
 example *args:
     go run ./example/cmd/server {{args}}
+
+# Serve documentation locally
+docs:
+    mkdocs serve -a localhost:3000
+
+# Build documentation
+docs-build:
+    mkdocs build
