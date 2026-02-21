@@ -9,6 +9,7 @@ import (
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
+	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,17 +24,17 @@ var (
 )
 
 func TestAppName(t *testing.T) {
-	app := New()
+	app := New(nil)
 	assert.Equal(t, "admin", app.Name())
 }
 
 func TestAppDependencies(t *testing.T) {
-	app := New()
+	app := New(nil)
 	assert.Equal(t, []string{"auth"}, app.Dependencies())
 }
 
 func TestAppRegister(t *testing.T) {
-	app := New()
+	app := New(nil)
 	registry := burrow.NewRegistry()
 
 	registry.Add(&session.App{})
@@ -54,7 +55,7 @@ func TestAppRegisterMissingAuthPanics(t *testing.T) {
 
 	assert.PanicsWithValue(t,
 		`burrow: app "admin" requires "auth" to be registered first`,
-		func() { registry.Add(New()) },
+		func() { registry.Add(New(nil)) },
 	)
 }
 
@@ -89,7 +90,7 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
-	app := New()
+	app := New(nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -124,7 +125,7 @@ func TestRoutesRequiresAuth(t *testing.T) {
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
-	app := New()
+	app := New(nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -151,7 +152,7 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
-	app := New()
+	app := New(nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -173,7 +174,7 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 }
 
 func TestRoutesNoRegistryNoPanic(t *testing.T) {
-	app := New()
+	app := New(nil)
 	r := chi.NewRouter()
 	// Routes should not panic when registry is nil.
 	assert.NotPanics(t, func() { app.Routes(r) })
@@ -210,7 +211,7 @@ func TestMiddlewareInjectsAdminNavItems(t *testing.T) {
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
-	app := New()
+	app := New(nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -240,4 +241,67 @@ func TestMiddlewareInjectsAdminNavItems(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "admin nav items should include items from HasAdmin apps")
+}
+
+func TestLayoutContext(t *testing.T) {
+	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
+		return content
+	})
+
+	ctx := context.Background()
+	ctx = WithLayout(ctx, layout)
+
+	got := Layout(ctx)
+	assert.NotNil(t, got)
+}
+
+func TestLayoutMissing(t *testing.T) {
+	ctx := context.Background()
+	assert.Nil(t, Layout(ctx))
+}
+
+func TestNewWithLayout(t *testing.T) {
+	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
+		return content
+	})
+
+	app := New(layout)
+	assert.NotNil(t, app.layout)
+}
+
+func TestNewWithoutLayout(t *testing.T) {
+	app := New(nil)
+	assert.Nil(t, app.layout)
+}
+
+func TestMiddlewareInjectsLayout(t *testing.T) {
+	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
+		return content
+	})
+
+	registry := burrow.NewRegistry()
+	registry.Add(&session.App{})
+	authApp := auth.New(nil)
+	registry.Add(authApp)
+	require.NoError(t, registry.Bootstrap(nil))
+
+	app := New(layout)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	mws := app.Middleware()
+
+	var got burrow.LayoutFunc
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = Layout(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := mws[0](inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.NotNil(t, got, "admin layout should be set in context")
 }

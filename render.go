@@ -22,9 +22,3 @@ func Render(w http.ResponseWriter, r *http.Request, statusCode int, component te
 // The layout reads framework values (nav items, user, locale, CSRF)
 // from the context via helper functions.
 type LayoutFunc func(title string, content templ.Component) templ.Component
-
-// Layouts holds the layout functions for different areas of the application.
-type Layouts struct {
-	App   LayoutFunc // User-facing pages (login, dashboard, etc.)
-	Admin LayoutFunc // Admin pages (user management, etc.)
-}

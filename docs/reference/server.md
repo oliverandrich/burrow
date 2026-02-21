@@ -27,13 +27,13 @@ func NewServer(apps ...App) *Server
 
 Creates a server and registers all given apps in order.
 
-#### SetLayouts
+#### SetLayout
 
 ```go
-func (s *Server) SetLayouts(l Layouts)
+func (s *Server) SetLayout(fn LayoutFunc)
 ```
 
-Configures the app and admin layout functions. Call before `Run()`.
+Configures the app layout function. Call before `Run()`.
 
 #### Registry
 
@@ -69,7 +69,7 @@ When `Run()` is called, the following happens in order:
 4. **Register apps** — calls `Register()` on each app with the shared `AppConfig`
 5. **Configure apps** — calls `Configure()` on each `Configurable` app
 6. **Create router** — sets up Chi with core middleware (request logger, request ID, gzip, body limit)
-7. **Inject nav items** — collects nav items from all `HasNavItems` apps into request context
+7. **Inject nav items and layout** — collects nav items from all `HasNavItems` apps and the layout function into request context
 8. **Register middleware** — applies middleware from all `HasMiddleware` apps
 9. **Register routes** — calls `Routes()` on all `HasRoutes` apps
 10. **Start HTTP server** — listens on the configured address with graceful shutdown

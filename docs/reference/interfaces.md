@@ -27,7 +27,6 @@ type AppConfig struct {
     DB       *bun.DB
     Registry *Registry
     Config   *Config
-    Layouts  Layouts
 }
 ```
 
@@ -36,7 +35,6 @@ type AppConfig struct {
 | `DB` | Bun database connection (SQLite with WAL mode) |
 | `Registry` | App registry for looking up other apps |
 | `Config` | Parsed framework configuration |
-| `Layouts` | Layout functions for rendering |
 
 ## Optional
 

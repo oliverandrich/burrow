@@ -69,9 +69,6 @@ func TestLayoutFuncWrapsContent(t *testing.T) {
 }
 
 func TestLayoutFuncNilPassthrough(t *testing.T) {
-	// When no layout is set (nil in Layouts struct), content should render directly.
-	layouts := Layouts{} // Both nil.
-
 	content := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
 		_, err := w.Write([]byte("<p>bare</p>"))
 		return err
@@ -80,10 +77,13 @@ func TestLayoutFuncNilPassthrough(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
-	// Simulate what an app's default renderer would do.
+	// When no layout is set, content renders directly.
+	ctx := req.Context()
+	layout := Layout(ctx)
+
 	var component templ.Component
-	if layouts.App != nil {
-		component = layouts.App("Page", content)
+	if layout != nil {
+		component = layout("Page", content)
 	} else {
 		component = content
 	}
@@ -91,21 +91,4 @@ func TestLayoutFuncNilPassthrough(t *testing.T) {
 	err := Render(rec, req, http.StatusOK, component)
 	require.NoError(t, err)
 	assert.Equal(t, "<p>bare</p>", rec.Body.String())
-}
-
-func TestLayoutsStruct(t *testing.T) {
-	appLayout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
-	})
-	adminLayout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
-	})
-
-	layouts := Layouts{
-		App:   appLayout,
-		Admin: adminLayout,
-	}
-
-	assert.NotNil(t, layouts.App)
-	assert.NotNil(t, layouts.Admin)
 }

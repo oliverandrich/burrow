@@ -10,18 +10,25 @@ A `LayoutFunc` takes a page title and content component, returning a wrapped com
 type LayoutFunc func(title string, content templ.Component) templ.Component
 ```
 
-## Setting Layouts
+## Setting the App Layout
 
-The `Layouts` struct holds two optional layout slots:
+Set the app layout on the server before calling `Run()`:
 
 ```go
-srv.SetLayouts(burrow.Layouts{
-    App:   appLayout,   // User-facing pages (login, dashboard, etc.)
-    Admin: adminLayout, // Admin pages (user management, etc.)
-})
+srv.SetLayout(appLayout)
 ```
 
-Both fields are optional. If a layout is `nil`, content renders unwrapped.
+If no layout is set, content renders unwrapped.
+
+## Setting the Admin Layout
+
+The admin layout is owned by the `admin` package. Pass it when creating the admin app:
+
+```go
+admin.New(adminLayout)
+```
+
+Pass `nil` for no admin layout.
 
 ## Writing a Layout
 
@@ -95,6 +102,8 @@ func (h *Handlers) HomePage(w http.ResponseWriter, r *http.Request) error {
 | Helper | Type | Set By |
 |--------|------|--------|
 | `burrow.NavItems(ctx)` | `[]NavItem` | Framework (from all `HasNavItems` apps) |
+| `burrow.Layout(ctx)` | `LayoutFunc` | Framework middleware |
+| `admin.Layout(ctx)` | `LayoutFunc` | Admin middleware |
 | `csrf.Token(ctx)` | `string` | CSRF middleware |
 | `i18n.Locale(ctx)` | `string` | i18n middleware |
 | `i18n.T(ctx, key)` | `string` | i18n middleware |

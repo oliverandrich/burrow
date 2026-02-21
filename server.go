@@ -25,7 +25,7 @@ import (
 // of apps and orchestrates the boot sequence.
 type Server struct {
 	registry *Registry
-	layouts  Layouts
+	layout   LayoutFunc
 }
 
 // NewServer creates a Server and registers the given apps.
@@ -37,9 +37,9 @@ func NewServer(apps ...App) *Server {
 	return &Server{registry: reg}
 }
 
-// SetLayouts configures the app and admin layout functions.
-func (s *Server) SetLayouts(l Layouts) {
-	s.layouts = l
+// SetLayout configures the app layout function.
+func (s *Server) SetLayout(fn LayoutFunc) {
+	s.layout = fn
 }
 
 // Registry returns the server's app registry.
@@ -94,6 +94,9 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	setupCoreMiddleware(r, cfg)
 	navItems := s.registry.AllNavItems()
 	r.Use(navItemsMiddleware(navItems))
+	if s.layout != nil {
+		r.Use(layoutMiddleware(s.layout))
+	}
 	s.registry.RegisterMiddleware(r)
 	s.registry.RegisterRoutes(r)
 
@@ -110,7 +113,6 @@ func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
 		DB:       db,
 		Registry: s.registry,
 		Config:   cfg,
-		Layouts:  s.layouts,
 	}
 	for _, app := range s.registry.Apps() {
 		if err := app.Register(appCfg); err != nil {
@@ -143,6 +145,15 @@ func openDB(dsn string) (*bun.DB, error) {
 	}
 
 	return db, nil
+}
+
+func layoutMiddleware(fn LayoutFunc) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := WithLayout(r.Context(), fn)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 func navItemsMiddleware(items []NavItem) func(http.Handler) http.Handler {

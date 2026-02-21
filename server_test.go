@@ -98,45 +98,37 @@ func TestServerBootstrapSetsConfig(t *testing.T) {
 	assert.Equal(t, "testhost", receivedCfg.Config.Server.Host)
 }
 
-func TestSetLayouts(t *testing.T) {
+func TestSetLayout(t *testing.T) {
 	s := NewServer(&minimalApp{})
 
-	appLayout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
-	})
-	adminLayout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
+	layout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
 		return content
 	})
 
-	s.SetLayouts(Layouts{App: appLayout, Admin: adminLayout})
-
-	assert.NotNil(t, s.layouts.App)
-	assert.NotNil(t, s.layouts.Admin)
+	s.SetLayout(layout)
+	assert.NotNil(t, s.layout)
 }
 
-func TestBootstrapPassesLayouts(t *testing.T) {
-	var receivedCfg *AppConfig
-	app := &trackingApp{
-		name: "layout-checker",
-		registerFn: func(cfg *AppConfig) error {
-			receivedCfg = cfg
-			return nil
-		},
-	}
-
-	s := NewServer(app)
-	appLayout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
+func TestLayoutMiddleware(t *testing.T) {
+	layout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
 		return content
 	})
-	s.SetLayouts(Layouts{App: appLayout})
 
-	db := testDB(t)
-	err := s.bootstrap(t.Context(), db, nil)
-	require.NoError(t, err)
+	r := chi.NewRouter()
+	r.Use(layoutMiddleware(layout))
 
-	require.NotNil(t, receivedCfg)
-	assert.NotNil(t, receivedCfg.Layouts.App)
-	assert.Nil(t, receivedCfg.Layouts.Admin)
+	var got LayoutFunc
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		got = Layout(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.NotNil(t, got, "layout should be set in context")
 }
 
 func TestNavItemsMiddleware(t *testing.T) {

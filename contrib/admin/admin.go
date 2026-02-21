@@ -8,8 +8,11 @@ import (
 	"codeberg.org/oliverandrich/burrow"
 )
 
-// ctxKeyAdminNavItems is the context key for admin navigation items.
-type ctxKeyAdminNavItems struct{}
+// Context key types for admin-provided values.
+type (
+	ctxKeyAdminNavItems struct{}
+	ctxKeyAdminLayout   struct{}
+)
 
 // WithNavItems stores admin navigation items in the context.
 func WithNavItems(ctx context.Context, items []burrow.NavItem) context.Context {
@@ -20,6 +23,19 @@ func WithNavItems(ctx context.Context, items []burrow.NavItem) context.Context {
 func NavItems(ctx context.Context) []burrow.NavItem {
 	if items, ok := ctx.Value(ctxKeyAdminNavItems{}).([]burrow.NavItem); ok {
 		return items
+	}
+	return nil
+}
+
+// WithLayout stores the admin layout function in the context.
+func WithLayout(ctx context.Context, fn burrow.LayoutFunc) context.Context {
+	return context.WithValue(ctx, ctxKeyAdminLayout{}, fn)
+}
+
+// Layout retrieves the admin layout function from the context.
+func Layout(ctx context.Context) burrow.LayoutFunc {
+	if fn, ok := ctx.Value(ctxKeyAdminLayout{}).(burrow.LayoutFunc); ok {
+		return fn
 	}
 	return nil
 }

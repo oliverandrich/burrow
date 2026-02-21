@@ -11,11 +11,12 @@ import (
 // App implements the admin coordinator contrib app.
 type App struct {
 	registry *burrow.Registry
+	layout   burrow.LayoutFunc
 }
 
-// New creates a new admin app.
-func New() *App {
-	return &App{}
+// New creates a new admin app. The optional layout wraps admin pages.
+func New(layout burrow.LayoutFunc) *App {
+	return &App{layout: layout}
 }
 
 func (a *App) Name() string { return "admin" }
@@ -27,13 +28,17 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	return nil
 }
 
-// Middleware returns middleware that injects admin nav items into the context.
+// Middleware returns middleware that injects admin nav items and the
+// admin layout into the request context.
 func (a *App) Middleware() []func(http.Handler) http.Handler {
 	items := a.registry.AllAdminNavItems()
 	return []func(http.Handler) http.Handler{
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				ctx := WithNavItems(r.Context(), items)
+				if a.layout != nil {
+					ctx = WithLayout(ctx, a.layout)
+				}
 				next.ServeHTTP(w, r.WithContext(ctx))
 			})
 		},

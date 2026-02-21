@@ -1,6 +1,6 @@
 # Burrow
 
-A Go web framework library built on [Echo v5](https://echo.labstack.com/), [Bun](https://bun.uptrace.dev/)/SQLite, and [Templ](https://templ.guide/). Designed around composable apps with a Django-inspired architecture.
+A Go web framework library built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and [Templ](https://templ.guide/). Designed around composable apps with a Django-inspired architecture.
 
 ## Features
 
@@ -8,7 +8,7 @@ A Go web framework library built on [Echo v5](https://echo.labstack.com/), [Bun]
 - **Pure Go SQLite** — no CGO required (`CGO_ENABLED=0`), cross-compiles anywhere
 - **Per-app migrations** — each app manages its own SQL migrations
 - **CSS-agnostic** — bring your own CSS framework (Bootstrap, Tailwind, etc.)
-- **Layout system** — separate layouts for user-facing and admin pages
+- **Layout system** — app layout via server, admin layout via admin package
 - **CLI configuration** — flags, environment variables, and TOML config via [urfave/cli](https://github.com/urfave/cli)
 - **Contrib apps** — auth (WebAuthn/passkeys), sessions, i18n, admin, healthcheck, static files
 
@@ -78,7 +78,7 @@ Apps can optionally implement additional interfaces:
 |---|---|
 | `Migratable` | Provide embedded SQL migrations |
 | `HasRoutes` | Register HTTP routes |
-| `HasMiddleware` | Contribute Echo middleware |
+| `HasMiddleware` | Contribute middleware |
 | `HasNavItems` | Contribute navigation items |
 | `Configurable` | Define CLI flags and read configuration |
 | `HasCLICommands` | Contribute CLI subcommands |
@@ -86,13 +86,16 @@ Apps can optionally implement additional interfaces:
 
 ### Layouts
 
-The framework provides two layout slots for wrapping page content:
+The app layout wraps user-facing pages:
 
 ```go
-srv.SetLayouts(burrow.Layouts{
-    App:   appLayout,   // User-facing pages
-    Admin: adminLayout, // Admin pages
-})
+srv.SetLayout(appLayout)
+```
+
+The admin layout is owned by the admin package:
+
+```go
+admin.New(adminLayout)
 ```
 
 A `LayoutFunc` receives a page title and content, and returns a wrapped component:
@@ -105,6 +108,7 @@ Layouts access framework values from the request context:
 
 ```go
 burrow.NavItems(ctx)    // Navigation items from all apps
+burrow.Layout(ctx)      // App layout function
 csrf.Token(ctx)         // CSRF token for forms
 ```
 

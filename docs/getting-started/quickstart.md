@@ -63,9 +63,7 @@ func main() {
         &healthcheck.App{},
     )
 
-    srv.SetLayouts(burrow.Layouts{
-        App: appLayout,
-    })
+    srv.SetLayout(appLayout)
 
     cmd := &cli.Command{
         Name:    "myapp",

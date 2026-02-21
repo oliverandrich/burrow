@@ -22,6 +22,22 @@ func WithNavItems(ctx context.Context, items []NavItem) context.Context
 
 Stores navigation items in the context. Used internally by the framework.
 
+### Layout
+
+```go
+func Layout(ctx context.Context) LayoutFunc
+```
+
+Returns the app layout function from the context. Returns `nil` if no layout is set.
+
+### WithLayout
+
+```go
+func WithLayout(ctx context.Context, fn LayoutFunc) context.Context
+```
+
+Stores the app layout function in the context. Used internally by the framework middleware.
+
 ### Generic Helpers
 
 ```go
@@ -50,6 +66,22 @@ func WithNavItems(ctx context.Context, items []burrow.NavItem) context.Context
 ```
 
 Stores admin navigation items in the context. Used internally by the admin middleware.
+
+### Layout
+
+```go
+func Layout(ctx context.Context) burrow.LayoutFunc
+```
+
+Returns the admin layout function from the context. Returns `nil` if no admin layout is set.
+
+### WithLayout
+
+```go
+func WithLayout(ctx context.Context, fn burrow.LayoutFunc) context.Context
+```
+
+Stores the admin layout function in the context. Used internally by the admin middleware.
 
 ## CSRF Helpers
 

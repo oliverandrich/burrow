@@ -16,7 +16,6 @@ type AppConfig struct {
 	DB       *bun.DB
 	Registry *Registry
 	Config   *Config
-	Layouts  Layouts
 }
 
 // NavItem represents a navigation entry contributed by an app.

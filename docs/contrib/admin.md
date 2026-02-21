@@ -12,7 +12,7 @@ User management panel with CLI commands for promoting users and creating invites
 srv := burrow.NewServer(
     &session.App{},
     auth.New(authRenderer),
-    admin.New(),
+    admin.New(adminLayout), // pass nil for no admin layout
     // ... other apps
 )
 ```
@@ -69,6 +69,17 @@ NavItem{
 }
 ```
 
+## Context Helpers
+
+The admin package provides context helpers for the admin layout:
+
+```go
+admin.Layout(ctx)              // Returns the admin LayoutFunc from context
+admin.WithLayout(ctx, fn)      // Stores the admin LayoutFunc in context
+```
+
+The admin middleware injects the layout into the request context automatically.
+
 ## HasAdmin Interface
 
 Apps contribute admin views by implementing `HasAdmin`:
@@ -88,5 +99,5 @@ The admin app collects all `HasAdmin` implementations and mounts their routes un
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `HasRoutes` | Creates `/admin` group and delegates to `HasAdmin` apps |
-| `HasMiddleware` | Injects admin nav items into the request context |
+| `HasMiddleware` | Injects admin nav items and admin layout into the request context |
 | `HasDependencies` | Requires `auth` |

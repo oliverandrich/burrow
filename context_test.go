@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,4 +47,21 @@ func TestNavItemsContext(t *testing.T) {
 func TestNavItemsMissing(t *testing.T) {
 	ctx := context.Background()
 	assert.Nil(t, NavItems(ctx))
+}
+
+func TestLayoutContext(t *testing.T) {
+	layout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
+		return content
+	})
+
+	ctx := context.Background()
+	ctx = WithLayout(ctx, layout)
+
+	got := Layout(ctx)
+	assert.NotNil(t, got)
+}
+
+func TestLayoutMissing(t *testing.T) {
+	ctx := context.Background()
+	assert.Nil(t, Layout(ctx))
 }

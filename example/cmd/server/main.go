@@ -65,14 +65,12 @@ func main() {
 		auth.New(nil), // nil renderer = no HTML pages, API-only
 		&healthcheck.App{},
 		notes.New(),
-		admin.New(),
+		admin.New(nil),
 	)
 
-	// Provide layouts. The App layout wraps user-facing pages,
-	// the Admin layout wraps admin pages. Both are optional (nil = no wrapping).
-	srv.SetLayouts(burrow.Layouts{
-		App: appLayout,
-	})
+	// Provide a layout. The layout wraps user-facing pages.
+	// Optional (nil = no wrapping).
+	srv.SetLayout(appLayout)
 
 	cmd := &cli.Command{
 		Name:    "example",
