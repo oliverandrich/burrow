@@ -46,8 +46,28 @@ func New(fsys fs.FS, opts ...Option) *App {
 	return a
 }
 
-func (a *App) Name() string                       { return "staticfiles" }
-func (a *App) Register(_ *burrow.AppConfig) error { return nil }
+func (a *App) Name() string { return "staticfiles" }
+
+func (a *App) Register(cfg *burrow.AppConfig) error {
+	if cfg.Registry == nil {
+		return nil
+	}
+	for _, app := range cfg.Registry.Apps() {
+		if provider, ok := app.(burrow.HasStaticFiles); ok {
+			prefix, fsys := provider.StaticFS()
+			m, f := buildManifest(fsys)
+			for orig, hashed := range m {
+				a.manifest[prefix+"/"+orig] = prefix + "/" + hashed
+			}
+			a.hfs.contribs = append(a.hfs.contribs, contribSource{
+				prefix: prefix,
+				fsys:   fsys,
+				files:  f,
+			})
+		}
+	}
+	return nil
+}
 
 func (a *App) Middleware() []func(http.Handler) http.Handler {
 	return []func(http.Handler) http.Handler{a.contextMiddleware, a.cacheHeadersMiddleware}

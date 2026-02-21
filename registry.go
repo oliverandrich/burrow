@@ -70,6 +70,9 @@ func (r *Registry) Add(app App) {
 	if _, ok := app.(HasAdmin); ok {
 		caps = append(caps, "admin")
 	}
+	if _, ok := app.(HasStaticFiles); ok {
+		caps = append(caps, "staticfiles")
+	}
 	if _, ok := app.(HasDependencies); ok {
 		caps = append(caps, "dependencies")
 	}

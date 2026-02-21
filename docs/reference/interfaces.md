@@ -123,6 +123,16 @@ type Seedable interface {
 
 Seeds the database with initial data. Call `registry.Seed(ctx)` to run all seeders.
 
+### HasStaticFiles
+
+```go
+type HasStaticFiles interface {
+    StaticFS() (prefix string, fsys fs.FS)
+}
+```
+
+Contributes static file assets that the `staticfiles` app collects and serves. The `prefix` namespaces files under the static URL path (e.g., prefix `"admin"` serves files at `/static/admin/...`). Files are content-hashed and cache-busted just like user-provided static files.
+
 ### HasDependencies
 
 ```go

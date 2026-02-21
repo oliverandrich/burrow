@@ -74,6 +74,36 @@ All files are walked recursively. The manifest maps original paths to hashed pat
 | `styles.css` | `styles.a1b2c3d4.css` |
 | `images/logo.png` | `images/logo.e5f6a7b8.png` |
 
+## App-Contributed Static Files
+
+Contrib apps can contribute their own CSS/JS by implementing `HasStaticFiles`:
+
+```go
+//go:embed static
+var adminStaticFS embed.FS
+
+func (a *App) StaticFS() (string, fs.FS) {
+    sub, _ := fs.Sub(adminStaticFS, "static")
+    return "admin", sub
+}
+```
+
+The `staticfiles` app automatically discovers all `HasStaticFiles` implementations during `Register()` and serves their files under the declared prefix:
+
+```
+/static/admin/admin.a1b2c3d4.css
+/static/admin/admin.e5f6a7b8.js
+```
+
+Generate URLs with the prefix included:
+
+```go
+staticfiles.URL(ctx, "admin/admin.css")
+// "/static/admin/admin.a1b2c3d4.css"
+```
+
+Files from all sources get the same content-hashing and cache headers.
+
 ## Interfaces Implemented
 
 | Interface | Description |

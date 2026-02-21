@@ -87,18 +87,44 @@ func readFile(fsys fs.FS, path string) ([]byte, error) {
 
 // --- hashedFS: translates hashed filenames to originals ---
 
+// contribSource represents a contributed FS from a HasStaticFiles app.
+type contribSource struct {
+	fsys   fs.FS             // the contributed filesystem
+	files  map[string]string // hashed path → original path (unprefixed)
+	prefix string            // path prefix, e.g. "admin"
+}
+
 // hashedFS wraps an fs.FS to serve files by their hashed names.
 // It looks up the original filename in the reverse map, falling back
 // to direct FS access for files not in the map (e.g. externally-hashed fonts).
+// It also supports contrib sources with prefixed paths.
 type hashedFS struct {
-	fsys  fs.FS
-	files map[string]string // hashed path → original path
+	fsys     fs.FS
+	files    map[string]string // hashed path → original path
+	contribs []contribSource
 }
 
 func (h *hashedFS) Open(name string) (fs.File, error) {
+	// Check primary FS reverse map.
 	if original, ok := h.files[name]; ok {
 		return h.fsys.Open(original)
 	}
+
+	// Check contrib FSes by prefix.
+	for _, c := range h.contribs {
+		if unprefixed, ok := strings.CutPrefix(name, c.prefix+"/"); ok {
+			if original, ok := c.files[unprefixed]; ok {
+				return c.fsys.Open(original)
+			}
+			// Fallback: try direct open (e.g. externally-hashed fonts).
+			f, err := c.fsys.Open(unprefixed)
+			if err == nil {
+				return f, nil
+			}
+		}
+	}
+
+	// Fallback: direct open on primary FS.
 	return h.fsys.Open(name)
 }
 

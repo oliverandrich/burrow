@@ -55,6 +55,13 @@ type HasAdmin interface {
 	AdminNavItems() []NavItem
 }
 
+// HasStaticFiles is implemented by apps that contribute static file
+// assets. The returned prefix namespaces the files under the static
+// URL path (e.g., prefix "admin" serves files at /static/admin/...).
+type HasStaticFiles interface {
+	StaticFS() (prefix string, fsys fs.FS)
+}
+
 // HasDependencies is implemented by apps that require other apps
 // to be registered first. Dependencies() returns the names of
 // required apps; registration panics if any are missing.

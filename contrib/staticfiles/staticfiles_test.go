@@ -2,6 +2,7 @@ package staticfiles
 
 import (
 	"context"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -350,4 +351,182 @@ func TestMiddlewareInjectsContext(t *testing.T) {
 	hash := contentHash([]byte("body{}"))
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "/static/dist/styles."+hash+".css", gotURL)
+}
+
+// --- Multi-FS / HasStaticFiles tests ---
+
+// contribApp is a test app implementing HasStaticFiles.
+type contribApp struct {
+	fsys   fstest.MapFS
+	name   string
+	prefix string
+}
+
+func (a *contribApp) Name() string                       { return a.name }
+func (a *contribApp) Register(_ *burrow.AppConfig) error { return nil }
+func (a *contribApp) StaticFS() (string, fs.FS)          { return a.prefix, a.fsys }
+
+func TestRegisterCollectsContribFS(t *testing.T) {
+	adminFS := fstest.MapFS{
+		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
+	}
+
+	registry := burrow.NewRegistry()
+	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+
+	app := New(testFS)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	// The manifest should include both user and contrib files.
+	hash := contentHash([]byte(".admin{}"))
+	assert.Equal(t, "admin/admin."+hash+".css", app.manifest["admin/admin.css"])
+}
+
+func TestContribFileServing(t *testing.T) {
+	adminFS := fstest.MapFS{
+		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
+	}
+
+	registry := burrow.NewRegistry()
+	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+
+	app := New(testFS)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	r := chi.NewRouter()
+	app.Routes(r)
+
+	hash := contentHash([]byte(".admin{}"))
+	req := httptest.NewRequest(http.MethodGet, "/static/admin/admin."+hash+".css", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, ".admin{}", rec.Body.String())
+}
+
+func TestContribFileURL(t *testing.T) {
+	adminFS := fstest.MapFS{
+		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
+	}
+
+	registry := burrow.NewRegistry()
+	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+
+	app := New(testFS)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	ctx := context.WithValue(context.Background(), ctxKeyApp{}, app)
+
+	hash := contentHash([]byte(".admin{}"))
+	assert.Equal(t, "/static/admin/admin."+hash+".css", URL(ctx, "admin/admin.css"))
+}
+
+func TestContribAndUserFilesCoexist(t *testing.T) {
+	adminFS := fstest.MapFS{
+		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
+	}
+
+	registry := burrow.NewRegistry()
+	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+
+	app := New(testFS)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	r := chi.NewRouter()
+	app.Routes(r)
+
+	// User file still works.
+	userHash := contentHash([]byte("body{}"))
+	req := httptest.NewRequest(http.MethodGet, "/static/dist/styles."+userHash+".css", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "body{}", rec.Body.String())
+
+	// Contrib file works.
+	adminHash := contentHash([]byte(".admin{}"))
+	req = httptest.NewRequest(http.MethodGet, "/static/admin/admin."+adminHash+".css", nil)
+	rec = httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, ".admin{}", rec.Body.String())
+}
+
+func TestContribFileCacheHeaders(t *testing.T) {
+	adminFS := fstest.MapFS{
+		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
+	}
+
+	registry := burrow.NewRegistry()
+	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+
+	app := New(testFS)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	r := chi.NewRouter()
+	for _, mw := range app.Middleware() {
+		r.Use(mw)
+	}
+	app.Routes(r)
+
+	hash := contentHash([]byte(".admin{}"))
+	req := httptest.NewRequest(http.MethodGet, "/static/admin/admin."+hash+".css", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "public, max-age=31536000, immutable", rec.Header().Get("Cache-Control"))
+}
+
+func TestNoContribsStillWorks(t *testing.T) {
+	registry := burrow.NewRegistry()
+
+	app := New(testFS)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	// User files should still work exactly as before.
+	r := chi.NewRouter()
+	app.Routes(r)
+
+	hash := contentHash([]byte("body{}"))
+	req := httptest.NewRequest(http.MethodGet, "/static/dist/styles."+hash+".css", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "body{}", rec.Body.String())
+}
+
+func TestMultipleContribs(t *testing.T) {
+	adminFS := fstest.MapFS{
+		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
+	}
+	themeFS := fstest.MapFS{
+		"theme.css": &fstest.MapFile{Data: []byte(".theme{}")},
+	}
+
+	registry := burrow.NewRegistry()
+	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+	registry.Add(&contribApp{name: "test-theme", prefix: "theme", fsys: themeFS})
+
+	app := New(testFS)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	ctx := context.WithValue(context.Background(), ctxKeyApp{}, app)
+
+	adminHash := contentHash([]byte(".admin{}"))
+	themeHash := contentHash([]byte(".theme{}"))
+
+	assert.Equal(t, "/static/admin/admin."+adminHash+".css", URL(ctx, "admin/admin.css"))
+	assert.Equal(t, "/static/theme/theme."+themeHash+".css", URL(ctx, "theme/theme.css"))
 }
