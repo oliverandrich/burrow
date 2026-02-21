@@ -774,6 +774,26 @@ func TestAcknowledgeRecoveryCodes(t *testing.T) {
 	assert.Equal(t, "/dashboard", rec.Header().Get("Location"))
 }
 
+func TestAcknowledgeRecoveryCodesWithRedirect(t *testing.T) {
+	h, _, _ := newTestHandlers(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/recovery-codes/ack", nil)
+	req = session.Inject(req, map[string]any{
+		"user_id":              int64(1),
+		"recovery_codes":       []string{"code1"},
+		"redirect_after_login": "/admin/",
+	})
+	ctx := WithUser(req.Context(), &User{ID: 1})
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := h.AcknowledgeRecoveryCodes(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/admin/", rec.Header().Get("Location"))
+}
+
 // --- Email verification tests ---
 
 func TestVerifyPendingPage(t *testing.T) {

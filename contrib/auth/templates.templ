@@ -72,11 +72,7 @@ templ loginPageContent(loginRedirect string) {
 			btn.disabled = true;
 			btn.textContent = strings.loginWaiting;
 			try {
-				var params = new URLSearchParams(window.location.search);
-				var next = params.get("next") || "";
-				var finishURL = "/auth/login/finish";
-				if (next) finishURL += "?next=" + encodeURIComponent(next);
-				var result = await webauthnLogin("/auth/login/begin", finishURL);
+				var result = await webauthnLogin("/auth/login/begin", "/auth/login/finish");
 				if (result.redirect) {
 					window.location.href = result.redirect;
 				}

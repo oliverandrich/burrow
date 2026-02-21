@@ -15,6 +15,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -507,11 +508,30 @@ func TestRequireAuthRedirects(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/protected?foo=bar", nil)
+	req = session.Inject(req, nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Contains(t, rec.Header().Get("Location"), "/auth/login?next=")
+	assert.Equal(t, "/auth/login", rec.Header().Get("Location"))
+}
+
+func TestRequireAuthStoresRedirectInSession(t *testing.T) {
+	var capturedValues map[string]any
+	r := chi.NewRouter()
+	r.Use(RequireAuth())
+	r.Get("/protected", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/protected?foo=bar", nil)
+	req = session.Inject(req, nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	// Verify the redirect target is stored in session by reading it back.
+	capturedValues = session.GetValues(req)
+	assert.Equal(t, "/protected?foo=bar", capturedValues["redirect_after_login"])
 }
 
 func TestRequireAuthAllowsAuthenticated(t *testing.T) {

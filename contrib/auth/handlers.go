@@ -239,8 +239,13 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 			}
 		}()
 
+		redirectAfterAck := h.redirectTarget(r)
+
 		if err := session.Set(w, r, "recovery_codes", codes); err != nil {
 			return errorJSONLog(w, http.StatusInternalServerError, "failed to store recovery codes", err)
+		}
+		if err := session.Set(w, r, "redirect_after_login", redirectAfterAck); err != nil {
+			return errorJSONLog(w, http.StatusInternalServerError, "failed to store redirect", err)
 		}
 
 		return burrow.JSON(w, http.StatusOK, map[string]any{
@@ -250,9 +255,11 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	// Username mode: create session immediately.
+	redirectAfterAck := h.redirectTarget(r)
 	if err := session.Save(w, r, map[string]any{
-		"user_id":        user.ID,
-		"recovery_codes": codes,
+		"user_id":              user.ID,
+		"recovery_codes":       codes,
+		"redirect_after_login": redirectAfterAck,
 	}); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to create session", err)
 	}
@@ -331,12 +338,12 @@ func (h *Handlers) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 		})
 	}
 
+	// Read redirect target BEFORE session.Save() which replaces all session values.
+	redirect := h.redirectTarget(r)
+
 	if err := session.Save(w, r, map[string]any{"user_id": foundUser.ID}); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to create session", err)
 	}
-
-	next := r.URL.Query().Get("next")
-	redirect := SafeRedirectPath(next, h.config.LoginRedirect)
 
 	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok", "redirect": redirect})
 }
@@ -457,14 +464,14 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 		return errorJSON(w, http.StatusUnauthorized, "invalid username or recovery code")
 	}
 
+	// Read redirect target BEFORE session.Save() which replaces all session values.
+	redirect := h.redirectTarget(r)
+
 	if err := session.Save(w, r, map[string]any{"user_id": user.ID}); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to create session", err)
 	}
 
 	remaining, _ := h.repo.GetUnusedRecoveryCodeCount(r.Context(), user.ID)
-
-	next := r.URL.Query().Get("next")
-	redirect := SafeRedirectPath(next, h.config.LoginRedirect)
 
 	return burrow.JSON(w, http.StatusOK, map[string]any{
 		"status":          "ok",
@@ -484,6 +491,9 @@ func (h *Handlers) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Reques
 
 	if err := session.Set(w, r, "recovery_codes", codes); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to store recovery codes", err)
+	}
+	if err := session.Set(w, r, "redirect_after_login", "/auth/credentials"); err != nil {
+		return errorJSONLog(w, http.StatusInternalServerError, "failed to store redirect", err)
 	}
 
 	return burrow.JSON(w, http.StatusOK, map[string]any{
@@ -513,11 +523,16 @@ func (h *Handlers) RecoveryCodesPage(w http.ResponseWriter, r *http.Request) err
 
 // AcknowledgeRecoveryCodes clears recovery codes from the session and redirects.
 func (h *Handlers) AcknowledgeRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
+	redirect := h.redirectTarget(r)
+
 	if err := session.Delete(w, r, "recovery_codes"); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to clear recovery codes", err)
 	}
+	if err := session.Delete(w, r, "redirect_after_login"); err != nil {
+		return errorJSONLog(w, http.StatusInternalServerError, "failed to clear redirect", err)
+	}
 
-	http.Redirect(w, r, h.config.LoginRedirect, http.StatusSeeOther)
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
 	return nil
 }
 
@@ -613,6 +628,12 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 	}()
 
 	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// redirectTarget reads "redirect_after_login" from the session and validates it,
+// falling back to the configured login redirect.
+func (h *Handlers) redirectTarget(r *http.Request) string {
+	return SafeRedirectPath(session.GetString(r, "redirect_after_login"), h.config.LoginRedirect)
 }
 
 // --- Internal helpers ---

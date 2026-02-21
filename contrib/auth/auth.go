@@ -9,6 +9,8 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+
+	"codeberg.org/oliverandrich/burrow/contrib/session"
 )
 
 // ctxKeyUser is the context key for the authenticated user.
@@ -33,12 +35,15 @@ func WithUser(ctx context.Context, user *User) context.Context {
 }
 
 // RequireAuth returns middleware that redirects to login if not authenticated.
+// The original request URL is stored in the session as "redirect_after_login"
+// so the user can be redirected back after successful authentication.
 func RequireAuth() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !IsAuthenticated(r) {
 				target := r.URL.RequestURI()
-				http.Redirect(w, r, "/auth/login?next="+url.QueryEscape(target), http.StatusSeeOther)
+				_ = session.Set(w, r, "redirect_after_login", target)
+				http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 				return
 			}
 			next.ServeHTTP(w, r)

@@ -95,13 +95,14 @@ async function webauthnRegister(beginURL, finishURL, formData) {
   var credential = await navigator.credentials.create({ publicKey: publicKey });
 
   var encoded = encodeAttestationResponse(credential);
-  var finishParsed = new URL(finishURL, window.location.origin);
-  finishParsed.searchParams.set("user_id", beginData.user_id);
-  var finishResp = await fetch(finishParsed.pathname + finishParsed.search, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-    body: JSON.stringify(encoded),
-  });
+  var finishResp = await fetch(
+    finishURL + "?user_id=" + encodeURIComponent(beginData.user_id),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      body: JSON.stringify(encoded),
+    },
+  );
   if (!finishResp.ok) {
     var finishErr = await finishResp.json();
     throw new Error(finishErr.error || "Registration failed");
@@ -129,13 +130,14 @@ async function webauthnLogin(beginURL, finishURL) {
   var credential = await navigator.credentials.get({ publicKey: publicKey });
 
   var encoded = encodeAssertionResponse(credential);
-  var finishParsed = new URL(finishURL, window.location.origin);
-  finishParsed.searchParams.set("session_id", beginData.session_id);
-  var finishResp = await fetch(finishParsed.pathname + finishParsed.search, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-    body: JSON.stringify(encoded),
-  });
+  var finishResp = await fetch(
+    finishURL + "?session_id=" + encodeURIComponent(beginData.session_id),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      body: JSON.stringify(encoded),
+    },
+  );
   if (!finishResp.ok) {
     var finishErr = await finishResp.json();
     throw new Error(finishErr.error || "Login failed");
