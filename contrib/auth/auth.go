@@ -21,6 +21,9 @@ import (
 //go:embed migrations
 var migrationFS embed.FS
 
+//go:embed translations
+var translationFS embed.FS
+
 // ctxKeyUser is the context key for the authenticated user.
 type ctxKeyUser struct{}
 
@@ -87,6 +90,9 @@ func (a *App) MigrationFS() fs.FS {
 	sub, _ := fs.Sub(migrationFS, "migrations")
 	return sub
 }
+
+// TranslationFS returns the embedded translation files for auto-discovery by the i18n app.
+func (a *App) TranslationFS() fs.FS { return translationFS }
 
 func (a *App) Flags() []cli.Flag {
 	return []cli.Flag{

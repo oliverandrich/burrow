@@ -37,6 +37,7 @@ var (
 	_ burrow.HasCLICommands  = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
 	_ burrow.HasStaticFiles  = (*App)(nil)
+	_ burrow.HasTranslations = (*App)(nil)
 
 	_ Renderer      = (*defaultRenderer)(nil)
 	_ AdminRenderer = (*defaultAdminRenderer)(nil)
@@ -1022,8 +1023,8 @@ func TestDefaultRendererLoginPage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "Login")
-	assert.Contains(t, body, "Login with Passkey")
+	assert.Contains(t, body, "login-title")
+	assert.Contains(t, body, "login-button")
 	assert.Contains(t, body, "card shadow-sm", "login page should be wrapped in a card")
 }
 
@@ -1037,8 +1038,8 @@ func TestDefaultRendererRegisterPage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "Register")
-	assert.Contains(t, body, "Username")
+	assert.Contains(t, body, "register-title")
+	assert.Contains(t, body, "register-username-label")
 	assert.Contains(t, body, "card shadow-sm", "register page should be wrapped in a card")
 }
 
@@ -1051,8 +1052,8 @@ func TestDefaultRendererRegisterPageEmailMode(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "Email")
-	assert.NotContains(t, rec.Body.String(), "Username")
+	assert.Contains(t, rec.Body.String(), "register-email-label")
+	assert.NotContains(t, rec.Body.String(), "register-username-label")
 }
 
 func TestDefaultRendererCredentialsPage(t *testing.T) {
@@ -1082,7 +1083,7 @@ func TestDefaultRendererRecoveryPage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "Recovery Login")
+	assert.Contains(t, body, "recovery-title")
 	assert.Contains(t, body, "card shadow-sm", "recovery page should be wrapped in a card")
 }
 
@@ -1096,7 +1097,7 @@ func TestDefaultRendererVerifyPendingPage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "Check Your Email")
+	assert.Contains(t, body, "verify-pending-title")
 	assert.Contains(t, body, "card shadow-sm", "verify pending page should be wrapped in a card")
 }
 
@@ -1110,7 +1111,7 @@ func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "Email Verified")
+	assert.Contains(t, body, "verify-success-title")
 	assert.Contains(t, body, "card shadow-sm", "verify email success page should be wrapped in a card")
 }
 
@@ -1124,8 +1125,8 @@ func TestDefaultRendererVerifyEmailError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "Verification Failed")
-	assert.Contains(t, body, "invalid")
+	assert.Contains(t, body, "verify-error-title")
+	assert.Contains(t, body, "verify-error-invalid-token")
 	assert.Contains(t, body, "card shadow-sm", "verify email error page should be wrapped in a card")
 }
 
@@ -1150,7 +1151,7 @@ func TestDefaultRendererWithLayout(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, rec.Body.String(), "<layout-wrapper>")
-	assert.Contains(t, rec.Body.String(), "Login with Passkey")
+	assert.Contains(t, rec.Body.String(), "login-button")
 	assert.Contains(t, rec.Body.String(), "</layout-wrapper>")
 }
 
@@ -1241,7 +1242,7 @@ func TestDefaultAdminRendererInvitesPageWithCreatedURL(t *testing.T) {
 	err := r.AdminInvitesPage(rec, req, nil, "http://localhost/auth/register?invite=abc123", false)
 
 	require.NoError(t, err)
-	assert.Contains(t, rec.Body.String(), "Invite created")
+	assert.Contains(t, rec.Body.String(), "admin-invites-created")
 	assert.Contains(t, rec.Body.String(), "http://localhost/auth/register?invite=abc123")
 }
 

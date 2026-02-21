@@ -229,6 +229,22 @@ The auth app embeds a WebAuthn JavaScript helper and implements `HasStaticFiles`
 
 This is served at `/static/auth/webauthn.js` (with content-hashed URL) when the `staticfiles` app is registered.
 
+## Internationalization
+
+The auth app implements `HasTranslations` and ships English and German translations for all user-facing strings. When the `i18n` contrib app is registered, translations are auto-discovered and loaded.
+
+```go
+srv := burrow.NewServer(
+    &session.App{},
+    &csrf.App{},
+    &i18n.App{},    // must come before auth for middleware order
+    authApp,
+    // ...
+)
+```
+
+Without the i18n app, templates fall back to displaying translation keys (which match their English text). To add a custom language, create a TOML file (e.g., `active.fr.toml`) with the same keys as `active.en.toml` and load it via `i18n.AddTranslations()`.
+
 ## Interfaces Implemented
 
 | Interface | Description |
@@ -239,5 +255,6 @@ This is served at `/static/auth/webauthn.js` (with content-hashed URL) when the 
 | `HasMiddleware` | User loading from session |
 | `HasAdmin` | Admin user/invite management routes and nav items |
 | `HasStaticFiles` | Contributes embedded `webauthn.js` under `"auth"` prefix |
+| `HasTranslations` | Contributes English and German translation files |
 | `Configurable` | Auth and WebAuthn flags |
 | `HasDependencies` | Requires `session` |

@@ -62,6 +62,13 @@ type HasStaticFiles interface {
 	StaticFS() (prefix string, fsys fs.FS)
 }
 
+// HasTranslations is implemented by apps that contribute translation
+// files. The returned fs.FS must contain a "translations/" directory
+// with TOML files (e.g., "translations/active.en.toml").
+type HasTranslations interface {
+	TranslationFS() fs.FS
+}
+
 // HasDependencies is implemented by apps that require other apps
 // to be registered first. Dependencies() returns the names of
 // required apps; registration panics if any are missing.

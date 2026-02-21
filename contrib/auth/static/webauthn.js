@@ -75,7 +75,8 @@ function encodeAssertionResponse(cred) {
 }
 
 // Show recovery codes in a modal dialog.
-function showRecoveryCodes(codes) {
+// strings is an optional dataset object with i18n keys; falls back to English defaults.
+function showRecoveryCodes(codes, strings) {
   var overlay = document.createElement("div");
   overlay.style.cssText =
     "position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999";
@@ -85,11 +86,13 @@ function showRecoveryCodes(codes) {
     "background:var(--bg,#fff);color:var(--fg,#000);padding:2rem;border-radius:8px;max-width:400px;width:90%";
 
   var title = document.createElement("h3");
-  title.textContent = "Recovery Codes";
+  title.textContent =
+    (strings && strings.recoveryCodesTitle) || "Recovery Codes";
   box.appendChild(title);
 
   var desc = document.createElement("p");
   desc.textContent =
+    (strings && strings.recoveryCodesDescription) ||
     "Save these codes in a safe place. Each code can only be used once.";
   box.appendChild(desc);
 
@@ -100,7 +103,8 @@ function showRecoveryCodes(codes) {
   box.appendChild(pre);
 
   var btn = document.createElement("button");
-  btn.textContent = "I have saved my codes";
+  btn.textContent =
+    (strings && strings.recoveryCodesDismiss) || "I have saved my codes";
   btn.onclick = function () {
     document.body.removeChild(overlay);
   };
@@ -146,7 +150,8 @@ async function webauthnRegister(beginURL, finishURL, formData) {
   var result = await finishResp.json();
 
   if (result.recovery_codes) {
-    showRecoveryCodes(result.recovery_codes);
+    var el = document.getElementById("i18n-strings");
+    showRecoveryCodes(result.recovery_codes, el ? el.dataset : null);
   }
   return result;
 }

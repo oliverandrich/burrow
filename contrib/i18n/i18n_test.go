@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"context"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -180,6 +181,75 @@ func TestMiddlewareSetsLocale(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "de", gotLocale)
 	assert.Equal(t, "Hallo", gotTranslation)
+}
+
+// mockTranslationApp is a mock app implementing HasTranslations.
+type mockTranslationApp struct {
+	fs fstest.MapFS
+}
+
+func (m *mockTranslationApp) Name() string                       { return "mock" }
+func (m *mockTranslationApp) Register(_ *burrow.AppConfig) error { return nil }
+func (m *mockTranslationApp) TranslationFS() fs.FS               { return m.fs }
+
+func TestAutoDiscoverTranslations(t *testing.T) {
+	mock := &mockTranslationApp{
+		fs: fstest.MapFS{
+			"translations/active.en.toml": &fstest.MapFile{
+				Data: []byte("auto-key = \"Auto Value\"\n"),
+			},
+			"translations/active.de.toml": &fstest.MapFile{
+				Data: []byte("auto-key = \"Auto Wert\"\n"),
+			},
+		},
+	}
+
+	registry := burrow.NewRegistry()
+	registry.Add(mock)
+
+	app := &App{}
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	cmd := &cli.Command{
+		Name:  "test",
+		Flags: app.Flags(),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
+	}
+	err := cmd.Run(t.Context(), []string{"test"})
+	require.NoError(t, err)
+
+	ctx := app.WithLocale(context.Background(), "en")
+	assert.Equal(t, "Auto Value", T(ctx, "auto-key"))
+
+	ctx = app.WithLocale(context.Background(), "de")
+	assert.Equal(t, "Auto Wert", T(ctx, "auto-key"))
+}
+
+func TestAutoDiscoverSkipsAppsWithoutTranslations(t *testing.T) {
+	// An app that does not implement HasTranslations.
+	plainApp := &App{}
+
+	registry := burrow.NewRegistry()
+	registry.Add(plainApp)
+
+	app := &App{}
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	cmd := &cli.Command{
+		Name:  "test",
+		Flags: app.Flags(),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
+	}
+	err := cmd.Run(t.Context(), []string{"test"})
+	require.NoError(t, err)
+
+	// Should not panic or error — just no extra translations loaded.
+	ctx := app.WithLocale(context.Background(), "en")
+	assert.Equal(t, "nonexistent", T(ctx, "nonexistent"))
 }
 
 func TestMiddlewareDefaultsToEnglish(t *testing.T) {

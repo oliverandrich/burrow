@@ -1,6 +1,7 @@
 package auth
 
 import "codeberg.org/oliverandrich/burrow/contrib/csrf"
+import "codeberg.org/oliverandrich/burrow/contrib/i18n"
 import "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 
 // authCard wraps content in a centered Bootstrap card.
@@ -25,10 +26,10 @@ templ csrfInput() {
 // deleteCredential is an inline script for deleting a credential.
 script deleteCredential(id int64, totalCount int) {
 	if (totalCount <= 1) {
-		alert("Cannot delete your last passkey.");
+		alert(document.getElementById("i18n-strings").dataset.credentialsDeleteLast);
 		return;
 	}
-	if (!confirm("Delete this passkey?")) return;
+	if (!confirm(document.getElementById("i18n-strings").dataset.credentialsDeleteConfirm)) return;
 	var token = document.getElementById("csrf-token");
 	var headers = token ? { "X-CSRF-Token": token.value } : {};
 	fetch("/auth/credentials/" + id, { method: "DELETE", headers: headers })
@@ -43,26 +44,33 @@ script deleteCredential(id int64, totalCount int) {
 
 // loginPage renders the login page with a passkey button and links to register/recovery.
 templ loginPage(loginRedirect string) {
-	@authCard("Login", loginPageContent(loginRedirect))
+	@authCard(i18n.T(ctx, "login-title"), loginPageContent(loginRedirect))
 }
 
 templ loginPageContent(loginRedirect string) {
 	@csrfInput()
+	<div
+		id="i18n-strings"
+		data-login-waiting={ i18n.T(ctx, "login-waiting") }
+		data-login-button={ i18n.T(ctx, "login-button") }
+		style="display:none"
+	></div>
 	<div id="error-message" class="alert alert-danger" style="display:none"></div>
-	<button id="login-btn" type="button" class="btn btn-primary w-100">Login with Passkey</button>
+	<button id="login-btn" type="button" class="btn btn-primary w-100">{ i18n.T(ctx, "login-button") }</button>
 	<p class="text-center mt-4">
-		<a href="/auth/register">Create an account</a>
+		<a href="/auth/register">{ i18n.T(ctx, "login-create-account") }</a>
 		&middot;
-		<a href="/auth/recovery">Lost your passkey?</a>
+		<a href="/auth/recovery">{ i18n.T(ctx, "login-lost-passkey") }</a>
 	</p>
 	<script src={ staticfiles.URL(ctx, "auth/webauthn.js") }></script>
 	<script>
 		document.getElementById("login-btn").addEventListener("click", async function() {
 			var btn = this;
 			var errEl = document.getElementById("error-message");
+			var strings = document.getElementById("i18n-strings").dataset;
 			errEl.style.display = "none";
 			btn.disabled = true;
-			btn.textContent = "Waiting for passkey...";
+			btn.textContent = strings.loginWaiting;
 			try {
 				var result = await webauthnLogin("/auth/login/begin", "/auth/login/finish");
 				if (result.redirect) {
@@ -72,7 +80,7 @@ templ loginPageContent(loginRedirect string) {
 				errEl.textContent = e.message;
 				errEl.style.display = "block";
 				btn.disabled = false;
-				btn.textContent = "Login with Passkey";
+				btn.textContent = strings.loginButton;
 			}
 		});
 	</script>
@@ -80,33 +88,42 @@ templ loginPageContent(loginRedirect string) {
 
 // registerPage renders the registration page with username/email field and passkey creation.
 templ registerPage(useEmail, inviteOnly bool, email, invite string) {
-	@authCard("Register", registerPageContent(useEmail, inviteOnly, email, invite))
+	@authCard(i18n.T(ctx, "register-title"), registerPageContent(useEmail, inviteOnly, email, invite))
 }
 
 templ registerPageContent(useEmail, inviteOnly bool, email, invite string) {
 	@csrfInput()
+	<div
+		id="i18n-strings"
+		data-register-waiting={ i18n.T(ctx, "register-waiting") }
+		data-register-button={ i18n.T(ctx, "register-button") }
+		data-recovery-codes-title={ i18n.T(ctx, "recovery-codes-title") }
+		data-recovery-codes-description={ i18n.T(ctx, "recovery-codes-description") }
+		data-recovery-codes-dismiss={ i18n.T(ctx, "recovery-codes-dismiss") }
+		style="display:none"
+	></div>
 	<div id="error-message" class="alert alert-danger" style="display:none"></div>
 	<form id="register-form">
 		if useEmail {
-			<label for="email" class="form-label">Email</label>
+			<label for="email" class="form-label">{ i18n.T(ctx, "register-email-label") }</label>
 			if invite != "" && email != "" {
 				<input type="email" id="email" name="email" class="form-control mb-3" value={ email } readonly required/>
 			} else {
 				<input type="email" id="email" name="email" class="form-control mb-3" placeholder="you@example.com" required/>
 			}
 		} else {
-			<label for="username" class="form-label">Username</label>
+			<label for="username" class="form-label">{ i18n.T(ctx, "register-username-label") }</label>
 			<input type="text" id="username" name="username" class="form-control mb-3" placeholder="Username" required autocomplete="username"/>
 		}
-		<label for="name" class="form-label">Display Name (optional)</label>
+		<label for="name" class="form-label">{ i18n.T(ctx, "register-display-name-label") }</label>
 		<input type="text" id="name" name="name" class="form-control mb-3" placeholder="Display Name"/>
 		if inviteOnly && invite != "" {
 			<input type="hidden" id="invite" name="invite" value={ invite }/>
 		}
-		<button id="register-btn" type="submit" class="btn btn-primary w-100">Register with Passkey</button>
+		<button id="register-btn" type="submit" class="btn btn-primary w-100">{ i18n.T(ctx, "register-button") }</button>
 	</form>
 	<p class="text-center mt-4">
-		<a href="/auth/login">Already have an account? Login</a>
+		<a href="/auth/login">{ i18n.T(ctx, "register-have-account") }</a>
 	</p>
 	<script src={ staticfiles.URL(ctx, "auth/webauthn.js") }></script>
 	<script>
@@ -114,9 +131,10 @@ templ registerPageContent(useEmail, inviteOnly bool, email, invite string) {
 			e.preventDefault();
 			var btn = document.getElementById("register-btn");
 			var errEl = document.getElementById("error-message");
+			var strings = document.getElementById("i18n-strings").dataset;
 			errEl.style.display = "none";
 			btn.disabled = true;
-			btn.textContent = "Waiting for passkey...";
+			btn.textContent = strings.registerWaiting;
 
 			var formData = {};
 			var usernameEl = document.getElementById("username");
@@ -139,7 +157,7 @@ templ registerPageContent(useEmail, inviteOnly bool, email, invite string) {
 				errEl.textContent = e.message;
 				errEl.style.display = "block";
 				btn.disabled = false;
-				btn.textContent = "Register with Passkey";
+				btn.textContent = strings.registerButton;
 			}
 		});
 	</script>
@@ -147,18 +165,29 @@ templ registerPageContent(useEmail, inviteOnly bool, email, invite string) {
 
 // credentialsPage renders the credential management page.
 templ credentialsPage(creds []Credential) {
-	@authCard("Your Passkeys", credentialsPageContent(creds))
+	@authCard(i18n.T(ctx, "credentials-title"), credentialsPageContent(creds))
 }
 
 templ credentialsPageContent(creds []Credential) {
 	@csrfInput()
+	<div
+		id="i18n-strings"
+		data-credentials-delete-last={ i18n.T(ctx, "credentials-delete-last") }
+		data-credentials-delete-confirm={ i18n.T(ctx, "credentials-delete-confirm") }
+		data-credentials-regenerate-confirm={ i18n.T(ctx, "credentials-regenerate-confirm") }
+		data-credentials-regenerate-failed={ i18n.T(ctx, "credentials-regenerate-failed") }
+		data-recovery-codes-title={ i18n.T(ctx, "recovery-codes-title") }
+		data-recovery-codes-description={ i18n.T(ctx, "recovery-codes-description") }
+		data-recovery-codes-dismiss={ i18n.T(ctx, "recovery-codes-dismiss") }
+		style="display:none"
+	></div>
 	<div id="error-message" class="alert alert-danger" style="display:none"></div>
 	if len(creds) > 0 {
 		<table class="table">
 			<thead>
 				<tr>
-					<th>Name</th>
-					<th>Created</th>
+					<th>{ i18n.T(ctx, "credentials-name") }</th>
+					<th>{ i18n.T(ctx, "credentials-created") }</th>
 					<th></th>
 				</tr>
 			</thead>
@@ -172,19 +201,19 @@ templ credentialsPageContent(creds []Credential) {
 								type="button"
 								class="btn btn-sm btn-outline-danger"
 								onclick={ deleteCredential(cred.ID, len(creds)) }
-							>Delete</button>
+							>{ i18n.T(ctx, "credentials-delete") }</button>
 						</td>
 					</tr>
 				}
 			</tbody>
 		</table>
 	} else {
-		<p>No passkeys registered.</p>
+		<p>{ i18n.T(ctx, "credentials-none") }</p>
 	}
-	<h3>Add Passkey</h3>
-	<button id="add-credential-btn" type="button" class="btn btn-primary w-100">Add New Passkey</button>
-	<h3 class="mt-4">Recovery Codes</h3>
-	<button id="regenerate-codes-btn" type="button" class="btn btn-outline-secondary w-100">Regenerate Recovery Codes</button>
+	<h3>{ i18n.T(ctx, "credentials-add-title") }</h3>
+	<button id="add-credential-btn" type="button" class="btn btn-primary w-100">{ i18n.T(ctx, "credentials-add-button") }</button>
+	<h3 class="mt-4">{ i18n.T(ctx, "credentials-recovery-title") }</h3>
+	<button id="regenerate-codes-btn" type="button" class="btn btn-outline-secondary w-100">{ i18n.T(ctx, "credentials-regenerate-button") }</button>
 	<script src={ staticfiles.URL(ctx, "auth/webauthn.js") }></script>
 	<script>
 		document.getElementById("add-credential-btn").addEventListener("click", async function() {
@@ -199,7 +228,8 @@ templ credentialsPageContent(creds []Credential) {
 			}
 		});
 		document.getElementById("regenerate-codes-btn").addEventListener("click", async function() {
-			if (!confirm("This will invalidate all existing recovery codes. Continue?")) return;
+			var strings = document.getElementById("i18n-strings").dataset;
+			if (!confirm(strings.credentialsRegenerateConfirm)) return;
 			var errEl = document.getElementById("error-message");
 			errEl.style.display = "none";
 			try {
@@ -207,9 +237,9 @@ templ credentialsPageContent(creds []Credential) {
 					method: "POST",
 					headers: { "X-CSRF-Token": getCsrfToken() }
 				});
-				if (!resp.ok) throw new Error("Failed to regenerate codes");
+				if (!resp.ok) throw new Error(strings.credentialsRegenerateFailed);
 				var data = await resp.json();
-				if (data.recovery_codes) showRecoveryCodes(data.recovery_codes);
+				if (data.recovery_codes) showRecoveryCodes(data.recovery_codes, strings);
 			} catch(e) {
 				errEl.textContent = e.message;
 				errEl.style.display = "block";
@@ -220,27 +250,34 @@ templ credentialsPageContent(creds []Credential) {
 
 // recoveryPage renders the recovery login form.
 templ recoveryPage(loginRedirect string) {
-	@authCard("Recovery Login", recoveryPageContent(loginRedirect))
+	@authCard(i18n.T(ctx, "recovery-title"), recoveryPageContent(loginRedirect))
 }
 
 templ recoveryPageContent(loginRedirect string) {
 	@csrfInput()
-	<p>Use a recovery code to access your account if you lost your passkey.</p>
+	<div
+		id="i18n-strings"
+		data-recovery-warning-prefix={ i18n.T(ctx, "recovery-warning-prefix") }
+		data-recovery-warning-suffix={ i18n.T(ctx, "recovery-warning-suffix") }
+		style="display:none"
+	></div>
+	<p>{ i18n.T(ctx, "recovery-description") }</p>
 	<div id="error-message" class="alert alert-danger" style="display:none"></div>
 	<form id="recovery-form">
-		<label for="username" class="form-label">Username</label>
+		<label for="username" class="form-label">{ i18n.T(ctx, "recovery-username-label") }</label>
 		<input type="text" id="username" name="username" class="form-control mb-3" placeholder="Username" required autocomplete="username"/>
-		<label for="code" class="form-label">Recovery Code</label>
+		<label for="code" class="form-label">{ i18n.T(ctx, "recovery-code-label") }</label>
 		<input type="text" id="code" name="code" class="form-control mb-3" placeholder="xxxx-xxxx-xxxx" required/>
-		<button type="submit" class="btn btn-primary w-100">Login with Recovery Code</button>
+		<button type="submit" class="btn btn-primary w-100">{ i18n.T(ctx, "recovery-button") }</button>
 	</form>
 	<p class="text-center mt-4">
-		<a href="/auth/login">Back to login</a>
+		<a href="/auth/login">{ i18n.T(ctx, "recovery-back-to-login") }</a>
 	</p>
 	<script>
 		document.getElementById("recovery-form").addEventListener("submit", async function(e) {
 			e.preventDefault();
 			var errEl = document.getElementById("error-message");
+			var strings = document.getElementById("i18n-strings").dataset;
 			errEl.style.display = "none";
 			try {
 				var csrfEl = document.getElementById("csrf-token");
@@ -256,7 +293,7 @@ templ recoveryPageContent(loginRedirect string) {
 				var data = await resp.json();
 				if (!resp.ok) throw new Error(data.error || "Recovery failed");
 				if (data.remaining_codes !== undefined && data.remaining_codes <= 2) {
-					alert("Warning: You only have " + data.remaining_codes + " recovery codes remaining.");
+					alert(strings.recoveryWarningPrefix + data.remaining_codes + strings.recoveryWarningSuffix);
 				}
 				window.location.href = data.redirect || "/";
 			} catch(e) {
@@ -269,39 +306,39 @@ templ recoveryPageContent(loginRedirect string) {
 
 // verifyPendingPage renders the "check your email" page.
 templ verifyPendingPage() {
-	@authCard("Check Your Email", verifyPendingPageContent())
+	@authCard(i18n.T(ctx, "verify-pending-title"), verifyPendingPageContent())
 }
 
 templ verifyPendingPageContent() {
-	<p>We sent a verification link to your email address. Please check your inbox and click the link to verify your account.</p>
-	<p>If you don't see the email, check your spam folder.</p>
+	<p>{ i18n.T(ctx, "verify-pending-text") }</p>
+	<p>{ i18n.T(ctx, "verify-pending-spam") }</p>
 }
 
 // verifyEmailSuccessPage renders the email verification success page.
 templ verifyEmailSuccessPage() {
-	@authCard("Email Verified", verifyEmailSuccessPageContent())
+	@authCard(i18n.T(ctx, "verify-success-title"), verifyEmailSuccessPageContent())
 }
 
 templ verifyEmailSuccessPageContent() {
-	<p>Your email has been verified successfully. You are now logged in.</p>
-	<p><a href="/">Go to homepage</a></p>
+	<p>{ i18n.T(ctx, "verify-success-text") }</p>
+	<p><a href="/">{ i18n.T(ctx, "verify-success-link") }</a></p>
 }
 
 // verifyEmailErrorPage renders the email verification error page.
 templ verifyEmailErrorPage(errorCode string) {
-	@authCard("Verification Failed", verifyEmailErrorPageContent(errorCode))
+	@authCard(i18n.T(ctx, "verify-error-title"), verifyEmailErrorPageContent(errorCode))
 }
 
 templ verifyEmailErrorPageContent(errorCode string) {
 	switch errorCode {
 		case "missing_token":
-			<p>No verification token provided.</p>
+			<p>{ i18n.T(ctx, "verify-error-missing-token") }</p>
 		case "invalid_token":
-			<p>The verification link is invalid.</p>
+			<p>{ i18n.T(ctx, "verify-error-invalid-token") }</p>
 		case "token_expired":
-			<p>The verification link has expired. Please request a new one.</p>
+			<p>{ i18n.T(ctx, "verify-error-token-expired") }</p>
 		default:
-			<p>An error occurred during verification. Please try again.</p>
+			<p>{ i18n.T(ctx, "verify-error-default") }</p>
 	}
-	<p><a href="/auth/login">Back to login</a></p>
+	<p><a href="/auth/login">{ i18n.T(ctx, "verify-error-back") }</a></p>
 }

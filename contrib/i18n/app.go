@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -18,10 +19,14 @@ type App struct {
 	bundle      *i18nlib.Bundle
 	matcher     language.Matcher
 	defaultLang language.Tag
+	registry    *burrow.Registry
 }
 
-func (a *App) Name() string                       { return "i18n" }
-func (a *App) Register(_ *burrow.AppConfig) error { return nil }
+func (a *App) Name() string { return "i18n" }
+func (a *App) Register(cfg *burrow.AppConfig) error {
+	a.registry = cfg.Registry
+	return nil
+}
 
 func (a *App) Flags() []cli.Flag {
 	return []cli.Flag{
@@ -60,6 +65,16 @@ func (a *App) Configure(cmd *cli.Command) error {
 	a.matcher = language.NewMatcher(tags)
 	a.bundle = i18nlib.NewBundle(a.defaultLang)
 	a.bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
+
+	if a.registry != nil {
+		for _, app := range a.registry.Apps() {
+			if provider, ok := app.(burrow.HasTranslations); ok {
+				if err := a.AddTranslations(provider.TranslationFS()); err != nil {
+					return fmt.Errorf("load translations from %q: %w", app.Name(), err)
+				}
+			}
+		}
+	}
 
 	return nil
 }
