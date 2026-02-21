@@ -25,7 +25,6 @@ type Renderer interface {
 	VerifyPendingPage(w http.ResponseWriter, r *http.Request) error
 	VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error
 	VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error
-	InvitesPage(w http.ResponseWriter, r *http.Request, invites []Invite, createdURL string, useEmail bool) error
 }
 
 // Handlers contains all auth and invite HTTP handlers.
@@ -575,79 +574,6 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// --- Invites ---
-
-// CreateInviteRequest is the request body for creating an invite.
-type CreateInviteRequest struct {
-	Email string `form:"email"`
-}
-
-// InvitesPage renders the admin invites management page.
-func (h *Handlers) InvitesPage(w http.ResponseWriter, r *http.Request) error {
-	return h.renderInvitesPage(w, r, "")
-}
-
-// CreateInvite creates a new invite and optionally sends an email.
-func (h *Handlers) CreateInvite(w http.ResponseWriter, r *http.Request) error {
-	var req CreateInviteRequest
-	if err := burrow.Bind(r, &req); err != nil {
-		return errorJSON(w, http.StatusBadRequest, "invalid request")
-	}
-
-	if h.UseEmailMode() && req.Email == "" {
-		return errorJSON(w, http.StatusBadRequest, "email is required")
-	}
-
-	user := GetUser(r)
-	if user == nil {
-		return errorJSON(w, http.StatusUnauthorized, "unauthorized")
-	}
-
-	plainToken, tokenHash, err := GenerateInviteToken()
-	if err != nil {
-		return errorJSONLog(w, http.StatusInternalServerError, "failed to generate invite token", err)
-	}
-
-	invite := &Invite{
-		Email:     req.Email,
-		TokenHash: tokenHash,
-		ExpiresAt: time.Now().Add(InviteExpiry),
-		CreatedBy: &user.ID,
-	}
-	if err := h.repo.CreateInvite(r.Context(), invite); err != nil {
-		return errorJSONLog(w, http.StatusInternalServerError, "failed to create invite", err)
-	}
-
-	if h.email != nil && req.Email != "" {
-		go func() {
-			sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer cancel()
-			if sendErr := h.email.SendInvite(sendCtx, req.Email, plainToken); sendErr != nil {
-				slog.Error("failed to send invite email", "error", sendErr, "email", req.Email)
-			}
-		}()
-	}
-
-	slog.Info("invite created", "invite_id", invite.ID, "created_by", user.ID) //nolint:gosec // G706: IDs are int64, not user-controlled strings
-
-	createdURL := h.config.BaseURL + "/auth/register?invite=" + plainToken
-	return h.renderInvitesPage(w, r, createdURL)
-}
-
-// DeleteInvite revokes an invite by hard-deleting it.
-func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) error {
-	inviteID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		return errorJSON(w, http.StatusBadRequest, "invalid invite id")
-	}
-
-	if err := h.repo.DeleteInvite(r.Context(), inviteID); err != nil {
-		return errorJSONLog(w, http.StatusInternalServerError, "failed to delete invite", err)
-	}
-
-	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
 // --- Internal helpers ---
 
 func (h *Handlers) generateAndStoreRecoveryCodes(ctx context.Context, userID int64) ([]string, error) {
@@ -678,14 +604,6 @@ func (h *Handlers) isFirstUser(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	return count == 0, nil
-}
-
-func (h *Handlers) renderInvitesPage(w http.ResponseWriter, r *http.Request, createdURL string) error {
-	invites, err := h.repo.ListInvites(r.Context())
-	if err != nil {
-		return errorJSONLog(w, http.StatusInternalServerError, "failed to list invites", err)
-	}
-	return h.renderer.InvitesPage(w, r, invites, createdURL, h.UseEmailMode())
 }
 
 func errorJSON(w http.ResponseWriter, statusCode int, msg string) error {

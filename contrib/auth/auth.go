@@ -77,6 +77,12 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	return nil
 }
 
+// StaticFS returns the embedded static assets (webauthn.js) under the "auth" prefix.
+func (a *App) StaticFS() (string, fs.FS) {
+	sub, _ := fs.Sub(staticFS, "static")
+	return "auth", sub
+}
+
 func (a *App) MigrationFS() fs.FS {
 	sub, _ := fs.Sub(migrationFS, "migrations")
 	return sub
@@ -230,7 +236,11 @@ func (a *App) SetEmailService(email EmailService) {
 func (a *App) SetAdminRenderer(r AdminRenderer) {
 	a.adminRenderer = r
 	if a.repo != nil && r != nil {
-		a.adminHandlers = newAdminHandlers(a.repo, r)
+		var email EmailService
+		if a.handlers != nil {
+			email = a.handlers.email
+		}
+		a.adminHandlers = newAdminHandlers(a.repo, r, a.config, email)
 	}
 }
 
@@ -246,12 +256,9 @@ func (a *App) AdminRoutes(r chi.Router) {
 	r.Get("/users/{id}", burrow.Handle(h.UserDetail))
 	r.Post("/users/{id}/role", burrow.Handle(h.UpdateUserRole))
 
-	// Invite management routes (use the existing auth handlers).
-	if a.handlers != nil {
-		r.Get("/invites", burrow.Handle(a.handlers.InvitesPage))
-		r.Post("/invites", burrow.Handle(a.handlers.CreateInvite))
-		r.Delete("/invites/{id}", burrow.Handle(a.handlers.DeleteInvite))
-	}
+	r.Get("/invites", burrow.Handle(h.InvitesPage))
+	r.Post("/invites", burrow.Handle(h.CreateInvite))
+	r.Delete("/invites/{id}", burrow.Handle(h.DeleteInvite))
 }
 
 // AdminNavItems returns navigation items for the admin panel.

@@ -1,0 +1,38 @@
+package admin
+
+import (
+	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
+)
+
+// defaultLayout renders a full HTML page using Bootstrap 5 and htmx.
+// It reads static file URLs from context via the staticfiles package and renders
+// admin nav items from context.
+templ defaultLayout(title string, content templ.Component) {
+	<!DOCTYPE html>
+	<html lang="en" data-bs-theme="auto">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } – Admin</title>
+			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap.min.css") }/>
+			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap-icons.min.css") }/>
+			<script defer src={ staticfiles.URL(ctx, "bootstrap/bootstrap.bundle.min.js") }></script>
+			<script defer src={ staticfiles.URL(ctx, "bootstrap/htmx.min.js") }></script>
+		</head>
+		<body>
+			<main class="container py-4">
+				@content
+			</main>
+		</body>
+	</html>
+}
+
+// DefaultLayout returns a batteries-included admin layout using Bootstrap 5
+// and htmx. It serves as a ready-to-use admin layout that reads static file
+// URLs and nav items from the request context.
+func DefaultLayout() burrow.LayoutFunc {
+	return func(title string, content templ.Component) templ.Component {
+		return defaultLayout(title, content)
+	}
+}

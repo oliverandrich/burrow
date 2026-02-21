@@ -12,12 +12,33 @@ User management panel with CLI commands for promoting users and creating invites
 srv := burrow.NewServer(
     &session.App{},
     auth.New(authRenderer),
-    admin.New(adminLayout), // pass nil for no admin layout
+    admin.New(admin.DefaultLayout()), // batteries-included layout
+    staticfiles.New(myStaticFS),      // serves admin + user static files
     // ... other apps
 )
 ```
 
+The layout parameter accepts three forms:
+
+```go
+admin.New(admin.DefaultLayout())  // batteries-included (Bootstrap 5 + htmx)
+admin.New(myCustomLayout)         // custom LayoutFunc
+admin.New(nil)                    // no layout wrapping
+```
+
 The admin app discovers admin views from other apps via the `HasAdmin` interface. Any app that implements `HasAdmin` gets its routes mounted under `/admin` with auth protection.
+
+## Default Layout
+
+`DefaultLayout()` returns a `LayoutFunc` that renders a full HTML page with:
+
+- [Bootstrap 5](https://getbootstrap.com/) — responsive CSS framework
+- [Bootstrap Icons](https://icons.getbootstrap.com/) — icon webfont
+- [htmx](https://htmx.org/) — for progressive enhancement
+
+The layout reads admin nav items from context and renders them in a `<nav>` element. Static assets are served via the `staticfiles` app using content-hashed URLs.
+
+**Note:** When using `DefaultLayout()`, the `bootstrap` app must be registered to serve CSS/JS assets. The admin default layout references static files under the `"bootstrap"` prefix.
 
 ## Routes
 
@@ -71,14 +92,14 @@ NavItem{
 
 ## Context Helpers
 
-The admin package provides context helpers for the admin layout:
+The admin package provides context helpers for admin navigation:
 
 ```go
-admin.Layout(ctx)              // Returns the admin LayoutFunc from context
-admin.WithLayout(ctx, fn)      // Stores the admin LayoutFunc in context
+admin.NavItems(ctx)            // Returns admin nav items from context
+admin.WithNavItems(ctx, items) // Stores admin nav items in context
 ```
 
-The admin middleware injects the layout into the request context automatically.
+The admin layout is set via `burrow.WithLayout(ctx, fn)` inside the `/admin` route group, so it only applies to admin pages. Templates read it via `burrow.Layout(ctx)`. The middleware only injects admin nav items globally.
 
 ## HasAdmin Interface
 
@@ -99,5 +120,5 @@ The admin app collects all `HasAdmin` implementations and mounts their routes un
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `HasRoutes` | Creates `/admin` group and delegates to `HasAdmin` apps |
-| `HasMiddleware` | Injects admin nav items and admin layout into the request context |
+| `HasMiddleware` | Injects admin nav items into the request context |
 | `HasDependencies` | Requires `auth` |

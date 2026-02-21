@@ -12,13 +12,28 @@ type LayoutFunc func(title string, content templ.Component) templ.Component
 
 ## Setting the App Layout
 
-Set the app layout on the server before calling `Run()`:
+There are two ways to set the app layout:
+
+**Using a design system app** (recommended):
+
+```go
+srv := burrow.NewServer(
+    bootstrap.New(),  // provides base layout + CSS/JS assets
+    // ... other apps
+)
+```
+
+The `bootstrap` app injects its layout via middleware only when no layout is already set. This is batteries-included by default.
+
+**Using `SetLayout()` explicitly:**
 
 ```go
 srv.SetLayout(appLayout)
 ```
 
-If no layout is set, content renders unwrapped.
+When `SetLayout()` is called, it takes precedence over design system middleware like `oat`.
+
+If neither approach is used, content renders unwrapped.
 
 ## Setting the Admin Layout
 
@@ -97,13 +112,16 @@ func (h *Handlers) HomePage(w http.ResponseWriter, r *http.Request) error {
 
 `burrow.Render()` calls `component.Render()` with the request context, so all context values (nav items, CSRF token, locale, current user) are available to the template.
 
+## Layout Unification
+
+Both the app layout and admin layout use the same context key (`burrow.Layout(ctx)`). The framework sets the app layout globally via middleware, and the admin `/admin` route group overrides it with the admin layout. This means any template can always read `burrow.Layout(ctx)` to get the correct layout for the current request.
+
 ## Available Context Values
 
 | Helper | Type | Set By |
 |--------|------|--------|
 | `burrow.NavItems(ctx)` | `[]NavItem` | Framework (from all `HasNavItems` apps) |
-| `burrow.Layout(ctx)` | `LayoutFunc` | Framework middleware |
-| `admin.Layout(ctx)` | `LayoutFunc` | Admin middleware |
+| `burrow.Layout(ctx)` | `LayoutFunc` | Framework middleware / admin route group |
 | `csrf.Token(ctx)` | `string` | CSRF middleware |
 | `i18n.Locale(ctx)` | `string` | i18n middleware |
 | `i18n.T(ctx, key)` | `string` | i18n middleware |

@@ -1,0 +1,14 @@
+package admin
+
+templ adminIndex() {
+	<h1>Admin</h1>
+	if items := NavItems(ctx); len(items) > 0 {
+		<nav>
+			<ul>
+				for _, item := range items {
+					<li><a href={ templ.SafeURL(item.URL) }>{ item.Label }</a></li>
+				}
+			</ul>
+		</nav>
+	}
+}

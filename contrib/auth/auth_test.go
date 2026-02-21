@@ -4,13 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,6 +36,10 @@ var (
 	_ burrow.HasAdmin        = (*App)(nil)
 	_ burrow.HasCLICommands  = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
+	_ burrow.HasStaticFiles  = (*App)(nil)
+
+	_ Renderer      = (*defaultRenderer)(nil)
+	_ AdminRenderer = (*defaultAdminRenderer)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -726,7 +735,7 @@ func TestAdminUsersPageHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r)
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/users", nil)
 	rec := httptest.NewRecorder()
@@ -746,7 +755,7 @@ func TestAdminUserDetailHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r)
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
 	// Use chi router to set up path params.
 	router := chi.NewRouter()
@@ -765,7 +774,7 @@ func TestAdminUserDetailNotFound(t *testing.T) {
 	repo := NewRepository(db)
 
 	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r)
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
 	router := chi.NewRouter()
 	router.Get("/admin/users/{id}", burrow.Handle(h.UserDetail))
@@ -786,7 +795,7 @@ func TestAdminUpdateUserRolePromote(t *testing.T) {
 	require.NoError(t, err)
 
 	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r)
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
 	router := chi.NewRouter()
 	router.Post("/admin/users/{id}/role", burrow.Handle(h.UpdateUserRole))
@@ -813,7 +822,7 @@ func TestAdminUpdateUserRoleInvalidRole(t *testing.T) {
 	require.NoError(t, err)
 
 	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r)
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
 	router := chi.NewRouter()
 	router.Post("/admin/users/{id}/role", burrow.Handle(h.UpdateUserRole))
@@ -871,6 +880,369 @@ func (m *mockAdminRenderer) AdminUsersPage(w http.ResponseWriter, _ *http.Reques
 func (m *mockAdminRenderer) AdminUserDetailPage(w http.ResponseWriter, _ *http.Request, _ *User) error {
 	m.lastMethod = "AdminUserDetailPage"
 	return burrow.Text(w, http.StatusOK, "admin-user-detail")
+}
+
+func (m *mockAdminRenderer) AdminInvitesPage(w http.ResponseWriter, _ *http.Request, _ []Invite, _ string, _ bool) error {
+	m.lastMethod = "AdminInvitesPage"
+	return burrow.Text(w, http.StatusOK, "admin-invites")
+}
+
+// --- Admin invite handler tests ---
+
+func TestAdminInvitesPage(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/invites", nil)
+	rec := httptest.NewRecorder()
+
+	err := h.InvitesPage(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, "AdminInvitesPage", r.lastMethod)
+}
+
+func TestAdminCreateInvite(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+	user, _ := repo.CreateUser(ctx, "admin", "")
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+
+	body := strings.NewReader(`email=invitee@example.com`)
+	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = requestWithSession(req, user)
+	rec := httptest.NewRecorder()
+
+	err := h.CreateInvite(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, "AdminInvitesPage", r.lastMethod)
+
+	invites, err := repo.ListInvites(ctx)
+	require.NoError(t, err)
+	assert.Len(t, invites, 1)
+	assert.Equal(t, "invitee@example.com", invites[0].Email)
+}
+
+func TestAdminCreateInviteNoAuth(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+
+	body := strings.NewReader(`email=test@example.com`)
+	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err := h.CreateInvite(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestAdminDeleteInviteInvalidID(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+
+	router := chi.NewRouter()
+	router.Delete("/admin/invites/{id}", func(w http.ResponseWriter, r *http.Request) {
+		_ = h.DeleteInvite(w, r)
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/invalid", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestAdminDeleteInviteSuccess(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	invite := &Invite{
+		Email:     "delete@example.com",
+		TokenHash: "deletehash",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	require.NoError(t, repo.CreateInvite(ctx, invite))
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+
+	router := chi.NewRouter()
+	router.Delete("/admin/invites/{id}", func(w http.ResponseWriter, r *http.Request) {
+		_ = h.DeleteInvite(w, r)
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10), nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+// --- Static files tests ---
+
+func TestStaticFS(t *testing.T) {
+	app := &App{}
+	prefix, fsys := app.StaticFS()
+
+	assert.Equal(t, "auth", prefix)
+	require.NotNil(t, fsys)
+
+	f, err := fsys.Open("webauthn.js")
+	require.NoError(t, err, "webauthn.js should exist in static FS")
+	_ = f.Close()
+}
+
+// --- Default renderer tests ---
+
+func TestDefaultRendererLoginPage(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.LoginPage(rec, req, "/dashboard")
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "Login")
+	assert.Contains(t, body, "Login with Passkey")
+	assert.Contains(t, body, "card shadow-sm", "login page should be wrapped in a card")
+}
+
+func TestDefaultRendererRegisterPage(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/register", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.RegisterPage(rec, req, false, false, "", "")
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "Register")
+	assert.Contains(t, body, "Username")
+	assert.Contains(t, body, "card shadow-sm", "register page should be wrapped in a card")
+}
+
+func TestDefaultRendererRegisterPageEmailMode(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/register", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.RegisterPage(rec, req, true, false, "", "")
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Email")
+	assert.NotContains(t, rec.Body.String(), "Username")
+}
+
+func TestDefaultRendererCredentialsPage(t *testing.T) {
+	r := DefaultRenderer()
+	creds := []Credential{
+		{ID: 1, Name: "My Passkey"},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/auth/credentials", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.CredentialsPage(rec, req, creds)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "My Passkey")
+	assert.Contains(t, body, "card shadow-sm", "credentials page should be wrapped in a card")
+}
+
+func TestDefaultRendererRecoveryPage(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/recovery", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.RecoveryPage(rec, req, "/dashboard")
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "Recovery Login")
+	assert.Contains(t, body, "card shadow-sm", "recovery page should be wrapped in a card")
+}
+
+func TestDefaultRendererVerifyPendingPage(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/verify-pending", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.VerifyPendingPage(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "Check Your Email")
+	assert.Contains(t, body, "card shadow-sm", "verify pending page should be wrapped in a card")
+}
+
+func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.VerifyEmailSuccess(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "Email Verified")
+	assert.Contains(t, body, "card shadow-sm", "verify email success page should be wrapped in a card")
+}
+
+func TestDefaultRendererVerifyEmailError(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.VerifyEmailError(rec, req, "invalid_token")
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "Verification Failed")
+	assert.Contains(t, body, "invalid")
+	assert.Contains(t, body, "card shadow-sm", "verify email error page should be wrapped in a card")
+}
+
+func TestDefaultRendererWithLayout(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	// Set a layout in context.
+	ctx := burrow.WithLayout(req.Context(), func(title string, content templ.Component) templ.Component {
+		return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+			_, _ = io.WriteString(w, "<layout-wrapper>")
+			if err := content.Render(ctx, w); err != nil {
+				return err
+			}
+			_, _ = io.WriteString(w, "</layout-wrapper>")
+			return nil
+		})
+	})
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := r.LoginPage(rec, req, "/dashboard")
+
+	require.NoError(t, err)
+	assert.Contains(t, rec.Body.String(), "<layout-wrapper>")
+	assert.Contains(t, rec.Body.String(), "Login with Passkey")
+	assert.Contains(t, rec.Body.String(), "</layout-wrapper>")
+}
+
+func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	ctx := csrf.WithToken(req.Context(), "test-csrf-token-value")
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := r.LoginPage(rec, req, "/dashboard")
+
+	require.NoError(t, err)
+	body := rec.Body.String()
+	assert.Contains(t, body, `id="csrf-token"`)
+	assert.Contains(t, body, "test-csrf-token-value")
+}
+
+func TestDefaultAdminRendererIncludesCSRFToken(t *testing.T) {
+	r := DefaultAdminRenderer()
+	user := &User{ID: 1, Username: "alice", Role: RoleAdmin}
+	req := httptest.NewRequest(http.MethodGet, "/admin/users/1", nil)
+	ctx := csrf.WithToken(req.Context(), "admin-csrf-token")
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := r.AdminUserDetailPage(rec, req, user)
+
+	require.NoError(t, err)
+	body := rec.Body.String()
+	assert.Contains(t, body, `name="gorilla.csrf.Token"`)
+	assert.Contains(t, body, "admin-csrf-token")
+}
+
+// --- Default admin renderer tests ---
+
+func TestDefaultAdminRendererUsersPage(t *testing.T) {
+	r := DefaultAdminRenderer()
+	users := []User{
+		{ID: 1, Username: "alice", Role: RoleUser},
+		{ID: 2, Username: "bob", Role: RoleAdmin},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/admin/users", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.AdminUsersPage(rec, req, users)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "alice")
+	assert.Contains(t, rec.Body.String(), "bob")
+}
+
+func TestDefaultAdminRendererUserDetailPage(t *testing.T) {
+	r := DefaultAdminRenderer()
+	user := &User{ID: 1, Username: "alice", Role: RoleAdmin, Name: "Alice"}
+	req := httptest.NewRequest(http.MethodGet, "/admin/users/1", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.AdminUserDetailPage(rec, req, user)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "alice")
+	assert.Contains(t, rec.Body.String(), "Alice")
+}
+
+func TestDefaultAdminRendererInvitesPage(t *testing.T) {
+	r := DefaultAdminRenderer()
+	invites := []Invite{
+		{ID: 1, Email: "test@example.com", ExpiresAt: time.Now().Add(time.Hour)},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/admin/invites", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.AdminInvitesPage(rec, req, invites, "", false)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "test@example.com")
+}
+
+func TestDefaultAdminRendererInvitesPageWithCreatedURL(t *testing.T) {
+	r := DefaultAdminRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/admin/invites", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.AdminInvitesPage(rec, req, nil, "http://localhost/auth/register?invite=abc123", false)
+
+	require.NoError(t, err)
+	assert.Contains(t, rec.Body.String(), "Invite created")
+	assert.Contains(t, rec.Body.String(), "http://localhost/auth/register?invite=abc123")
 }
 
 func TestSafeRedirectPath(t *testing.T) {

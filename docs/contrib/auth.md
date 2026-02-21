@@ -9,12 +9,42 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 ## Setup
 
 ```go
+// With default templates (batteries-included).
+authApp := auth.New(auth.DefaultRenderer())
+
 srv := burrow.NewServer(
-    &session.App{},       // Must come first
-    auth.New(renderer),   // Pass nil for API-only (no HTML pages)
+    &session.App{},
+    &csrf.App{},
+    authApp,
+    admin.New(admin.DefaultLayout()),
+    staticfiles.New(emptyFS), // serves auth + admin static files
     // ... other apps
 )
+
+// Wire admin renderer for user/invite management pages.
+authApp.SetAdminRenderer(auth.DefaultAdminRenderer())
 ```
+
+Or with custom renderers:
+
+```go
+// With custom templates.
+authApp := auth.New(myCustomRenderer)
+
+// API-only (no HTML pages).
+authApp := auth.New(nil)
+```
+
+## Default Templates
+
+The auth app ships batteries-included Templ templates using [oat.ink](https://github.com/knadh/oat) (via the admin layout) and htmx. Use `auth.DefaultRenderer()` and `auth.DefaultAdminRenderer()` for ready-to-use pages.
+
+The default templates:
+- Read `burrow.Layout(ctx)` at render time — if a layout is set, content is wrapped in it
+- Use the `staticfiles` system for the embedded `webauthn.js` (content-hashed URLs)
+- Include inline JavaScript for WebAuthn browser ceremonies
+
+**Note:** When using default templates, register the `staticfiles` app so that `webauthn.js` is served. The auth app implements `HasStaticFiles` and contributes its assets under the `"auth"` prefix automatically.
 
 ## Models
 
@@ -67,10 +97,13 @@ All routes are registered under `/auth`:
 | GET | `/auth/verify-email` | Verify email via token |
 | POST | `/auth/resend-verification` | Resend verification email |
 
-Admin-only routes (require auth + admin role):
+Admin routes (registered via `HasAdmin`, require auth + admin role):
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/admin/users` | List users |
+| GET | `/admin/users/:id` | User detail |
+| POST | `/admin/users/:id/role` | Update user role |
 | GET | `/admin/invites` | List invites |
 | POST | `/admin/invites` | Create an invite |
 | DELETE | `/admin/invites/:id` | Delete an invite |
@@ -124,7 +157,7 @@ if auth.IsAuthenticated(r) { ... }
 
 ## Renderer
 
-The auth app accepts a `Renderer` interface for HTML pages:
+The auth app accepts a `Renderer` interface for user-facing HTML pages:
 
 ```go
 type Renderer interface {
@@ -135,11 +168,24 @@ type Renderer interface {
     VerifyPendingPage(w http.ResponseWriter, r *http.Request) error
     VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error
     VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error
-    InvitesPage(w http.ResponseWriter, r *http.Request, invites []Invite, createdURL string, useEmail bool) error
 }
 ```
 
-Pass `nil` to `auth.New(nil)` for API-only mode (returns JSON errors instead of rendering HTML pages). Implement the interface to provide your own registration/login templates with your CSS framework.
+Use `auth.DefaultRenderer()` for built-in templates, or implement the interface to provide your own.
+
+## Admin Renderer
+
+The `AdminRenderer` interface covers admin-only pages (user management, invites):
+
+```go
+type AdminRenderer interface {
+    AdminUsersPage(w http.ResponseWriter, r *http.Request, users []User) error
+    AdminUserDetailPage(w http.ResponseWriter, r *http.Request, user *User) error
+    AdminInvitesPage(w http.ResponseWriter, r *http.Request, invites []Invite, createdURL string, useEmail bool) error
+}
+```
+
+Use `auth.DefaultAdminRenderer()` for built-in templates, or implement the interface for custom admin pages.
 
 ## Configuration
 
@@ -158,7 +204,7 @@ Pass `nil` to `auth.New(nil)` for API-only mode (returns JSON errors instead of 
 For email verification and invite emails, set an email service after configuration:
 
 ```go
-authApp := auth.New(renderer)
+authApp := auth.New(auth.DefaultRenderer())
 // ... after srv.Run boots the server ...
 authApp.SetEmailService(myEmailService)
 ```
@@ -173,13 +219,25 @@ type EmailService interface {
 }
 ```
 
+## Static Files
+
+The auth app embeds a WebAuthn JavaScript helper and implements `HasStaticFiles` to contribute it under the `"auth"` prefix:
+
+| File | Description |
+|------|-------------|
+| `webauthn.js` | WebAuthn browser ceremony helpers (register, login, add credential) |
+
+This is served at `/static/auth/webauthn.js` (with content-hashed URL) when the `staticfiles` app is registered.
+
 ## Interfaces Implemented
 
 | Interface | Description |
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `Migratable` | User, credential, recovery code, invite tables |
-| `HasRoutes` | Auth and invite routes |
+| `HasRoutes` | Auth routes |
 | `HasMiddleware` | User loading from session |
+| `HasAdmin` | Admin user/invite management routes and nav items |
+| `HasStaticFiles` | Contributes embedded `webauthn.js` under `"auth"` prefix |
 | `Configurable` | Auth and WebAuthn flags |
 | `HasDependencies` | Requires `session` |

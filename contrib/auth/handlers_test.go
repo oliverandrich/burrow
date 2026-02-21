@@ -57,11 +57,6 @@ func (m *mockRenderer) VerifyEmailError(w http.ResponseWriter, _ *http.Request, 
 	return burrow.Text(w, http.StatusBadRequest, "verify-error")
 }
 
-func (m *mockRenderer) InvitesPage(w http.ResponseWriter, _ *http.Request, _ []Invite, _ string, _ bool) error {
-	m.lastMethod = "InvitesPage"
-	return burrow.Text(w, http.StatusOK, "invites")
-}
-
 type mockEmailService struct {
 	sendCalled bool
 }
@@ -820,95 +815,5 @@ func TestResendVerificationNonexistentEmail(t *testing.T) {
 
 	require.NoError(t, err)
 	// Should still return OK (don't reveal if email exists).
-	assert.Equal(t, http.StatusOK, rec.Code)
-}
-
-// --- InvitesPage tests ---
-
-func TestInvitesPage(t *testing.T) {
-	h, _, r := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodGet, "/admin/invites", nil)
-	req = requestWithSession(req, nil)
-	rec := httptest.NewRecorder()
-
-	err := h.InvitesPage(rec, req)
-
-	require.NoError(t, err)
-	assert.Equal(t, "InvitesPage", r.lastMethod)
-}
-
-// --- CreateInvite tests ---
-
-func TestCreateInvite(t *testing.T) {
-	h, repo, r := newTestHandlers(t)
-	user, _ := repo.CreateUser(context.Background(), "admin", "")
-
-	body := strings.NewReader(`email=invitee@example.com`)
-	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = requestWithSession(req, user)
-	rec := httptest.NewRecorder()
-
-	err := h.CreateInvite(rec, req)
-
-	require.NoError(t, err)
-	assert.Equal(t, "InvitesPage", r.lastMethod)
-
-	invites, err := repo.ListInvites(context.Background())
-	require.NoError(t, err)
-	assert.Len(t, invites, 1)
-	assert.Equal(t, "invitee@example.com", invites[0].Email)
-}
-
-func TestCreateInviteNoAuth(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
-	body := strings.NewReader(`email=test@example.com`)
-	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = requestWithSession(req, nil) // No user in context.
-	rec := httptest.NewRecorder()
-
-	err := h.CreateInvite(rec, req)
-
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-}
-
-// --- DeleteInvite tests ---
-
-func TestDeleteInviteInvalidID(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
-	router := chi.NewRouter()
-	router.Delete("/admin/invites/{id}", func(w http.ResponseWriter, r *http.Request) {
-		r = requestWithSession(r, nil)
-		_ = h.DeleteInvite(w, r)
-	})
-
-	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/invalid", nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-}
-
-func TestDeleteInviteSuccess(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
-	invite := &Invite{
-		Email:     "delete@example.com",
-		TokenHash: "deletehash",
-		ExpiresAt: time.Now().Add(time.Hour),
-	}
-	require.NoError(t, repo.CreateInvite(context.Background(), invite))
-
-	router := chi.NewRouter()
-	router.Delete("/admin/invites/{id}", func(w http.ResponseWriter, r *http.Request) {
-		r = requestWithSession(r, nil)
-		_ = h.DeleteInvite(w, r)
-	})
-
-	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10), nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
 	assert.Equal(t, http.StatusOK, rec.Code)
 }

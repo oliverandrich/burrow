@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"io"
+	"embed"
 	"log"
 	"log/slog"
 	"os"
@@ -12,43 +12,22 @@ import (
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/bootstrap"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
+	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 	"codeberg.org/oliverandrich/burrow/example/internal/notes"
-	"github.com/a-h/templ"
 	"github.com/urfave/cli/v3"
 )
 
 // version is set via ldflags at build time.
 var version = "dev"
 
-// appLayout wraps page content in a minimal HTML shell.
-// A real application would use a full Templ template with
-// CSS framework, navigation, dark mode toggle, etc.
-func appLayout(title string, content templ.Component) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, _ = io.WriteString(w, "<!DOCTYPE html><html><head><title>")
-		_, _ = io.WriteString(w, title)
-		_, _ = io.WriteString(w, "</title></head><body>")
-
-		// Render navigation from context.
-		for _, item := range burrow.NavItems(ctx) {
-			_, _ = io.WriteString(w, `<a href="`)
-			_, _ = io.WriteString(w, item.URL)
-			_, _ = io.WriteString(w, `">`)
-			_, _ = io.WriteString(w, item.Label)
-			_, _ = io.WriteString(w, `</a> `)
-		}
-
-		if err := content.Render(ctx, w); err != nil {
-			return err
-		}
-
-		_, _ = io.WriteString(w, "</body></html>")
-		return nil
-	})
-}
+// emptyFS is an empty filesystem for staticfiles when the example has
+// no user-level static assets. Contrib apps contribute their own via
+// HasStaticFiles.
+var emptyFS embed.FS
 
 func main() {
 	// Configure logging before starting the server. Replace with
@@ -57,20 +36,24 @@ func main() {
 		Level: slog.LevelDebug,
 	})))
 
+	// Create the auth app with default renderers (batteries-included templates).
+	authApp := auth.New(auth.DefaultRenderer())
+
 	// Create the server with apps in dependency order.
 	// Session must come before auth (auth depends on session).
 	srv := burrow.NewServer(
 		&session.App{},
 		&csrf.App{},
-		auth.New(nil), // nil renderer = no HTML pages, API-only
+		authApp,
+		bootstrap.New(),
 		&healthcheck.App{},
 		notes.New(),
-		admin.New(nil),
+		admin.New(admin.DefaultLayout()),
+		staticfiles.New(emptyFS),
 	)
 
-	// Provide a layout. The layout wraps user-facing pages.
-	// Optional (nil = no wrapping).
-	srv.SetLayout(appLayout)
+	// Wire admin renderer for auth admin pages (users, invites).
+	authApp.SetAdminRenderer(auth.DefaultAdminRenderer())
 
 	cmd := &cli.Command{
 		Name:    "example",

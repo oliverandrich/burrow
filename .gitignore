@@ -24,6 +24,9 @@ CLAUDE.md
 AGENTS.md
 .claude/
 
+# Data
+data/
+
 # Beans
 .beans.yml
 .beans/

@@ -2,8 +2,10 @@ package admin
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
@@ -243,23 +245,6 @@ func TestMiddlewareInjectsAdminNavItems(t *testing.T) {
 	assert.True(t, found, "admin nav items should include items from HasAdmin apps")
 }
 
-func TestLayoutContext(t *testing.T) {
-	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
-	})
-
-	ctx := context.Background()
-	ctx = WithLayout(ctx, layout)
-
-	got := Layout(ctx)
-	assert.NotNil(t, got)
-}
-
-func TestLayoutMissing(t *testing.T) {
-	ctx := context.Background()
-	assert.Nil(t, Layout(ctx))
-}
-
 func TestNewWithLayout(t *testing.T) {
 	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
 		return content
@@ -274,7 +259,108 @@ func TestNewWithoutLayout(t *testing.T) {
 	assert.Nil(t, app.layout)
 }
 
-func TestMiddlewareInjectsLayout(t *testing.T) {
+func TestAdminIndexPage(t *testing.T) {
+	registry := burrow.NewRegistry()
+
+	registry.Add(&session.App{})
+	authApp := auth.New(nil)
+	registry.Add(authApp)
+	require.NoError(t, registry.Bootstrap(nil))
+
+	app := New(DefaultLayout())
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleAdmin})
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	for _, mw := range app.Middleware() {
+		r.Use(mw)
+	}
+	app.Routes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body, _ := io.ReadAll(rec.Body)
+	html := string(body)
+	assert.Contains(t, html, "<!doctype html>")
+	assert.Contains(t, html, "<title>Admin – Admin</title>")
+	assert.Contains(t, html, "<h1>Admin</h1>")
+}
+
+func TestAdminIndexPageRendersNavItems(t *testing.T) {
+	registry := burrow.NewRegistry()
+
+	registry.Add(&session.App{})
+	authApp := auth.New(nil)
+	registry.Add(authApp)
+	require.NoError(t, registry.Bootstrap(nil))
+
+	provider := &hasAdminApp{}
+	registry.Add(provider)
+
+	app := New(DefaultLayout())
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleAdmin})
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	// Apply admin middleware to inject nav items into context.
+	for _, mw := range app.Middleware() {
+		r.Use(mw)
+	}
+	app.Routes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body, _ := io.ReadAll(rec.Body)
+	html := string(body)
+	assert.Contains(t, html, `href="/admin/test-resource"`)
+	assert.Contains(t, html, "Test Resource")
+}
+
+func TestDefaultLayout(t *testing.T) {
+	layout := DefaultLayout()
+	require.NotNil(t, layout)
+
+	content := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
+		_, err := io.WriteString(w, "<p>test content</p>")
+		return err
+	})
+
+	component := layout("Test Page", content)
+	require.NotNil(t, component)
+
+	var buf strings.Builder
+	err := component.Render(context.Background(), &buf)
+	require.NoError(t, err)
+
+	html := buf.String()
+	assert.Contains(t, html, "<!doctype html>")
+	assert.Contains(t, html, "<title>Test Page – Admin</title>")
+	assert.Contains(t, html, "bootstrap.min.css")
+	assert.Contains(t, html, "bootstrap-icons.min.css")
+	assert.Contains(t, html, "bootstrap.bundle.min.js")
+	assert.Contains(t, html, "htmx.min.js")
+	assert.Contains(t, html, "<p>test content</p>")
+}
+
+func TestMiddlewareDoesNotInjectLayout(t *testing.T) {
 	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
 		return content
 	})
@@ -293,7 +379,7 @@ func TestMiddlewareInjectsLayout(t *testing.T) {
 
 	var got burrow.LayoutFunc
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got = Layout(r.Context())
+		got = burrow.Layout(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -303,5 +389,56 @@ func TestMiddlewareInjectsLayout(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
-	assert.NotNil(t, got, "admin layout should be set in context")
+	assert.Nil(t, got, "middleware should not inject layout (layout is injected in route group)")
+}
+
+// layoutCheckApp captures burrow.Layout from context inside the /admin group.
+type layoutCheckApp struct {
+	gotLayout burrow.LayoutFunc
+}
+
+func (a *layoutCheckApp) Name() string                       { return "layout-check" }
+func (a *layoutCheckApp) Register(_ *burrow.AppConfig) error { return nil }
+func (a *layoutCheckApp) AdminRoutes(r chi.Router) {
+	r.Get("/layout-check", func(w http.ResponseWriter, r *http.Request) {
+		a.gotLayout = burrow.Layout(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+}
+func (a *layoutCheckApp) AdminNavItems() []burrow.NavItem { return nil }
+
+func TestRoutesInjectLayoutInGroup(t *testing.T) {
+	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
+		return content
+	})
+
+	registry := burrow.NewRegistry()
+	registry.Add(&session.App{})
+	authApp := auth.New(nil)
+	registry.Add(authApp)
+	require.NoError(t, registry.Bootstrap(nil))
+
+	checker := &layoutCheckApp{}
+	registry.Add(checker)
+
+	app := New(layout)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	r := chi.NewRouter()
+	// Inject admin user for RequireAuth + RequireAdmin.
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleAdmin})
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	app.Routes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/layout-check", nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.NotNil(t, checker.gotLayout, "admin layout should be set in context inside /admin route group")
 }
