@@ -4,9 +4,9 @@ import "codeberg.org/oliverandrich/burrow/contrib/csrf"
 import "codeberg.org/oliverandrich/burrow/contrib/i18n"
 import "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 
-// authCard wraps content in a centered Bootstrap card.
+// authCard wraps content in a horizontally and vertically centered Bootstrap card.
 templ authCard(title string, content templ.Component) {
-	<div class="row justify-content-center mt-5">
+	<div class="d-flex justify-content-center align-items-center min-vh-100">
 		<div class="col-12 col-sm-8 col-md-6 col-lg-4">
 			<div class="card shadow-sm">
 				<div class="card-body">

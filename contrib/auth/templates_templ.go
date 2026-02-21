@@ -12,7 +12,7 @@ import "codeberg.org/oliverandrich/burrow/contrib/csrf"
 import "codeberg.org/oliverandrich/burrow/contrib/i18n"
 import "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 
-// authCard wraps content in a centered Bootstrap card.
+// authCard wraps content in a horizontally and vertically centered Bootstrap card.
 func authCard(title string, content templ.Component) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -34,7 +34,7 @@ func authCard(title string, content templ.Component) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"row justify-content-center mt-5\"><div class=\"col-12 col-sm-8 col-md-6 col-lg-4\"><div class=\"card shadow-sm\"><div class=\"card-body\"><h2 class=\"card-title text-center mb-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"d-flex justify-content-center align-items-center min-vh-100\"><div class=\"col-12 col-sm-8 col-md-6 col-lg-4\"><div class=\"card shadow-sm\"><div class=\"card-body\"><h2 class=\"card-title text-center mb-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
