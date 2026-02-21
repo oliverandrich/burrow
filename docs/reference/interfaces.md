@@ -56,21 +56,21 @@ Provides an `fs.FS` containing `.up.sql` migration files. Called during startup 
 
 ```go
 type HasRoutes interface {
-    Routes(e *echo.Echo)
+    Routes(r chi.Router)
 }
 ```
 
-Registers HTTP handlers on the Echo router. Called after all apps are registered.
+Registers HTTP handlers on the Chi router. Called after all apps are registered.
 
 ### HasMiddleware
 
 ```go
 type HasMiddleware interface {
-    Middleware() []echo.MiddlewareFunc
+    Middleware() []func(http.Handler) http.Handler
 }
 ```
 
-Returns middleware functions applied globally to the Echo instance. Applied in app registration order.
+Returns middleware functions applied globally to the router. Applied in app registration order.
 
 ### HasNavItems
 

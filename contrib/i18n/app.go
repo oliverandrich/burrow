@@ -3,11 +3,11 @@ package i18n
 import (
 	"context"
 	"io/fs"
+	"net/http"
 	"strings"
 
 	"codeberg.org/oliverandrich/burrow"
 	"github.com/BurntSushi/toml"
-	"github.com/labstack/echo/v5"
 	i18nlib "github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/urfave/cli/v3"
 	"golang.org/x/text/language"
@@ -89,23 +89,22 @@ func (a *App) WithLocale(ctx context.Context, lang string) context.Context {
 	return context.WithValue(ctx, ctxKeyLocalizer{}, localizer)
 }
 
-func (a *App) Middleware() []echo.MiddlewareFunc {
-	return []echo.MiddlewareFunc{a.localeMiddleware}
+func (a *App) Middleware() []func(http.Handler) http.Handler {
+	return []func(http.Handler) http.Handler{a.localeMiddleware}
 }
 
-func (a *App) localeMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c *echo.Context) error {
-		acceptLang := c.Request().Header.Get("Accept-Language")
+func (a *App) localeMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		acceptLang := r.Header.Get("Accept-Language")
 		tag, _ := language.MatchStrings(a.matcher, acceptLang)
 		base, _ := tag.Base()
 		locale := base.String()
 
-		ctx := c.Request().Context()
+		ctx := r.Context()
 		ctx = context.WithValue(ctx, ctxKeyLocale{}, locale)
 		localizer := i18nlib.NewLocalizer(a.bundle, locale)
 		ctx = context.WithValue(ctx, ctxKeyLocalizer{}, localizer)
-		c.SetRequest(c.Request().WithContext(ctx))
 
-		return next(c)
-	}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

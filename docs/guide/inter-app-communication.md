@@ -56,16 +56,16 @@ If a dependency is missing when `NewServer` processes your app, it panics at sta
 
 ## Using Auth Context
 
-The auth app sets the current user in the Echo context via middleware. Other apps read it with `auth.GetUser()`:
+The auth app sets the current user in the request context via middleware. Other apps read it with `auth.GetUser()`:
 
 ```go
-func (h *Handlers) List(c *echo.Context) error {
-    user := auth.GetUser(c)
+func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+    user := auth.GetUser(r)
     if user == nil {
-        return echo.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+        return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }
 
-    notes, err := h.repo.ListByUserID(c.Request().Context(), user.ID)
+    notes, err := h.repo.ListByUserID(r.Context(), user.ID)
     // ...
 }
 ```
@@ -78,17 +78,17 @@ Read and write session values from any app:
 import "codeberg.org/oliverandrich/burrow/contrib/session"
 
 // Read a value.
-userID := session.GetInt64(c, "user_id")
-locale := session.GetString(c, "locale")
+userID := session.GetInt64(r, "user_id")
+locale := session.GetString(r, "locale")
 
 // Write a value (immediately writes the cookie).
-session.Set(c, "theme", "dark")
+session.Set(w, r, "theme", "dark")
 
 // Remove a value.
-session.Delete(c, "theme")
+session.Delete(w, r, "theme")
 
 // Clear the entire session.
-session.Clear(c)
+session.Clear(w, r)
 ```
 
 ## Patterns

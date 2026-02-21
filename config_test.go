@@ -19,7 +19,6 @@ func TestCoreFlags(t *testing.T) {
 
 	expected := []string{
 		"host", "port", "base-url", "max-body-size",
-		"log-level", "log-format",
 		"database-dsn",
 		"tls-mode", "tls-cert-dir", "tls-email", "tls-cert-file", "tls-key-file",
 	}
@@ -47,8 +46,6 @@ func TestCoreDefaultValues(t *testing.T) {
 	assert.Equal(t, 8080, cfg.Server.Port)
 	assert.Empty(t, cfg.Server.BaseURL)
 	assert.Equal(t, 1, cfg.Server.MaxBodySize)
-	assert.Equal(t, "info", cfg.Log.Level)
-	assert.Equal(t, "text", cfg.Log.Format)
 	assert.Equal(t, "./data/app.db", cfg.Database.DSN)
 	assert.Equal(t, "auto", cfg.TLS.Mode)
 	assert.Equal(t, "./data/certs", cfg.TLS.CertDir)
@@ -62,7 +59,6 @@ func TestCoreFlagOverrides(t *testing.T) {
 		"--host", "0.0.0.0",
 		"--port", "3000",
 		"--database-dsn", "/tmp/test.db",
-		"--log-level", "debug",
 	})
 	require.NoError(t, err)
 
@@ -70,7 +66,6 @@ func TestCoreFlagOverrides(t *testing.T) {
 	assert.Equal(t, "0.0.0.0", cfg.Server.Host)
 	assert.Equal(t, 3000, cfg.Server.Port)
 	assert.Equal(t, "/tmp/test.db", cfg.Database.DSN)
-	assert.Equal(t, "debug", cfg.Log.Level)
 }
 
 func TestBuildBaseURL(t *testing.T) {

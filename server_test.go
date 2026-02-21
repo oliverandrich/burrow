@@ -8,7 +8,7 @@ import (
 	"testing/fstest"
 
 	"github.com/a-h/templ"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -145,18 +145,19 @@ func TestNavItemsMiddleware(t *testing.T) {
 		{Label: "About", URL: "/about", Position: 2},
 	}
 
-	e := echo.New()
-	e.Use(navItemsMiddleware(items))
+	r := chi.NewRouter()
+	r.Use(navItemsMiddleware(items))
 
 	var gotItems []NavItem
-	e.GET("/test", func(c *echo.Context) error {
-		gotItems = NavItems(c.Request().Context())
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotItems = NavItems(r.Context())
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	require.Len(t, gotItems, 2)

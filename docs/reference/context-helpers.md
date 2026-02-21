@@ -51,32 +51,29 @@ Generic context value helpers. `ContextValue` is a typed getter that returns the
 
 Defined in `codeberg.org/oliverandrich/burrow/contrib/auth`.
 
-!!! note
-    Auth helpers use the Echo context (`*echo.Context`), not `context.Context`, because the user is stored in Echo's key-value store rather than the request context.
-
 ### GetUser
 
 ```go
-func GetUser(c *echo.Context) *User
+func GetUser(r *http.Request) *User
 ```
 
-Returns the authenticated user from the Echo context, or `nil` if not logged in.
+Returns the authenticated user from the request context, or `nil` if not logged in.
 
 ### IsAuthenticated
 
 ```go
-func IsAuthenticated(c *echo.Context) bool
+func IsAuthenticated(r *http.Request) bool
 ```
 
 Returns `true` if a user is logged in.
 
-### SetUser
+### WithUser
 
 ```go
-func SetUser(c *echo.Context, user *User)
+func WithUser(ctx context.Context, user *User) context.Context
 ```
 
-Stores the user in the Echo context. Used internally by the auth middleware.
+Stores the user in the context. Used internally by the auth middleware.
 
 ## Session Helpers
 
@@ -85,9 +82,9 @@ Defined in `codeberg.org/oliverandrich/burrow/contrib/session`.
 ### Getters
 
 ```go
-func GetString(c *echo.Context, key string) string
-func GetInt64(c *echo.Context, key string) int64
-func GetValues(c *echo.Context) map[string]any
+func GetString(r *http.Request, key string) string
+func GetInt64(r *http.Request, key string) int64
+func GetValues(r *http.Request) map[string]any
 ```
 
 Read values from the session. Return zero values if the key is missing.
@@ -95,10 +92,10 @@ Read values from the session. Return zero values if the key is missing.
 ### Setters
 
 ```go
-func Set(c *echo.Context, key string, value any) error
-func Delete(c *echo.Context, key string) error
-func Save(c *echo.Context, values map[string]any) error
-func Clear(c *echo.Context)
+func Set(w http.ResponseWriter, r *http.Request, key string, value any) error
+func Delete(w http.ResponseWriter, r *http.Request, key string) error
+func Save(w http.ResponseWriter, r *http.Request, values map[string]any) error
+func Clear(w http.ResponseWriter, r *http.Request)
 ```
 
 Write values to the session. `Set`, `Delete`, and `Save` immediately write the cookie and return an error if the session middleware is not active.
@@ -106,10 +103,10 @@ Write values to the session. `Set`, `Delete`, and `Save` immediately write the c
 ### Testing
 
 ```go
-func Inject(c *echo.Context, values map[string]any)
+func Inject(r *http.Request, values map[string]any) *http.Request
 ```
 
-Sets up session state in the Echo context without the full middleware. Intended for use in tests.
+Sets up session state in the request context without the full middleware. Intended for use in tests. Returns a new `*http.Request` with the injected values.
 
 ## i18n Helpers
 

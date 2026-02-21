@@ -83,8 +83,8 @@ templ AppLayout(title string, content templ.Component) {
 Use `burrow.Render()` to render a Templ component with a status code:
 
 ```go
-func (h *Handlers) HomePage(c *echo.Context) error {
-    return burrow.Render(c, http.StatusOK, homePageComponent())
+func (h *Handlers) HomePage(w http.ResponseWriter, r *http.Request) error {
+    return burrow.Render(w, r, http.StatusOK, homePageComponent())
 }
 ```
 

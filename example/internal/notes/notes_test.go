@@ -10,7 +10,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
@@ -130,6 +130,15 @@ func TestDeleteNoteWrongUser(t *testing.T) {
 
 // --- Handler tests ---
 
+// requestWithUser creates a request with the given user set in the context.
+func requestWithUser(req *http.Request, user *auth.User) *http.Request {
+	if user != nil {
+		ctx := auth.WithUser(req.Context(), user)
+		return req.WithContext(ctx)
+	}
+	return req
+}
+
 func TestListNotesHandler(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
@@ -137,14 +146,12 @@ func TestListNotesHandler(t *testing.T) {
 
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Test", Content: "Content", UserID: 42}))
 
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	auth.SetUser(c, &auth.User{ID: 42})
-
 	h := NewHandlers(repo)
-	err := h.List(c)
+	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	req = requestWithUser(req, &auth.User{ID: 42})
+	rec := httptest.NewRecorder()
+
+	err := h.List(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -155,16 +162,14 @@ func TestListNotesUnauthenticated(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	e := echo.New()
+	h := NewHandlers(repo)
 	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
-	h := NewHandlers(repo)
-	err := h.List(c)
+	err := h.List(rec, req)
 
 	require.Error(t, err)
-	var httpErr *echo.HTTPError
+	var httpErr *burrow.HTTPError
 	require.ErrorAs(t, err, &httpErr)
 	assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
 }
@@ -173,16 +178,14 @@ func TestCreateNoteHandler(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	e := echo.New()
+	h := NewHandlers(repo)
 	form := strings.NewReader("title=My+Note&content=Some+content")
 	req := httptest.NewRequest(http.MethodPost, "/notes", form)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = requestWithUser(req, &auth.User{ID: 42})
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	auth.SetUser(c, &auth.User{ID: 42})
 
-	h := NewHandlers(repo)
-	err := h.Create(c)
+	err := h.Create(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
@@ -197,19 +200,17 @@ func TestCreateNoteEmptyTitle(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	e := echo.New()
+	h := NewHandlers(repo)
 	form := strings.NewReader("title=&content=Some+content")
 	req := httptest.NewRequest(http.MethodPost, "/notes", form)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = requestWithUser(req, &auth.User{ID: 42})
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	auth.SetUser(c, &auth.User{ID: 42})
 
-	h := NewHandlers(repo)
-	err := h.Create(c)
+	err := h.Create(rec, req)
 
 	require.Error(t, err)
-	var httpErr *echo.HTTPError
+	var httpErr *burrow.HTTPError
 	require.ErrorAs(t, err, &httpErr)
 	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
 }
@@ -222,16 +223,21 @@ func TestDeleteNoteHandler(t *testing.T) {
 	note := &Note{Title: "Delete Me", Content: "Bye", UserID: 42}
 	require.NoError(t, repo.Create(ctx, note))
 
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodDelete, "/notes/1", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	auth.SetUser(c, &auth.User{ID: 42})
-	c.SetPathValues(echo.PathValues{{Name: "id", Value: "1"}})
-
 	h := NewHandlers(repo)
-	err := h.Delete(c)
 
-	require.NoError(t, err)
+	// Use chi router to inject URL params.
+	r := chi.NewRouter()
+	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+		err := h.Delete(w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/notes/1", nil)
+	req = requestWithUser(req, &auth.User{ID: 42})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
 	assert.Equal(t, http.StatusOK, rec.Code)
 }

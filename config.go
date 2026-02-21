@@ -10,7 +10,6 @@ import (
 // Config holds core framework configuration.
 type Config struct {
 	TLS      TLSConfig
-	Log      LogConfig
 	Database DatabaseConfig
 	Server   ServerConfig
 }
@@ -21,12 +20,6 @@ type ServerConfig struct {
 	BaseURL     string
 	Port        int
 	MaxBodySize int // in MB
-}
-
-// LogConfig holds logging settings.
-type LogConfig struct {
-	Level  string // debug, info, warn, error
-	Format string // text, json
 }
 
 // DatabaseConfig holds database settings.
@@ -51,10 +44,6 @@ func NewConfig(cmd *cli.Command) *Config {
 			Port:        int(cmd.Int("port")),
 			BaseURL:     cmd.String("base-url"),
 			MaxBodySize: int(cmd.Int("max-body-size")),
-		},
-		Log: LogConfig{
-			Level:  cmd.String("log-level"),
-			Format: cmd.String("log-format"),
 		},
 		Database: DatabaseConfig{
 			DSN: cmd.String("database-dsn"),
@@ -151,18 +140,6 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Value:   1,
 			Usage:   "Maximum request body size in MB",
 			Sources: src("MAX_BODY_SIZE", "server.max_body_size"),
-		},
-		&cli.StringFlag{
-			Name:    "log-level",
-			Value:   "info",
-			Usage:   "Log level (debug, info, warn, error)",
-			Sources: src("LOG_LEVEL", "log.level"),
-		},
-		&cli.StringFlag{
-			Name:    "log-format",
-			Value:   "text",
-			Usage:   "Log format (text, json)",
-			Sources: src("LOG_FORMAT", "log.format"),
 		},
 		&cli.StringFlag{
 			Name:    "database-dsn",

@@ -1,11 +1,12 @@
 package session
 
 import (
+	"context"
+	"net/http"
 	"strings"
 
 	"codeberg.org/oliverandrich/burrow"
 	"github.com/gorilla/securecookie"
-	"github.com/labstack/echo/v5"
 	"github.com/urfave/cli/v3"
 )
 
@@ -80,17 +81,17 @@ func (a *App) Configure(cmd *cli.Command) error {
 	return nil
 }
 
-func (a *App) Middleware() []echo.MiddlewareFunc {
-	return []echo.MiddlewareFunc{a.sessionMiddleware}
+func (a *App) Middleware() []func(http.Handler) http.Handler {
+	return []func(http.Handler) http.Handler{a.sessionMiddleware}
 }
 
-func (a *App) sessionMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c *echo.Context) error {
-		values, _ := a.manager.Parse(c.Request())
+func (a *App) sessionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		values, _ := a.manager.Parse(r)
 		s := &state{manager: a.manager, values: values}
-		c.Set(storeKey, s)
-		return next(c)
-	}
+		ctx := context.WithValue(r.Context(), ctxKeySession{}, s)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // Manager returns the session manager for other apps to use.

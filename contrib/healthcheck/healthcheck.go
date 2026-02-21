@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
 )
 
@@ -22,13 +22,13 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	return nil
 }
 
-func (a *App) Routes(e *echo.Echo) {
-	e.GET("/healthz", a.health)
+func (a *App) Routes(r chi.Router) {
+	r.Get("/healthz", burrow.Handle(a.health))
 }
 
-func (a *App) health(c *echo.Context) error {
+func (a *App) health(w http.ResponseWriter, r *http.Request) error {
 	dbStatus := "ok"
-	if err := a.db.PingContext(c.Request().Context()); err != nil {
+	if err := a.db.PingContext(r.Context()); err != nil {
 		dbStatus = err.Error()
 	}
 
@@ -37,7 +37,7 @@ func (a *App) health(c *echo.Context) error {
 		status = http.StatusServiceUnavailable
 	}
 
-	return c.JSON(status, map[string]string{
+	return burrow.JSON(w, status, map[string]string{
 		"status":   "ok",
 		"database": dbStatus,
 	})

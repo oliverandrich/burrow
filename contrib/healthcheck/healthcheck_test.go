@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
@@ -49,12 +49,12 @@ func TestHealthEndpoint(t *testing.T) {
 	db := testDB(t)
 	app.db = db
 
-	e := echo.New()
-	app.Routes(e)
+	r := chi.NewRouter()
+	app.Routes(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"status":"ok"`)
@@ -65,12 +65,12 @@ func TestHealthEndpointDBCheck(t *testing.T) {
 	db := testDB(t)
 	app.db = db
 
-	e := echo.New()
-	app.Routes(e)
+	r := chi.NewRouter()
+	app.Routes(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"database":"ok"`)

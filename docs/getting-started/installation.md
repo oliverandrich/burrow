@@ -28,7 +28,7 @@ The framework builds on these libraries — you'll interact with them when build
 
 | Library | Purpose |
 |---------|---------|
-| [Echo v5](https://echo.labstack.com/) | HTTP router, middleware, context |
+| [Chi v5](https://go-chi.io/) | HTTP router and middleware (stdlib-compatible) |
 | [Bun](https://bun.uptrace.dev/) | ORM for SQLite (queries, models, migrations) |
 | [Templ](https://templ.guide/) | Type-safe HTML templates |
 | [urfave/cli](https://cli.urfave.org/) | CLI flags, env vars, subcommands |

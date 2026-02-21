@@ -13,13 +13,6 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--base-url` | `BASE_URL` | `server.base_url` | (auto-resolved) | Base URL for the application |
 | `--max-body-size` | `MAX_BODY_SIZE` | `server.max_body_size` | `1` | Maximum request body size in MB |
 
-### Logging
-
-| Flag | Env Var | TOML Key | Default | Description |
-|------|---------|----------|---------|-------------|
-| `--log-level` | `LOG_LEVEL` | `log.level` | `info` | Log level: `debug`, `info`, `warn`, `error` |
-| `--log-format` | `LOG_FORMAT` | `log.format` | `text` | Log format: `text`, `json` |
-
 ### Database
 
 | Flag | Env Var | TOML Key | Default | Description |
@@ -74,10 +67,6 @@ host = "0.0.0.0"
 port = 8080
 base_url = "https://myapp.example.com"
 max_body_size = 2
-
-[log]
-level = "info"
-format = "json"
 
 [database]
 dsn = "./data/production.db"

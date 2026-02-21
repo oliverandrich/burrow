@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
 	"github.com/urfave/cli/v3"
 )
@@ -67,6 +67,9 @@ func (r *Registry) Add(app App) {
 	if _, ok := app.(Seedable); ok {
 		caps = append(caps, "seed")
 	}
+	if _, ok := app.(HasAdmin); ok {
+		caps = append(caps, "admin")
+	}
 	if _, ok := app.(HasDependencies); ok {
 		caps = append(caps, "dependencies")
 	}
@@ -119,12 +122,12 @@ func (r *Registry) AllNavItems() []NavItem {
 }
 
 // RegisterMiddleware applies middleware from all HasMiddleware apps
-// to the Echo instance, in app registration order.
-func (r *Registry) RegisterMiddleware(e *echo.Echo) {
+// to the chi router, in app registration order.
+func (r *Registry) RegisterMiddleware(router chi.Router) {
 	for _, app := range r.apps {
 		if provider, ok := app.(HasMiddleware); ok {
 			for _, mw := range provider.Middleware() {
-				e.Use(mw)
+				router.Use(mw)
 			}
 		}
 	}
@@ -165,12 +168,28 @@ func (r *Registry) AllCLICommands() []*cli.Command {
 	return cmds
 }
 
+// AllAdminNavItems collects AdminNavItems from all HasAdmin apps
+// and returns them sorted by Position (stable sort preserves
+// insertion order for equal positions).
+func (r *Registry) AllAdminNavItems() []NavItem {
+	var items []NavItem
+	for _, app := range r.apps {
+		if provider, ok := app.(HasAdmin); ok {
+			items = append(items, provider.AdminNavItems()...)
+		}
+	}
+	sort.SliceStable(items, func(i, j int) bool {
+		return items[i].Position < items[j].Position
+	})
+	return items
+}
+
 // RegisterRoutes calls Routes on each HasRoutes app,
 // allowing apps to register their HTTP handlers.
-func (r *Registry) RegisterRoutes(e *echo.Echo) {
+func (r *Registry) RegisterRoutes(router chi.Router) {
 	for _, app := range r.apps {
 		if provider, ok := app.(HasRoutes); ok {
-			provider.Routes(e)
+			provider.Routes(router)
 		}
 	}
 }

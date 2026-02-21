@@ -12,8 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/labstack/echo/v5"
-	"github.com/labstack/echo/v5/middleware"
+	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httplog/v3"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	"github.com/uptrace/bun/driver/sqliteshim"
@@ -65,8 +66,6 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		cfg.Server.BaseURL = cfg.ResolveBaseURL()
 	}
 
-	setupLogger(cfg.Log.Level, cfg.Log.Format)
-
 	slog.Info("starting server",
 		"host", cfg.Server.Host,
 		"port", cfg.Server.Port,
@@ -91,14 +90,16 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	e := echo.New()
-	setupCoreMiddleware(e, cfg)
+	r := chi.NewRouter()
+	setupCoreMiddleware(r, cfg)
 	navItems := s.registry.AllNavItems()
-	e.Use(navItemsMiddleware(navItems))
-	s.registry.RegisterMiddleware(e)
-	s.registry.RegisterRoutes(e)
+	r.Use(navItemsMiddleware(navItems))
+	adminNavItems := s.registry.AllAdminNavItems()
+	r.Use(adminNavItemsMiddleware(adminNavItems))
+	s.registry.RegisterMiddleware(r)
+	s.registry.RegisterRoutes(r)
 
-	return startServer(ctx, e, cfg)
+	return startServer(ctx, r, cfg)
 }
 
 // bootstrap runs migrations and registers all apps.
@@ -146,51 +147,39 @@ func openDB(dsn string) (*bun.DB, error) {
 	return db, nil
 }
 
-func navItemsMiddleware(items []NavItem) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
-			ctx := WithNavItems(c.Request().Context(), items)
-			c.SetRequest(c.Request().WithContext(ctx))
-			return next(c)
-		}
+func navItemsMiddleware(items []NavItem) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := WithNavItems(r.Context(), items)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
 }
 
-func setupCoreMiddleware(e *echo.Echo, cfg *Config) {
-	e.Use(middleware.Recover())
-	e.Use(middleware.RequestID())
-	e.Use(middleware.Gzip())
-	e.Use(middleware.BodyLimit(int64(cfg.Server.MaxBodySize) * 1024 * 1024))
+func adminNavItemsMiddleware(items []NavItem) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := WithAdminNavItems(r.Context(), items)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
-func setupLogger(level, format string) {
-	var logLevel slog.Level
-	switch level {
-	case "debug":
-		logLevel = slog.LevelDebug
-	case "warn":
-		logLevel = slog.LevelWarn
-	case "error":
-		logLevel = slog.LevelError
-	default:
-		logLevel = slog.LevelInfo
-	}
-
-	var handler slog.Handler
-	if format == "json" {
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
-	} else {
-		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
-	}
-
-	slog.SetDefault(slog.New(handler))
+func setupCoreMiddleware(r chi.Router, cfg *Config) {
+	r.Use(httplog.RequestLogger(slog.Default(), &httplog.Options{
+		Level:         slog.LevelInfo,
+		RecoverPanics: true,
+	}))
+	r.Use(chimw.RequestID)
+	r.Use(chimw.Compress(5))
+	r.Use(chimw.RequestSize(int64(cfg.Server.MaxBodySize) * 1024 * 1024))
 }
 
-func startServer(ctx context.Context, e *echo.Echo, cfg *Config) error {
+func startServer(ctx context.Context, handler http.Handler, cfg *Config) error {
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           e,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

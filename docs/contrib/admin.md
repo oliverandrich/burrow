@@ -9,18 +9,15 @@ User management panel with CLI commands for promoting users and creating invites
 ## Setup
 
 ```go
-adminApp := admin.New()
-
 srv := burrow.NewServer(
     &session.App{},
     auth.New(authRenderer),
-    adminApp,
+    admin.New(),
     // ... other apps
 )
-
-// Set a renderer for admin HTML pages (optional).
-adminApp.SetHandlers(adminRenderer)
 ```
+
+The admin app discovers admin views from other apps via the `HasAdmin` interface. Any app that implements `HasAdmin` gets its routes mounted under `/admin` with auth protection.
 
 ## Routes
 
@@ -72,25 +69,23 @@ NavItem{
 }
 ```
 
-## Renderer
+## HasAdmin Interface
 
-The admin app accepts a `Renderer` interface for HTML pages:
+Apps contribute admin views by implementing `HasAdmin`:
 
 ```go
-type Renderer interface {
-    UsersPage(c *echo.Context, users []auth.User) error
-    UserDetailPage(c *echo.Context, user *auth.User) error
+type HasAdmin interface {
+    AdminRoutes(r chi.Router)
+    AdminNavItems() []NavItem
 }
 ```
 
-Call `adminApp.SetHandlers(renderer)` after `Register()` to enable HTML pages. Without a renderer, routes are not registered.
+The admin app collects all `HasAdmin` implementations and mounts their routes under `/admin` with `auth.RequireAuth()` and `auth.RequireAdmin()` middleware.
 
 ## Interfaces Implemented
 
 | Interface | Description |
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
-| `HasRoutes` | Admin user management routes |
-| `HasNavItems` | "Users" admin navigation entry |
-| `HasCLICommands` | `promote`, `demote`, `create-invite` |
+| `HasRoutes` | Creates `/admin` group and delegates to `HasAdmin` apps |
 | `HasDependencies` | Requires `auth` |

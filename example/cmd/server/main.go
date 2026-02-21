@@ -6,9 +6,11 @@ import (
 	"context"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
@@ -48,6 +50,12 @@ func appLayout(title string, content templ.Component) templ.Component {
 }
 
 func main() {
+	// Configure logging before starting the server. Replace with
+	// tint, JSON handler, or any slog.Handler of your choice.
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
+
 	// Create the server with apps in dependency order.
 	// Session must come before auth (auth depends on session).
 	srv := burrow.NewServer(
@@ -55,6 +63,7 @@ func main() {
 		auth.New(nil), // nil renderer = no HTML pages, API-only
 		&healthcheck.App{},
 		notes.New(),
+		admin.New(),
 	)
 
 	// Provide layouts. The App layout wraps user-facing pages,

@@ -8,41 +8,36 @@ import (
 	"testing"
 
 	"github.com/a-h/templ"
-	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRender(t *testing.T) {
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
 	component := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
 		_, err := w.Write([]byte("<p>hello</p>"))
 		return err
 	})
 
-	err := Render(c, http.StatusOK, component)
+	err := Render(rec, req, http.StatusOK, component)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "text/html; charset=UTF-8", rec.Header().Get("Content-Type"))
+	assert.Equal(t, "text/html; charset=utf-8", rec.Header().Get("Content-Type"))
 	assert.Equal(t, "<p>hello</p>", rec.Body.String())
 }
 
 func TestRenderWithStatus(t *testing.T) {
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
 	component := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
 		_, err := w.Write([]byte("<p>not found</p>"))
 		return err
 	})
 
-	err := Render(c, http.StatusNotFound, component)
+	err := Render(rec, req, http.StatusNotFound, component)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
@@ -99,6 +94,26 @@ func TestNavItemsMissing(t *testing.T) {
 	assert.Nil(t, NavItems(ctx))
 }
 
+func TestAdminNavItemsContext(t *testing.T) {
+	ctx := context.Background()
+	items := []NavItem{
+		{Label: "Users", URL: "/admin/users", Position: 10},
+		{Label: "Invites", URL: "/admin/invites", Position: 20},
+	}
+
+	ctx = WithAdminNavItems(ctx, items)
+	got := AdminNavItems(ctx)
+
+	require.Len(t, got, 2)
+	assert.Equal(t, "Users", got[0].Label)
+	assert.Equal(t, "Invites", got[1].Label)
+}
+
+func TestAdminNavItemsMissing(t *testing.T) {
+	ctx := context.Background()
+	assert.Nil(t, AdminNavItems(ctx))
+}
+
 func TestLayoutFuncWrapsContent(t *testing.T) {
 	layout := LayoutFunc(func(title string, content templ.Component) templ.Component {
 		return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
@@ -116,13 +131,11 @@ func TestLayoutFuncWrapsContent(t *testing.T) {
 		return err
 	})
 
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
 	wrapped := layout("Test Page", content)
-	err := Render(c, http.StatusOK, wrapped)
+	err := Render(rec, req, http.StatusOK, wrapped)
 	require.NoError(t, err)
 	assert.Equal(t, "<html><head><title>Test Page</title></head><body><p>hello</p></body></html>", rec.Body.String())
 }
@@ -136,10 +149,8 @@ func TestLayoutFuncNilPassthrough(t *testing.T) {
 		return err
 	})
 
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
 	// Simulate what an app's default renderer would do.
 	var component templ.Component
@@ -149,16 +160,16 @@ func TestLayoutFuncNilPassthrough(t *testing.T) {
 		component = content
 	}
 
-	err := Render(c, http.StatusOK, component)
+	err := Render(rec, req, http.StatusOK, component)
 	require.NoError(t, err)
 	assert.Equal(t, "<p>bare</p>", rec.Body.String())
 }
 
 func TestLayoutsStruct(t *testing.T) {
-	appLayout := LayoutFunc(func(title string, content templ.Component) templ.Component {
+	appLayout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
 		return content
 	})
-	adminLayout := LayoutFunc(func(title string, content templ.Component) templ.Component {
+	adminLayout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
 		return content
 	})
 

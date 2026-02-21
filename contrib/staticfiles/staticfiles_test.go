@@ -8,7 +8,7 @@ import (
 	"testing/fstest"
 
 	"codeberg.org/oliverandrich/burrow"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,8 +46,8 @@ func TestRegisterIsNoop(t *testing.T) {
 func TestStaticFileServing(t *testing.T) {
 	app := New(testFS)
 
-	e := echo.New()
-	app.Routes(e)
+	r := chi.NewRouter()
+	app.Routes(r)
 
 	// Compute expected hash for "body{}"
 	hash := contentHash([]byte("body{}"))
@@ -55,7 +55,7 @@ func TestStaticFileServing(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, hashedPath, nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "body{}", rec.Body.String())
@@ -65,12 +65,12 @@ func TestStaticFileServingFallback(t *testing.T) {
 	// Externally-hashed files (e.g. esbuild font output) should be served directly.
 	app := New(testFSWithExternal)
 
-	e := echo.New()
-	app.Routes(e)
+	r := chi.NewRouter()
+	app.Routes(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/static/dist/bootstrap-icons-CVBWLLHT.woff2", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "font-data", rec.Body.String())
@@ -79,18 +79,19 @@ func TestStaticFileServingFallback(t *testing.T) {
 func TestCacheHeadersHashedAsset(t *testing.T) {
 	app := New(testFS)
 
-	e := echo.New()
+	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
-		e.Use(mw)
+		r.Use(mw)
 	}
-	e.GET("/static/*", func(c *echo.Context) error {
-		return c.String(http.StatusOK, "ok")
+	r.Get("/static/*", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
 	})
 
 	hash := contentHash([]byte("body{}"))
 	req := httptest.NewRequest(http.MethodGet, "/static/dist/styles."+hash+".css", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "public, max-age=31536000, immutable", rec.Header().Get("Cache-Control"))
@@ -99,17 +100,18 @@ func TestCacheHeadersHashedAsset(t *testing.T) {
 func TestCacheHeadersUnhashedAsset(t *testing.T) {
 	app := New(testFS)
 
-	e := echo.New()
+	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
-		e.Use(mw)
+		r.Use(mw)
 	}
-	e.GET("/static/*", func(c *echo.Context) error {
-		return c.String(http.StatusOK, "ok")
+	r.Get("/static/*", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/static/dist/styles.css", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "no-cache, no-store, must-revalidate", rec.Header().Get("Cache-Control"))
@@ -118,17 +120,18 @@ func TestCacheHeadersUnhashedAsset(t *testing.T) {
 func TestCacheHeadersNonStaticPath(t *testing.T) {
 	app := New(testFS)
 
-	e := echo.New()
+	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
-		e.Use(mw)
+		r.Use(mw)
 	}
-	e.GET("/test", func(c *echo.Context) error {
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Empty(t, rec.Header().Get("Cache-Control"))
@@ -137,18 +140,18 @@ func TestCacheHeadersNonStaticPath(t *testing.T) {
 func TestCustomPrefix(t *testing.T) {
 	app := New(testFS, WithPrefix("/assets/"))
 
-	e := echo.New()
+	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
-		e.Use(mw)
+		r.Use(mw)
 	}
-	app.Routes(e)
+	app.Routes(r)
 
 	hash := contentHash([]byte("body{}"))
 
 	// File should be served at the custom prefix.
 	req := httptest.NewRequest(http.MethodGet, "/assets/dist/styles."+hash+".css", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "body{}", rec.Body.String())
@@ -157,7 +160,7 @@ func TestCustomPrefix(t *testing.T) {
 	// Old prefix should not serve files.
 	req = httptest.NewRequest(http.MethodGet, "/static/dist/styles."+hash+".css", nil)
 	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.NotEqual(t, http.StatusOK, rec.Code)
 }
@@ -328,20 +331,21 @@ func TestURLCustomPrefix(t *testing.T) {
 func TestMiddlewareInjectsContext(t *testing.T) {
 	app := New(testFS)
 
-	e := echo.New()
+	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
-		e.Use(mw)
+		r.Use(mw)
 	}
 
 	var gotURL string
-	e.GET("/test", func(c *echo.Context) error {
-		gotURL = URL(c.Request().Context(), "dist/styles.css")
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotURL = URL(r.Context(), "dist/styles.css")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	hash := contentHash([]byte("body{}"))
 	assert.Equal(t, http.StatusOK, rec.Code)

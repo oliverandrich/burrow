@@ -1,6 +1,6 @@
 # Burrow
 
-A modular Go web framework built on [Echo v5](https://echo.labstack.com/), [Bun/SQLite](https://bun.uptrace.dev/), and [Templ](https://templ.guide/) templates.
+A modular Go web framework built on [Chi](https://go-chi.io/), [Bun/SQLite](https://bun.uptrace.dev/), and [Templ](https://templ.guide/) templates.
 
 ## Features
 

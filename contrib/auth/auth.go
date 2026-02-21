@@ -2,48 +2,55 @@
 package auth
 
 import (
+	"context"
+	"crypto/rand"
 	"embed"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"net/url"
+	"time"
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/urfave/cli/v3"
 )
 
 //go:embed migrations
 var migrationFS embed.FS
 
-const storeKeyUser = "auth:user"
+// ctxKeyUser is the context key for the authenticated user.
+type ctxKeyUser struct{}
 
-// GetUser retrieves the authenticated user from the Echo context.
-func GetUser(c *echo.Context) *User {
-	if user, ok := c.Get(storeKeyUser).(*User); ok {
+// GetUser retrieves the authenticated user from the request context.
+func GetUser(r *http.Request) *User {
+	if user, ok := r.Context().Value(ctxKeyUser{}).(*User); ok {
 		return user
 	}
 	return nil
 }
 
 // IsAuthenticated returns true if a user is logged in.
-func IsAuthenticated(c *echo.Context) bool {
-	return GetUser(c) != nil
+func IsAuthenticated(r *http.Request) bool {
+	return GetUser(r) != nil
 }
 
-// SetUser stores the user in the Echo context.
-func SetUser(c *echo.Context, user *User) {
-	c.Set(storeKeyUser, user)
+// WithUser returns a new context with the user set.
+func WithUser(ctx context.Context, user *User) context.Context {
+	return context.WithValue(ctx, ctxKeyUser{}, user)
 }
 
 // App implements the auth contrib app.
 type App struct {
-	repo         *Repository
-	handlers     *Handlers
-	renderer     Renderer
-	config       *Config
-	globalConfig *burrow.Config
+	repo          *Repository
+	handlers      *Handlers
+	adminHandlers *adminHandlers
+	renderer      Renderer
+	adminRenderer AdminRenderer
+	config        *Config
+	globalConfig  *burrow.Config
 }
 
 // Config holds auth-specific configuration.
@@ -152,51 +159,55 @@ func (a *App) Configure(cmd *cli.Command) error {
 	return nil
 }
 
-func (a *App) Middleware() []echo.MiddlewareFunc {
-	return []echo.MiddlewareFunc{a.authMiddleware}
+func (a *App) Middleware() []func(http.Handler) http.Handler {
+	return []func(http.Handler) http.Handler{a.authMiddleware}
 }
 
-// authMiddleware loads the user from the session and sets it in the Echo context.
-func (a *App) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c *echo.Context) error {
-		userID := session.GetInt64(c, "user_id")
+// authMiddleware loads the user from the session and sets it in the request context.
+func (a *App) authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID := session.GetInt64(r, "user_id")
 		if userID == 0 {
-			return next(c)
+			next.ServeHTTP(w, r)
+			return
 		}
 
-		user, err := a.repo.GetUserByID(c.Request().Context(), userID)
+		user, err := a.repo.GetUserByID(r.Context(), userID)
 		if err != nil {
-			return next(c)
+			next.ServeHTTP(w, r)
+			return
 		}
 
-		SetUser(c, user)
-		return next(c)
-	}
+		ctx := WithUser(r.Context(), user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // RequireAuth returns middleware that redirects to login if not authenticated.
-func RequireAuth() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
-			if !IsAuthenticated(c) {
-				target := c.Request().URL.RequestURI()
-				return c.Redirect(http.StatusSeeOther, "/auth/login?next="+url.QueryEscape(target))
+func RequireAuth() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !IsAuthenticated(r) {
+				target := r.URL.RequestURI()
+				http.Redirect(w, r, "/auth/login?next="+url.QueryEscape(target), http.StatusSeeOther)
+				return
 			}
-			return next(c)
-		}
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 
 // RequireAdmin returns middleware that returns 403 if the user is not an admin.
-func RequireAdmin() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
-			user := GetUser(c)
+func RequireAdmin() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := GetUser(r)
 			if user == nil || !user.IsAdmin() {
-				return echo.NewHTTPError(http.StatusForbidden, "forbidden")
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
 			}
-			return next(c)
-		}
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 
@@ -214,41 +225,179 @@ func (a *App) SetEmailService(email EmailService) {
 	}
 }
 
+// SetAdminRenderer sets the admin page renderer for user management.
+// Call this after Register if admin rendering is needed.
+func (a *App) SetAdminRenderer(r AdminRenderer) {
+	a.adminRenderer = r
+	if a.repo != nil && r != nil {
+		a.adminHandlers = newAdminHandlers(a.repo, r)
+	}
+}
+
+// AdminRoutes registers admin routes for user and invite management.
+// The router is expected to already have auth middleware applied.
+func (a *App) AdminRoutes(r chi.Router) {
+	if a.adminHandlers == nil {
+		return
+	}
+	h := a.adminHandlers
+
+	r.Get("/users", burrow.Handle(h.UsersPage))
+	r.Get("/users/{id}", burrow.Handle(h.UserDetail))
+	r.Post("/users/{id}/role", burrow.Handle(h.UpdateUserRole))
+
+	// Invite management routes (use the existing auth handlers).
+	if a.handlers != nil {
+		r.Get("/invites", burrow.Handle(a.handlers.InvitesPage))
+		r.Post("/invites", burrow.Handle(a.handlers.CreateInvite))
+		r.Delete("/invites/{id}", burrow.Handle(a.handlers.DeleteInvite))
+	}
+}
+
+// AdminNavItems returns navigation items for the admin panel.
+func (a *App) AdminNavItems() []burrow.NavItem {
+	return []burrow.NavItem{
+		{
+			Label:     "Users",
+			URL:       "/admin/users",
+			Icon:      "bi bi-people",
+			Position:  10,
+			AdminOnly: true,
+		},
+		{
+			Label:     "Invites",
+			URL:       "/admin/invites",
+			Icon:      "bi bi-envelope",
+			Position:  20,
+			AdminOnly: true,
+		},
+	}
+}
+
 // Routes registers auth HTTP routes.
-func (a *App) Routes(e *echo.Echo) {
+func (a *App) Routes(r chi.Router) {
 	h := a.handlers
 
-	auth := e.Group("/auth")
-	auth.GET("/register", h.RegisterPage)
-	auth.POST("/register/begin", h.RegisterBegin)
-	auth.POST("/register/finish", h.RegisterFinish)
-	auth.GET("/login", h.LoginPage)
-	auth.POST("/login/begin", h.LoginBegin)
-	auth.POST("/login/finish", h.LoginFinish)
-	auth.POST("/logout", h.Logout)
-	auth.GET("/recovery", h.RecoveryPage)
-	auth.POST("/recovery", h.RecoveryLogin)
+	r.Route("/auth", func(r chi.Router) {
+		r.Get("/register", burrow.Handle(h.RegisterPage))
+		r.Post("/register/begin", burrow.Handle(h.RegisterBegin))
+		r.Post("/register/finish", burrow.Handle(h.RegisterFinish))
+		r.Get("/login", burrow.Handle(h.LoginPage))
+		r.Post("/login/begin", burrow.Handle(h.LoginBegin))
+		r.Post("/login/finish", burrow.Handle(h.LoginFinish))
+		r.Post("/logout", burrow.Handle(h.Logout))
+		r.Get("/recovery", burrow.Handle(h.RecoveryPage))
+		r.Post("/recovery", burrow.Handle(h.RecoveryLogin))
 
-	// Authenticated credential management.
-	creds := auth.Group("/credentials", RequireAuth())
-	creds.GET("", h.CredentialsPage)
-	creds.POST("/begin", h.AddCredentialBegin)
-	creds.POST("/finish", h.AddCredentialFinish)
-	creds.DELETE("/:id", h.DeleteCredential)
+		// Authenticated credential management.
+		r.Route("/credentials", func(r chi.Router) {
+			r.Use(RequireAuth())
+			r.Get("/", burrow.Handle(h.CredentialsPage))
+			r.Post("/begin", burrow.Handle(h.AddCredentialBegin))
+			r.Post("/finish", burrow.Handle(h.AddCredentialFinish))
+			r.Delete("/{id}", burrow.Handle(h.DeleteCredential))
+		})
 
-	// Authenticated recovery code management.
-	auth.POST("/recovery-codes/regenerate", h.RegenerateRecoveryCodes, RequireAuth())
+		// Authenticated recovery code management.
+		r.With(RequireAuth()).Post("/recovery-codes/regenerate", burrow.Handle(h.RegenerateRecoveryCodes))
 
-	// Email verification routes.
-	auth.GET("/verify-pending", h.VerifyPendingPage)
-	auth.GET("/verify-email", h.VerifyEmail)
-	auth.POST("/resend-verification", h.ResendVerification)
+		// Email verification routes.
+		r.Get("/verify-pending", burrow.Handle(h.VerifyPendingPage))
+		r.Get("/verify-email", burrow.Handle(h.VerifyEmail))
+		r.Post("/resend-verification", burrow.Handle(h.ResendVerification))
+	})
+}
 
-	// Admin invite management.
-	admin := e.Group("/admin", RequireAuth(), RequireAdmin())
-	admin.GET("/invites", h.InvitesPage)
-	admin.POST("/invites", h.CreateInvite)
-	admin.DELETE("/invites/:id", h.DeleteInvite)
+// CLICommands returns auth-related CLI subcommands (promote, demote, create-invite).
+func (a *App) CLICommands() []*cli.Command {
+	return []*cli.Command{
+		{
+			Name:      "promote",
+			Usage:     "Promote a user to admin",
+			ArgsUsage: "<username>",
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return a.setRole(ctx, cmd, RoleAdmin)
+			},
+		},
+		{
+			Name:      "demote",
+			Usage:     "Demote an admin to regular user",
+			ArgsUsage: "<username>",
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return a.setRole(ctx, cmd, RoleUser)
+			},
+		},
+		{
+			Name:      "create-invite",
+			Usage:     "Create an invite and print the registration URL",
+			ArgsUsage: "<email>",
+			Action:    a.createInviteAction,
+		},
+	}
+}
+
+func (a *App) setRole(ctx context.Context, cmd *cli.Command, role string) error {
+	username := cmd.Args().First()
+	if username == "" {
+		return fmt.Errorf("username is required")
+	}
+
+	if a.repo == nil {
+		return fmt.Errorf("auth app not initialized")
+	}
+
+	user, err := a.repo.GetUserByUsername(ctx, username)
+	if err != nil {
+		return fmt.Errorf("user %q not found: %w", username, err)
+	}
+
+	if err := a.repo.SetUserRole(ctx, user.ID, role); err != nil {
+		return fmt.Errorf("set role: %w", err)
+	}
+
+	fmt.Printf("User %q role set to %q\n", username, role)
+	return nil
+}
+
+func (a *App) createInviteAction(ctx context.Context, cmd *cli.Command) error {
+	inviteEmail := cmd.Args().First()
+	if inviteEmail == "" {
+		return fmt.Errorf("email is required")
+	}
+
+	if a.repo == nil {
+		return fmt.Errorf("auth app not initialized")
+	}
+
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return fmt.Errorf("generate random bytes: %w", err)
+	}
+	plainToken := hex.EncodeToString(tokenBytes)
+	tokenHash := HashToken(plainToken)
+
+	baseURL := ""
+	if a.globalConfig != nil {
+		baseURL = a.globalConfig.ResolveBaseURL()
+	}
+
+	invite := &Invite{
+		Email:     inviteEmail,
+		TokenHash: tokenHash,
+		ExpiresAt: time.Now().Add(InviteExpiry),
+	}
+
+	if err := a.repo.CreateInvite(ctx, invite); err != nil {
+		return fmt.Errorf("create invite: %w", err)
+	}
+
+	registrationURL := fmt.Sprintf("%s/auth/register?invite=%s", baseURL, plainToken)
+
+	fmt.Printf("Invite created for %s\n", inviteEmail)
+	fmt.Printf("Registration URL: %s\n", registrationURL)
+	fmt.Printf("Expires: %s\n", invite.ExpiresAt.Format(time.RFC3339))
+
+	return nil
 }
 
 // SafeRedirectPath validates a redirect path, falling back to defaultPath.

@@ -8,7 +8,7 @@ import (
 	"testing/fstest"
 
 	"codeberg.org/oliverandrich/burrow"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -157,24 +157,25 @@ func TestMiddlewareSetsLocale(t *testing.T) {
 	err := app.AddTranslations(testTranslationsFS)
 	require.NoError(t, err)
 
-	e := echo.New()
+	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
-		e.Use(mw)
+		r.Use(mw)
 	}
 
 	var gotLocale string
 	var gotTranslation string
-	e.GET("/test", func(c *echo.Context) error {
-		ctx := c.Request().Context()
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		gotLocale = Locale(ctx)
 		gotTranslation = T(ctx, "hello")
-		return c.String(http.StatusOK, "ok")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Accept-Language", "de-DE,de;q=0.9,en;q=0.8")
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "de", gotLocale)
@@ -186,20 +187,21 @@ func TestMiddlewareDefaultsToEnglish(t *testing.T) {
 	err := app.AddTranslations(testTranslationsFS)
 	require.NoError(t, err)
 
-	e := echo.New()
+	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
-		e.Use(mw)
+		r.Use(mw)
 	}
 
 	var gotLocale string
-	e.GET("/test", func(c *echo.Context) error {
-		gotLocale = Locale(c.Request().Context())
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotLocale = Locale(r.Context())
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "en", gotLocale)

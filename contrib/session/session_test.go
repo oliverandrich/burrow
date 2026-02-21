@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -63,16 +63,15 @@ func configuredApp(t *testing.T) *App {
 	return app
 }
 
-// echoWithSession creates an Echo instance with session middleware and returns
-// a helper to create contexts that have the session state injected.
-func echoWithSession(t *testing.T) (*echo.Echo, *App) {
+// routerWithSession creates a chi router with session middleware.
+func routerWithSession(t *testing.T) (chi.Router, *App) {
 	t.Helper()
 	app := configuredApp(t)
-	e := echo.New()
+	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
-		e.Use(mw)
+		r.Use(mw)
 	}
-	return e, app
+	return r, app
 }
 
 func TestConfigureCreatesManager(t *testing.T) {
@@ -143,22 +142,22 @@ func TestSessionParseInvalidCookie(t *testing.T) {
 // --- Middleware tests ---
 
 func TestMiddlewareSetsSessionValues(t *testing.T) {
-	e, app := echoWithSession(t)
+	r, app := routerWithSession(t)
 	mgr := app.Manager()
 
 	cookie, err := mgr.Save(map[string]any{"user_id": int64(42)})
 	require.NoError(t, err)
 
 	var gotValues map[string]any
-	e.GET("/test", func(c *echo.Context) error {
-		gotValues = GetValues(c)
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotValues = GetValues(r)
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	require.NotNil(t, gotValues)
@@ -166,17 +165,17 @@ func TestMiddlewareSetsSessionValues(t *testing.T) {
 }
 
 func TestMiddlewareNoCookie(t *testing.T) {
-	e, _ := echoWithSession(t)
+	r, _ := routerWithSession(t)
 
 	var gotValues map[string]any
-	e.GET("/test", func(c *echo.Context) error {
-		gotValues = GetValues(c)
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotValues = GetValues(r)
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Nil(t, gotValues)
@@ -191,119 +190,114 @@ func TestClear(t *testing.T) {
 // --- Typed getter tests ---
 
 func TestGetString(t *testing.T) {
-	e, _ := echoWithSession(t)
+	r, _ := routerWithSession(t)
 
 	var got string
-	e.GET("/test", func(c *echo.Context) error {
-		// Manually inject state for getter test.
-		s := getState(c)
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		s := getState(r)
 		s.values = map[string]any{"theme": "dark", "count": int64(5)}
-		got = GetString(c, "theme")
-		return c.String(http.StatusOK, "ok")
+		got = GetString(r, "theme")
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, "dark", got)
 }
 
 func TestGetStringMissing(t *testing.T) {
-	e, _ := echoWithSession(t)
+	r, _ := routerWithSession(t)
 
 	var got string
-	e.GET("/test", func(c *echo.Context) error {
-		got = GetString(c, "nonexistent")
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		got = GetString(r, "nonexistent")
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Empty(t, got)
 }
 
 func TestGetStringWrongType(t *testing.T) {
-	e, _ := echoWithSession(t)
+	r, _ := routerWithSession(t)
 
 	var got string
-	e.GET("/test", func(c *echo.Context) error {
-		s := getState(c)
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		s := getState(r)
 		s.values = map[string]any{"count": int64(5)}
-		got = GetString(c, "count")
-		return c.String(http.StatusOK, "ok")
+		got = GetString(r, "count")
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Empty(t, got)
 }
 
 func TestGetInt64(t *testing.T) {
-	e, _ := echoWithSession(t)
+	r, _ := routerWithSession(t)
 
 	var got int64
-	e.GET("/test", func(c *echo.Context) error {
-		s := getState(c)
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		s := getState(r)
 		s.values = map[string]any{"user_id": int64(42), "name": "alice"}
-		got = GetInt64(c, "user_id")
-		return c.String(http.StatusOK, "ok")
+		got = GetInt64(r, "user_id")
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, int64(42), got)
 }
 
 func TestGetInt64WrongType(t *testing.T) {
-	e, _ := echoWithSession(t)
+	r, _ := routerWithSession(t)
 
 	var got int64
-	e.GET("/test", func(c *echo.Context) error {
-		s := getState(c)
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		s := getState(r)
 		s.values = map[string]any{"name": "alice"}
-		got = GetInt64(c, "name")
-		return c.String(http.StatusOK, "ok")
+		got = GetInt64(r, "name")
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, int64(0), got)
 }
 
 func TestGetValuesNoSession(t *testing.T) {
-	e := echo.New() // No session middleware.
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	assert.Nil(t, GetValues(c))
-	assert.Empty(t, GetString(c, "anything"))
-	assert.Equal(t, int64(0), GetInt64(c, "anything"))
+	assert.Nil(t, GetValues(req))
+	assert.Empty(t, GetString(req, "anything"))
+	assert.Equal(t, int64(0), GetInt64(req, "anything"))
 }
 
 // --- Context-based setter tests ---
 
 func TestSet(t *testing.T) {
-	e, _ := echoWithSession(t)
+	r, _ := routerWithSession(t)
 
 	var setErr error
-	e.GET("/test", func(c *echo.Context) error {
-		setErr = Set(c, "theme", "dark")
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		setErr = Set(w, r, "theme", "dark")
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	require.NoError(t, setErr)
 
@@ -314,23 +308,23 @@ func TestSet(t *testing.T) {
 }
 
 func TestSetAddsToExistingSession(t *testing.T) {
-	e, app := echoWithSession(t)
+	r, app := routerWithSession(t)
 	mgr := app.Manager()
 
 	cookie, err := mgr.Save(map[string]any{"user_id": int64(42)})
 	require.NoError(t, err)
 
 	var values map[string]any
-	e.GET("/test", func(c *echo.Context) error {
-		_ = Set(c, "theme", "dark")
-		values = GetValues(c)
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		_ = Set(w, r, "theme", "dark")
+		values = GetValues(r)
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	require.NotNil(t, values)
 	assert.Equal(t, int64(42), values["user_id"])
@@ -338,33 +332,31 @@ func TestSetAddsToExistingSession(t *testing.T) {
 }
 
 func TestSetWithoutMiddleware(t *testing.T) {
-	e := echo.New() // No session middleware.
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
-	err := Set(c, "key", "value")
+	err := Set(rec, req, "key", "value")
 	require.Error(t, err)
 }
 
 func TestDeleteKey(t *testing.T) {
-	e, app := echoWithSession(t)
+	r, app := routerWithSession(t)
 	mgr := app.Manager()
 
 	cookie, err := mgr.Save(map[string]any{"user_id": int64(42), "theme": "dark"})
 	require.NoError(t, err)
 
 	var values map[string]any
-	e.GET("/test", func(c *echo.Context) error {
-		_ = Delete(c, "theme")
-		values = GetValues(c)
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		_ = Delete(w, r, "theme")
+		values = GetValues(r)
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	require.NotNil(t, values)
 	assert.Equal(t, int64(42), values["user_id"])
@@ -373,25 +365,24 @@ func TestDeleteKey(t *testing.T) {
 }
 
 func TestDeleteWithoutMiddleware(t *testing.T) {
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
-	err := Delete(c, "key")
+	err := Delete(rec, req, "key")
 	require.Error(t, err)
 }
 
 func TestSaveContext(t *testing.T) {
-	e, _ := echoWithSession(t)
+	r, _ := routerWithSession(t)
 
-	e.GET("/test", func(c *echo.Context) error {
-		return Save(c, map[string]any{"user_id": int64(99)})
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		_ = Save(w, r, map[string]any{"user_id": int64(99)})
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	// Verify a session cookie was written.
 	cookies := rec.Result().Cookies()
@@ -400,23 +391,23 @@ func TestSaveContext(t *testing.T) {
 }
 
 func TestSaveContextReplacesValues(t *testing.T) {
-	e, app := echoWithSession(t)
+	r, app := routerWithSession(t)
 	mgr := app.Manager()
 
 	cookie, err := mgr.Save(map[string]any{"old_key": "old_value"})
 	require.NoError(t, err)
 
 	var values map[string]any
-	e.GET("/test", func(c *echo.Context) error {
-		_ = Save(c, map[string]any{"new_key": "new_value"})
-		values = GetValues(c)
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		_ = Save(w, r, map[string]any{"new_key": "new_value"})
+		values = GetValues(r)
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	require.NotNil(t, values)
 	assert.Equal(t, "new_value", values["new_key"])
@@ -425,33 +416,31 @@ func TestSaveContextReplacesValues(t *testing.T) {
 }
 
 func TestSaveContextWithoutMiddleware(t *testing.T) {
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
-	err := Save(c, map[string]any{"key": "value"})
+	err := Save(rec, req, map[string]any{"key": "value"})
 	require.Error(t, err)
 }
 
 func TestClearContext(t *testing.T) {
-	e, app := echoWithSession(t)
+	r, app := routerWithSession(t)
 	mgr := app.Manager()
 
 	cookie, err := mgr.Save(map[string]any{"user_id": int64(42)})
 	require.NoError(t, err)
 
 	var values map[string]any
-	e.GET("/test", func(c *echo.Context) error {
-		Clear(c)
-		values = GetValues(c)
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		Clear(w, r)
+		values = GetValues(r)
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Nil(t, values) // Values should be cleared.
 
@@ -462,31 +451,29 @@ func TestClearContext(t *testing.T) {
 }
 
 func TestClearContextWithoutMiddleware(t *testing.T) {
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
 	// Should not panic.
-	assert.NotPanics(t, func() { Clear(c) })
+	assert.NotPanics(t, func() { Clear(rec, req) })
 }
 
 // --- Roundtrip: Set then verify via Parse ---
 
 func TestSetRoundtrip(t *testing.T) {
-	e, app := echoWithSession(t)
+	r, app := routerWithSession(t)
 	mgr := app.Manager()
 
 	var responseCookies []*http.Cookie
-	e.GET("/test", func(c *echo.Context) error {
-		_ = Set(c, "user_id", int64(42))
-		_ = Set(c, "theme", "dark")
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		_ = Set(w, r, "user_id", int64(42))
+		_ = Set(w, r, "theme", "dark")
+		w.WriteHeader(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 	responseCookies = rec.Result().Cookies()
 
 	// Parse the last cookie (the most recent Set-Cookie wins).
@@ -506,35 +493,31 @@ func TestSetRoundtrip(t *testing.T) {
 // --- Inject test helper ---
 
 func TestInject(t *testing.T) {
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
-	Inject(c, map[string]any{"user_id": int64(42)})
+	req = Inject(req, map[string]any{"user_id": int64(42)})
 
 	// Getters should work.
-	assert.Equal(t, int64(42), GetInt64(c, "user_id"))
+	assert.Equal(t, int64(42), GetInt64(req, "user_id"))
 
 	// Set should work (writes cookie).
-	require.NoError(t, Set(c, "theme", "dark"))
-	assert.Equal(t, "dark", GetString(c, "theme"))
+	require.NoError(t, Set(rec, req, "theme", "dark"))
+	assert.Equal(t, "dark", GetString(req, "theme"))
 
 	cookies := rec.Result().Cookies()
 	require.NotEmpty(t, cookies)
 }
 
 func TestInjectNilValues(t *testing.T) {
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
-	Inject(c, nil)
+	req = Inject(req, nil)
 
-	assert.Nil(t, GetValues(c))
+	assert.Nil(t, GetValues(req))
 
 	// Set should still work (creates the map).
-	require.NoError(t, Set(c, "key", "value"))
-	assert.Equal(t, "value", GetString(c, "key"))
+	require.NoError(t, Set(rec, req, "key", "value"))
+	assert.Equal(t, "value", GetString(req, "key"))
 }

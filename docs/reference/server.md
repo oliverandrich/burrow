@@ -64,16 +64,18 @@ Boots and starts the server. This is a `cli.ActionFunc` — pass it directly to 
 When `Run()` is called, the following happens in order:
 
 1. **Parse config** — reads CLI flags, env vars, and TOML into a `Config` struct
-2. **Set up logging** — configures `slog` with the specified level and format
-3. **Open database** — connects to SQLite with WAL mode, foreign keys, and connection pool
-4. **Run migrations** — calls `RunAppMigrations` for every `Migratable` app
-5. **Register apps** — calls `Register()` on each app with the shared `AppConfig`
-6. **Configure apps** — calls `Configure()` on each `Configurable` app
-7. **Create Echo** — sets up the HTTP router with core middleware (recover, request ID, gzip, body limit)
-8. **Inject nav items** — collects nav items from all `HasNavItems` apps into request context
-9. **Register middleware** — applies middleware from all `HasMiddleware` apps
-10. **Register routes** — calls `Routes()` on all `HasRoutes` apps
-11. **Start HTTP server** — listens on the configured address with graceful shutdown
+2. **Open database** — connects to SQLite with WAL mode, foreign keys, and connection pool
+3. **Run migrations** — calls `RunAppMigrations` for every `Migratable` app
+4. **Register apps** — calls `Register()` on each app with the shared `AppConfig`
+5. **Configure apps** — calls `Configure()` on each `Configurable` app
+6. **Create router** — sets up Chi with core middleware (request logger, request ID, gzip, body limit)
+7. **Inject nav items** — collects nav items from all `HasNavItems` apps into request context
+8. **Register middleware** — applies middleware from all `HasMiddleware` apps
+9. **Register routes** — calls `Routes()` on all `HasRoutes` apps
+10. **Start HTTP server** — listens on the configured address with graceful shutdown
+
+!!! note "Logging"
+    The framework uses `slog.Default()` for all logging. Configure your preferred logger (text, JSON, [tint](https://github.com/lmittmann/tint), etc.) by calling `slog.SetDefault()` before starting the server.
 
 ## Registry
 
@@ -124,15 +126,15 @@ Collects and sorts nav items from all `HasNavItems` apps by position.
 #### RegisterMiddleware
 
 ```go
-func (r *Registry) RegisterMiddleware(e *echo.Echo)
+func (r *Registry) RegisterMiddleware(router chi.Router)
 ```
 
-Applies middleware from all `HasMiddleware` apps to the Echo instance.
+Applies middleware from all `HasMiddleware` apps to the router.
 
 #### RegisterRoutes
 
 ```go
-func (r *Registry) RegisterRoutes(e *echo.Echo)
+func (r *Registry) RegisterRoutes(router chi.Router)
 ```
 
 Calls `Routes()` on all `HasRoutes` apps.
@@ -172,7 +174,7 @@ Calls `Seed()` on each `Seedable` app in order.
 ## Render
 
 ```go
-func Render(c *echo.Context, statusCode int, component templ.Component) error
+func Render(w http.ResponseWriter, r *http.Request, statusCode int, component templ.Component) error
 ```
 
 Renders a Templ component into the HTTP response with the given status code. Uses a pooled buffer for efficiency.

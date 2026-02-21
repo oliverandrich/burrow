@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,44 +22,44 @@ type mockRenderer struct {
 	lastMethod string
 }
 
-func (m *mockRenderer) RegisterPage(c *echo.Context, _, _ bool, _, _ string) error {
+func (m *mockRenderer) RegisterPage(w http.ResponseWriter, _ *http.Request, _, _ bool, _, _ string) error {
 	m.lastMethod = "RegisterPage"
-	return c.String(http.StatusOK, "register")
+	return burrow.Text(w, http.StatusOK, "register")
 }
 
-func (m *mockRenderer) LoginPage(c *echo.Context, _ string) error {
+func (m *mockRenderer) LoginPage(w http.ResponseWriter, _ *http.Request, _ string) error {
 	m.lastMethod = "LoginPage"
-	return c.String(http.StatusOK, "login")
+	return burrow.Text(w, http.StatusOK, "login")
 }
 
-func (m *mockRenderer) CredentialsPage(c *echo.Context, _ []Credential) error {
+func (m *mockRenderer) CredentialsPage(w http.ResponseWriter, _ *http.Request, _ []Credential) error {
 	m.lastMethod = "CredentialsPage"
-	return c.String(http.StatusOK, "credentials")
+	return burrow.Text(w, http.StatusOK, "credentials")
 }
 
-func (m *mockRenderer) RecoveryPage(c *echo.Context, _ string) error {
+func (m *mockRenderer) RecoveryPage(w http.ResponseWriter, _ *http.Request, _ string) error {
 	m.lastMethod = "RecoveryPage"
-	return c.String(http.StatusOK, "recovery")
+	return burrow.Text(w, http.StatusOK, "recovery")
 }
 
-func (m *mockRenderer) VerifyPendingPage(c *echo.Context) error {
+func (m *mockRenderer) VerifyPendingPage(w http.ResponseWriter, _ *http.Request) error {
 	m.lastMethod = "VerifyPendingPage"
-	return c.String(http.StatusOK, "verify-pending")
+	return burrow.Text(w, http.StatusOK, "verify-pending")
 }
 
-func (m *mockRenderer) VerifyEmailSuccess(c *echo.Context) error {
+func (m *mockRenderer) VerifyEmailSuccess(w http.ResponseWriter, _ *http.Request) error {
 	m.lastMethod = "VerifyEmailSuccess"
-	return c.String(http.StatusOK, "verify-success")
+	return burrow.Text(w, http.StatusOK, "verify-success")
 }
 
-func (m *mockRenderer) VerifyEmailError(c *echo.Context, _ string) error {
+func (m *mockRenderer) VerifyEmailError(w http.ResponseWriter, _ *http.Request, _ string) error {
 	m.lastMethod = "VerifyEmailError"
-	return c.String(http.StatusBadRequest, "verify-error")
+	return burrow.Text(w, http.StatusBadRequest, "verify-error")
 }
 
-func (m *mockRenderer) InvitesPage(c *echo.Context, _ []Invite, _ string, _ bool) error {
+func (m *mockRenderer) InvitesPage(w http.ResponseWriter, _ *http.Request, _ []Invite, _ string, _ bool) error {
 	m.lastMethod = "InvitesPage"
-	return c.String(http.StatusOK, "invites")
+	return burrow.Text(w, http.StatusOK, "invites")
 }
 
 type mockEmailService struct {
@@ -126,13 +127,14 @@ func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRende
 	return h, repo, renderer
 }
 
-func echoContext(e *echo.Echo, req *http.Request, rec *httptest.ResponseRecorder, user *User) *echo.Context {
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
+// requestWithSession creates a request with session state injected, optionally with a user.
+func requestWithSession(req *http.Request, user *User) *http.Request {
+	req = session.Inject(req, nil)
 	if user != nil {
-		SetUser(c, user)
+		ctx := WithUser(req.Context(), user)
+		req = req.WithContext(ctx)
 	}
-	return c
+	return req
 }
 
 // --- Handler creation tests ---
@@ -158,13 +160,11 @@ func TestNewHandlersInviteOnly(t *testing.T) {
 
 func TestRegisterPage(t *testing.T) {
 	h, _, r := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/register", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterPage(c)
+	err := h.RegisterPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -173,13 +173,11 @@ func TestRegisterPage(t *testing.T) {
 
 func TestRegisterPageInviteOnlyNoToken(t *testing.T) {
 	h, _, r := newTestHandlersInviteOnly(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/register", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterPage(c)
+	err := h.RegisterPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "RegisterPage", r.lastMethod)
@@ -196,13 +194,11 @@ func TestRegisterPageInviteOnlyWithValidToken(t *testing.T) {
 	}
 	require.NoError(t, repo.CreateInvite(context.Background(), invite))
 
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/register?invite=validtoken", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterPage(c)
+	err := h.RegisterPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "RegisterPage", r.lastMethod)
@@ -212,15 +208,13 @@ func TestRegisterPageInviteOnlyWithValidToken(t *testing.T) {
 
 func TestRegisterBeginUsernameMode(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	body := strings.NewReader(`{"username":"newuser"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterBegin(c)
+	err := h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -230,15 +224,13 @@ func TestRegisterBeginUsernameMode(t *testing.T) {
 
 func TestRegisterBeginMissingUsername(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	body := strings.NewReader(`{"username":""}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterBegin(c)
+	err := h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -251,15 +243,13 @@ func TestRegisterBeginUsernameExists(t *testing.T) {
 	_, err := repo.CreateUser(context.Background(), "taken", "")
 	require.NoError(t, err)
 
-	e := echo.New()
 	body := strings.NewReader(`{"username":"taken"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err = h.RegisterBegin(c)
+	err = h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusConflict, rec.Code)
@@ -268,15 +258,13 @@ func TestRegisterBeginUsernameExists(t *testing.T) {
 
 func TestRegisterBeginInvalidJSON(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	body := strings.NewReader(`{invalid}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterBegin(c)
+	err := h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -284,15 +272,13 @@ func TestRegisterBeginInvalidJSON(t *testing.T) {
 
 func TestRegisterBeginEmailMode(t *testing.T) {
 	h, _, _ := newTestHandlersEmailMode(t)
-	e := echo.New()
 	body := strings.NewReader(`{"email":"test@example.com"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterBegin(c)
+	err := h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -301,15 +287,13 @@ func TestRegisterBeginEmailMode(t *testing.T) {
 
 func TestRegisterBeginEmailModeMissingEmail(t *testing.T) {
 	h, _, _ := newTestHandlersEmailMode(t)
-	e := echo.New()
 	body := strings.NewReader(`{"email":""}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterBegin(c)
+	err := h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -322,15 +306,13 @@ func TestRegisterBeginEmailModeEmailExists(t *testing.T) {
 	_, err := repo.CreateUserWithEmail(context.Background(), "taken@example.com", "")
 	require.NoError(t, err)
 
-	e := echo.New()
 	body := strings.NewReader(`{"email":"taken@example.com"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err = h.RegisterBegin(c)
+	err = h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusConflict, rec.Code)
@@ -343,15 +325,13 @@ func TestRegisterBeginInviteOnlyNoToken(t *testing.T) {
 	_, err := repo.CreateUser(context.Background(), "existing", "")
 	require.NoError(t, err)
 
-	e := echo.New()
 	body := strings.NewReader(`{"username":"newuser"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err = h.RegisterBegin(c)
+	err = h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -361,15 +341,13 @@ func TestRegisterBeginInviteOnlyFirstUserBypass(t *testing.T) {
 	h, _, _ := newTestHandlersInviteOnly(t)
 
 	// No users exist - first user bypasses invite requirement.
-	e := echo.New()
 	body := strings.NewReader(`{"username":"firstuser"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterBegin(c)
+	err := h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -390,15 +368,13 @@ func TestRegisterBeginInviteOnlyValidToken(t *testing.T) {
 	}
 	require.NoError(t, repo.CreateInvite(context.Background(), invite))
 
-	e := echo.New()
 	body := strings.NewReader(`{"username":"newuser","invite":"invitetoken"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err = h.RegisterBegin(c)
+	err = h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -418,15 +394,13 @@ func TestRegisterBeginInviteOnlyExpiredToken(t *testing.T) {
 	}
 	require.NoError(t, repo.CreateInvite(context.Background(), invite))
 
-	e := echo.New()
 	body := strings.NewReader(`{"username":"newuser","invite":"expiredtoken"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err = h.RegisterBegin(c)
+	err = h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -436,13 +410,11 @@ func TestRegisterBeginInviteOnlyExpiredToken(t *testing.T) {
 
 func TestRegisterFinishInvalidUserID(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/finish?user_id=invalid", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterFinish(c)
+	err := h.RegisterFinish(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -451,13 +423,11 @@ func TestRegisterFinishInvalidUserID(t *testing.T) {
 
 func TestRegisterFinishSessionExpired(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/auth/register/finish?user_id=99999", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RegisterFinish(c)
+	err := h.RegisterFinish(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -467,13 +437,11 @@ func TestRegisterFinishSessionExpired(t *testing.T) {
 
 func TestLoginPage(t *testing.T) {
 	h, _, r := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.LoginPage(c)
+	err := h.LoginPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -484,13 +452,11 @@ func TestLoginPage(t *testing.T) {
 
 func TestLoginBegin(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/auth/login/begin", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.LoginBegin(c)
+	err := h.LoginBegin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -502,13 +468,11 @@ func TestLoginBegin(t *testing.T) {
 
 func TestLoginFinishMissingSessionID(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/auth/login/finish", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.LoginFinish(c)
+	err := h.LoginFinish(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -517,13 +481,11 @@ func TestLoginFinishMissingSessionID(t *testing.T) {
 
 func TestLoginFinishSessionExpired(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/auth/login/finish?session_id=nonexistent", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.LoginFinish(c)
+	err := h.LoginFinish(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -534,13 +496,11 @@ func TestLoginFinishSessionExpired(t *testing.T) {
 
 func TestLogout(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.Logout(c)
+	err := h.Logout(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
@@ -558,12 +518,11 @@ func TestCredentialsPage(t *testing.T) {
 	user, err := repo.CreateUser(context.Background(), "alice", "")
 	require.NoError(t, err)
 
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/credentials", nil)
+	req = requestWithSession(req, user)
 	rec := httptest.NewRecorder()
-	c := echoContext(e, req, rec, user)
 
-	err = h.CredentialsPage(c)
+	err = h.CredentialsPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -576,15 +535,16 @@ func TestDeleteCredentialInvalidID(t *testing.T) {
 	h, repo, _ := newTestHandlers(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 
-	e := echo.New()
+	router := chi.NewRouter()
+	router.Delete("/auth/credentials/{id}", func(w http.ResponseWriter, r *http.Request) {
+		r = requestWithSession(r, user)
+		_ = h.DeleteCredential(w, r)
+	})
+
 	req := httptest.NewRequest(http.MethodDelete, "/auth/credentials/invalid", nil)
 	rec := httptest.NewRecorder()
-	c := echoContext(e, req, rec, user)
-	c.SetPathValues(echo.PathValues{{Name: "id", Value: "invalid"}})
+	router.ServeHTTP(rec, req)
 
-	err := h.DeleteCredential(c)
-
-	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
@@ -599,15 +559,16 @@ func TestDeleteCredentialLastCredential(t *testing.T) {
 	}
 	require.NoError(t, repo.CreateCredential(context.Background(), cred))
 
-	e := echo.New()
+	router := chi.NewRouter()
+	router.Delete("/auth/credentials/{id}", func(w http.ResponseWriter, r *http.Request) {
+		r = requestWithSession(r, user)
+		_ = h.DeleteCredential(w, r)
+	})
+
 	req := httptest.NewRequest(http.MethodDelete, "/auth/credentials/"+strconv.FormatInt(cred.ID, 10), nil)
 	rec := httptest.NewRecorder()
-	c := echoContext(e, req, rec, user)
-	c.SetPathValues(echo.PathValues{{Name: "id", Value: strconv.FormatInt(cred.ID, 10)}})
+	router.ServeHTTP(rec, req)
 
-	err := h.DeleteCredential(c)
-
-	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "cannot delete last credential")
 }
@@ -620,15 +581,16 @@ func TestDeleteCredentialSuccess(t *testing.T) {
 	require.NoError(t, repo.CreateCredential(context.Background(), cred1))
 	require.NoError(t, repo.CreateCredential(context.Background(), cred2))
 
-	e := echo.New()
+	router := chi.NewRouter()
+	router.Delete("/auth/credentials/{id}", func(w http.ResponseWriter, r *http.Request) {
+		r = requestWithSession(r, user)
+		_ = h.DeleteCredential(w, r)
+	})
+
 	req := httptest.NewRequest(http.MethodDelete, "/auth/credentials/"+strconv.FormatInt(cred1.ID, 10), nil)
 	rec := httptest.NewRecorder()
-	c := echoContext(e, req, rec, user)
-	c.SetPathValues(echo.PathValues{{Name: "id", Value: strconv.FormatInt(cred1.ID, 10)}})
+	router.ServeHTTP(rec, req)
 
-	err := h.DeleteCredential(c)
-
-	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
@@ -636,13 +598,11 @@ func TestDeleteCredentialSuccess(t *testing.T) {
 
 func TestRecoveryPage(t *testing.T) {
 	h, _, r := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/recovery", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RecoveryPage(c)
+	err := h.RecoveryPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "RecoveryPage", r.lastMethod)
@@ -663,15 +623,13 @@ func TestRecoveryLoginMissingFields(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := echo.New()
 			body := strings.NewReader(tt.body)
 			req := httptest.NewRequest(http.MethodPost, "/auth/recovery", body)
-			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			req.Header.Set("Content-Type", "application/json")
+			req = requestWithSession(req, nil)
 			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
-			session.Inject(c, nil)
 
-			err := h.RecoveryLogin(c)
+			err := h.RecoveryLogin(rec, req)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusBadRequest, rec.Code)
 		})
@@ -680,15 +638,13 @@ func TestRecoveryLoginMissingFields(t *testing.T) {
 
 func TestRecoveryLoginUserNotFound(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	body := strings.NewReader(`{"username":"nonexistent","code":"abcd-efgh-ijkl"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/recovery", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.RecoveryLogin(c)
+	err := h.RecoveryLogin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -704,15 +660,13 @@ func TestRecoveryLoginInvalidCode(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))
 
-	e := echo.New()
 	body := strings.NewReader(`{"username":"alice","code":"wrong-code-here"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/recovery", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err = h.RecoveryLogin(c)
+	err = h.RecoveryLogin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -727,15 +681,13 @@ func TestRecoveryLoginSuccess(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))
 
-	e := echo.New()
 	body := strings.NewReader(`{"username":"alice","code":"` + codes[0] + `"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/recovery", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err = h.RecoveryLogin(c)
+	err = h.RecoveryLogin(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -754,12 +706,11 @@ func TestRegenerateRecoveryCodes(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))
 
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/auth/recovery-codes/regenerate", nil)
+	req = requestWithSession(req, user)
 	rec := httptest.NewRecorder()
-	c := echoContext(e, req, rec, user)
 
-	err = h.RegenerateRecoveryCodes(c)
+	err = h.RegenerateRecoveryCodes(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -771,13 +722,11 @@ func TestRegenerateRecoveryCodes(t *testing.T) {
 
 func TestVerifyPendingPage(t *testing.T) {
 	h, _, r := newTestHandlersEmailMode(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/verify-pending", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.VerifyPendingPage(c)
+	err := h.VerifyPendingPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "VerifyPendingPage", r.lastMethod)
@@ -785,13 +734,11 @@ func TestVerifyPendingPage(t *testing.T) {
 
 func TestVerifyEmailMissingToken(t *testing.T) {
 	h, _, r := newTestHandlersEmailMode(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.VerifyEmail(c)
+	err := h.VerifyEmail(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "VerifyEmailError", r.lastMethod)
@@ -799,13 +746,11 @@ func TestVerifyEmailMissingToken(t *testing.T) {
 
 func TestVerifyEmailInvalidToken(t *testing.T) {
 	h, _, r := newTestHandlersEmailMode(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token=invalid", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.VerifyEmail(c)
+	err := h.VerifyEmail(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "VerifyEmailError", r.lastMethod)
@@ -817,13 +762,11 @@ func TestVerifyEmailExpiredToken(t *testing.T) {
 	tokenHash := HashToken("expiredtoken")
 	require.NoError(t, repo.CreateEmailVerificationToken(context.Background(), user.ID, tokenHash, time.Now().Add(-time.Hour)))
 
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token=expiredtoken", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.VerifyEmail(c)
+	err := h.VerifyEmail(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "VerifyEmailError", r.lastMethod)
@@ -835,13 +778,11 @@ func TestVerifyEmailSuccess(t *testing.T) {
 	tokenHash := HashToken("validtoken")
 	require.NoError(t, repo.CreateEmailVerificationToken(context.Background(), user.ID, tokenHash, time.Now().Add(24*time.Hour)))
 
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token=validtoken", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.VerifyEmail(c)
+	err := h.VerifyEmail(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "VerifyEmailSuccess", r.lastMethod)
@@ -855,15 +796,13 @@ func TestVerifyEmailSuccess(t *testing.T) {
 
 func TestResendVerificationMissingEmail(t *testing.T) {
 	h, _, _ := newTestHandlersEmailMode(t)
-	e := echo.New()
 	body := strings.NewReader(`{"email":""}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/resend-verification", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.ResendVerification(c)
+	err := h.ResendVerification(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -871,15 +810,13 @@ func TestResendVerificationMissingEmail(t *testing.T) {
 
 func TestResendVerificationNonexistentEmail(t *testing.T) {
 	h, _, _ := newTestHandlersEmailMode(t)
-	e := echo.New()
 	body := strings.NewReader(`{"email":"nobody@example.com"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/resend-verification", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.ResendVerification(c)
+	err := h.ResendVerification(rec, req)
 
 	require.NoError(t, err)
 	// Should still return OK (don't reveal if email exists).
@@ -890,13 +827,11 @@ func TestResendVerificationNonexistentEmail(t *testing.T) {
 
 func TestInvitesPage(t *testing.T) {
 	h, _, r := newTestHandlers(t)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/admin/invites", nil)
+	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
 
-	err := h.InvitesPage(c)
+	err := h.InvitesPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "InvitesPage", r.lastMethod)
@@ -908,14 +843,13 @@ func TestCreateInvite(t *testing.T) {
 	h, repo, r := newTestHandlers(t)
 	user, _ := repo.CreateUser(context.Background(), "admin", "")
 
-	e := echo.New()
 	body := strings.NewReader(`email=invitee@example.com`)
 	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = requestWithSession(req, user)
 	rec := httptest.NewRecorder()
-	c := echoContext(e, req, rec, user)
 
-	err := h.CreateInvite(c)
+	err := h.CreateInvite(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "InvitesPage", r.lastMethod)
@@ -928,15 +862,13 @@ func TestCreateInvite(t *testing.T) {
 
 func TestCreateInviteNoAuth(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
 	body := strings.NewReader(`email=test@example.com`)
 	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = requestWithSession(req, nil) // No user in context.
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil) // No user in context.
 
-	err := h.CreateInvite(c)
+	err := h.CreateInvite(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -946,16 +878,16 @@ func TestCreateInviteNoAuth(t *testing.T) {
 
 func TestDeleteInviteInvalidID(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	e := echo.New()
+	router := chi.NewRouter()
+	router.Delete("/admin/invites/{id}", func(w http.ResponseWriter, r *http.Request) {
+		r = requestWithSession(r, nil)
+		_ = h.DeleteInvite(w, r)
+	})
+
 	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/invalid", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
-	c.SetPathValues(echo.PathValues{{Name: "id", Value: "invalid"}})
+	router.ServeHTTP(rec, req)
 
-	err := h.DeleteInvite(c)
-
-	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
@@ -968,15 +900,15 @@ func TestDeleteInviteSuccess(t *testing.T) {
 	}
 	require.NoError(t, repo.CreateInvite(context.Background(), invite))
 
-	e := echo.New()
+	router := chi.NewRouter()
+	router.Delete("/admin/invites/{id}", func(w http.ResponseWriter, r *http.Request) {
+		r = requestWithSession(r, nil)
+		_ = h.DeleteInvite(w, r)
+	})
+
 	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10), nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	session.Inject(c, nil)
-	c.SetPathValues(echo.PathValues{{Name: "id", Value: strconv.FormatInt(invite.ID, 10)}})
+	router.ServeHTTP(rec, req)
 
-	err := h.DeleteInvite(c)
-
-	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 }

@@ -11,7 +11,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -28,28 +28,31 @@ type fullApp struct {
 	registered bool
 }
 
-func (a *fullApp) Name() string                      { return "full" }
-func (a *fullApp) Register(_ *AppConfig) error       { a.registered = true; return nil }
-func (a *fullApp) MigrationFS() fs.FS                { return nil }
-func (a *fullApp) Middleware() []echo.MiddlewareFunc { return nil }
-func (a *fullApp) NavItems() []NavItem               { return nil }
-func (a *fullApp) Flags() []cli.Flag                 { return nil }
-func (a *fullApp) Configure(_ *cli.Command) error    { return nil }
-func (a *fullApp) CLICommands() []*cli.Command       { return nil }
-func (a *fullApp) Seed(_ context.Context) error      { return nil }
-func (a *fullApp) Routes(_ *echo.Echo)               {}
+func (a *fullApp) Name() string                                  { return "full" }
+func (a *fullApp) Register(_ *AppConfig) error                   { a.registered = true; return nil }
+func (a *fullApp) MigrationFS() fs.FS                            { return nil }
+func (a *fullApp) Middleware() []func(http.Handler) http.Handler { return nil }
+func (a *fullApp) NavItems() []NavItem                           { return nil }
+func (a *fullApp) Flags() []cli.Flag                             { return nil }
+func (a *fullApp) Configure(_ *cli.Command) error                { return nil }
+func (a *fullApp) CLICommands() []*cli.Command                   { return nil }
+func (a *fullApp) Seed(_ context.Context) error                  { return nil }
+func (a *fullApp) Routes(_ chi.Router)                           {}
+func (a *fullApp) AdminRoutes(_ chi.Router)                      {}
+func (a *fullApp) AdminNavItems() []NavItem                      { return nil }
 
 // trackingApp records calls and provides test data for lifecycle methods.
 type trackingApp struct {
-	registerFn func(cfg *AppConfig) error
-	name       string
-	navItems   []NavItem
-	middleware []echo.MiddlewareFunc
-	flags      []cli.Flag
-	commands   []*cli.Command
-	registered bool
-	configured bool
-	seeded     bool
+	registerFn    func(cfg *AppConfig) error
+	name          string
+	navItems      []NavItem
+	adminNavItems []NavItem
+	middleware    []func(http.Handler) http.Handler
+	flags         []cli.Flag
+	commands      []*cli.Command
+	registered    bool
+	configured    bool
+	seeded        bool
 }
 
 func (a *trackingApp) Name() string { return a.name }
@@ -60,12 +63,14 @@ func (a *trackingApp) Register(cfg *AppConfig) error {
 	}
 	return nil
 }
-func (a *trackingApp) NavItems() []NavItem               { return a.navItems }
-func (a *trackingApp) Middleware() []echo.MiddlewareFunc { return a.middleware }
-func (a *trackingApp) Flags() []cli.Flag                 { return a.flags }
-func (a *trackingApp) Configure(_ *cli.Command) error    { a.configured = true; return nil }
-func (a *trackingApp) CLICommands() []*cli.Command       { return a.commands }
-func (a *trackingApp) Seed(_ context.Context) error      { a.seeded = true; return nil }
+func (a *trackingApp) NavItems() []NavItem                           { return a.navItems }
+func (a *trackingApp) Middleware() []func(http.Handler) http.Handler { return a.middleware }
+func (a *trackingApp) Flags() []cli.Flag                             { return a.flags }
+func (a *trackingApp) Configure(_ *cli.Command) error                { a.configured = true; return nil }
+func (a *trackingApp) CLICommands() []*cli.Command                   { return a.commands }
+func (a *trackingApp) Seed(_ context.Context) error                  { a.seeded = true; return nil }
+func (a *trackingApp) AdminRoutes(_ chi.Router)                      {}
+func (a *trackingApp) AdminNavItems() []NavItem                      { return a.adminNavItems }
 
 // failingApp returns errors from Register, Configure, or Seed.
 type failingApp struct {
@@ -108,6 +113,7 @@ var (
 	_ HasCLICommands  = (*fullApp)(nil)
 	_ Seedable        = (*fullApp)(nil)
 	_ HasRoutes       = (*fullApp)(nil)
+	_ HasAdmin        = (*fullApp)(nil)
 	_ HasDependencies = (*dependentApp)(nil)
 )
 
@@ -122,6 +128,7 @@ func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
 	_, hasCLI := app.(HasCLICommands)
 	_, isSeedable := app.(Seedable)
 	_, hasRoutes := app.(HasRoutes)
+	_, hasAdmin := app.(HasAdmin)
 
 	assert.False(t, isMigratable)
 	assert.False(t, hasMiddleware)
@@ -130,6 +137,7 @@ func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
 	assert.False(t, hasCLI)
 	assert.False(t, isSeedable)
 	assert.False(t, hasRoutes)
+	assert.False(t, hasAdmin)
 }
 
 func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
@@ -142,6 +150,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	_, hasCLI := app.(HasCLICommands)
 	_, isSeedable := app.(Seedable)
 	_, hasRoutes := app.(HasRoutes)
+	_, hasAdmin := app.(HasAdmin)
 
 	assert.True(t, isMigratable)
 	assert.True(t, hasMiddleware)
@@ -150,6 +159,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	assert.True(t, hasCLI)
 	assert.True(t, isSeedable)
 	assert.True(t, hasRoutes)
+	assert.True(t, hasAdmin)
 }
 
 func TestNavItemFields(t *testing.T) {
@@ -263,6 +273,7 @@ func TestRegistryAddLogsCapabilities(t *testing.T) {
 	assert.Contains(t, output, "config")
 	assert.Contains(t, output, "commands")
 	assert.Contains(t, output, "seed")
+	assert.Contains(t, output, "admin")
 }
 
 func TestRegistryAddLogsMinimalCapabilities(t *testing.T) {
@@ -365,24 +376,25 @@ func TestRegistryRegisterMiddleware(t *testing.T) {
 	reg := NewRegistry()
 
 	called := false
-	mw := func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
+	mw := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			called = true
-			return next(c)
-		}
+			next.ServeHTTP(w, r)
+		})
 	}
-	reg.Add(&trackingApp{name: "mw-app", middleware: []echo.MiddlewareFunc{mw}})
+	reg.Add(&trackingApp{name: "mw-app", middleware: []func(http.Handler) http.Handler{mw}})
 	reg.Add(&minimalApp{}) // No middleware, should be skipped.
 
-	e := echo.New()
-	reg.RegisterMiddleware(e)
+	r := chi.NewRouter()
+	reg.RegisterMiddleware(r)
 
-	e.GET("/test", func(c *echo.Context) error {
-		return c.String(http.StatusOK, "ok")
+	r.Get("/test", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
 	})
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.True(t, called)
 }
@@ -474,12 +486,12 @@ func TestRegistryRegisterRoutes(t *testing.T) {
 	reg.Add(routeApp)
 	reg.Add(&minimalApp{}) // No routes, should be skipped.
 
-	e := echo.New()
-	reg.RegisterRoutes(e)
+	r := chi.NewRouter()
+	reg.RegisterRoutes(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/from-app", nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "route-registered", rec.Body.String())
@@ -492,10 +504,44 @@ type routeApp struct {
 
 func (a *routeApp) Name() string                { return a.name }
 func (a *routeApp) Register(_ *AppConfig) error { return nil }
-func (a *routeApp) Routes(e *echo.Echo) {
-	e.GET("/from-app", func(c *echo.Context) error {
-		return c.String(http.StatusOK, "route-registered")
+func (a *routeApp) Routes(r chi.Router) {
+	r.Get("/from-app", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("route-registered"))
 	})
+}
+
+func TestRegistryAllAdminNavItemsSortedByPosition(t *testing.T) {
+	reg := NewRegistry()
+	reg.Add(&trackingApp{
+		name: "app1",
+		adminNavItems: []NavItem{
+			{Label: "Users", Position: 10},
+			{Label: "Settings", Position: 30},
+		},
+	})
+	reg.Add(&trackingApp{
+		name: "app2",
+		adminNavItems: []NavItem{
+			{Label: "Invites", Position: 20},
+		},
+	})
+	// minimalApp doesn't implement HasAdmin - but trackingApp always does.
+	// Add a minimalApp to test it is skipped.
+	reg.Add(&minimalApp{})
+
+	items := reg.AllAdminNavItems()
+	require.Len(t, items, 3)
+	assert.Equal(t, "Users", items[0].Label)
+	assert.Equal(t, "Invites", items[1].Label)
+	assert.Equal(t, "Settings", items[2].Label)
+}
+
+func TestRegistryAllAdminNavItemsEmpty(t *testing.T) {
+	reg := NewRegistry()
+	reg.Add(&minimalApp{})
+
+	items := reg.AllAdminNavItems()
+	assert.Empty(t, items)
 }
 
 func TestNavItemsSortStable(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
 )
 
@@ -111,16 +111,18 @@ func (a *App) NavItems() []burrow.NavItem {
 	}
 }
 
-func (a *App) Routes(e *echo.Echo) {
+func (a *App) Routes(r chi.Router) {
 	if a.handlers == nil {
 		return
 	}
 	h := a.handlers
 
-	g := e.Group("/notes", auth.RequireAuth())
-	g.GET("", h.List)
-	g.POST("", h.Create)
-	g.DELETE("/:id", h.Delete)
+	r.Route("/notes", func(r chi.Router) {
+		r.Use(auth.RequireAuth())
+		r.Get("/", burrow.Handle(h.List))
+		r.Post("/", burrow.Handle(h.Create))
+		r.Delete("/{id}", burrow.Handle(h.Delete))
+	})
 }
 
 // --- Handlers ---
@@ -136,60 +138,61 @@ func NewHandlers(repo *Repository) *Handlers {
 }
 
 // List renders the user's notes as JSON.
-func (h *Handlers) List(c *echo.Context) error {
-	user := auth.GetUser(c)
+func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+	user := auth.GetUser(r)
 	if user == nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}
 
-	notes, err := h.repo.ListByUserID(c.Request().Context(), user.ID)
+	notes, err := h.repo.ListByUserID(r.Context(), user.ID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
 	}
 
-	return c.JSON(http.StatusOK, notes)
+	return burrow.JSON(w, http.StatusOK, notes)
 }
 
 // Create adds a new note for the authenticated user.
-func (h *Handlers) Create(c *echo.Context) error {
-	user := auth.GetUser(c)
+func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
+	user := auth.GetUser(r)
 	if user == nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}
 
-	title := c.FormValue("title")
+	title := r.FormValue("title")
 	if title == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "title is required")
+		return burrow.NewHTTPError(http.StatusBadRequest, "title is required")
 	}
 
 	note := &Note{
 		UserID:  user.ID,
 		Title:   title,
-		Content: c.FormValue("content"),
+		Content: r.FormValue("content"),
 	}
 
-	if err := h.repo.Create(c.Request().Context(), note); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create note")
+	if err := h.repo.Create(r.Context(), note); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to create note")
 	}
 
-	return c.Redirect(http.StatusSeeOther, "/notes")
+	http.Redirect(w, r, "/notes", http.StatusSeeOther)
+	return nil
 }
 
 // Delete removes a note owned by the authenticated user.
-func (h *Handlers) Delete(c *echo.Context) error {
-	user := auth.GetUser(c)
+func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
+	user := auth.GetUser(r)
 	if user == nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}
 
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid note id")
+		return burrow.NewHTTPError(http.StatusBadRequest, "invalid note id")
 	}
 
-	if err := h.repo.Delete(c.Request().Context(), id, user.ID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete note")
+	if err := h.repo.Delete(r.Context(), id, user.ID); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete note")
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"status": "deleted"})
+	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }

@@ -85,7 +85,7 @@ Registered automatically — loads the user from the session on every request:
 
 ```go
 // In any handler, after auth middleware runs:
-user := auth.GetUser(c)  // *auth.User or nil
+user := auth.GetUser(r)  // *auth.User or nil
 ```
 
 ### RequireAuth
@@ -93,7 +93,10 @@ user := auth.GetUser(c)  // *auth.User or nil
 Redirects unauthenticated users to the login page:
 
 ```go
-g := e.Group("/notes", auth.RequireAuth())
+r.Route("/notes", func(r chi.Router) {
+    r.Use(auth.RequireAuth())
+    // ... routes
+})
 ```
 
 The original URL is preserved via a `?next=` parameter for post-login redirect.
@@ -103,20 +106,20 @@ The original URL is preserved via a `?next=` parameter for post-login redirect.
 Returns 403 if the user is not an admin:
 
 ```go
-admin := e.Group("/admin", auth.RequireAuth(), auth.RequireAdmin())
+r.Route("/admin", func(r chi.Router) {
+    r.Use(auth.RequireAuth(), auth.RequireAdmin())
+    // ... routes
+})
 ```
 
 ## Context Helpers
 
 ```go
-// Get the current user from Echo context.
-user := auth.GetUser(c)    // *auth.User or nil
+// Get the current user from request context.
+user := auth.GetUser(r)    // *auth.User or nil
 
 // Check if a user is logged in.
-if auth.IsAuthenticated(c) { ... }
-
-// Set user in context (used by the middleware, rarely needed in app code).
-auth.SetUser(c, user)
+if auth.IsAuthenticated(r) { ... }
 ```
 
 ## Renderer
@@ -125,14 +128,14 @@ The auth app accepts a `Renderer` interface for HTML pages:
 
 ```go
 type Renderer interface {
-    RegisterPage(c *echo.Context, useEmail, inviteOnly bool, email, invite string) error
-    LoginPage(c *echo.Context, loginRedirect string) error
-    CredentialsPage(c *echo.Context, creds []Credential) error
-    RecoveryPage(c *echo.Context, loginRedirect string) error
-    VerifyPendingPage(c *echo.Context) error
-    VerifyEmailSuccess(c *echo.Context) error
-    VerifyEmailError(c *echo.Context, errorCode string) error
-    InvitesPage(c *echo.Context, invites []Invite, createdURL string, useEmail bool) error
+    RegisterPage(w http.ResponseWriter, r *http.Request, useEmail, inviteOnly bool, email, invite string) error
+    LoginPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
+    CredentialsPage(w http.ResponseWriter, r *http.Request, creds []Credential) error
+    RecoveryPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
+    VerifyPendingPage(w http.ResponseWriter, r *http.Request) error
+    VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error
+    VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error
+    InvitesPage(w http.ResponseWriter, r *http.Request, invites []Invite, createdURL string, useEmail bool) error
 }
 ```
 

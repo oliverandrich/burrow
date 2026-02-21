@@ -10,13 +10,13 @@ The framework uses a three-tier configuration system. Values are resolved in thi
 ## Using CLI Flags
 
 ```bash
-go run main.go --port 3000 --log-level debug --database-dsn ./myapp.db
+go run main.go --port 3000 --database-dsn ./myapp.db
 ```
 
 ## Using Environment Variables
 
 ```bash
-PORT=3000 LOG_LEVEL=debug DATABASE_DSN=./myapp.db go run main.go
+PORT=3000 DATABASE_DSN=./myapp.db go run main.go
 ```
 
 ## Using a TOML Config File
@@ -45,10 +45,6 @@ host = "0.0.0.0"
 port = 3000
 base_url = "https://myapp.example.com"
 max_body_size = 2
-
-[log]
-level = "info"
-format = "json"
 
 [database]
 dsn = "./data/production.db"

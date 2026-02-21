@@ -21,13 +21,13 @@ The session app provides middleware that automatically parses and manages sessio
 import "codeberg.org/oliverandrich/burrow/contrib/session"
 
 // Get a string value.
-locale := session.GetString(c, "locale")
+locale := session.GetString(r, "locale")
 
 // Get an int64 value.
-userID := session.GetInt64(c, "user_id")
+userID := session.GetInt64(r, "user_id")
 
 // Get all values as a map.
-values := session.GetValues(c)
+values := session.GetValues(r)
 ```
 
 All getters return zero values if the key is missing or the session is empty.
@@ -36,19 +36,19 @@ All getters return zero values if the key is missing or the session is empty.
 
 ```go
 // Set a single value (writes the cookie immediately).
-session.Set(c, "theme", "dark")
+session.Set(w, r, "theme", "dark")
 
 // Replace all session values at once.
-session.Save(c, map[string]any{
+session.Save(w, r, map[string]any{
     "user_id": int64(42),
     "role":    "admin",
 })
 
 // Remove a single key.
-session.Delete(c, "theme")
+session.Delete(w, r, "theme")
 
 // Clear the entire session (writes a deletion cookie).
-session.Clear(c)
+session.Clear(w, r)
 ```
 
 ## Configuration
@@ -81,18 +81,16 @@ Use `session.Inject()` to set up session state in tests without the full middlew
 
 ```go
 func TestMyHandler(t *testing.T) {
-    e := echo.New()
     req := httptest.NewRequest(http.MethodGet, "/", nil)
     rec := httptest.NewRecorder()
-    c := e.NewContext(req, rec)
 
     // Inject session values.
-    session.Inject(c, map[string]any{
+    req = session.Inject(req, map[string]any{
         "user_id": int64(1),
     })
 
     // Call your handler.
-    err := myHandler(c)
+    err := myHandler(rec, req)
     assert.NoError(t, err)
 }
 ```

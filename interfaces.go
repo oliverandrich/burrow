@@ -3,8 +3,9 @@ package burrow
 import (
 	"context"
 	"io/fs"
+	"net/http"
 
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 	"github.com/urfave/cli/v3"
 )
 
@@ -13,9 +14,9 @@ type Migratable interface {
 	MigrationFS() fs.FS
 }
 
-// HasMiddleware is implemented by apps that contribute Echo middleware.
+// HasMiddleware is implemented by apps that contribute HTTP middleware.
 type HasMiddleware interface {
-	Middleware() []echo.MiddlewareFunc
+	Middleware() []func(http.Handler) http.Handler
 }
 
 // HasNavItems is implemented by apps that contribute navigation items.
@@ -37,13 +38,21 @@ type HasCLICommands interface {
 
 // HasRoutes is implemented by apps that register HTTP routes.
 type HasRoutes interface {
-	Routes(e *echo.Echo)
+	Routes(r chi.Router)
 }
 
 // Seedable is implemented by apps that can seed the database
 // with initial data.
 type Seedable interface {
 	Seed(ctx context.Context) error
+}
+
+// HasAdmin is implemented by apps that contribute admin panel routes
+// and navigation items. AdminRoutes receives a chi router already
+// prefixed with /admin and protected by auth middleware.
+type HasAdmin interface {
+	AdminRoutes(r chi.Router)
+	AdminNavItems() []NavItem
 }
 
 // HasDependencies is implemented by apps that require other apps

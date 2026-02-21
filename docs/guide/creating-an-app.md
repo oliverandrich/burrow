@@ -113,37 +113,46 @@ func NewHandlers(repo *Repository) *Handlers {
     return &Handlers{repo: repo}
 }
 
-func (h *Handlers) List(c *echo.Context) error {
-    user := auth.GetUser(c)
+func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+    user := auth.GetUser(r)
     if user == nil {
-        return echo.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+        return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }
 
-    notes, err := h.repo.ListByUserID(c.Request().Context(), user.ID)
+    notes, err := h.repo.ListByUserID(r.Context(), user.ID)
     if err != nil {
-        return echo.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
+        return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
     }
 
-    return c.JSON(http.StatusOK, notes)
+    return burrow.JSON(w, http.StatusOK, notes)
 }
 
-func (h *Handlers) Create(c *echo.Context) error {
-    user := auth.GetUser(c)
+func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
+    user := auth.GetUser(r)
     if user == nil {
-        return echo.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+        return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+    }
+
+    var req struct {
+        Title   string `form:"title"`
+        Content string `form:"content"`
+    }
+    if err := burrow.Bind(r, &req); err != nil {
+        return err
     }
 
     note := &Note{
         UserID:  user.ID,
-        Title:   c.FormValue("title"),
-        Content: c.FormValue("content"),
+        Title:   req.Title,
+        Content: req.Content,
     }
 
-    if err := h.repo.Create(c.Request().Context(), note); err != nil {
-        return echo.NewHTTPError(http.StatusInternalServerError, "failed to create note")
+    if err := h.repo.Create(r.Context(), note); err != nil {
+        return burrow.NewHTTPError(http.StatusInternalServerError, "failed to create note")
     }
 
-    return c.Redirect(http.StatusSeeOther, "/notes")
+    http.Redirect(w, r, "/notes", http.StatusSeeOther)
+    return nil
 }
 ```
 
@@ -186,17 +195,19 @@ func (a *App) NavItems() []burrow.NavItem { // (3)!
     }
 }
 
-func (a *App) Routes(e *echo.Echo) { // (4)!
-    g := e.Group("/notes", auth.RequireAuth())
-    g.GET("", a.handlers.List)
-    g.POST("", a.handlers.Create)
+func (a *App) Routes(r chi.Router) { // (4)!
+    r.Route("/notes", func(r chi.Router) {
+        r.Use(auth.RequireAuth())
+        r.Get("/", burrow.Handle(a.handlers.List))
+        r.Post("/", burrow.Handle(a.handlers.Create))
+    })
 }
 ```
 
 1. `HasDependencies` — ensures `auth` is registered before this app
 2. `Migratable` — the framework runs SQL migrations at startup
 3. `HasNavItems` — contributes navigation entries to layouts
-4. `HasRoutes` — registers HTTP handlers on the Echo router
+4. `HasRoutes` — registers HTTP handlers on the Chi router
 
 ## Step 6: Register the App
 
@@ -221,8 +232,8 @@ Your app can implement any combination of these interfaces:
 | Interface | Method | Purpose |
 |-----------|--------|---------|
 | `Migratable` | `MigrationFS() fs.FS` | Provide SQL migrations |
-| `HasRoutes` | `Routes(e *echo.Echo)` | Register HTTP handlers |
-| `HasMiddleware` | `Middleware() []echo.MiddlewareFunc` | Add global middleware |
+| `HasRoutes` | `Routes(r chi.Router)` | Register HTTP handlers |
+| `HasMiddleware` | `Middleware() []func(http.Handler) http.Handler` | Add global middleware |
 | `HasNavItems` | `NavItems() []burrow.NavItem` | Contribute navigation entries |
 | `Configurable` | `Flags() []cli.Flag` + `Configure(cmd *cli.Command) error` | Add CLI flags |
 | `HasCLICommands` | `CLICommands() []*cli.Command` | Add CLI subcommands |

@@ -52,7 +52,7 @@ func appLayout(title string, content templ.Component) templ.Component {
 The framework provides the raw nav items — filtering based on `AuthOnly` and `AdminOnly` is up to your layout. A typical pattern:
 
 ```go
-user := auth.GetUser(c)
+user := auth.GetUser(r)
 for _, item := range burrow.NavItems(ctx) {
     if item.AuthOnly && user == nil {
         continue

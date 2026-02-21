@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"codeberg.org/oliverandrich/burrow"
-	"github.com/labstack/echo/v5"
+	"github.com/go-chi/chi/v5"
 )
 
 // App implements the staticfiles contrib app for serving static assets.
@@ -49,35 +49,31 @@ func New(fsys fs.FS, opts ...Option) *App {
 func (a *App) Name() string                       { return "staticfiles" }
 func (a *App) Register(_ *burrow.AppConfig) error { return nil }
 
-func (a *App) Middleware() []echo.MiddlewareFunc {
-	return []echo.MiddlewareFunc{a.contextMiddleware, a.cacheHeadersMiddleware}
+func (a *App) Middleware() []func(http.Handler) http.Handler {
+	return []func(http.Handler) http.Handler{a.contextMiddleware, a.cacheHeadersMiddleware}
 }
 
-func (a *App) Routes(e *echo.Echo) {
-	pattern := a.prefix + "*"
-	e.GET(pattern, echo.WrapHandler(
-		http.StripPrefix(a.prefix, http.FileServer(http.FS(a.hfs))),
-	))
+func (a *App) Routes(r chi.Router) {
+	r.Handle(a.prefix+"*", http.StripPrefix(a.prefix, http.FileServer(http.FS(a.hfs))))
 }
 
-func (a *App) contextMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c *echo.Context) error {
-		ctx := context.WithValue(c.Request().Context(), ctxKeyApp{}, a)
-		c.SetRequest(c.Request().WithContext(ctx))
-		return next(c)
-	}
+func (a *App) contextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), ctxKeyApp{}, a)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
-func (a *App) cacheHeadersMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c *echo.Context) error {
-		path := c.Request().URL.Path
+func (a *App) cacheHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
 		if strings.HasPrefix(path, a.prefix) {
 			if isHashedAsset(path) {
-				c.Response().Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 			} else {
-				c.Response().Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 			}
 		}
-		return next(c)
-	}
+		next.ServeHTTP(w, r)
+	})
 }

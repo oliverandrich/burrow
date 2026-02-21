@@ -2,21 +2,21 @@ package burrow
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/a-h/templ"
-	"github.com/labstack/echo/v5"
 )
 
 // Render renders a templ.Component into the HTTP response with the given status code.
-func Render(c *echo.Context, statusCode int, component templ.Component) error {
+func Render(w http.ResponseWriter, r *http.Request, statusCode int, component templ.Component) error {
 	buf := templ.GetBuffer()
 	defer templ.ReleaseBuffer(buf)
 
-	if err := component.Render(c.Request().Context(), buf); err != nil {
+	if err := component.Render(r.Context(), buf); err != nil {
 		return err
 	}
 
-	return c.HTML(statusCode, buf.String())
+	return HTML(w, statusCode, buf.String())
 }
 
 // LayoutFunc wraps page content in a layout template.
@@ -32,8 +32,9 @@ type Layouts struct {
 
 // Context key types for framework-provided values.
 type (
-	ctxKeyCSRFToken struct{}
-	ctxKeyNavItems  struct{}
+	ctxKeyCSRFToken     struct{}
+	ctxKeyNavItems      struct{}
+	ctxKeyAdminNavItems struct{}
 )
 
 // WithContextValue returns a new context with the given key-value pair.
@@ -68,6 +69,19 @@ func WithNavItems(ctx context.Context, items []NavItem) context.Context {
 // NavItems retrieves the navigation items from the context.
 func NavItems(ctx context.Context) []NavItem {
 	if items, ok := ctx.Value(ctxKeyNavItems{}).([]NavItem); ok {
+		return items
+	}
+	return nil
+}
+
+// WithAdminNavItems stores admin navigation items in the context.
+func WithAdminNavItems(ctx context.Context, items []NavItem) context.Context {
+	return context.WithValue(ctx, ctxKeyAdminNavItems{}, items)
+}
+
+// AdminNavItems retrieves the admin navigation items from the context.
+func AdminNavItems(ctx context.Context) []NavItem {
+	if items, ok := ctx.Value(ctxKeyAdminNavItems{}).([]NavItem); ok {
 		return items
 	}
 	return nil
