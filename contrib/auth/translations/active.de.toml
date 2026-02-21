@@ -53,10 +53,10 @@ verify-error-token-expired = "Der Bestätigungslink ist abgelaufen. Bitte forder
 verify-error-default = "Bei der Bestätigung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut."
 verify-error-back = "Zurück zur Anmeldung"
 
-# Wiederherstellungscodes-Dialog (JS)
+# Wiederherstellungscodes-Seite
 recovery-codes-title = "Wiederherstellungscodes"
 recovery-codes-description = "Bewahren Sie diese Codes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden."
-recovery-codes-dismiss = "Ich habe meine Codes gespeichert"
+recovery-codes-ack = "Ich habe meine Codes gespeichert"
 
 # Admin: Benutzer
 admin-users-title = "Benutzer"

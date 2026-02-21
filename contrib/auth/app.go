@@ -75,7 +75,7 @@ func (a *App) Flags() []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "auth-login-redirect",
-			Value:   "/dashboard",
+			Value:   "/",
 			Usage:   "Redirect target after successful login",
 			Sources: cli.EnvVars("AUTH_LOGIN_REDIRECT"),
 		},
@@ -197,7 +197,12 @@ func (a *App) Routes(r chi.Router) {
 		})
 
 		// Authenticated recovery code management.
-		r.With(RequireAuth()).Post("/recovery-codes/regenerate", burrow.Handle(h.RegenerateRecoveryCodes))
+		r.Route("/recovery-codes", func(r chi.Router) {
+			r.Use(RequireAuth())
+			r.Get("/", burrow.Handle(h.RecoveryCodesPage))
+			r.Post("/ack", burrow.Handle(h.AcknowledgeRecoveryCodes))
+			r.Post("/regenerate", burrow.Handle(h.RegenerateRecoveryCodes))
+		})
 
 		// Email verification routes.
 		r.Get("/verify-pending", burrow.Handle(h.VerifyPendingPage))

@@ -22,6 +22,7 @@ type Renderer interface {
 	LoginPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
 	CredentialsPage(w http.ResponseWriter, r *http.Request, creds []Credential) error
 	RecoveryPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
+	RecoveryCodesPage(w http.ResponseWriter, r *http.Request, codes []string) error
 	VerifyPendingPage(w http.ResponseWriter, r *http.Request) error
 	VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error
 	VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error
@@ -238,21 +239,27 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 			}
 		}()
 
+		if err := session.Set(w, r, "recovery_codes", codes); err != nil {
+			return errorJSONLog(w, http.StatusInternalServerError, "failed to store recovery codes", err)
+		}
+
 		return burrow.JSON(w, http.StatusOK, map[string]any{
-			"status":         "ok",
-			"redirect":       "/auth/verify-pending",
-			"recovery_codes": codes,
+			"status":   "ok",
+			"redirect": "/auth/recovery-codes",
 		})
 	}
 
 	// Username mode: create session immediately.
-	if err := session.Save(w, r, map[string]any{"user_id": user.ID}); err != nil {
+	if err := session.Save(w, r, map[string]any{
+		"user_id":        user.ID,
+		"recovery_codes": codes,
+	}); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to create session", err)
 	}
 
 	return burrow.JSON(w, http.StatusOK, map[string]any{
-		"status":         "ok",
-		"recovery_codes": codes,
+		"status":   "ok",
+		"redirect": "/auth/recovery-codes",
 	})
 }
 
@@ -467,6 +474,7 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 }
 
 // RegenerateRecoveryCodes generates new recovery codes and invalidates old ones.
+// Stores codes in session and returns a redirect to the recovery codes page.
 func (h *Handlers) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
 	user := GetUser(r)
 	codes, err := h.generateAndStoreRecoveryCodes(r.Context(), user.ID)
@@ -474,10 +482,43 @@ func (h *Handlers) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Reques
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to regenerate codes", err)
 	}
 
+	if err := session.Set(w, r, "recovery_codes", codes); err != nil {
+		return errorJSONLog(w, http.StatusInternalServerError, "failed to store recovery codes", err)
+	}
+
 	return burrow.JSON(w, http.StatusOK, map[string]any{
-		"status":         "ok",
-		"recovery_codes": codes,
+		"status":   "ok",
+		"redirect": "/auth/recovery-codes",
 	})
+}
+
+// RecoveryCodesPage renders the dedicated recovery codes page.
+// Codes are read from the session; if none are present, redirects to login redirect.
+func (h *Handlers) RecoveryCodesPage(w http.ResponseWriter, r *http.Request) error {
+	values := session.GetValues(r)
+	codesRaw, ok := values["recovery_codes"]
+	if !ok {
+		http.Redirect(w, r, h.config.LoginRedirect, http.StatusSeeOther)
+		return nil
+	}
+
+	codes, ok := codesRaw.([]string)
+	if !ok || len(codes) == 0 {
+		http.Redirect(w, r, h.config.LoginRedirect, http.StatusSeeOther)
+		return nil
+	}
+
+	return h.renderer.RecoveryCodesPage(w, r, codes)
+}
+
+// AcknowledgeRecoveryCodes clears recovery codes from the session and redirects.
+func (h *Handlers) AcknowledgeRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
+	if err := session.Delete(w, r, "recovery_codes"); err != nil {
+		return errorJSONLog(w, http.StatusInternalServerError, "failed to clear recovery codes", err)
+	}
+
+	http.Redirect(w, r, h.config.LoginRedirect, http.StatusSeeOther)
+	return nil
 }
 
 // --- Email verification ---

@@ -53,10 +53,10 @@ verify-error-token-expired = "The verification link has expired. Please request 
 verify-error-default = "An error occurred during verification. Please try again."
 verify-error-back = "Back to login"
 
-# Recovery codes dialog (JS)
+# Recovery codes page
 recovery-codes-title = "Recovery Codes"
 recovery-codes-description = "Save these codes in a safe place. Each code can only be used once."
-recovery-codes-dismiss = "I have saved my codes"
+recovery-codes-ack = "I have saved my codes"
 
 # Admin: Users
 admin-users-title = "Users"

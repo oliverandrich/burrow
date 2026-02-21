@@ -1087,6 +1087,24 @@ func TestDefaultRendererRecoveryPage(t *testing.T) {
 	assert.Contains(t, body, "card shadow-sm", "recovery page should be wrapped in a card")
 }
 
+func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
+	r := DefaultRenderer()
+	codes := []string{"aaaa-bbbb-cccc", "dddd-eeee-ffff"}
+	req := httptest.NewRequest(http.MethodGet, "/auth/recovery-codes", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.RecoveryCodesPage(rec, req, codes)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "recovery-codes-title")
+	assert.Contains(t, body, "aaaa-bbbb-cccc")
+	assert.Contains(t, body, "dddd-eeee-ffff")
+	assert.Contains(t, body, "card shadow-sm", "recovery codes page should be wrapped in a card")
+	assert.Contains(t, body, "/auth/recovery-codes/ack")
+}
+
 func TestDefaultRendererVerifyPendingPage(t *testing.T) {
 	r := DefaultRenderer()
 	req := httptest.NewRequest(http.MethodGet, "/auth/verify-pending", nil)

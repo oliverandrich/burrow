@@ -72,7 +72,11 @@ templ loginPageContent(loginRedirect string) {
 			btn.disabled = true;
 			btn.textContent = strings.loginWaiting;
 			try {
-				var result = await webauthnLogin("/auth/login/begin", "/auth/login/finish");
+				var params = new URLSearchParams(window.location.search);
+				var next = params.get("next") || "";
+				var finishURL = "/auth/login/finish";
+				if (next) finishURL += "?next=" + encodeURIComponent(next);
+				var result = await webauthnLogin("/auth/login/begin", finishURL);
 				if (result.redirect) {
 					window.location.href = result.redirect;
 				}
@@ -97,9 +101,6 @@ templ registerPageContent(useEmail, inviteOnly bool, email, invite string) {
 		id="i18n-strings"
 		data-register-waiting={ i18n.T(ctx, "register-waiting") }
 		data-register-button={ i18n.T(ctx, "register-button") }
-		data-recovery-codes-title={ i18n.T(ctx, "recovery-codes-title") }
-		data-recovery-codes-description={ i18n.T(ctx, "recovery-codes-description") }
-		data-recovery-codes-dismiss={ i18n.T(ctx, "recovery-codes-dismiss") }
 		style="display:none"
 	></div>
 	<div id="error-message" class="alert alert-danger" style="display:none"></div>
@@ -176,9 +177,6 @@ templ credentialsPageContent(creds []Credential) {
 		data-credentials-delete-confirm={ i18n.T(ctx, "credentials-delete-confirm") }
 		data-credentials-regenerate-confirm={ i18n.T(ctx, "credentials-regenerate-confirm") }
 		data-credentials-regenerate-failed={ i18n.T(ctx, "credentials-regenerate-failed") }
-		data-recovery-codes-title={ i18n.T(ctx, "recovery-codes-title") }
-		data-recovery-codes-description={ i18n.T(ctx, "recovery-codes-description") }
-		data-recovery-codes-dismiss={ i18n.T(ctx, "recovery-codes-dismiss") }
 		style="display:none"
 	></div>
 	<div id="error-message" class="alert alert-danger" style="display:none"></div>
@@ -239,13 +237,34 @@ templ credentialsPageContent(creds []Credential) {
 				});
 				if (!resp.ok) throw new Error(strings.credentialsRegenerateFailed);
 				var data = await resp.json();
-				if (data.recovery_codes) showRecoveryCodes(data.recovery_codes, strings);
+				if (data.redirect) window.location.href = data.redirect;
 			} catch(e) {
 				errEl.textContent = e.message;
 				errEl.style.display = "block";
 			}
 		});
 	</script>
+}
+
+// recoveryCodesPage renders the dedicated recovery codes page.
+templ recoveryCodesPage(codes []string) {
+	@authCard(i18n.T(ctx, "recovery-codes-title"), recoveryCodesPageContent(codes))
+}
+
+templ recoveryCodesPageContent(codes []string) {
+	<p>{ i18n.T(ctx, "recovery-codes-description") }</p>
+	<pre class="bg-light p-3 rounded" style="font-size:0.9rem">
+		for i, code := range codes {
+			if i > 0 {
+				{ "\n" }
+			}
+			{ code }
+		}
+	</pre>
+	<form method="POST" action="/auth/recovery-codes/ack">
+		<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
+		<button type="submit" class="btn btn-primary w-100">{ i18n.T(ctx, "recovery-codes-ack") }</button>
+	</form>
 }
 
 // recoveryPage renders the recovery login form.

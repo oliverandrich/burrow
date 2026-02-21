@@ -92,6 +92,8 @@ All routes are registered under `/auth`:
 | POST | `/auth/credentials/begin` | Add credential (auth required) |
 | POST | `/auth/credentials/finish` | Complete add credential (auth required) |
 | DELETE | `/auth/credentials/:id` | Delete credential (auth required) |
+| GET | `/auth/recovery-codes` | View recovery codes after registration/regeneration (auth required) |
+| POST | `/auth/recovery-codes/ack` | Acknowledge recovery codes and clear from session (auth required) |
 | POST | `/auth/recovery-codes/regenerate` | Regenerate recovery codes (auth required) |
 | GET | `/auth/verify-pending` | Email verification pending page |
 | GET | `/auth/verify-email` | Verify email via token |
@@ -165,6 +167,7 @@ type Renderer interface {
     LoginPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
     CredentialsPage(w http.ResponseWriter, r *http.Request, creds []Credential) error
     RecoveryPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
+    RecoveryCodesPage(w http.ResponseWriter, r *http.Request, codes []string) error
     VerifyPendingPage(w http.ResponseWriter, r *http.Request) error
     VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error
     VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error
@@ -191,7 +194,7 @@ Use `auth.DefaultAdminRenderer()` for built-in templates, or implement the inter
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `--auth-login-redirect` | `AUTH_LOGIN_REDIRECT` | `/dashboard` | Redirect after login |
+| `--auth-login-redirect` | `AUTH_LOGIN_REDIRECT` | `/` | Redirect after login |
 | `--auth-use-email` | `AUTH_USE_EMAIL` | `false` | Use email instead of username |
 | `--auth-require-verification` | `AUTH_REQUIRE_VERIFICATION` | `false` | Require email verification |
 | `--auth-invite-only` | `AUTH_INVITE_ONLY` | `false` | Require invite to register |

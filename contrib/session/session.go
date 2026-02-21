@@ -18,6 +18,7 @@ func init() {
 	gob.Register(map[string]any{})
 	gob.Register(int64(0))
 	gob.Register(time.Time{})
+	gob.Register([]string{})
 }
 
 // cookiePayload is the internal structure encoded in the cookie.

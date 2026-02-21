@@ -45,6 +45,10 @@ func (d *defaultRenderer) RecoveryPage(w http.ResponseWriter, r *http.Request, l
 	return renderWithLayout(w, r, i18n.T(r.Context(), "recovery-title"), recoveryPage(loginRedirect))
 }
 
+func (d *defaultRenderer) RecoveryCodesPage(w http.ResponseWriter, r *http.Request, codes []string) error {
+	return renderWithLayout(w, r, i18n.T(r.Context(), "recovery-codes-title"), recoveryCodesPage(codes))
+}
+
 func (d *defaultRenderer) VerifyPendingPage(w http.ResponseWriter, r *http.Request) error {
 	return renderWithLayout(w, r, i18n.T(r.Context(), "verify-pending-title"), verifyPendingPage())
 }

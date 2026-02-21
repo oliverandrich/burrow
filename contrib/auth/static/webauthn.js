@@ -74,46 +74,6 @@ function encodeAssertionResponse(cred) {
   };
 }
 
-// Show recovery codes in a modal dialog.
-// strings is an optional dataset object with i18n keys; falls back to English defaults.
-function showRecoveryCodes(codes, strings) {
-  var overlay = document.createElement("div");
-  overlay.style.cssText =
-    "position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999";
-
-  var box = document.createElement("div");
-  box.style.cssText =
-    "background:var(--bg,#fff);color:var(--fg,#000);padding:2rem;border-radius:8px;max-width:400px;width:90%";
-
-  var title = document.createElement("h3");
-  title.textContent =
-    (strings && strings.recoveryCodesTitle) || "Recovery Codes";
-  box.appendChild(title);
-
-  var desc = document.createElement("p");
-  desc.textContent =
-    (strings && strings.recoveryCodesDescription) ||
-    "Save these codes in a safe place. Each code can only be used once.";
-  box.appendChild(desc);
-
-  var pre = document.createElement("pre");
-  pre.style.cssText =
-    "background:var(--bg-alt,#f5f5f5);padding:1rem;border-radius:4px;font-size:0.9rem";
-  pre.textContent = codes.join("\n");
-  box.appendChild(pre);
-
-  var btn = document.createElement("button");
-  btn.textContent =
-    (strings && strings.recoveryCodesDismiss) || "I have saved my codes";
-  btn.onclick = function () {
-    document.body.removeChild(overlay);
-  };
-  box.appendChild(btn);
-
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-}
-
 // webauthnRegister performs the registration ceremony.
 // beginURL: POST endpoint that returns {publicKey, user_id}
 // finishURL: POST endpoint that receives the credential (user_id appended as query param)
@@ -135,25 +95,18 @@ async function webauthnRegister(beginURL, finishURL, formData) {
   var credential = await navigator.credentials.create({ publicKey: publicKey });
 
   var encoded = encodeAttestationResponse(credential);
-  var finishResp = await fetch(
-    finishURL + "?user_id=" + encodeURIComponent(beginData.user_id),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-      body: JSON.stringify(encoded),
-    },
-  );
+  var finishParsed = new URL(finishURL, window.location.origin);
+  finishParsed.searchParams.set("user_id", beginData.user_id);
+  var finishResp = await fetch(finishParsed.pathname + finishParsed.search, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    body: JSON.stringify(encoded),
+  });
   if (!finishResp.ok) {
     var finishErr = await finishResp.json();
     throw new Error(finishErr.error || "Registration failed");
   }
-  var result = await finishResp.json();
-
-  if (result.recovery_codes) {
-    var el = document.getElementById("i18n-strings");
-    showRecoveryCodes(result.recovery_codes, el ? el.dataset : null);
-  }
-  return result;
+  return await finishResp.json();
 }
 
 // webauthnLogin performs the discoverable login ceremony.
@@ -176,14 +129,13 @@ async function webauthnLogin(beginURL, finishURL) {
   var credential = await navigator.credentials.get({ publicKey: publicKey });
 
   var encoded = encodeAssertionResponse(credential);
-  var finishResp = await fetch(
-    finishURL + "?session_id=" + encodeURIComponent(beginData.session_id),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-      body: JSON.stringify(encoded),
-    },
-  );
+  var finishParsed = new URL(finishURL, window.location.origin);
+  finishParsed.searchParams.set("session_id", beginData.session_id);
+  var finishResp = await fetch(finishParsed.pathname + finishParsed.search, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    body: JSON.stringify(encoded),
+  });
   if (!finishResp.ok) {
     var finishErr = await finishResp.json();
     throw new Error(finishErr.error || "Login failed");
