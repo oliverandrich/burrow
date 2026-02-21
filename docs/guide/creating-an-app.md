@@ -209,6 +209,21 @@ func (a *App) Routes(r chi.Router) { // (4)!
 3. `HasNavItems` — contributes navigation entries to layouts
 4. `HasRoutes` — registers HTTP handlers on the Chi router
 
+## File Layout
+
+For multi-file apps, name files by their purpose rather than repeating the package name:
+
+| File | Content |
+|------|---------|
+| `app.go` | App struct, `Name()`, `Register()`, `Routes()`, framework wiring |
+| `context.go` | Package doc comment, context key types, context helpers |
+| `handlers.go` | HTTP handlers |
+| `middleware.go` | Middleware functions |
+| `models.go` | Domain models |
+| `repository.go` | Data access layer |
+
+Small apps can keep everything in `app.go` — split only when a file grows large or mixes distinct responsibilities.
+
 ## Step 6: Register the App
 
 In `main.go`:

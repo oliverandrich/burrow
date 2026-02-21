@@ -15,7 +15,6 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
-	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -500,113 +499,7 @@ func TestAuthMiddlewareNoSession(t *testing.T) {
 	assert.Nil(t, gotUser)
 }
 
-func TestRequireAuthRedirects(t *testing.T) {
-	r := chi.NewRouter()
-	r.Use(RequireAuth())
-	r.Get("/protected", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/protected?foo=bar", nil)
-	req = session.Inject(req, nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "/auth/login", rec.Header().Get("Location"))
-}
-
-func TestRequireAuthStoresRedirectInSession(t *testing.T) {
-	var capturedValues map[string]any
-	r := chi.NewRouter()
-	r.Use(RequireAuth())
-	r.Get("/protected", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/protected?foo=bar", nil)
-	req = session.Inject(req, nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	// Verify the redirect target is stored in session by reading it back.
-	capturedValues = session.GetValues(req)
-	assert.Equal(t, "/protected?foo=bar", capturedValues["redirect_after_login"])
-}
-
-func TestRequireAuthAllowsAuthenticated(t *testing.T) {
-	r := chi.NewRouter()
-	// Inject user into context before RequireAuth.
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := WithUser(r.Context(), &User{ID: 1})
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
-	r.Use(RequireAuth())
-	r.Get("/protected", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-}
-
-func TestRequireAdmin(t *testing.T) {
-	tests := []struct {
-		name       string
-		role       string
-		wantStatus int
-	}{
-		{"forbids non-admin", RoleUser, http.StatusForbidden},
-		{"allows admin", RoleAdmin, http.StatusOK},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := chi.NewRouter()
-			r.Use(func(next http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					ctx := WithUser(r.Context(), &User{ID: 1, Role: tt.role})
-					next.ServeHTTP(w, r.WithContext(ctx))
-				})
-			})
-			r.Use(RequireAdmin())
-			r.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-			})
-
-			req := httptest.NewRequest(http.MethodGet, "/admin", nil)
-			rec := httptest.NewRecorder()
-			r.ServeHTTP(rec, req)
-
-			assert.Equal(t, tt.wantStatus, rec.Code)
-		})
-	}
-}
-
-// --- Helper tests ---
-
-func TestGetUserFromContext(t *testing.T) {
-	user := &User{ID: 42, Username: "alice"}
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx := WithUser(req.Context(), user)
-	req = req.WithContext(ctx)
-
-	got := GetUser(req)
-	require.NotNil(t, got)
-	assert.Equal(t, int64(42), got.ID)
-	assert.True(t, IsAuthenticated(req))
-}
-
-func TestGetUserFromEmptyContext(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	assert.Nil(t, GetUser(req))
-	assert.False(t, IsAuthenticated(req))
-}
+// --- CLI tests ---
 
 func TestCLICommands(t *testing.T) {
 	app := &App{}
@@ -691,6 +584,39 @@ func TestCLIDemote(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, RoleUser, got.Role)
 }
+
+func TestCLICreateInvite(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	app := &App{repo: repo, globalConfig: &burrow.Config{}}
+	cmds := app.CLICommands()
+
+	var createInviteCmd *cli.Command
+	for _, cmd := range cmds {
+		if cmd.Name == "create-invite" {
+			createInviteCmd = cmd
+			break
+		}
+	}
+	require.NotNil(t, createInviteCmd)
+
+	cliCmd := &cli.Command{
+		Name:     "test",
+		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
+		Commands: []*cli.Command{createInviteCmd},
+	}
+	err := cliCmd.Run(ctx, []string{"test", "create-invite", "test@example.com"})
+	require.NoError(t, err)
+
+	invites, err := repo.ListInvites(ctx)
+	require.NoError(t, err)
+	require.Len(t, invites, 1)
+	assert.Equal(t, "test@example.com", invites[0].Email)
+}
+
+// --- Admin tests ---
 
 func TestAdminNavItems(t *testing.T) {
 	app := &App{}
@@ -857,57 +783,6 @@ func TestAdminUpdateUserRoleInvalidRole(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
-func TestCLICreateInvite(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-	ctx := context.Background()
-
-	app := &App{repo: repo, globalConfig: &burrow.Config{}}
-	cmds := app.CLICommands()
-
-	var createInviteCmd *cli.Command
-	for _, cmd := range cmds {
-		if cmd.Name == "create-invite" {
-			createInviteCmd = cmd
-			break
-		}
-	}
-	require.NotNil(t, createInviteCmd)
-
-	cliCmd := &cli.Command{
-		Name:     "test",
-		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
-		Commands: []*cli.Command{createInviteCmd},
-	}
-	err := cliCmd.Run(ctx, []string{"test", "create-invite", "test@example.com"})
-	require.NoError(t, err)
-
-	invites, err := repo.ListInvites(ctx)
-	require.NoError(t, err)
-	require.Len(t, invites, 1)
-	assert.Equal(t, "test@example.com", invites[0].Email)
-}
-
-// mockAdminRenderer implements AdminRenderer for tests.
-type mockAdminRenderer struct {
-	lastMethod string
-}
-
-func (m *mockAdminRenderer) AdminUsersPage(w http.ResponseWriter, _ *http.Request, _ []User) error {
-	m.lastMethod = "AdminUsersPage"
-	return burrow.Text(w, http.StatusOK, "admin-users")
-}
-
-func (m *mockAdminRenderer) AdminUserDetailPage(w http.ResponseWriter, _ *http.Request, _ *User) error {
-	m.lastMethod = "AdminUserDetailPage"
-	return burrow.Text(w, http.StatusOK, "admin-user-detail")
-}
-
-func (m *mockAdminRenderer) AdminInvitesPage(w http.ResponseWriter, _ *http.Request, _ []Invite, _ string, _ bool) error {
-	m.lastMethod = "AdminInvitesPage"
-	return burrow.Text(w, http.StatusOK, "admin-invites")
-}
-
 // --- Admin invite handler tests ---
 
 func TestAdminInvitesPage(t *testing.T) {
@@ -1015,6 +890,26 @@ func TestAdminDeleteInviteSuccess(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+// mockAdminRenderer implements AdminRenderer for tests.
+type mockAdminRenderer struct {
+	lastMethod string
+}
+
+func (m *mockAdminRenderer) AdminUsersPage(w http.ResponseWriter, _ *http.Request, _ []User) error {
+	m.lastMethod = "AdminUsersPage"
+	return burrow.Text(w, http.StatusOK, "admin-users")
+}
+
+func (m *mockAdminRenderer) AdminUserDetailPage(w http.ResponseWriter, _ *http.Request, _ *User) error {
+	m.lastMethod = "AdminUserDetailPage"
+	return burrow.Text(w, http.StatusOK, "admin-user-detail")
+}
+
+func (m *mockAdminRenderer) AdminInvitesPage(w http.ResponseWriter, _ *http.Request, _ []Invite, _ string, _ bool) error {
+	m.lastMethod = "AdminInvitesPage"
+	return burrow.Text(w, http.StatusOK, "admin-invites")
 }
 
 // --- Static files tests ---
@@ -1282,25 +1177,6 @@ func TestDefaultAdminRendererInvitesPageWithCreatedURL(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, rec.Body.String(), "admin-invites-created")
 	assert.Contains(t, rec.Body.String(), "http://localhost/auth/register?invite=abc123")
-}
-
-func TestSafeRedirectPath(t *testing.T) {
-	tests := []struct {
-		next     string
-		expected string
-	}{
-		{"/dashboard", "/dashboard"},
-		{"/settings?tab=profile", "/settings?tab=profile"},
-		{"", "/default"},
-		{"https://evil.com/steal", "/default"},
-		{"//evil.com", "/default"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.next, func(t *testing.T) {
-			assert.Equal(t, tt.expected, SafeRedirectPath(tt.next, "/default"))
-		})
-	}
 }
 
 // --- Model tests ---

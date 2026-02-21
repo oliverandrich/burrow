@@ -1,145 +1,15 @@
 package session
 
 import (
-	"context"
-	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"codeberg.org/oliverandrich/burrow"
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v3"
 )
 
-var testHashKey = hex.EncodeToString(make([]byte, 32))
-
-// Compile-time interface assertions.
-var (
-	_ burrow.App           = (*App)(nil)
-	_ burrow.Configurable  = (*App)(nil)
-	_ burrow.HasMiddleware = (*App)(nil)
-)
-
-func TestAppName(t *testing.T) {
-	app := &App{}
-	assert.Equal(t, "session", app.Name())
-}
-
-func TestAppFlags(t *testing.T) {
-	app := &App{}
-	flags := app.Flags()
-
-	names := make(map[string]bool)
-	for _, f := range flags {
-		names[f.Names()[0]] = true
-	}
-
-	assert.True(t, names["session-cookie-name"])
-	assert.True(t, names["session-max-age"])
-	assert.True(t, names["session-hash-key"])
-	assert.True(t, names["session-block-key"])
-}
-
-func configuredApp(t *testing.T) *App {
-	t.Helper()
-	app := &App{}
-	_ = app.Register(&burrow.AppConfig{})
-
-	cmd := &cli.Command{
-		Name:  "test",
-		Flags: app.Flags(),
-		Action: func(_ context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
-		},
-	}
-	err := cmd.Run(t.Context(), []string{
-		"test",
-		"--session-hash-key", testHashKey,
-	})
-	require.NoError(t, err)
-	return app
-}
-
-// routerWithSession creates a chi router with session middleware.
-func routerWithSession(t *testing.T) (chi.Router, *App) {
-	t.Helper()
-	app := configuredApp(t)
-	r := chi.NewRouter()
-	for _, mw := range app.Middleware() {
-		r.Use(mw)
-	}
-	return r, app
-}
-
-func TestConfigureCreatesManager(t *testing.T) {
-	app := configuredApp(t)
-	require.NotNil(t, app.Manager())
-}
-
-// --- Manager low-level tests ---
-
-func TestSessionSaveAndParse(t *testing.T) {
-	app := configuredApp(t)
-	mgr := app.Manager()
-
-	values := map[string]any{"user_id": int64(42), "theme": "dark"}
-	cookie, err := mgr.Save(values)
-	require.NoError(t, err)
-	require.NotNil(t, cookie)
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.AddCookie(cookie)
-
-	got, err := mgr.Parse(req)
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, int64(42), got["user_id"])
-	assert.Equal(t, "dark", got["theme"])
-}
-
-func TestSessionSaveNilValues(t *testing.T) {
-	app := configuredApp(t)
-	mgr := app.Manager()
-
-	cookie, err := mgr.Save(nil)
-	require.NoError(t, err)
-	require.NotNil(t, cookie)
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.AddCookie(cookie)
-
-	got, err := mgr.Parse(req)
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Empty(t, got)
-}
-
-func TestSessionParseNoCookie(t *testing.T) {
-	app := configuredApp(t)
-	mgr := app.Manager()
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	got, err := mgr.Parse(req)
-	require.NoError(t, err)
-	assert.Nil(t, got)
-}
-
-func TestSessionParseInvalidCookie(t *testing.T) {
-	app := configuredApp(t)
-	mgr := app.Manager()
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.AddCookie(&http.Cookie{Name: "_session", Value: "garbage"})
-
-	got, err := mgr.Parse(req)
-	require.NoError(t, err)
-	assert.Nil(t, got)
-}
-
-// --- Middleware tests ---
+// --- Middleware tests (via context getters) ---
 
 func TestMiddlewareSetsSessionValues(t *testing.T) {
 	r, app := routerWithSession(t)
@@ -179,12 +49,6 @@ func TestMiddlewareNoCookie(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Nil(t, gotValues)
-}
-
-func TestClear(t *testing.T) {
-	app := configuredApp(t)
-	cookie := app.Manager().Clear()
-	assert.Equal(t, -1, cookie.MaxAge)
 }
 
 // --- Typed getter tests ---

@@ -1,7 +1,6 @@
 package csrf
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -36,18 +35,6 @@ func newTestApp(t *testing.T) *App {
 	})
 	require.NoError(t, a.configure("", false))
 	return a
-}
-
-func TestTokenContext(t *testing.T) {
-	ctx := context.Background()
-	ctx = WithToken(ctx, "abc123")
-
-	assert.Equal(t, "abc123", Token(ctx))
-}
-
-func TestTokenMissing(t *testing.T) {
-	ctx := context.Background()
-	assert.Empty(t, Token(ctx))
 }
 
 func TestCSRFTokenSetInContext(t *testing.T) {
