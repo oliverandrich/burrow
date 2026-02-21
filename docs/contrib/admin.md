@@ -88,4 +88,5 @@ The admin app collects all `HasAdmin` implementations and mounts their routes un
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `HasRoutes` | Creates `/admin` group and delegates to `HasAdmin` apps |
+| `HasMiddleware` | Injects admin nav items into the request context |
 | `HasDependencies` | Requires `auth` |

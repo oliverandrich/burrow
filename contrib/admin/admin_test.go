@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,6 +18,7 @@ import (
 var (
 	_ burrow.App             = (*App)(nil)
 	_ burrow.HasRoutes       = (*App)(nil)
+	_ burrow.HasMiddleware   = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
 )
 
@@ -175,4 +177,67 @@ func TestRoutesNoRegistryNoPanic(t *testing.T) {
 	r := chi.NewRouter()
 	// Routes should not panic when registry is nil.
 	assert.NotPanics(t, func() { app.Routes(r) })
+}
+
+func TestNavItemsContext(t *testing.T) {
+	ctx := context.Background()
+	items := []burrow.NavItem{
+		{Label: "Users", URL: "/admin/users", Position: 10},
+		{Label: "Invites", URL: "/admin/invites", Position: 20},
+	}
+
+	ctx = WithNavItems(ctx, items)
+	got := NavItems(ctx)
+
+	require.Len(t, got, 2)
+	assert.Equal(t, "Users", got[0].Label)
+	assert.Equal(t, "Invites", got[1].Label)
+}
+
+func TestNavItemsMissing(t *testing.T) {
+	ctx := context.Background()
+	assert.Nil(t, NavItems(ctx))
+}
+
+func TestMiddlewareInjectsAdminNavItems(t *testing.T) {
+	registry := burrow.NewRegistry()
+
+	registry.Add(&session.App{})
+	authApp := auth.New(nil)
+	registry.Add(authApp)
+	require.NoError(t, registry.Bootstrap(nil))
+
+	provider := &hasAdminApp{}
+	registry.Add(provider)
+
+	app := New()
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	mws := app.Middleware()
+	require.Len(t, mws, 1)
+
+	var got []burrow.NavItem
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = NavItems(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := mws[0](inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NotEmpty(t, got)
+	// The test provider contributes "Test Resource"; auth contributes others.
+	var found bool
+	for _, item := range got {
+		if item.Label == "Test Resource" {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "admin nav items should include items from HasAdmin apps")
 }

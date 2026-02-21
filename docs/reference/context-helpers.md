@@ -31,6 +31,26 @@ func ContextValue[T any](ctx context.Context, key any) (T, bool)
 
 Generic context value helpers. `ContextValue` is a typed getter that returns the value and a boolean indicating whether it was found.
 
+## Admin Helpers
+
+Defined in `codeberg.org/oliverandrich/burrow/contrib/admin`.
+
+### NavItems
+
+```go
+func NavItems(ctx context.Context) []NavItem
+```
+
+Returns admin navigation items injected by the admin middleware. Returns `nil` if not set.
+
+### WithNavItems
+
+```go
+func WithNavItems(ctx context.Context, items []burrow.NavItem) context.Context
+```
+
+Stores admin navigation items in the context. Used internally by the admin middleware.
+
 ## CSRF Helpers
 
 Defined in `codeberg.org/oliverandrich/burrow/contrib/csrf`.

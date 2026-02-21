@@ -94,8 +94,6 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	setupCoreMiddleware(r, cfg)
 	navItems := s.registry.AllNavItems()
 	r.Use(navItemsMiddleware(navItems))
-	adminNavItems := s.registry.AllAdminNavItems()
-	r.Use(adminNavItemsMiddleware(adminNavItems))
 	s.registry.RegisterMiddleware(r)
 	s.registry.RegisterRoutes(r)
 
@@ -151,15 +149,6 @@ func navItemsMiddleware(items []NavItem) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := WithNavItems(r.Context(), items)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-func adminNavItemsMiddleware(items []NavItem) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := WithAdminNavItems(r.Context(), items)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

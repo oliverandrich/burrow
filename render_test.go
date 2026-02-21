@@ -42,66 +42,6 @@ func TestRenderWithStatus(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
-func TestContextSetGet(t *testing.T) {
-	type myKey struct{}
-	ctx := context.Background()
-
-	ctx = WithContextValue(ctx, myKey{}, "test-value")
-	val, ok := ContextValue[string](ctx, myKey{})
-
-	assert.True(t, ok)
-	assert.Equal(t, "test-value", val)
-}
-
-func TestContextGetMissing(t *testing.T) {
-	type myKey struct{}
-	ctx := context.Background()
-
-	val, ok := ContextValue[string](ctx, myKey{})
-	assert.False(t, ok)
-	assert.Empty(t, val)
-}
-
-func TestNavItemsContext(t *testing.T) {
-	ctx := context.Background()
-	items := []NavItem{
-		{Label: "Home", URL: "/", Position: 1},
-		{Label: "About", URL: "/about", Position: 2},
-	}
-
-	ctx = WithNavItems(ctx, items)
-	got := NavItems(ctx)
-
-	require.Len(t, got, 2)
-	assert.Equal(t, "Home", got[0].Label)
-	assert.Equal(t, "About", got[1].Label)
-}
-
-func TestNavItemsMissing(t *testing.T) {
-	ctx := context.Background()
-	assert.Nil(t, NavItems(ctx))
-}
-
-func TestAdminNavItemsContext(t *testing.T) {
-	ctx := context.Background()
-	items := []NavItem{
-		{Label: "Users", URL: "/admin/users", Position: 10},
-		{Label: "Invites", URL: "/admin/invites", Position: 20},
-	}
-
-	ctx = WithAdminNavItems(ctx, items)
-	got := AdminNavItems(ctx)
-
-	require.Len(t, got, 2)
-	assert.Equal(t, "Users", got[0].Label)
-	assert.Equal(t, "Invites", got[1].Label)
-}
-
-func TestAdminNavItemsMissing(t *testing.T) {
-	ctx := context.Background()
-	assert.Nil(t, AdminNavItems(ctx))
-}
-
 func TestLayoutFuncWrapsContent(t *testing.T) {
 	layout := LayoutFunc(func(title string, content templ.Component) templ.Component {
 		return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
