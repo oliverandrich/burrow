@@ -40,6 +40,12 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--session-hash-key` | `SESSION_HASH_KEY` | (auto-generated) | 32-byte hex key for cookie signing |
 | `--session-block-key` | `SESSION_BLOCK_KEY` | (none) | 32-byte hex key for cookie encryption |
 
+### CSRF
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--csrf-key` | `CSRF_KEY` | (auto-generated) | 32-byte hex key for token signing |
+
 ### Auth
 
 | Flag | Env Var | Default | Description |

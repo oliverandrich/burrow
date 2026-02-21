@@ -22,22 +22,6 @@ func WithNavItems(ctx context.Context, items []NavItem) context.Context
 
 Stores navigation items in the context. Used internally by the framework.
 
-### CSRFToken
-
-```go
-func CSRFToken(ctx context.Context) string
-```
-
-Returns the CSRF token from the context. Returns `""` if not set.
-
-### WithCSRFToken
-
-```go
-func WithCSRFToken(ctx context.Context, token string) context.Context
-```
-
-Stores a CSRF token in the context.
-
 ### Generic Helpers
 
 ```go
@@ -46,6 +30,26 @@ func ContextValue[T any](ctx context.Context, key any) (T, bool)
 ```
 
 Generic context value helpers. `ContextValue` is a typed getter that returns the value and a boolean indicating whether it was found.
+
+## CSRF Helpers
+
+Defined in `codeberg.org/oliverandrich/burrow/contrib/csrf`.
+
+### Token
+
+```go
+func Token(ctx context.Context) string
+```
+
+Returns the CSRF token from the context. Returns `""` if not set.
+
+### WithToken
+
+```go
+func WithToken(ctx context.Context, token string) context.Context
+```
+
+Stores a CSRF token in the context. Used internally by the CSRF middleware.
 
 ## Auth Helpers
 

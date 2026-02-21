@@ -57,6 +57,7 @@ nav:
       - Inter-App Communication: guide/inter-app-communication.md
   - Contrib Apps:
       - Session: contrib/session.md
+      - CSRF: contrib/csrf.md
       - Auth: contrib/auth.md
       - Admin: contrib/admin.md
       - i18n: contrib/i18n.md

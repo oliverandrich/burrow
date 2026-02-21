@@ -32,7 +32,7 @@ func appLayout(title string, content templ.Component) templ.Component {
     return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
         // Read framework context values.
         navItems := burrow.NavItems(ctx)
-        csrfToken := burrow.CSRFToken(ctx)
+        csrfToken := csrf.Token(ctx)
 
         _, _ = io.WriteString(w, "<!DOCTYPE html><html><head><title>")
         _, _ = io.WriteString(w, title)
@@ -95,7 +95,7 @@ func (h *Handlers) HomePage(w http.ResponseWriter, r *http.Request) error {
 | Helper | Type | Set By |
 |--------|------|--------|
 | `burrow.NavItems(ctx)` | `[]NavItem` | Framework (from all `HasNavItems` apps) |
-| `burrow.CSRFToken(ctx)` | `string` | CSRF middleware |
+| `csrf.Token(ctx)` | `string` | CSRF middleware |
 | `i18n.Locale(ctx)` | `string` | i18n middleware |
 | `i18n.T(ctx, key)` | `string` | i18n middleware |
 | `staticfiles.URL(ctx, name)` | `string` | staticfiles middleware |

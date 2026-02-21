@@ -12,6 +12,7 @@ import (
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"codeberg.org/oliverandrich/burrow/example/internal/notes"
@@ -60,6 +61,7 @@ func main() {
 	// Session must come before auth (auth depends on session).
 	srv := burrow.NewServer(
 		&session.App{},
+		&csrf.App{},
 		auth.New(nil), // nil renderer = no HTML pages, API-only
 		&healthcheck.App{},
 		notes.New(),

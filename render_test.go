@@ -62,18 +62,6 @@ func TestContextGetMissing(t *testing.T) {
 	assert.Empty(t, val)
 }
 
-func TestCSRFTokenContext(t *testing.T) {
-	ctx := context.Background()
-	ctx = WithCSRFToken(ctx, "abc123")
-
-	assert.Equal(t, "abc123", CSRFToken(ctx))
-}
-
-func TestCSRFTokenMissing(t *testing.T) {
-	ctx := context.Background()
-	assert.Empty(t, CSRFToken(ctx))
-}
-
 func TestNavItemsContext(t *testing.T) {
 	ctx := context.Background()
 	items := []NavItem{

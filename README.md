@@ -105,7 +105,7 @@ Layouts access framework values from the request context:
 
 ```go
 burrow.NavItems(ctx)    // Navigation items from all apps
-burrow.CSRFToken(ctx)   // CSRF token for forms
+csrf.Token(ctx)         // CSRF token for forms
 ```
 
 ### Configuration

@@ -32,7 +32,6 @@ type Layouts struct {
 
 // Context key types for framework-provided values.
 type (
-	ctxKeyCSRFToken     struct{}
 	ctxKeyNavItems      struct{}
 	ctxKeyAdminNavItems struct{}
 )
@@ -46,19 +45,6 @@ func WithContextValue(ctx context.Context, key, val any) context.Context {
 func ContextValue[T any](ctx context.Context, key any) (T, bool) {
 	val, ok := ctx.Value(key).(T)
 	return val, ok
-}
-
-// WithCSRFToken stores a CSRF token in the context.
-func WithCSRFToken(ctx context.Context, token string) context.Context {
-	return context.WithValue(ctx, ctxKeyCSRFToken{}, token)
-}
-
-// CSRFToken retrieves the CSRF token from the context.
-func CSRFToken(ctx context.Context) string {
-	if token, ok := ctx.Value(ctxKeyCSRFToken{}).(string); ok {
-		return token
-	}
-	return ""
 }
 
 // WithNavItems stores navigation items in the context.
