@@ -230,6 +230,7 @@ func (a *App) AdminRoutes(r chi.Router) {
 	r.Get("/users", burrow.Handle(h.UsersPage))
 	r.Get("/users/{id}", burrow.Handle(h.UserDetail))
 	r.Post("/users/{id}/role", burrow.Handle(h.UpdateUserRole))
+	r.Delete("/users/{id}", burrow.Handle(h.DeleteUser))
 
 	r.Get("/invites", burrow.Handle(h.InvitesPage))
 	r.Post("/invites", burrow.Handle(h.CreateInvite))
@@ -241,6 +242,7 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 	return []burrow.NavItem{
 		{
 			Label:     "Users",
+			LabelKey:  "admin-nav-users",
 			URL:       "/admin/users",
 			Icon:      "bi bi-people",
 			Position:  10,
@@ -248,6 +250,7 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 		},
 		{
 			Label:     "Invites",
+			LabelKey:  "admin-nav-invites",
 			URL:       "/admin/invites",
 			Icon:      "bi bi-envelope",
 			Position:  20,

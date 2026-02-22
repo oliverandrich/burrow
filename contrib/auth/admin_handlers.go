@@ -137,6 +137,37 @@ func (h *adminHandlers) DeleteInvite(w http.ResponseWriter, r *http.Request) err
 	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// DeleteUser soft-deletes a user by ID.
+func (h *adminHandlers) DeleteUser(w http.ResponseWriter, r *http.Request) error {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusBadRequest, "invalid user id")
+	}
+
+	// Prevent self-deletion.
+	currentUser := GetUser(r)
+	if currentUser != nil && currentUser.ID == id {
+		return burrow.NewHTTPError(http.StatusBadRequest, "cannot delete your own account")
+	}
+
+	// Verify user exists.
+	if _, err := h.repo.GetUserByID(r.Context(), id); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return burrow.NewHTTPError(http.StatusNotFound, "user not found")
+		}
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get user")
+	}
+
+	if err := h.repo.DeleteUser(r.Context(), id); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete user")
+	}
+
+	slog.Info("user deleted", "user_id", id, "deleted_by", currentUser.ID) //nolint:gosec // G706: IDs are int64, not user-controlled strings
+	w.Header().Set("HX-Redirect", "/admin/users")
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
 func (h *adminHandlers) renderInvitesPage(w http.ResponseWriter, r *http.Request, createdURL string) error {
 	invites, err := h.repo.ListInvites(r.Context())
 	if err != nil {

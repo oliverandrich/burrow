@@ -53,12 +53,29 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 
 // indexPage renders the admin dashboard page.
 func (a *App) indexPage(w http.ResponseWriter, r *http.Request) error {
-	content := templates.AdminIndex(NavItems(r.Context()))
+	content := templates.AdminIndex()
 	layout := burrow.Layout(r.Context())
 	if layout == nil {
 		return burrow.Render(w, r, http.StatusOK, content)
 	}
 	return burrow.Render(w, r, http.StatusOK, layout("Admin", content))
+}
+
+// buildNavGroups collects nav groups from all HasAdmin apps.
+func (a *App) buildNavGroups() []templates.NavGroup {
+	var groups []templates.NavGroup
+	for _, app := range a.registry.Apps() {
+		if provider, ok := app.(burrow.HasAdmin); ok {
+			items := provider.AdminNavItems()
+			if len(items) > 0 {
+				groups = append(groups, templates.NavGroup{
+					AppName: app.Name(),
+					Items:   items,
+				})
+			}
+		}
+	}
+	return groups
 }
 
 // Routes creates the /admin group with auth middleware and delegates
@@ -71,16 +88,18 @@ func (a *App) Routes(r chi.Router) {
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(auth.RequireAuth(), auth.RequireAdmin())
 
-		// Inject admin layout inside the /admin group so it overrides the
-		// app layout only for admin pages.
-		if a.layout != nil {
-			r.Use(func(next http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					ctx := burrow.WithLayout(r.Context(), a.layout)
-					next.ServeHTTP(w, r.WithContext(ctx))
-				})
+		groups := a.buildNavGroups()
+
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				ctx := r.Context()
+				if a.layout != nil {
+					ctx = burrow.WithLayout(ctx, a.layout)
+				}
+				ctx = templates.WithNavGroups(ctx, groups)
+				next.ServeHTTP(w, r.WithContext(ctx))
 			})
-		}
+		})
 
 		r.Get("/", burrow.Handle(a.indexPage))
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/a-h/templ"
@@ -272,10 +273,10 @@ func TestAdminIndexPage(t *testing.T) {
 	html := string(body)
 	assert.Contains(t, html, "<!doctype html>")
 	assert.Contains(t, html, "<title>Admin – Admin</title>")
-	assert.Contains(t, html, "<h1>Admin</h1>")
+	assert.Contains(t, html, `<li class="breadcrumb-item active" aria-current="page">Admin</li>`)
 }
 
-func TestAdminIndexPageRendersNavItems(t *testing.T) {
+func TestAdminIndexPageRendersSidebar(t *testing.T) {
 	registry := burrow.NewRegistry()
 
 	registry.Add(&session.App{})
@@ -297,7 +298,6 @@ func TestAdminIndexPageRendersNavItems(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	// Apply admin middleware to inject nav items into context.
 	for _, mw := range app.Middleware() {
 		r.Use(mw)
 	}
@@ -310,8 +310,12 @@ func TestAdminIndexPageRendersNavItems(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body, _ := io.ReadAll(rec.Body)
 	html := string(body)
+	// Nav items should appear in the sidebar.
 	assert.Contains(t, html, `href="/admin/test-resource"`)
 	assert.Contains(t, html, "Test Resource")
+	// The sidebar should contain the collapsible group.
+	assert.Contains(t, html, `data-bs-toggle="collapse"`)
+	assert.Contains(t, html, `id="collapse-test-admin-provider"`)
 }
 
 func TestLayout(t *testing.T) {
@@ -421,4 +425,86 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.NotNil(t, checker.gotLayout, "admin layout should be set in context inside /admin route group")
+}
+
+func TestBuildNavGroups(t *testing.T) {
+	registry := burrow.NewRegistry()
+
+	registry.Add(&session.App{})
+	authApp := auth.New(nil)
+	registry.Add(authApp)
+	require.NoError(t, registry.Bootstrap(nil))
+
+	provider := &hasAdminApp{}
+	registry.Add(provider)
+
+	app := New(nil)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	groups := app.buildNavGroups()
+
+	// auth contributes admin nav items, and so does hasAdminApp.
+	require.GreaterOrEqual(t, len(groups), 2)
+
+	names := make([]string, 0, len(groups))
+	for _, g := range groups {
+		names = append(names, g.AppName)
+	}
+	assert.Contains(t, names, "auth")
+	assert.Contains(t, names, "test-admin-provider")
+}
+
+// navGroupsCheckApp captures nav groups from context inside the /admin group.
+type navGroupsCheckApp struct {
+	gotGroups []templates.NavGroup
+}
+
+func (a *navGroupsCheckApp) Name() string                       { return "nav-groups-check" }
+func (a *navGroupsCheckApp) Register(_ *burrow.AppConfig) error { return nil }
+func (a *navGroupsCheckApp) AdminRoutes(r chi.Router) {
+	r.Get("/nav-groups-check", func(w http.ResponseWriter, r *http.Request) {
+		a.gotGroups = templates.NavGroupsFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+}
+func (a *navGroupsCheckApp) AdminNavItems() []burrow.NavItem {
+	return []burrow.NavItem{{Label: "Check", URL: "/admin/nav-groups-check"}}
+}
+
+func TestRoutesInjectNavGroups(t *testing.T) {
+	registry := burrow.NewRegistry()
+	registry.Add(&session.App{})
+	authApp := auth.New(nil)
+	registry.Add(authApp)
+	require.NoError(t, registry.Bootstrap(nil))
+
+	checker := &navGroupsCheckApp{}
+	registry.Add(checker)
+
+	app := New(nil)
+	registry.Add(app)
+	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleAdmin})
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	app.Routes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/nav-groups-check", nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NotEmpty(t, checker.gotGroups, "nav groups should be injected in /admin route group")
+
+	names := make([]string, 0, len(checker.gotGroups))
+	for _, g := range checker.gotGroups {
+		names = append(names, g.AppName)
+	}
+	assert.Contains(t, names, "nav-groups-check")
 }

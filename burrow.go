@@ -21,6 +21,7 @@ type AppConfig struct {
 // NavItem represents a navigation entry contributed by an app.
 type NavItem struct {
 	Label     string
+	LabelKey  string // i18n message ID; translated at render time, falls back to Label
 	URL       string
 	Icon      string
 	Position  int

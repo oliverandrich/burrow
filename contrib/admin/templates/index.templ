@@ -1,17 +1,10 @@
 package templates
 
-import "codeberg.org/oliverandrich/burrow"
-
-// AdminIndex renders the admin dashboard page with the given navigation items.
-templ AdminIndex(items []burrow.NavItem) {
-	<h1>Admin</h1>
-	if len(items) > 0 {
-		<nav>
-			<ul>
-				for _, item := range items {
-					<li><a href={ templ.SafeURL(item.URL) }>{ item.Label }</a></li>
-				}
-			</ul>
-		</nav>
-	}
+// AdminIndex renders the admin dashboard page.
+templ AdminIndex() {
+	<nav aria-label="breadcrumb">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item active" aria-current="page">Admin</li>
+		</ol>
+	</nav>
 }

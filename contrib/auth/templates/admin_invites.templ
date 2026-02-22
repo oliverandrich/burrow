@@ -7,7 +7,12 @@ import "codeberg.org/oliverandrich/burrow/contrib/i18n"
 
 // adminInvitesPage renders the admin invites management page.
 templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) {
-	<h1>{ i18n.T(ctx, "admin-invites-title") }</h1>
+	<nav aria-label="breadcrumb">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+			<li class="breadcrumb-item active" aria-current="page">{ i18n.T(ctx, "admin-invites-title") }</li>
+		</ol>
+	</nav>
 	if createdURL != "" {
 		<div style="background:var(--bg-alt,#f0f9ff);padding:1rem;border-radius:4px;margin-bottom:1rem">
 			<strong>{ i18n.T(ctx, "admin-invites-created") }</strong>

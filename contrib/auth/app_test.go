@@ -196,7 +196,7 @@ func TestListUsers(t *testing.T) {
 		assert.Empty(t, users)
 	})
 
-	t.Run("returns all users ordered by created_at desc", func(t *testing.T) {
+	t.Run("returns all users ordered by id asc", func(t *testing.T) {
 		_, err := repo.CreateUser(ctx, "alice", "Alice")
 		require.NoError(t, err)
 		_, err = repo.CreateUser(ctx, "bob", "Bob")
@@ -205,9 +205,8 @@ func TestListUsers(t *testing.T) {
 		users, err := repo.ListUsers(ctx)
 		require.NoError(t, err)
 		require.Len(t, users, 2)
-		// Most recently created first.
-		assert.Equal(t, "bob", users[0].Username)
-		assert.Equal(t, "alice", users[1].Username)
+		assert.Equal(t, "alice", users[0].Username)
+		assert.Equal(t, "bob", users[1].Username)
 	})
 }
 
@@ -947,6 +946,129 @@ func (m *mockAdminRenderer) AdminUserDetailPage(w http.ResponseWriter, _ *http.R
 func (m *mockAdminRenderer) AdminInvitesPage(w http.ResponseWriter, _ *http.Request, _ []Invite, _ string, _ bool) error {
 	m.lastMethod = "AdminInvitesPage"
 	return burrow.Text(w, http.StatusOK, "admin-invites")
+}
+
+// --- Admin delete user tests ---
+
+func TestDeleteUser(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	user, err := repo.CreateUser(ctx, "alice", "Alice")
+	require.NoError(t, err)
+
+	err = repo.DeleteUser(ctx, user.ID)
+	require.NoError(t, err)
+
+	// Soft-deleted user should not appear in ListUsers.
+	users, err := repo.ListUsers(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, users)
+
+	// GetUserByID should also not find the soft-deleted user.
+	_, err = repo.GetUserByID(ctx, user.ID)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNotFound)
+}
+
+// deleteUserRouter creates a chi router with the DeleteUser handler
+// and the given user injected into the request context.
+func deleteUserRouter(h *adminHandlers, user *User) *chi.Mux {
+	router := chi.NewRouter()
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rctx := WithUser(r.Context(), user)
+			next.ServeHTTP(w, r.WithContext(rctx))
+		})
+	})
+	router.Delete("/admin/users/{id}", burrow.Handle(h.DeleteUser))
+	return router
+}
+
+func TestAdminDeleteUserSuccess(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
+
+	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	require.NoError(t, err)
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{}, nil)
+	router := deleteUserRouter(h, adminUser)
+
+	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/admin/users/%d", target.ID), nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "/admin/users", rec.Header().Get("HX-Redirect"))
+
+	// Verify user was soft-deleted.
+	users, err := repo.ListUsers(ctx)
+	require.NoError(t, err)
+	assert.Len(t, users, 1, "only the admin should remain")
+	assert.Equal(t, "admin", users[0].Username)
+}
+
+func TestAdminDeleteUserInvalidID(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{}, nil)
+	router := deleteUserRouter(h, &User{ID: 1, Role: RoleAdmin})
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/users/invalid", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestAdminDeleteUserNotFound(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{}, nil)
+	router := deleteUserRouter(h, &User{ID: 1, Role: RoleAdmin})
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/users/999", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestAdminDeleteUserSelf(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{}, nil)
+	router := deleteUserRouter(h, adminUser)
+
+	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/admin/users/%d", adminUser.ID), nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	// Verify user was NOT deleted.
+	users, err := repo.ListUsers(ctx)
+	require.NoError(t, err)
+	assert.Len(t, users, 1)
 }
 
 // --- Static files tests ---

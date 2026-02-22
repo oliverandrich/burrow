@@ -135,10 +135,10 @@ func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error
 	return count > 0, nil
 }
 
-// ListUsers returns all non-deleted users ordered by creation date descending.
+// ListUsers returns all non-deleted users ordered by ID ascending.
 func (r *Repository) ListUsers(ctx context.Context) ([]User, error) {
 	var users []User
-	if err := r.db.NewSelect().Model(&users).Order("created_at DESC", "id DESC").Scan(ctx); err != nil {
+	if err := r.db.NewSelect().Model(&users).Order("id ASC").Scan(ctx); err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
 	return users, nil
@@ -151,6 +151,15 @@ func (r *Repository) CountUsers(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("count users: %w", err)
 	}
 	return count, nil
+}
+
+// DeleteUser soft-deletes a user by ID.
+func (r *Repository) DeleteUser(ctx context.Context, id int64) error {
+	if _, err := r.db.NewDelete().Model((*User)(nil)).
+		Where("id = ?", id).Exec(ctx); err != nil {
+		return fmt.Errorf("delete user %d: %w", id, err)
+	}
+	return nil
 }
 
 // --- Credential methods ---
