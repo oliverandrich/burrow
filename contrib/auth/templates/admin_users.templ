@@ -52,7 +52,7 @@ templ adminUsersPage(users []auth.User) {
 	}
 }
 
-// adminUserDetailPage renders the admin user detail page with role toggle.
+// adminUserDetailPage renders the admin user detail page with editable fields.
 templ adminUserDetailPage(user *auth.User) {
 	<nav aria-label="breadcrumb">
 		<ol class="breadcrumb">
@@ -68,49 +68,64 @@ templ adminUserDetailPage(user *auth.User) {
 				<dd class="col-sm-9">{ fmt.Sprintf("%d", user.ID) }</dd>
 				<dt class="col-sm-3">{ i18n.T(ctx, "admin-user-detail-username") }</dt>
 				<dd class="col-sm-9">{ user.Username }</dd>
-				if user.Email != nil {
-					<dt class="col-sm-3">{ i18n.T(ctx, "admin-user-detail-email") }</dt>
-					<dd class="col-sm-9">
-						{ *user.Email }
-						if user.EmailVerified {
-							<span class="badge text-bg-success ms-1">{ i18n.T(ctx, "admin-user-detail-verified") }</span>
-						} else {
-							<span class="badge text-bg-warning ms-1">{ i18n.T(ctx, "admin-user-detail-unverified") }</span>
-						}
-					</dd>
-				}
-				if user.Name != "" {
-					<dt class="col-sm-3">{ i18n.T(ctx, "admin-user-detail-display-name") }</dt>
-					<dd class="col-sm-9">{ user.Name }</dd>
-				}
-				<dt class="col-sm-3">{ i18n.T(ctx, "admin-user-detail-role") }</dt>
-				<dd class="col-sm-9">{ user.Role }</dd>
 				<dt class="col-sm-3">{ i18n.T(ctx, "admin-user-detail-created") }</dt>
 				<dd class="col-sm-9">{ user.CreatedAt.Format("2006-01-02 15:04") }</dd>
 			</dl>
 		</div>
 	</div>
-	<h2 class="h5 mb-3">{ i18n.T(ctx, "admin-user-detail-change-role") }</h2>
-	<form method="post" action={ templ.SafeURL(fmt.Sprintf("/admin/users/%d/role", user.ID)) } class="row g-2 align-items-center mb-4">
+	<form method="post" action={ templ.SafeURL(fmt.Sprintf("/admin/users/%d", user.ID)) } class="mb-4">
 		<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
-		<div class="col-auto">
-			<select name="role" class="form-select form-select-sm">
-				<option value="user" selected?={ user.Role == auth.RoleUser }>{ i18n.T(ctx, "admin-user-detail-role-user") }</option>
-				<option value="admin" selected?={ user.Role == auth.RoleAdmin }>{ i18n.T(ctx, "admin-user-detail-role-admin") }</option>
-			</select>
+		<div class="mb-3">
+			<label for="name" class="form-label">{ i18n.T(ctx, "admin-user-detail-name-label") }</label>
+			<input type="text" class="form-control" id="name" name="name" value={ user.Name }/>
 		</div>
-		<div class="col-auto">
-			<button type="submit" class="btn btn-primary btn-sm">{ i18n.T(ctx, "admin-user-detail-update-role") }</button>
+		<div class="mb-3">
+			<label for="email" class="form-label">{ i18n.T(ctx, "admin-user-detail-email-label") }</label>
+			<input type="email" class="form-control" id="email" name="email" value={ emailValue(user) }/>
+			if user.Email != nil {
+				if user.EmailVerified {
+					<div class="form-text text-success">{ i18n.T(ctx, "admin-user-detail-verified") }</div>
+				} else {
+					<div class="form-text text-warning">{ i18n.T(ctx, "admin-user-detail-unverified") }</div>
+				}
+			}
+		</div>
+		<div class="mb-3">
+			<label for="bio" class="form-label">{ i18n.T(ctx, "admin-user-detail-bio") }</label>
+			<textarea class="form-control" id="bio" name="bio" rows="3">{ user.Bio }</textarea>
+		</div>
+		<div class="mb-3">
+			<label for="role" class="form-label">{ i18n.T(ctx, "admin-user-detail-role") }</label>
+			if auth.IsAdminEditLastAdmin(ctx) {
+				<select class="form-select" id="role" name="role" disabled>
+					<option value="admin" selected>{ i18n.T(ctx, "admin-user-detail-role-admin") }</option>
+				</select>
+				<input type="hidden" name="role" value="admin"/>
+			} else {
+				<select class="form-select" id="role" name="role">
+					<option value="user" selected?={ user.Role == auth.RoleUser }>{ i18n.T(ctx, "admin-user-detail-role-user") }</option>
+					<option value="admin" selected?={ user.Role == auth.RoleAdmin }>{ i18n.T(ctx, "admin-user-detail-role-admin") }</option>
+				</select>
+			}
+		</div>
+		<div class="d-flex gap-2">
+			<button type="submit" class="btn btn-primary">{ i18n.T(ctx, "admin-user-detail-save") }</button>
+			<button type="submit" name="_continue" value="1" class="btn btn-secondary">{ i18n.T(ctx, "admin-user-detail-save-continue") }</button>
+			if auth.IsAdminEditSelf(ctx) {
+				<button type="button" class="btn btn-danger ms-auto" disabled>
+					{ i18n.T(ctx, "admin-user-detail-delete") }
+				</button>
+			} else {
+				<button
+					type="button"
+					class="btn btn-danger ms-auto"
+					hx-delete={ fmt.Sprintf("/admin/users/%d", user.ID) }
+					hx-headers={ fmt.Sprintf(`{"X-CSRF-Token":"%s"}`, csrf.Token(ctx)) }
+					hx-confirm={ i18n.T(ctx, "admin-user-detail-delete-confirm") }
+				>
+					{ i18n.T(ctx, "admin-user-detail-delete") }
+				</button>
+			}
 		</div>
 	</form>
-	<div class="d-flex gap-2">
-		<button
-			class="btn btn-danger btn-sm"
-			hx-delete={ fmt.Sprintf("/admin/users/%d", user.ID) }
-			hx-headers={ fmt.Sprintf(`{"X-CSRF-Token":"%s"}`, csrf.Token(ctx)) }
-			hx-confirm={ i18n.T(ctx, "admin-user-detail-delete-confirm") }
-		>
-			{ i18n.T(ctx, "admin-user-detail-delete") }
-		</button>
-	</div>
 }

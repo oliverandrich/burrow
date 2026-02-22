@@ -94,3 +94,11 @@ func credName(cred auth.Credential) string {
 	}
 	return "Passkey"
 }
+
+// emailValue returns the user's email as a string, or empty if nil.
+func emailValue(user *auth.User) string {
+	if user.Email != nil {
+		return *user.Email
+	}
+	return ""
+}

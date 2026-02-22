@@ -39,6 +39,7 @@ type App struct {
 // Config holds auth-specific configuration.
 type Config struct { //nolint:govet // fieldalignment: readability over optimization
 	LoginRedirect       string
+	LogoutRedirect      string
 	UseEmail            bool
 	RequireVerification bool
 	InviteOnly          bool
@@ -81,6 +82,12 @@ func (a *App) Flags() []cli.Flag {
 			Value:   "/",
 			Usage:   "Redirect target after successful login",
 			Sources: cli.EnvVars("AUTH_LOGIN_REDIRECT"),
+		},
+		&cli.StringFlag{
+			Name:    "auth-logout-redirect",
+			Value:   "/auth/login",
+			Usage:   "Redirect target after logout",
+			Sources: cli.EnvVars("AUTH_LOGOUT_REDIRECT"),
 		},
 		&cli.BoolFlag{
 			Name:    "auth-use-email",
@@ -125,6 +132,7 @@ func (a *App) Configure(cmd *cli.Command) error {
 
 	a.config = &Config{
 		LoginRedirect:       cmd.String("auth-login-redirect"),
+		LogoutRedirect:      cmd.String("auth-logout-redirect"),
 		UseEmail:            cmd.Bool("auth-use-email"),
 		RequireVerification: cmd.Bool("auth-require-verification"),
 		InviteOnly:          cmd.Bool("auth-invite-only"),
@@ -229,7 +237,7 @@ func (a *App) AdminRoutes(r chi.Router) {
 
 	r.Get("/users", burrow.Handle(h.UsersPage))
 	r.Get("/users/{id}", burrow.Handle(h.UserDetail))
-	r.Post("/users/{id}/role", burrow.Handle(h.UpdateUserRole))
+	r.Post("/users/{id}", burrow.Handle(h.UpdateUser))
 	r.Delete("/users/{id}", burrow.Handle(h.DeleteUser))
 
 	r.Get("/invites", burrow.Handle(h.InvitesPage))

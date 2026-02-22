@@ -52,6 +52,7 @@ func TestAppFlags(t *testing.T) {
 	}
 
 	assert.True(t, names["auth-login-redirect"])
+	assert.True(t, names["auth-logout-redirect"])
 	assert.True(t, names["auth-use-email"])
 	assert.True(t, names["auth-require-verification"])
 	assert.True(t, names["auth-invite-only"])
@@ -165,6 +166,32 @@ func TestUserExistsAndCount(t *testing.T) {
 	count, err := repo.CountUsers(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
+}
+
+func TestCountAdminUsers(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	count, err := repo.CountAdminUsers(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, count)
+
+	alice, err := repo.CreateUser(ctx, "alice", "")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, alice.ID, RoleAdmin))
+
+	count, err = repo.CountAdminUsers(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+
+	bob, err := repo.CreateUser(ctx, "bob", "")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, bob.ID, RoleAdmin))
+
+	count, err = repo.CountAdminUsers(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
 }
 
 func TestSetUserRole(t *testing.T) {
@@ -769,7 +796,7 @@ func TestAdminUserDetailNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
-func TestAdminUpdateUserRolePromote(t *testing.T) {
+func TestAdminUpdateUser(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -778,14 +805,74 @@ func TestAdminUpdateUserRolePromote(t *testing.T) {
 	require.NoError(t, err)
 
 	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+	h := newAdminHandlers(repo, r, &Config{}, nil)
 
 	router := chi.NewRouter()
-	router.Post("/admin/users/{id}/role", burrow.Handle(h.UpdateUserRole))
+	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
 
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d/role", user.ID), nil)
+	body := strings.NewReader("name=Alice+Wonder&bio=Hello+World&email=alice%40example.com&role=admin")
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Form = map[string][]string{"role": {RoleAdmin}}
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/admin/users", rec.Header().Get("Location"), "default save redirects to user list")
+
+	got, err := repo.GetUserByID(ctx, user.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Alice Wonder", got.Name)
+	assert.Equal(t, "Hello World", got.Bio)
+	require.NotNil(t, got.Email)
+	assert.Equal(t, "alice@example.com", *got.Email)
+	assert.Equal(t, RoleAdmin, got.Role)
+}
+
+func TestAdminUpdateUserContinueEditing(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	user, err := repo.CreateUser(ctx, "alice", "")
+	require.NoError(t, err)
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{}, nil)
+
+	router := chi.NewRouter()
+	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+
+	body := strings.NewReader("name=Alice&role=user&_continue=1")
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, fmt.Sprintf("/admin/users/%d", user.ID), rec.Header().Get("Location"), "continue redirects back to detail page")
+}
+
+func TestAdminUpdateUserClearsOptionalFields(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	email := "alice@example.com"
+	user, err := repo.CreateUser(ctx, "alice", "Alice")
+	require.NoError(t, err)
+	user.Bio = "Old bio"
+	user.Email = &email
+	require.NoError(t, repo.UpdateUser(ctx, user))
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{}, nil)
+
+	router := chi.NewRouter()
+	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+
+	body := strings.NewReader("name=&bio=&email=&role=user")
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -793,10 +880,91 @@ func TestAdminUpdateUserRolePromote(t *testing.T) {
 
 	got, err := repo.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
-	assert.Equal(t, RoleAdmin, got.Role)
+	assert.Empty(t, got.Name)
+	assert.Empty(t, got.Bio)
+	assert.Nil(t, got.Email)
 }
 
-func TestAdminUpdateUserRoleInvalidRole(t *testing.T) {
+func TestAdminUpdateUserNotFound(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{}, nil)
+
+	router := chi.NewRouter()
+	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+
+	body := strings.NewReader("name=Test&role=user")
+	req := httptest.NewRequest(http.MethodPost, "/admin/users/999", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestAdminUpdateUserLastAdminDemotion(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	admin, err := repo.CreateUser(ctx, "admin", "")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, admin.ID, RoleAdmin))
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{}, nil)
+
+	router := chi.NewRouter()
+	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+
+	body := strings.NewReader("name=Admin&role=user")
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", admin.ID), body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "should reject demotion of last admin")
+
+	got, err := repo.GetUserByID(ctx, admin.ID)
+	require.NoError(t, err)
+	assert.Equal(t, RoleAdmin, got.Role, "role should remain admin")
+}
+
+func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	admin1, err := repo.CreateUser(ctx, "admin1", "")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, admin1.ID, RoleAdmin))
+
+	admin2, err := repo.CreateUser(ctx, "admin2", "")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, admin2.ID, RoleAdmin))
+
+	r := &mockAdminRenderer{}
+	h := newAdminHandlers(repo, r, &Config{}, nil)
+
+	router := chi.NewRouter()
+	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+
+	body := strings.NewReader("name=Admin2&role=user")
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", admin2.ID), body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusSeeOther, rec.Code, "should allow demotion when multiple admins exist")
+
+	got, err := repo.GetUserByID(ctx, admin2.ID)
+	require.NoError(t, err)
+	assert.Equal(t, RoleUser, got.Role)
+}
+
+func TestAdminUpdateUserInvalidRole(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -805,14 +973,14 @@ func TestAdminUpdateUserRoleInvalidRole(t *testing.T) {
 	require.NoError(t, err)
 
 	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+	h := newAdminHandlers(repo, r, &Config{}, nil)
 
 	router := chi.NewRouter()
-	router.Post("/admin/users/{id}/role", burrow.Handle(h.UpdateUserRole))
+	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
 
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d/role", user.ID), nil)
+	body := strings.NewReader("name=Alice&role=superadmin")
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Form = map[string][]string{"role": {"superadmin"}}
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 

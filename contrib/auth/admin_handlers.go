@@ -58,7 +58,17 @@ func (h *adminHandlers) UserDetail(w http.ResponseWriter, r *http.Request) error
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get user")
 	}
 
-	return h.renderer.AdminUserDetailPage(w, r, user)
+	currentUser := GetUser(r)
+	isSelf := currentUser != nil && currentUser.ID == user.ID
+
+	adminCount, err := h.repo.CountAdminUsers(r.Context())
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to count admins")
+	}
+	isLastAdmin := user.Role == RoleAdmin && adminCount <= 1
+
+	ctx := withAdminEditFlags(r.Context(), isSelf, isLastAdmin)
+	return h.renderer.AdminUserDetailPage(w, r.WithContext(ctx), user)
 }
 
 // CreateInviteRequest is the request body for creating an invite.
@@ -177,8 +187,8 @@ func (h *adminHandlers) renderInvitesPage(w http.ResponseWriter, r *http.Request
 	return h.renderer.AdminInvitesPage(w, r, invites, createdURL, useEmail)
 }
 
-// UpdateUserRole changes a user's role.
-func (h *adminHandlers) UpdateUserRole(w http.ResponseWriter, r *http.Request) error {
+// UpdateUser updates a user's editable fields (name, bio, email, role).
+func (h *adminHandlers) UpdateUser(w http.ResponseWriter, r *http.Request) error {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid user id")
@@ -189,18 +199,44 @@ func (h *adminHandlers) UpdateUserRole(w http.ResponseWriter, r *http.Request) e
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid role")
 	}
 
-	// Verify user exists.
-	if _, err := h.repo.GetUserByID(r.Context(), id); err != nil {
+	user, err := h.repo.GetUserByID(r.Context(), id)
+	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return burrow.NewHTTPError(http.StatusNotFound, "user not found")
 		}
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get user")
 	}
 
-	if err := h.repo.SetUserRole(r.Context(), id, role); err != nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to update role")
+	// Prevent demotion of the last admin.
+	if user.Role == RoleAdmin && role != RoleAdmin {
+		adminCount, err := h.repo.CountAdminUsers(r.Context())
+		if err != nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to count admins")
+		}
+		if adminCount <= 1 {
+			return burrow.NewHTTPError(http.StatusBadRequest, "cannot remove the last admin")
+		}
 	}
 
-	http.Redirect(w, r, "/admin/users/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+	user.Name = r.FormValue("name")
+	user.Bio = r.FormValue("bio")
+	user.Role = role
+
+	email := r.FormValue("email")
+	if email != "" {
+		user.Email = &email
+	} else {
+		user.Email = nil
+	}
+
+	if err := h.repo.UpdateUser(r.Context(), user); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to update user")
+	}
+
+	redirectURL := "/admin/users"
+	if r.FormValue("_continue") != "" {
+		redirectURL = "/admin/users/" + strconv.FormatInt(id, 10)
+	}
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 	return nil
 }

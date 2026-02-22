@@ -26,7 +26,42 @@ func IsAuthenticated(r *http.Request) bool {
 	return GetUser(r) != nil
 }
 
+// UserFromContext retrieves the authenticated user from a context.
+// This is useful in templ templates where only context.Context is available.
+func UserFromContext(ctx context.Context) *User {
+	if user, ok := ctx.Value(ctxKeyUser{}).(*User); ok {
+		return user
+	}
+	return nil
+}
+
 // WithUser returns a new context with the user set.
 func WithUser(ctx context.Context, user *User) context.Context {
 	return context.WithValue(ctx, ctxKeyUser{}, user)
+}
+
+// Admin edit flags — set by UserDetail handler, read by templates.
+
+type ctxKeyAdminEditFlags struct{}
+
+type adminEditFlags struct {
+	isSelf      bool
+	isLastAdmin bool
+}
+
+// withAdminEditFlags returns a context with admin edit UI flags set.
+func withAdminEditFlags(ctx context.Context, isSelf, isLastAdmin bool) context.Context {
+	return context.WithValue(ctx, ctxKeyAdminEditFlags{}, adminEditFlags{isSelf: isSelf, isLastAdmin: isLastAdmin})
+}
+
+// IsAdminEditSelf reports whether the admin is viewing their own user detail page.
+func IsAdminEditSelf(ctx context.Context) bool {
+	f, _ := ctx.Value(ctxKeyAdminEditFlags{}).(adminEditFlags)
+	return f.isSelf
+}
+
+// IsAdminEditLastAdmin reports whether the viewed user is the only remaining admin.
+func IsAdminEditLastAdmin(ctx context.Context) bool {
+	f, _ := ctx.Value(ctxKeyAdminEditFlags{}).(adminEditFlags)
+	return f.isLastAdmin
 }

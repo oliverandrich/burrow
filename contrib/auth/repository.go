@@ -153,6 +153,15 @@ func (r *Repository) CountUsers(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+// CountAdminUsers returns the number of users with the admin role.
+func (r *Repository) CountAdminUsers(ctx context.Context) (int, error) {
+	count, err := r.db.NewSelect().Model((*User)(nil)).Where("role = ?", RoleAdmin).Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count admin users: %w", err)
+	}
+	return count, nil
+}
+
 // DeleteUser soft-deletes a user by ID.
 func (r *Repository) DeleteUser(ctx context.Context, id int64) error {
 	if _, err := r.db.NewDelete().Model((*User)(nil)).
