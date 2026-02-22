@@ -2,6 +2,7 @@ package burrow
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -96,6 +97,30 @@ func TestServerBootstrapSetsConfig(t *testing.T) {
 	require.NotNil(t, receivedCfg)
 	assert.Equal(t, db, receivedCfg.DB)
 	assert.Equal(t, "testhost", receivedCfg.Config.Server.Host)
+}
+
+func TestServerBootstrapCallsSeed(t *testing.T) {
+	app := &trackingApp{name: "seedable"}
+
+	s := NewServer(app)
+	db := testDB(t)
+
+	err := s.bootstrap(t.Context(), db, nil)
+	require.NoError(t, err)
+
+	assert.True(t, app.seeded, "bootstrap should call Seed on Seedable apps")
+}
+
+func TestServerBootstrapSeedError(t *testing.T) {
+	seedErr := errors.New("seed failed")
+	app := &failingApp{name: "bad-seed", failOn: "seed", err: seedErr}
+
+	s := NewServer(app)
+	db := testDB(t)
+
+	err := s.bootstrap(t.Context(), db, nil)
+	require.ErrorIs(t, err, seedErr)
+	assert.Contains(t, err.Error(), "seed")
 }
 
 func TestSetLayout(t *testing.T) {

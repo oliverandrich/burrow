@@ -103,7 +103,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	return startServer(ctx, r, cfg)
 }
 
-// bootstrap runs migrations and registers all apps.
+// bootstrap runs migrations, registers all apps, and seeds the database.
 func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
 	if err := s.registry.RunMigrations(ctx, db); err != nil {
 		return fmt.Errorf("run migrations: %w", err)
@@ -119,7 +119,8 @@ func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
 			return fmt.Errorf("register app %q: %w", app.Name(), err)
 		}
 	}
-	return nil
+
+	return s.registry.Seed(ctx)
 }
 
 func openDB(dsn string) (*bun.DB, error) {

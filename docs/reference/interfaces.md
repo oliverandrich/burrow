@@ -121,7 +121,7 @@ type Seedable interface {
 }
 ```
 
-Seeds the database with initial data. Call `registry.Seed(ctx)` to run all seeders.
+Seeds the database with initial data. Called automatically during startup after migrations and app registration. Seeders run in app registration order and stop on the first error.
 
 ### HasStaticFiles
 
