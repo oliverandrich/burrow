@@ -58,6 +58,10 @@ recovery-codes-title = "Recovery Codes"
 recovery-codes-description = "Save these codes in a safe place. Each code can only be used once."
 recovery-codes-ack = "I have saved my codes"
 
+# Admin: Dashboard
+admin-dashboard-title = "Dashboard"
+admin-dashboard-empty = "No admin sections available."
+
 # Admin: Users
 admin-users-title = "Users"
 admin-users-id = "ID"
@@ -70,6 +74,8 @@ admin-users-none = "No users found."
 admin-users-verified = "Verified"
 
 # Admin: User detail
+admin-user-detail-info = "User Information"
+admin-user-detail-edit = "Edit User"
 admin-user-detail-title = "User: "
 admin-user-detail-id = "ID"
 admin-user-detail-username = "Username"
@@ -106,6 +112,7 @@ admin-invites-status-expired = "Expired"
 admin-invites-status-active = "Active"
 admin-invites-revoke = "Revoke"
 admin-invites-revoke-confirm = "Revoke this invite?"
+admin-invites-existing-title = "Existing Invites"
 admin-invites-none = "No invites found."
 
 # Admin sidebar

@@ -102,7 +102,7 @@ func Layout(title string, content templ.Component) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\"></script><style>\n\t\t\t\t.btn-toggle {\n\t\t\t\t\tpadding: .25rem .5rem;\n\t\t\t\t\tfont-weight: 600;\n\t\t\t\t\tcolor: var(--bs-emphasis-color);\n\t\t\t\t\tbackground-color: transparent;\n\t\t\t\t}\n\t\t\t\t.btn-toggle:hover,\n\t\t\t\t.btn-toggle:focus {\n\t\t\t\t\tcolor: rgba(var(--bs-emphasis-color-rgb), .85);\n\t\t\t\t\tbackground-color: var(--bs-tertiary-bg);\n\t\t\t\t}\n\t\t\t\t.btn-toggle::before {\n\t\t\t\t\twidth: 1.25em;\n\t\t\t\t\tline-height: 0;\n\t\t\t\t\tcontent: url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0,.5%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e\");\n\t\t\t\t\ttransition: transform .35s ease;\n\t\t\t\t\ttransform-origin: .5em 50%;\n\t\t\t\t}\n\t\t\t\t[data-bs-theme=\"dark\"] .btn-toggle::before {\n\t\t\t\t\tcontent: url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255,.5%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e\");\n\t\t\t\t}\n\t\t\t\t.btn-toggle[aria-expanded=\"true\"] {\n\t\t\t\t\tcolor: rgba(var(--bs-emphasis-color-rgb), .85);\n\t\t\t\t}\n\t\t\t\t.btn-toggle[aria-expanded=\"true\"]::before {\n\t\t\t\t\ttransform: rotate(90deg);\n\t\t\t\t}\n\t\t\t\t.btn-toggle-nav a {\n\t\t\t\t\tpadding: .1875rem .5rem;\n\t\t\t\t\tmargin-top: .125rem;\n\t\t\t\t\tmargin-left: 1.25rem;\n\t\t\t\t}\n\t\t\t\t.btn-toggle-nav a:hover,\n\t\t\t\t.btn-toggle-nav a:focus {\n\t\t\t\t\tbackground-color: var(--bs-tertiary-bg);\n\t\t\t\t}\n\t\t\t</style></head><body hx-boost=\"true\"><div class=\"d-flex\"><div class=\"flex-shrink-0 p-3 bg-body-tertiary border-end d-flex flex-column\" style=\"width: 280px; min-height: 100vh;\"><a href=\"/admin\" class=\"d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom\"><i class=\"bi bi-gear-fill me-2 fs-5\"></i> <span class=\"fs-5 fw-semibold\">Admin</span></a><div class=\"flex-grow-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\"></script><style>\n\t\t\t\t.btn-toggle {\n\t\t\t\t\tpadding: .25rem .5rem;\n\t\t\t\t\tfont-weight: 600;\n\t\t\t\t\tcolor: var(--bs-emphasis-color);\n\t\t\t\t\tbackground-color: transparent;\n\t\t\t\t}\n\t\t\t\t.btn-toggle:hover,\n\t\t\t\t.btn-toggle:focus {\n\t\t\t\t\tcolor: rgba(var(--bs-emphasis-color-rgb), .85);\n\t\t\t\t\tbackground-color: var(--bs-tertiary-bg);\n\t\t\t\t}\n\t\t\t\t.btn-toggle::before {\n\t\t\t\t\twidth: 1.25em;\n\t\t\t\t\tline-height: 0;\n\t\t\t\t\tcontent: url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0,.5%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e\");\n\t\t\t\t\ttransition: transform .35s ease;\n\t\t\t\t\ttransform-origin: .5em 50%;\n\t\t\t\t}\n\t\t\t\t[data-bs-theme=\"dark\"] .btn-toggle::before {\n\t\t\t\t\tcontent: url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255,.5%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e\");\n\t\t\t\t}\n\t\t\t\t.btn-toggle[aria-expanded=\"true\"] {\n\t\t\t\t\tcolor: rgba(var(--bs-emphasis-color-rgb), .85);\n\t\t\t\t}\n\t\t\t\t.btn-toggle[aria-expanded=\"true\"]::before {\n\t\t\t\t\ttransform: rotate(90deg);\n\t\t\t\t}\n\t\t\t\t.btn-toggle-nav a {\n\t\t\t\t\tpadding: .1875rem .5rem;\n\t\t\t\t\tmargin-top: .125rem;\n\t\t\t\t\tmargin-left: 1.25rem;\n\t\t\t\t\tborder-radius: .375rem;\n\t\t\t\t\ttransition: background-color .15s ease-in-out;\n\t\t\t\t}\n\t\t\t\t.btn-toggle-nav a:hover,\n\t\t\t\t.btn-toggle-nav a:focus {\n\t\t\t\t\tbackground-color: var(--bs-tertiary-bg);\n\t\t\t\t}\n\t\t\t\t.btn-toggle-nav a.active {\n\t\t\t\t\tbackground-color: var(--bs-primary);\n\t\t\t\t\tcolor: #fff !important;\n\t\t\t\t}\n\t\t\t</style></head><body hx-boost=\"true\"><div class=\"d-flex\"><div class=\"flex-shrink-0 p-3 bg-body-tertiary border-end d-flex flex-column\" style=\"width: 280px; min-height: 100vh;\"><a href=\"/admin\" class=\"d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom\"><i class=\"bi bi-gear-fill me-2 fs-5\"></i> <span class=\"fs-5 fw-semibold\">Admin</span></a><div class=\"flex-grow-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -169,7 +169,7 @@ func sidebar() templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs("#collapse-" + g.AppName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 90, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 96, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -182,7 +182,7 @@ func sidebar() templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(groupLabel(ctx, g.AppName))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 93, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 99, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -195,7 +195,7 @@ func sidebar() templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs("collapse-" + g.AppName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 95, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 101, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -206,67 +206,89 @@ func sidebar() templ.Component {
 					return templ_7745c5c3_Err
 				}
 				for _, item := range g.Items {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<li><a href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<li>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var11 templ.SafeURL
-					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(item.URL))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 100, Col: 40}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+					var templ_7745c5c3_Var11 = []any{sidebarLinkClass(ctx, item.URL)}
+					templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var11...)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"link-body-emphasis d-inline-flex text-decoration-none rounded\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<a href=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var12 templ.SafeURL
+					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(item.URL))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 106, Col: 40}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" class=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var13 string
+					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var11).String())
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 1, Col: 0}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if item.Icon != "" {
-						var templ_7745c5c3_Var12 = []any{item.Icon + " me-2"}
-						templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var12...)
+						var templ_7745c5c3_Var14 = []any{item.Icon + " me-2"}
+						templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var14...)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<i class=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<i class=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var13 string
-						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var12).String())
+						var templ_7745c5c3_Var15 string
+						templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var14).String())
 						if templ_7745c5c3_Err != nil {
 							return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 1, Col: 0}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\"></i> ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\"></i> ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					var templ_7745c5c3_Var14 string
-					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(itemLabel(ctx, item))
+					var templ_7745c5c3_Var16 string
+					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(itemLabel(ctx, item))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 106, Col: 32}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 112, Col: 32}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</a></li>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</a></li>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</ul></div></li>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</ul></div></li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</ul>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</ul>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -292,52 +314,52 @@ func userMenu() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var15 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var15 == nil {
-			templ_7745c5c3_Var15 = templ.NopComponent
+		templ_7745c5c3_Var17 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var17 == nil {
+			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		if user := auth.UserFromContext(ctx); user != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"border-top pt-3 mt-3\"><div class=\"dropup\"><button class=\"btn btn-link d-flex align-items-center link-body-emphasis text-decoration-none dropdown-toggle p-0\" data-bs-toggle=\"dropdown\" aria-expanded=\"false\"><i class=\"bi bi-person-circle me-2\"></i> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var16 string
-			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 129, Col: 20}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</button><ul class=\"dropdown-menu text-small shadow\"><li><form method=\"post\" action=\"/auth/logout\"><input type=\"hidden\" name=\"gorilla.csrf.Token\" value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var17 string
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(csrf.Token(ctx))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 134, Col: 77}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\"> <button type=\"submit\" class=\"dropdown-item\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"border-top pt-3 mt-3\"><div class=\"dropup\"><button class=\"btn btn-link d-flex align-items-center link-body-emphasis text-decoration-none dropdown-toggle p-0\" data-bs-toggle=\"dropdown\" aria-expanded=\"false\"><i class=\"bi bi-person-circle me-2\"></i> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
-			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "admin-logout"))
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 135, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 135, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</button></form></li></ul></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</button><ul class=\"dropdown-menu text-small shadow\"><li><form method=\"post\" action=\"/auth/logout\"><input type=\"hidden\" name=\"gorilla.csrf.Token\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var19 string
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(csrf.Token(ctx))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 140, Col: 77}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\"> <button type=\"submit\" class=\"dropdown-item\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var20 string
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "admin-logout"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 141, Col: 80}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</button></form></li></ul></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

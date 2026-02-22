@@ -58,6 +58,10 @@ recovery-codes-title = "Wiederherstellungscodes"
 recovery-codes-description = "Bewahren Sie diese Codes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden."
 recovery-codes-ack = "Ich habe meine Codes gespeichert"
 
+# Admin: Dashboard
+admin-dashboard-title = "Dashboard"
+admin-dashboard-empty = "Keine Administrationsbereiche verfügbar."
+
 # Admin: Benutzer
 admin-users-title = "Benutzer"
 admin-users-id = "ID"
@@ -70,6 +74,8 @@ admin-users-none = "Keine Benutzer gefunden."
 admin-users-verified = "Verifiziert"
 
 # Admin: Benutzerdetails
+admin-user-detail-info = "Benutzerinformationen"
+admin-user-detail-edit = "Benutzer bearbeiten"
 admin-user-detail-title = "Benutzer: "
 admin-user-detail-id = "ID"
 admin-user-detail-username = "Benutzername"
@@ -106,6 +112,7 @@ admin-invites-status-expired = "Abgelaufen"
 admin-invites-status-active = "Aktiv"
 admin-invites-revoke = "Widerrufen"
 admin-invites-revoke-confirm = "Diese Einladung widerrufen?"
+admin-invites-existing-title = "Bestehende Einladungen"
 admin-invites-none = "Keine Einladungen gefunden."
 
 # Admin-Seitenleiste

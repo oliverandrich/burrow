@@ -51,10 +51,16 @@ templ Layout(title string, content templ.Component) {
 					padding: .1875rem .5rem;
 					margin-top: .125rem;
 					margin-left: 1.25rem;
+					border-radius: .375rem;
+					transition: background-color .15s ease-in-out;
 				}
 				.btn-toggle-nav a:hover,
 				.btn-toggle-nav a:focus {
 					background-color: var(--bs-tertiary-bg);
+				}
+				.btn-toggle-nav a.active {
+					background-color: var(--bs-primary);
+					color: #fff !important;
 				}
 			</style>
 		</head>
@@ -98,7 +104,7 @@ templ sidebar() {
 								<li>
 									<a
 										href={ templ.SafeURL(item.URL) }
-										class="link-body-emphasis d-inline-flex text-decoration-none rounded"
+										class={ sidebarLinkClass(ctx, item.URL) }
 									>
 										if item.Icon != "" {
 											<i class={ item.Icon + " me-2" }></i>

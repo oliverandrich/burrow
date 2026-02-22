@@ -7,7 +7,13 @@ import "codeberg.org/oliverandrich/burrow/contrib/i18n"
 
 // adminUsersPage renders the admin user list table.
 templ adminUsersPage(users []auth.User) {
-	<nav aria-label="breadcrumb">
+	<div class="d-flex justify-content-between align-items-center mb-2">
+		<h2 class="mb-0">
+			{ i18n.T(ctx, "admin-users-title") }
+			<span class="badge text-bg-secondary fs-6 align-middle ms-2">{ fmt.Sprintf("%d", len(users)) }</span>
+		</h2>
+	</div>
+	<nav aria-label="breadcrumb" class="mb-4">
 		<ol class="breadcrumb">
 			<li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
 			<li class="breadcrumb-item active" aria-current="page">{ i18n.T(ctx, "admin-users-title") }</li>
@@ -40,7 +46,13 @@ templ adminUsersPage(users []auth.User) {
 									}
 								}
 							</td>
-							<td>{ user.Role }</td>
+							<td>
+								if user.Role == auth.RoleAdmin {
+									<span class="badge text-bg-primary">{ user.Role }</span>
+								} else {
+									<span class="badge text-bg-secondary">{ user.Role }</span>
+								}
+							</td>
 							<td>{ user.CreatedAt.Format("2006-01-02") }</td>
 						</tr>
 					}
@@ -48,13 +60,19 @@ templ adminUsersPage(users []auth.User) {
 			</table>
 		</div>
 	} else {
-		<p class="text-body-secondary">{ i18n.T(ctx, "admin-users-none") }</p>
+		<div class="text-center py-5 text-body-secondary">
+			<i class="bi bi-people fs-1 d-block mb-2"></i>
+			<p>{ i18n.T(ctx, "admin-users-none") }</p>
+		</div>
 	}
 }
 
 // adminUserDetailPage renders the admin user detail page with editable fields.
 templ adminUserDetailPage(user *auth.User) {
-	<nav aria-label="breadcrumb">
+	<div class="d-flex justify-content-between align-items-center mb-2">
+		<h2 class="mb-0">{ user.Username }</h2>
+	</div>
+	<nav aria-label="breadcrumb" class="mb-4">
 		<ol class="breadcrumb">
 			<li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
 			<li class="breadcrumb-item"><a href="/admin/users">{ i18n.T(ctx, "admin-users-title") }</a></li>
@@ -62,6 +80,9 @@ templ adminUserDetailPage(user *auth.User) {
 		</ol>
 	</nav>
 	<div class="card mb-4">
+		<div class="card-header">
+			<h5 class="card-title mb-0">{ i18n.T(ctx, "admin-user-detail-info") }</h5>
+		</div>
 		<div class="card-body">
 			<dl class="row mb-0">
 				<dt class="col-sm-3">{ i18n.T(ctx, "admin-user-detail-id") }</dt>
@@ -73,6 +94,7 @@ templ adminUserDetailPage(user *auth.User) {
 			</dl>
 		</div>
 	</div>
+	<h4 class="mb-3">{ i18n.T(ctx, "admin-user-detail-edit") }</h4>
 	<form method="post" action={ templ.SafeURL(fmt.Sprintf("/admin/users/%d", user.ID)) } class="mb-4">
 		<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
 		<div class="mb-3">
@@ -110,15 +132,15 @@ templ adminUserDetailPage(user *auth.User) {
 		</div>
 		<div class="d-flex gap-2">
 			<button type="submit" class="btn btn-primary">{ i18n.T(ctx, "admin-user-detail-save") }</button>
-			<button type="submit" name="_continue" value="1" class="btn btn-secondary">{ i18n.T(ctx, "admin-user-detail-save-continue") }</button>
+			<button type="submit" name="_continue" value="1" class="btn btn-outline-secondary">{ i18n.T(ctx, "admin-user-detail-save-continue") }</button>
 			if auth.IsAdminEditSelf(ctx) {
-				<button type="button" class="btn btn-danger ms-auto" disabled>
+				<button type="button" class="btn btn-outline-danger ms-auto" disabled>
 					{ i18n.T(ctx, "admin-user-detail-delete") }
 				</button>
 			} else {
 				<button
 					type="button"
-					class="btn btn-danger ms-auto"
+					class="btn btn-outline-danger ms-auto"
 					hx-delete={ fmt.Sprintf("/admin/users/%d", user.ID) }
 					hx-headers={ fmt.Sprintf(`{"X-CSRF-Token":"%s"}`, csrf.Token(ctx)) }
 					hx-confirm={ i18n.T(ctx, "admin-user-detail-delete-confirm") }

@@ -47,3 +47,28 @@ func itemLabel(ctx context.Context, item burrow.NavItem) string {
 	}
 	return item.Label
 }
+
+// sidebarLinkClass returns the CSS classes for a sidebar link,
+// adding "active" when the link matches the current request path.
+func sidebarLinkClass(ctx context.Context, itemURL string) string {
+	base := "link-body-emphasis d-inline-flex text-decoration-none rounded"
+	if isActivePath(ctx, itemURL) {
+		return base + " active"
+	}
+	return base
+}
+
+// isActivePath checks whether the current request path matches a nav item URL.
+// It uses prefix matching so that sub-pages (e.g. /admin/users/1) highlight
+// the parent nav item (/admin/users). The admin root (/admin) only matches exactly.
+func isActivePath(ctx context.Context, itemURL string) bool {
+	current := RequestPathFromContext(ctx)
+	if current == "" || itemURL == "" {
+		return false
+	}
+	// Exact match for the admin root to avoid highlighting it for every page.
+	if itemURL == "/admin" || itemURL == "/admin/" {
+		return current == "/admin" || current == "/admin/"
+	}
+	return strings.HasPrefix(current, itemURL)
+}

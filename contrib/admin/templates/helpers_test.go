@@ -95,3 +95,46 @@ func TestItemLabelWithoutKey(t *testing.T) {
 	item := burrow.NavItem{Label: "Dashboard"}
 	assert.Equal(t, "Dashboard", itemLabel(ctx, item))
 }
+
+func TestRequestPathContext(t *testing.T) {
+	ctx := WithRequestPath(context.Background(), "/admin/users")
+	assert.Equal(t, "/admin/users", RequestPathFromContext(ctx))
+}
+
+func TestRequestPathContextEmpty(t *testing.T) {
+	assert.Empty(t, RequestPathFromContext(context.Background()))
+}
+
+func TestIsActivePath(t *testing.T) {
+	tests := []struct {
+		name    string
+		path    string
+		itemURL string
+		want    bool
+	}{
+		{"exact match", "/admin/users", "/admin/users", true},
+		{"sub-path match", "/admin/users/1", "/admin/users", true},
+		{"no match", "/admin/invites", "/admin/users", false},
+		{"admin root exact", "/admin", "/admin", true},
+		{"admin root no false positive", "/admin/users", "/admin", false},
+		{"empty path", "", "/admin/users", false},
+		{"empty item URL", "/admin/users", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := WithRequestPath(context.Background(), tt.path)
+			assert.Equal(t, tt.want, isActivePath(ctx, tt.itemURL))
+		})
+	}
+}
+
+func TestSidebarLinkClass(t *testing.T) {
+	ctx := WithRequestPath(context.Background(), "/admin/users")
+
+	active := sidebarLinkClass(ctx, "/admin/users")
+	assert.Contains(t, active, "active")
+
+	inactive := sidebarLinkClass(ctx, "/admin/invites")
+	assert.NotContains(t, inactive, "active")
+}

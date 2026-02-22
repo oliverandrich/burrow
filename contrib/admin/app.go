@@ -82,6 +82,7 @@ func (a *App) Routes(r chi.Router) {
 					ctx = burrow.WithLayout(ctx, a.layout)
 				}
 				ctx = templates.WithNavGroups(ctx, groups)
+				ctx = templates.WithRequestPath(ctx, r.URL.Path)
 				next.ServeHTTP(w, r.WithContext(ctx))
 			})
 		})

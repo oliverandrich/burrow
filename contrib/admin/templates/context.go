@@ -16,3 +16,18 @@ func NavGroupsFromContext(ctx context.Context) []NavGroup {
 	}
 	return nil
 }
+
+type ctxKeyRequestPath struct{}
+
+// WithRequestPath stores the current request path in the context.
+func WithRequestPath(ctx context.Context, path string) context.Context {
+	return context.WithValue(ctx, ctxKeyRequestPath{}, path)
+}
+
+// RequestPathFromContext retrieves the current request path from the context.
+func RequestPathFromContext(ctx context.Context) string {
+	if path, ok := ctx.Value(ctxKeyRequestPath{}).(string); ok {
+		return path
+	}
+	return ""
+}

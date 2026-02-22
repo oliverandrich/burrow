@@ -226,7 +226,7 @@ func TestAdminIndexPage(t *testing.T) {
 	html := string(body)
 	assert.Contains(t, html, "<!doctype html>")
 	assert.Contains(t, html, "<title>Admin – Admin</title>")
-	assert.Contains(t, html, `<li class="breadcrumb-item active" aria-current="page">Admin</li>`)
+	assert.Contains(t, html, "admin-dashboard-title")
 	// User menu should show the logged-in user and a logout form.
 	assert.Contains(t, html, "admin")
 	assert.Contains(t, html, `action="/auth/logout"`)

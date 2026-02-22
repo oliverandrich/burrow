@@ -7,7 +7,10 @@ import "codeberg.org/oliverandrich/burrow/contrib/i18n"
 
 // adminInvitesPage renders the admin invites management page.
 templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) {
-	<nav aria-label="breadcrumb">
+	<div class="d-flex justify-content-between align-items-center mb-2">
+		<h2 class="mb-0">{ i18n.T(ctx, "admin-invites-title") }</h2>
+	</div>
+	<nav aria-label="breadcrumb" class="mb-4">
 		<ol class="breadcrumb">
 			<li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
 			<li class="breadcrumb-item active" aria-current="page">{ i18n.T(ctx, "admin-invites-title") }</li>
@@ -31,8 +34,10 @@ templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) 
 		</div>
 	}
 	<div class="card mb-4">
+		<div class="card-header">
+			<h5 class="card-title mb-0">{ i18n.T(ctx, "admin-invites-create-title") }</h5>
+		</div>
 		<div class="card-body">
-			<h5 class="card-title">{ i18n.T(ctx, "admin-invites-create-title") }</h5>
 			<form method="post" action="/admin/invites">
 				<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
 				<div class="mb-3">
@@ -49,6 +54,7 @@ templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) 
 			</form>
 		</div>
 	</div>
+	<h4 class="mb-3">{ i18n.T(ctx, "admin-invites-existing-title") }</h4>
 	if len(invites) > 0 {
 		<div class="table-responsive">
 			<table class="table table-striped table-hover table-sm align-middle">
@@ -84,7 +90,7 @@ templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) 
 								if !inv.IsUsed() {
 									<button
 										type="button"
-										class="btn btn-danger btn-sm"
+										class="btn btn-outline-danger btn-sm"
 										hx-delete={ fmt.Sprintf("/admin/invites/%d", inv.ID) }
 										hx-headers={ fmt.Sprintf(`{"X-CSRF-Token":"%s"}`, csrf.Token(ctx)) }
 										hx-confirm={ i18n.T(ctx, "admin-invites-revoke-confirm") }
@@ -99,7 +105,10 @@ templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) 
 			</table>
 		</div>
 	} else {
-		<p class="text-body-secondary">{ i18n.T(ctx, "admin-invites-none") }</p>
+		<div class="text-center py-4 text-body-secondary">
+			<i class="bi bi-envelope fs-1 d-block mb-2"></i>
+			<p>{ i18n.T(ctx, "admin-invites-none") }</p>
+		</div>
 	}
 }
 
