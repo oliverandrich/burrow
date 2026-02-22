@@ -12,7 +12,7 @@ User management panel with CLI commands for promoting users and creating invites
 srv := burrow.NewServer(
     &session.App{},
     auth.New(authRenderer),
-    admin.New(admin.DefaultLayout()), // batteries-included layout
+    admin.New(admin.Layout()), // batteries-included layout
     staticfiles.New(myStaticFS),      // serves admin + user static files
     // ... other apps
 )
@@ -21,7 +21,7 @@ srv := burrow.NewServer(
 The layout parameter accepts three forms:
 
 ```go
-admin.New(admin.DefaultLayout())  // batteries-included (Bootstrap 5 + htmx)
+admin.New(admin.Layout())  // batteries-included (Bootstrap 5 + htmx)
 admin.New(myCustomLayout)         // custom LayoutFunc
 admin.New(nil)                    // no layout wrapping
 ```

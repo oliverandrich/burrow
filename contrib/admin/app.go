@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"github.com/go-chi/chi/v5"
 )
@@ -17,6 +18,13 @@ type App struct {
 // New creates a new admin app. The optional layout wraps admin pages.
 func New(layout burrow.LayoutFunc) *App {
 	return &App{layout: layout}
+}
+
+// Layout returns a batteries-included admin layout using Bootstrap 5
+// and htmx. It serves as a ready-to-use admin layout that reads static file
+// URLs and nav items from the request context.
+func Layout() burrow.LayoutFunc {
+	return templates.Layout
 }
 
 func (a *App) Name() string { return "admin" }
@@ -45,11 +53,12 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 
 // indexPage renders the admin dashboard page.
 func (a *App) indexPage(w http.ResponseWriter, r *http.Request) error {
+	content := templates.AdminIndex(NavItems(r.Context()))
 	layout := burrow.Layout(r.Context())
 	if layout == nil {
-		return burrow.Render(w, r, http.StatusOK, adminIndex())
+		return burrow.Render(w, r, http.StatusOK, content)
 	}
-	return burrow.Render(w, r, http.StatusOK, layout("Admin", adminIndex()))
+	return burrow.Render(w, r, http.StatusOK, layout("Admin", content))
 }
 
 // Routes creates the /admin group with auth middleware and delegates

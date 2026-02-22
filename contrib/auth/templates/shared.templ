@@ -1,0 +1,22 @@
+package templates
+
+import "codeberg.org/oliverandrich/burrow/contrib/csrf"
+
+// authCard wraps content in a horizontally and vertically centered Bootstrap card.
+templ authCard(title string, content templ.Component) {
+	<div class="d-flex justify-content-center align-items-center min-vh-100">
+		<div class="col-12 col-sm-8 col-md-6 col-lg-4">
+			<div class="card shadow-sm">
+				<div class="card-body">
+					<h2 class="card-title text-center mb-4">{ title }</h2>
+					@content
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+// csrfInput renders a hidden input with the CSRF token for JS fetch calls.
+templ csrfInput() {
+	<input type="hidden" id="csrf-token" value={ csrf.Token(ctx) }/>
+}

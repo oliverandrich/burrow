@@ -11,7 +11,7 @@ import (
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
-	"github.com/a-h/templ"
+	"codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
 )
 
 //go:embed static
@@ -52,7 +52,5 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 
 // Layout returns a LayoutFunc using Bootstrap 5 and htmx.
 func Layout() burrow.LayoutFunc {
-	return func(title string, content templ.Component) templ.Component {
-		return baseLayout(title, content)
-	}
+	return templates.Layout
 }

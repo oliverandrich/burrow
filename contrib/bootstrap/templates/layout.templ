@@ -1,8 +1,8 @@
-package bootstrap
+package templates
 
 import "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 
-templ baseLayout(title string, content templ.Component) {
+templ Layout(title string, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en" data-bs-theme="auto">
 		<head>

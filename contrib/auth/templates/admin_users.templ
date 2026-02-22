@@ -1,0 +1,84 @@
+package templates
+
+import "fmt"
+import "codeberg.org/oliverandrich/burrow/contrib/auth"
+import "codeberg.org/oliverandrich/burrow/contrib/csrf"
+import "codeberg.org/oliverandrich/burrow/contrib/i18n"
+
+// adminUsersPage renders the admin user list table.
+templ adminUsersPage(users []auth.User) {
+	<h1>{ i18n.T(ctx, "admin-users-title") }</h1>
+	if len(users) > 0 {
+		<table>
+			<thead>
+				<tr>
+					<th>{ i18n.T(ctx, "admin-users-id") }</th>
+					<th>{ i18n.T(ctx, "admin-users-username") }</th>
+					<th>{ i18n.T(ctx, "admin-users-email") }</th>
+					<th>{ i18n.T(ctx, "admin-users-role") }</th>
+					<th>{ i18n.T(ctx, "admin-users-created") }</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, user := range users {
+					<tr>
+						<td>{ fmt.Sprintf("%d", user.ID) }</td>
+						<td><a href={ templ.SafeURL(fmt.Sprintf("/admin/users/%d", user.ID)) }>{ user.Username }</a></td>
+						<td>
+							if user.Email != nil {
+								{ *user.Email }
+								if user.EmailVerified {
+									<span title={ i18n.T(ctx, "admin-users-verified") }>&#10003;</span>
+								}
+							}
+						</td>
+						<td>{ user.Role }</td>
+						<td>{ user.CreatedAt.Format("2006-01-02") }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	} else {
+		<p>{ i18n.T(ctx, "admin-users-none") }</p>
+	}
+}
+
+// adminUserDetailPage renders the admin user detail page with role toggle.
+templ adminUserDetailPage(user *auth.User) {
+	<h1>{ i18n.T(ctx, "admin-user-detail-title") + user.Username }</h1>
+	<dl>
+		<dt>{ i18n.T(ctx, "admin-user-detail-id") }</dt>
+		<dd>{ fmt.Sprintf("%d", user.ID) }</dd>
+		<dt>{ i18n.T(ctx, "admin-user-detail-username") }</dt>
+		<dd>{ user.Username }</dd>
+		if user.Email != nil {
+			<dt>{ i18n.T(ctx, "admin-user-detail-email") }</dt>
+			<dd>
+				{ *user.Email }
+				if user.EmailVerified {
+					({ i18n.T(ctx, "admin-user-detail-verified") })
+				} else {
+					({ i18n.T(ctx, "admin-user-detail-unverified") })
+				}
+			</dd>
+		}
+		if user.Name != "" {
+			<dt>{ i18n.T(ctx, "admin-user-detail-display-name") }</dt>
+			<dd>{ user.Name }</dd>
+		}
+		<dt>{ i18n.T(ctx, "admin-user-detail-role") }</dt>
+		<dd>{ user.Role }</dd>
+		<dt>{ i18n.T(ctx, "admin-user-detail-created") }</dt>
+		<dd>{ user.CreatedAt.Format("2006-01-02 15:04") }</dd>
+	</dl>
+	<h2>{ i18n.T(ctx, "admin-user-detail-change-role") }</h2>
+	<form method="post" action={ templ.SafeURL(fmt.Sprintf("/admin/users/%d/role", user.ID)) }>
+		<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
+		<select name="role">
+			<option value="user" selected?={ user.Role == auth.RoleUser }>{ i18n.T(ctx, "admin-user-detail-role-user") }</option>
+			<option value="admin" selected?={ user.Role == auth.RoleAdmin }>{ i18n.T(ctx, "admin-user-detail-role-admin") }</option>
+		</select>
+		<button type="submit">{ i18n.T(ctx, "admin-user-detail-update-role") }</button>
+	</form>
+	<p><a href="/admin/users">{ i18n.T(ctx, "admin-user-detail-back") }</a></p>
+}

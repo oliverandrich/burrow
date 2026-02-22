@@ -56,4 +56,6 @@ myapp/
 
 **Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Pass them to `srv.SetLayouts()` in `main.go`.
 
+**Contrib apps use `templates/` sub-packages** — built-in contrib apps keep their Templ templates in a `templates/` subdirectory, which is a separate Go package. This cleanly separates template code from app logic and avoids circular dependencies.
+
 **Static files are optional** — use the [staticfiles contrib app](../contrib/staticfiles.md) if you need content-hashed URLs and cache headers.

@@ -22,6 +22,9 @@ var migrationFS embed.FS
 //go:embed translations
 var translationFS embed.FS
 
+//go:embed static
+var staticFS embed.FS
+
 // App implements the auth contrib app.
 type App struct {
 	repo          *Repository

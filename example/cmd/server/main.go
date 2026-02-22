@@ -12,6 +12,7 @@ import (
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/bootstrap"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
@@ -38,7 +39,7 @@ func main() {
 	})))
 
 	// Create the auth app with default renderers (batteries-included templates).
-	authApp := auth.New(auth.DefaultRenderer())
+	authApp := auth.New(authtpl.DefaultRenderer())
 
 	// Create the server with apps in dependency order.
 	// Session must come before auth (auth depends on session).
@@ -50,12 +51,12 @@ func main() {
 		bootstrap.New(),
 		&healthcheck.App{},
 		notes.New(),
-		admin.New(admin.DefaultLayout()),
+		admin.New(admin.Layout()),
 		staticfiles.New(emptyFS),
 	)
 
 	// Wire admin renderer for auth admin pages (users, invites).
-	authApp.SetAdminRenderer(auth.DefaultAdminRenderer())
+	authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
 
 	cmd := &cli.Command{
 		Name:    "example",

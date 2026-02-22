@@ -1,32 +1,29 @@
-package auth
+package templates
 
 import (
-	"embed"
 	"net/http"
 	"strconv"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"github.com/a-h/templ"
 )
 
-//go:embed static
-var staticFS embed.FS
-
 // DefaultRenderer returns a Renderer that uses the built-in Templ templates.
 // Templates read burrow.Layout(ctx) at render time: if a layout is set,
 // page content is wrapped in it; otherwise bare content is rendered.
-func DefaultRenderer() Renderer {
+func DefaultRenderer() auth.Renderer {
 	return &defaultRenderer{}
 }
 
 // DefaultAdminRenderer returns an AdminRenderer that uses the built-in Templ
 // templates for admin pages (users, user detail, invites).
-func DefaultAdminRenderer() AdminRenderer {
+func DefaultAdminRenderer() auth.AdminRenderer {
 	return &defaultAdminRenderer{}
 }
 
-// defaultRenderer implements Renderer using built-in Templ templates.
+// defaultRenderer implements auth.Renderer using built-in Templ templates.
 type defaultRenderer struct{}
 
 func (d *defaultRenderer) LoginPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error {
@@ -37,7 +34,7 @@ func (d *defaultRenderer) RegisterPage(w http.ResponseWriter, r *http.Request, u
 	return renderWithLayout(w, r, i18n.T(r.Context(), "register-title"), registerPage(useEmail, inviteOnly, email, invite))
 }
 
-func (d *defaultRenderer) CredentialsPage(w http.ResponseWriter, r *http.Request, creds []Credential) error {
+func (d *defaultRenderer) CredentialsPage(w http.ResponseWriter, r *http.Request, creds []auth.Credential) error {
 	return renderWithLayout(w, r, i18n.T(r.Context(), "credentials-title"), credentialsPage(creds))
 }
 
@@ -61,18 +58,18 @@ func (d *defaultRenderer) VerifyEmailError(w http.ResponseWriter, r *http.Reques
 	return renderWithLayout(w, r, i18n.T(r.Context(), "verify-error-title"), verifyEmailErrorPage(errorCode))
 }
 
-// defaultAdminRenderer implements AdminRenderer using built-in Templ templates.
+// defaultAdminRenderer implements auth.AdminRenderer using built-in Templ templates.
 type defaultAdminRenderer struct{}
 
-func (d *defaultAdminRenderer) AdminUsersPage(w http.ResponseWriter, r *http.Request, users []User) error {
+func (d *defaultAdminRenderer) AdminUsersPage(w http.ResponseWriter, r *http.Request, users []auth.User) error {
 	return renderWithLayout(w, r, i18n.T(r.Context(), "admin-users-title"), adminUsersPage(users))
 }
 
-func (d *defaultAdminRenderer) AdminUserDetailPage(w http.ResponseWriter, r *http.Request, user *User) error {
+func (d *defaultAdminRenderer) AdminUserDetailPage(w http.ResponseWriter, r *http.Request, user *auth.User) error {
 	return renderWithLayout(w, r, i18n.T(r.Context(), "admin-user-detail-title")+user.Username, adminUserDetailPage(user))
 }
 
-func (d *defaultAdminRenderer) AdminInvitesPage(w http.ResponseWriter, r *http.Request, invites []Invite, createdURL string, useEmail bool) error {
+func (d *defaultAdminRenderer) AdminInvitesPage(w http.ResponseWriter, r *http.Request, invites []auth.Invite, createdURL string, useEmail bool) error {
 	return renderWithLayout(w, r, i18n.T(r.Context(), "admin-invites-title"), adminInvitesPage(invites, createdURL, useEmail))
 }
 
@@ -85,15 +82,13 @@ func renderWithLayout(w http.ResponseWriter, r *http.Request, title string, cont
 	return burrow.Render(w, r, http.StatusOK, content)
 }
 
-// Template helper functions used by the Templ templates.
-
 // itoa converts an int64 to a string for use in template attributes.
 func itoa(id int64) string {
 	return strconv.FormatInt(id, 10)
 }
 
 // credName returns a display name for a credential.
-func credName(cred Credential) string {
+func credName(cred auth.Credential) string {
 	if cred.Name != "" {
 		return cred.Name
 	}

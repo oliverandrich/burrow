@@ -221,6 +221,7 @@ For multi-file apps, name files by their purpose rather than repeating the packa
 | `middleware.go` | Middleware functions |
 | `models.go` | Domain models |
 | `repository.go` | Data access layer |
+| `templates/` | Templ template files (separate Go package) |
 
 Small apps can keep everything in `app.go` — split only when a file grows large or mixes distinct responsibilities.
 

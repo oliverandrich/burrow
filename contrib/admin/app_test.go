@@ -247,7 +247,7 @@ func TestAdminIndexPage(t *testing.T) {
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))
 
-	app := New(DefaultLayout())
+	app := New(Layout())
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -286,7 +286,7 @@ func TestAdminIndexPageRendersNavItems(t *testing.T) {
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
-	app := New(DefaultLayout())
+	app := New(Layout())
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -314,8 +314,8 @@ func TestAdminIndexPageRendersNavItems(t *testing.T) {
 	assert.Contains(t, html, "Test Resource")
 }
 
-func TestDefaultLayout(t *testing.T) {
-	layout := DefaultLayout()
+func TestLayout(t *testing.T) {
+	layout := Layout()
 	require.NotNil(t, layout)
 
 	content := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {

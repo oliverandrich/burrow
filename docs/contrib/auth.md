@@ -9,20 +9,22 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 ## Setup
 
 ```go
+import authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"
+
 // With default templates (batteries-included).
-authApp := auth.New(auth.DefaultRenderer())
+authApp := auth.New(authtpl.DefaultRenderer())
 
 srv := burrow.NewServer(
     &session.App{},
     &csrf.App{},
     authApp,
-    admin.New(admin.DefaultLayout()),
+    admin.New(admin.Layout()),
     staticfiles.New(emptyFS), // serves auth + admin static files
     // ... other apps
 )
 
 // Wire admin renderer for user/invite management pages.
-authApp.SetAdminRenderer(auth.DefaultAdminRenderer())
+authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
 ```
 
 Or with custom renderers:
@@ -37,7 +39,7 @@ authApp := auth.New(nil)
 
 ## Default Templates
 
-The auth app ships batteries-included Templ templates using [oat.ink](https://github.com/knadh/oat) (via the admin layout) and htmx. Use `auth.DefaultRenderer()` and `auth.DefaultAdminRenderer()` for ready-to-use pages.
+The auth app ships batteries-included Templ templates in the `auth/templates` sub-package. Use `authtpl.DefaultRenderer()` and `authtpl.DefaultAdminRenderer()` (imported as `authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"`) for ready-to-use pages.
 
 The default templates:
 - Read `burrow.Layout(ctx)` at render time — if a layout is set, content is wrapped in it
@@ -174,7 +176,7 @@ type Renderer interface {
 }
 ```
 
-Use `auth.DefaultRenderer()` for built-in templates, or implement the interface to provide your own.
+Use `authtpl.DefaultRenderer()` (from the `auth/templates` sub-package) for built-in templates, or implement the interface to provide your own.
 
 ## Admin Renderer
 
@@ -188,7 +190,7 @@ type AdminRenderer interface {
 }
 ```
 
-Use `auth.DefaultAdminRenderer()` for built-in templates, or implement the interface for custom admin pages.
+Use `authtpl.DefaultAdminRenderer()` (from the `auth/templates` sub-package) for built-in templates, or implement the interface for custom admin pages.
 
 ## Configuration
 
@@ -207,7 +209,7 @@ Use `auth.DefaultAdminRenderer()` for built-in templates, or implement the inter
 For email verification and invite emails, set an email service after configuration:
 
 ```go
-authApp := auth.New(auth.DefaultRenderer())
+authApp := auth.New(authtpl.DefaultRenderer())
 // ... after srv.Run boots the server ...
 authApp.SetEmailService(myEmailService)
 ```
