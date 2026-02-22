@@ -91,11 +91,13 @@ admin-user-detail-delete-confirm = "Are you sure you want to delete this user? T
 # Admin: Invites
 admin-invites-title = "Invites"
 admin-invites-created = "Invite created!"
-admin-invites-share-url = "Share this URL:"
+admin-invites-copy = "Copy"
+admin-invites-copy-done = "Copied!"
 admin-invites-create-title = "Create Invite"
+admin-invites-label = "Label"
+admin-invites-label-placeholder = "e.g. John Doe, marketing team"
 admin-invites-email-label = "Email"
 admin-invites-create-button = "Create Invite"
-admin-invites-existing-title = "Existing Invites"
 admin-invites-email = "Email"
 admin-invites-status = "Status"
 admin-invites-expires = "Expires"
@@ -104,6 +106,7 @@ admin-invites-status-expired = "Expired"
 admin-invites-status-active = "Active"
 admin-invites-revoke = "Revoke"
 admin-invites-revoke-confirm = "Revoke this invite?"
+admin-invites-none = "No invites found."
 
 # Admin sidebar
 admin-app-auth = "Authentication"

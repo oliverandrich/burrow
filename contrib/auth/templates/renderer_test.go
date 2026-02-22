@@ -247,7 +247,7 @@ func TestDefaultAdminRendererUserDetailPage(t *testing.T) {
 func TestDefaultAdminRendererInvitesPage(t *testing.T) {
 	r := DefaultAdminRenderer()
 	invites := []auth.Invite{
-		{ID: 1, Email: "test@example.com", ExpiresAt: time.Now().Add(time.Hour)},
+		{ID: 1, Label: "John Doe", Email: "test@example.com", ExpiresAt: time.Now().Add(time.Hour)},
 	}
 	req := httptest.NewRequest(http.MethodGet, "/admin/invites", nil)
 	rec := httptest.NewRecorder()
@@ -256,7 +256,9 @@ func TestDefaultAdminRendererInvitesPage(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "test@example.com")
+	body := rec.Body.String()
+	assert.Contains(t, body, "John Doe")
+	assert.NotContains(t, body, "test@example.com", "email column should be hidden when useEmail is false")
 }
 
 func TestDefaultAdminRendererInvitesPageWithCreatedURL(t *testing.T) {
@@ -267,6 +269,8 @@ func TestDefaultAdminRendererInvitesPageWithCreatedURL(t *testing.T) {
 	err := r.AdminInvitesPage(rec, req, nil, "http://localhost/auth/register?invite=abc123", false)
 
 	require.NoError(t, err)
-	assert.Contains(t, rec.Body.String(), "admin-invites-created")
-	assert.Contains(t, rec.Body.String(), "http://localhost/auth/register?invite=abc123")
+	body := rec.Body.String()
+	assert.Contains(t, body, "admin-invites-created")
+	assert.Contains(t, body, "http://localhost/auth/register?invite=abc123")
+	assert.Contains(t, body, "admin-invites-copy")
 }

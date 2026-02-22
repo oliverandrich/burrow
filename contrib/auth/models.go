@@ -168,6 +168,7 @@ type Invite struct { //nolint:govet // fieldalignment: readability over optimiza
 
 	ID        int64      `bun:",pk,autoincrement" json:"id"`
 	Email     string     `bun:",notnull" json:"email"`
+	Label     string     `bun:",notnull,default:''" json:"label"`
 	TokenHash string     `bun:",unique,notnull" json:"-"`
 	ExpiresAt time.Time  `bun:",notnull" json:"expires_at"`
 	UsedAt    *time.Time `json:"used_at,omitempty"`

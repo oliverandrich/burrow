@@ -14,64 +14,101 @@ templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) 
 		</ol>
 	</nav>
 	if createdURL != "" {
-		<div style="background:var(--bg-alt,#f0f9ff);padding:1rem;border-radius:4px;margin-bottom:1rem">
+		<div class="alert alert-success alert-dismissible fade show" role="alert">
 			<strong>{ i18n.T(ctx, "admin-invites-created") }</strong>
-			<p>{ i18n.T(ctx, "admin-invites-share-url") } <code>{ createdURL }</code></p>
+			<div class="d-flex align-items-center gap-2 mt-1">
+				<code class="flex-grow-1 text-break">{ createdURL }</code>
+				<button
+					type="button"
+					class="btn btn-outline-success btn-sm flex-shrink-0"
+					onclick={ copyToClipboard(createdURL, i18n.T(ctx, "admin-invites-copy-done")) }
+					title={ i18n.T(ctx, "admin-invites-copy") }
+				>
+					<i class="bi bi-clipboard"></i> { i18n.T(ctx, "admin-invites-copy") }
+				</button>
+			</div>
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 		</div>
 	}
-	<h2>{ i18n.T(ctx, "admin-invites-create-title") }</h2>
-	<form method="post" action="/admin/invites">
-		<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
-		if useEmail {
-			<label for="email">{ i18n.T(ctx, "admin-invites-email-label") }</label>
-			<input type="email" id="email" name="email" placeholder="user@example.com" required/>
-		}
-		<button type="submit">{ i18n.T(ctx, "admin-invites-create-button") }</button>
-	</form>
-	if len(invites) > 0 {
-		<h2>{ i18n.T(ctx, "admin-invites-existing-title") }</h2>
-		<table>
-			<thead>
-				<tr>
-					<th>{ i18n.T(ctx, "admin-invites-email") }</th>
-					<th>{ i18n.T(ctx, "admin-invites-status") }</th>
-					<th>{ i18n.T(ctx, "admin-invites-expires") }</th>
-					<th></th>
-				</tr>
-			</thead>
-			<tbody>
-				for _, inv := range invites {
-					<tr>
-						<td>{ inv.Email }</td>
-						<td>
-							if inv.IsUsed() {
-								{ i18n.T(ctx, "admin-invites-status-used") }
-							} else if inv.IsExpired() {
-								{ i18n.T(ctx, "admin-invites-status-expired") }
-							} else {
-								{ i18n.T(ctx, "admin-invites-status-active") }
-							}
-						</td>
-						<td>{ inv.ExpiresAt.Format("2006-01-02") }</td>
-						<td>
-							if !inv.IsUsed() {
-								<form method="post" action={ templ.SafeURL(fmt.Sprintf("/admin/invites/%d", inv.ID)) } style="display:inline">
-									<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
-									<input type="hidden" name="_method" value="DELETE"/>
-									<button type="submit" onclick={ confirmAction(i18n.T(ctx, "admin-invites-revoke-confirm")) }>{ i18n.T(ctx, "admin-invites-revoke") }</button>
-								</form>
-							}
-						</td>
-					</tr>
+	<div class="card mb-4">
+		<div class="card-body">
+			<h5 class="card-title">{ i18n.T(ctx, "admin-invites-create-title") }</h5>
+			<form method="post" action="/admin/invites">
+				<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
+				<div class="mb-3">
+					<label for="label" class="form-label">{ i18n.T(ctx, "admin-invites-label") }</label>
+					<input type="text" class="form-control" id="label" name="label" placeholder={ i18n.T(ctx, "admin-invites-label-placeholder") }/>
+				</div>
+				if useEmail {
+					<div class="mb-3">
+						<label for="email" class="form-label">{ i18n.T(ctx, "admin-invites-email-label") }</label>
+						<input type="email" class="form-control" id="email" name="email" placeholder="user@example.com" required/>
+					</div>
 				}
-			</tbody>
-		</table>
+				<button type="submit" class="btn btn-primary">{ i18n.T(ctx, "admin-invites-create-button") }</button>
+			</form>
+		</div>
+	</div>
+	if len(invites) > 0 {
+		<div class="table-responsive">
+			<table class="table table-striped table-hover table-sm align-middle">
+				<thead class="table-light">
+					<tr>
+						<th scope="col">{ i18n.T(ctx, "admin-invites-label") }</th>
+						if useEmail {
+							<th scope="col">{ i18n.T(ctx, "admin-invites-email") }</th>
+						}
+						<th scope="col">{ i18n.T(ctx, "admin-invites-status") }</th>
+						<th scope="col">{ i18n.T(ctx, "admin-invites-expires") }</th>
+						<th scope="col"></th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, inv := range invites {
+						<tr>
+							<td>{ inv.Label }</td>
+							if useEmail {
+								<td>{ inv.Email }</td>
+							}
+							<td>
+								if inv.IsUsed() {
+									<span class="badge text-bg-secondary">{ i18n.T(ctx, "admin-invites-status-used") }</span>
+								} else if inv.IsExpired() {
+									<span class="badge text-bg-warning">{ i18n.T(ctx, "admin-invites-status-expired") }</span>
+								} else {
+									<span class="badge text-bg-success">{ i18n.T(ctx, "admin-invites-status-active") }</span>
+								}
+							</td>
+							<td>{ inv.ExpiresAt.Format("2006-01-02") }</td>
+							<td>
+								if !inv.IsUsed() {
+									<button
+										type="button"
+										class="btn btn-danger btn-sm"
+										hx-delete={ fmt.Sprintf("/admin/invites/%d", inv.ID) }
+										hx-headers={ fmt.Sprintf(`{"X-CSRF-Token":"%s"}`, csrf.Token(ctx)) }
+										hx-confirm={ i18n.T(ctx, "admin-invites-revoke-confirm") }
+									>
+										{ i18n.T(ctx, "admin-invites-revoke") }
+									</button>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	} else {
+		<p class="text-body-secondary">{ i18n.T(ctx, "admin-invites-none") }</p>
 	}
 }
 
-// confirmAction shows a confirm dialog and prevents the default action if cancelled.
-script confirmAction(msg string) {
-	if (!confirm(msg)) {
-		event.preventDefault();
-	}
+// copyToClipboard copies text to the clipboard and briefly changes the button label.
+script copyToClipboard(text string, doneLabel string) {
+	navigator.clipboard.writeText(text).then(function() {
+		var btn = event.currentTarget;
+		var original = btn.innerHTML;
+		btn.innerHTML = '<i class="bi bi-check-lg"></i> ' + doneLabel;
+		setTimeout(function() { btn.innerHTML = original; }, 2000);
+	});
 }

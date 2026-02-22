@@ -13,6 +13,7 @@ import (
 
 // CreateInviteRequest is the request body for creating an invite.
 type CreateInviteRequest struct {
+	Label string `form:"label"`
 	Email string `form:"email"`
 }
 
@@ -25,32 +26,33 @@ func (h *adminHandlers) InvitesPage(w http.ResponseWriter, r *http.Request) erro
 func (h *adminHandlers) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 	var req CreateInviteRequest
 	if err := burrow.Bind(r, &req); err != nil {
-		return errorJSON(w, http.StatusBadRequest, "invalid request")
+		return burrow.NewHTTPError(http.StatusBadRequest, "invalid request")
 	}
 
 	useEmail := h.config != nil && h.config.UseEmail
 	if useEmail && req.Email == "" {
-		return errorJSON(w, http.StatusBadRequest, "email is required")
+		return burrow.NewHTTPError(http.StatusBadRequest, "email is required")
 	}
 
 	user := GetUser(r)
 	if user == nil {
-		return errorJSON(w, http.StatusUnauthorized, "unauthorized")
+		return burrow.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}
 
 	plainToken, tokenHash, err := GenerateInviteToken()
 	if err != nil {
-		return errorJSONLog(w, http.StatusInternalServerError, "failed to generate invite token", err)
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to generate invite token")
 	}
 
 	invite := &Invite{
 		Email:     req.Email,
+		Label:     req.Label,
 		TokenHash: tokenHash,
 		ExpiresAt: time.Now().Add(InviteExpiry),
 		CreatedBy: &user.ID,
 	}
 	if err := h.repo.CreateInvite(r.Context(), invite); err != nil {
-		return errorJSONLog(w, http.StatusInternalServerError, "failed to create invite", err)
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to create invite")
 	}
 
 	if h.email != nil && req.Email != "" {
@@ -77,20 +79,22 @@ func (h *adminHandlers) CreateInvite(w http.ResponseWriter, r *http.Request) err
 func (h *adminHandlers) DeleteInvite(w http.ResponseWriter, r *http.Request) error {
 	inviteID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		return errorJSON(w, http.StatusBadRequest, "invalid invite id")
+		return burrow.NewHTTPError(http.StatusBadRequest, "invalid invite id")
 	}
 
 	if err := h.repo.DeleteInvite(r.Context(), inviteID); err != nil {
-		return errorJSONLog(w, http.StatusInternalServerError, "failed to delete invite", err)
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete invite")
 	}
 
-	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	w.Header().Set("HX-Redirect", "/admin/invites")
+	w.WriteHeader(http.StatusOK)
+	return nil
 }
 
 func (h *adminHandlers) renderInvitesPage(w http.ResponseWriter, r *http.Request, createdURL string) error {
 	invites, err := h.repo.ListInvites(r.Context())
 	if err != nil {
-		return errorJSONLog(w, http.StatusInternalServerError, "failed to list invites", err)
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list invites")
 	}
 	useEmail := h.config != nil && h.config.UseEmail
 	return h.renderer.AdminInvitesPage(w, r, invites, createdURL, useEmail)

@@ -66,10 +66,14 @@ func TestMigrationFS(t *testing.T) {
 	fsys := app.MigrationFS()
 	require.NotNil(t, fsys)
 
-	// Verify the migration file exists and is readable (MigrationFS returns the sub-FS).
+	// Verify the migration files exist and are readable (MigrationFS returns the sub-FS).
 	data, err := fs.ReadFile(fsys, "001_initial_schema.up.sql")
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "CREATE TABLE IF NOT EXISTS users")
+
+	data, err = fs.ReadFile(fsys, "002_invite_label.up.sql")
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "ALTER TABLE invites ADD COLUMN label")
 }
 
 // --- Test helpers ---
@@ -82,11 +86,16 @@ func openTestDB(t *testing.T) *bun.DB {
 
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 
-	// Run the migration manually (read from the raw embed.FS).
-	data, err := fs.ReadFile(migrationFS, "migrations/001_initial_schema.up.sql")
-	require.NoError(t, err)
-	_, err = db.ExecContext(context.Background(), string(data))
-	require.NoError(t, err)
+	// Run the migrations manually (read from the raw embed.FS).
+	for _, mig := range []string{
+		"migrations/001_initial_schema.up.sql",
+		"migrations/002_invite_label.up.sql",
+	} {
+		data, err := fs.ReadFile(migrationFS, mig)
+		require.NoError(t, err)
+		_, err = db.ExecContext(context.Background(), string(data))
+		require.NoError(t, err)
+	}
 
 	return db
 }
@@ -1014,7 +1023,7 @@ func TestAdminCreateInvite(t *testing.T) {
 	r := &mockAdminRenderer{}
 	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
-	body := strings.NewReader(`email=invitee@example.com`)
+	body := strings.NewReader(`label=John+Doe&email=invitee@example.com`)
 	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = requestWithSession(req, user)
@@ -1029,6 +1038,7 @@ func TestAdminCreateInvite(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, invites, 1)
 	assert.Equal(t, "invitee@example.com", invites[0].Email)
+	assert.Equal(t, "John Doe", invites[0].Label)
 }
 
 func TestAdminCreateInviteNoAuth(t *testing.T) {
@@ -1038,15 +1048,16 @@ func TestAdminCreateInviteNoAuth(t *testing.T) {
 	r := &mockAdminRenderer{}
 	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
+	router := chi.NewRouter()
+	router.Post("/admin/invites", burrow.Handle(h.CreateInvite))
+
 	body := strings.NewReader(`email=test@example.com`)
 	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
 
-	err := h.CreateInvite(rec, req)
-
-	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
@@ -1058,9 +1069,7 @@ func TestAdminDeleteInviteInvalidID(t *testing.T) {
 	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
 	router := chi.NewRouter()
-	router.Delete("/admin/invites/{id}", func(w http.ResponseWriter, r *http.Request) {
-		_ = h.DeleteInvite(w, r)
-	})
+	router.Delete("/admin/invites/{id}", burrow.Handle(h.DeleteInvite))
 
 	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/invalid", nil)
 	rec := httptest.NewRecorder()
@@ -1085,15 +1094,19 @@ func TestAdminDeleteInviteSuccess(t *testing.T) {
 	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
 	router := chi.NewRouter()
-	router.Delete("/admin/invites/{id}", func(w http.ResponseWriter, r *http.Request) {
-		_ = h.DeleteInvite(w, r)
-	})
+	router.Delete("/admin/invites/{id}", burrow.Handle(h.DeleteInvite))
 
 	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "/admin/invites", rec.Header().Get("HX-Redirect"))
+
+	// Verify invite was deleted.
+	invites, err := repo.ListInvites(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, invites)
 }
 
 // mockAdminRenderer implements AdminRenderer for tests.

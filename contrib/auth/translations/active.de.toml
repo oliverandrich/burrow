@@ -91,11 +91,13 @@ admin-user-detail-delete-confirm = "Möchten Sie diesen Benutzer wirklich lösch
 # Admin: Einladungen
 admin-invites-title = "Einladungen"
 admin-invites-created = "Einladung erstellt!"
-admin-invites-share-url = "Diese URL teilen:"
+admin-invites-copy = "Kopieren"
+admin-invites-copy-done = "Kopiert!"
 admin-invites-create-title = "Einladung erstellen"
+admin-invites-label = "Bezeichnung"
+admin-invites-label-placeholder = "z.B. Max Mustermann, Marketing-Team"
 admin-invites-email-label = "E-Mail"
 admin-invites-create-button = "Einladung erstellen"
-admin-invites-existing-title = "Bestehende Einladungen"
 admin-invites-email = "E-Mail"
 admin-invites-status = "Status"
 admin-invites-expires = "Ablauf"
@@ -104,6 +106,7 @@ admin-invites-status-expired = "Abgelaufen"
 admin-invites-status-active = "Aktiv"
 admin-invites-revoke = "Widerrufen"
 admin-invites-revoke-confirm = "Diese Einladung widerrufen?"
+admin-invites-none = "Keine Einladungen gefunden."
 
 # Admin-Seitenleiste
 admin-app-auth = "Authentifizierung"
