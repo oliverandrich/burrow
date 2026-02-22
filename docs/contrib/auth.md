@@ -106,11 +106,12 @@ Admin routes (registered via `HasAdmin`, require auth + admin role):
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/admin/users` | List users |
-| GET | `/admin/users/:id` | User detail |
-| POST | `/admin/users/:id/role` | Update user role |
+| GET | `/admin/users/{id}` | User detail |
+| POST | `/admin/users/{id}` | Update user |
+| DELETE | `/admin/users/{id}` | Delete user |
 | GET | `/admin/invites` | List invites |
 | POST | `/admin/invites` | Create an invite |
-| DELETE | `/admin/invites/:id` | Delete an invite |
+| DELETE | `/admin/invites/{id}` | Delete an invite |
 
 ## Middleware
 
@@ -197,6 +198,7 @@ Use `authtpl.DefaultAdminRenderer()` (from the `auth/templates` sub-package) for
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
 | `--auth-login-redirect` | `AUTH_LOGIN_REDIRECT` | `/` | Redirect after login |
+| `--auth-logout-redirect` | `AUTH_LOGOUT_REDIRECT` | `/auth/login` | Redirect after logout |
 | `--auth-use-email` | `AUTH_USE_EMAIL` | `false` | Use email instead of username |
 | `--auth-require-verification` | `AUTH_REQUIRE_VERIFICATION` | `false` | Require email verification |
 | `--auth-invite-only` | `AUTH_INVITE_ONLY` | `false` | Require invite to register |

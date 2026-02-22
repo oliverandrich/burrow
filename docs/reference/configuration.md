@@ -50,7 +50,8 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `--auth-login-redirect` | `AUTH_LOGIN_REDIRECT` | `/dashboard` | Redirect target after login |
+| `--auth-login-redirect` | `AUTH_LOGIN_REDIRECT` | `/` | Redirect target after login |
+| `--auth-logout-redirect` | `AUTH_LOGOUT_REDIRECT` | `/auth/login` | Redirect target after logout |
 | `--auth-use-email` | `AUTH_USE_EMAIL` | `false` | Use email instead of username |
 | `--auth-require-verification` | `AUTH_REQUIRE_VERIFICATION` | `false` | Require email verification before login |
 | `--auth-invite-only` | `AUTH_INVITE_ONLY` | `false` | Require invite to register |

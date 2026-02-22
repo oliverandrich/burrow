@@ -25,6 +25,7 @@ func (a *App) NavItems() []burrow.NavItem {
 | Field | Type | Description |
 |-------|------|-------------|
 | `Label` | `string` | Display text for the link |
+| `LabelKey` | `string` | i18n message ID; translated at render time, falls back to `Label` |
 | `URL` | `string` | Target path |
 | `Icon` | `string` | CSS icon class (e.g., Bootstrap Icons) |
 | `Position` | `int` | Sort order (lower = earlier, stable sort preserves insertion order for equal positions) |

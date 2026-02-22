@@ -133,6 +133,27 @@ type HasStaticFiles interface {
 
 Contributes static file assets that the `staticfiles` app collects and serves. The `prefix` namespaces files under the static URL path (e.g., prefix `"admin"` serves files at `/static/admin/...`). Files are content-hashed and cache-busted just like user-provided static files.
 
+### HasAdmin
+
+```go
+type HasAdmin interface {
+    AdminRoutes(r chi.Router)
+    AdminNavItems() []NavItem
+}
+```
+
+Contributes admin panel routes and navigation items. `AdminRoutes` receives a Chi router already prefixed with `/admin` and protected by auth middleware. The `admin` contrib app discovers all `HasAdmin` implementations and mounts them.
+
+### HasTranslations
+
+```go
+type HasTranslations interface {
+    TranslationFS() fs.FS
+}
+```
+
+Contributes translation files for the `i18n` app. The returned `fs.FS` must contain a `translations/` directory with TOML files (e.g., `translations/active.en.toml`). The `i18n` app auto-discovers all `HasTranslations` implementations at startup.
+
 ### HasDependencies
 
 ```go

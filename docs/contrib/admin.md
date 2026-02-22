@@ -1,6 +1,6 @@
 # Admin
 
-User management panel with CLI commands for promoting users and creating invites.
+Admin panel coordinator that discovers and mounts admin views from other apps.
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/admin`
 
@@ -55,20 +55,9 @@ All routes require authentication and admin role:
 
 ## CLI Commands
 
-The admin app contributes three CLI subcommands:
+The CLI subcommands for user management (`promote`, `demote`, `create-invite`) are contributed by the **auth** app via `HasCLICommands`, not by the admin app itself. See [Auth docs](auth.md) for details.
 
-```bash
-# Promote a user to admin.
-go run ./cmd/server promote alice
-
-# Demote an admin to regular user.
-go run ./cmd/server demote alice
-
-# Create an invite and print the registration URL.
-go run ./cmd/server create-invite user@example.com
-```
-
-To wire up CLI commands, add them to your `cli.Command`:
+To wire up CLI commands from all apps, add them to your `cli.Command`:
 
 ```go
 cmd := &cli.Command{
@@ -76,20 +65,6 @@ cmd := &cli.Command{
     Flags:    srv.Flags(nil),
     Action:   srv.Run,
     Commands: srv.Registry().AllCLICommands(),
-}
-```
-
-## Navigation
-
-The admin app contributes a "Users" nav item visible only to admins:
-
-```go
-NavItem{
-    Label:     "Users",
-    URL:       "/admin/users",
-    Icon:      "bi bi-people",
-    Position:  90,
-    AdminOnly: true,
 }
 ```
 

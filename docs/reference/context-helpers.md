@@ -51,37 +51,40 @@ Generic context value helpers. `ContextValue` is a typed getter that returns the
 
 Defined in `codeberg.org/oliverandrich/burrow/contrib/admin`.
 
-### NavItems
+### NavGroupsFromContext
 
 ```go
-func NavItems(ctx context.Context) []NavItem
+func NavGroupsFromContext(ctx context.Context) []NavGroup
 ```
 
-Returns admin navigation items injected by the admin middleware. Returns `nil` if not set.
+Returns the admin nav groups from the context. Each `NavGroup` contains an app name and its navigation items. Returns `nil` if not set.
 
-### WithNavItems
+### WithNavGroups
 
 ```go
-func WithNavItems(ctx context.Context, items []burrow.NavItem) context.Context
+func WithNavGroups(ctx context.Context, groups []NavGroup) context.Context
 ```
 
-Stores admin navigation items in the context. Used internally by the admin middleware.
+Stores admin nav groups in the context. Used internally by the admin route middleware.
 
-### Layout
+### RequestPathFromContext
 
 ```go
-func Layout(ctx context.Context) burrow.LayoutFunc
+func RequestPathFromContext(ctx context.Context) string
 ```
 
-Returns the admin layout function from the context. Returns `nil` if no admin layout is set.
+Returns the current request path from the context. Used by admin templates to highlight the active sidebar link. Returns `""` if not set.
 
-### WithLayout
+### WithRequestPath
 
 ```go
-func WithLayout(ctx context.Context, fn burrow.LayoutFunc) context.Context
+func WithRequestPath(ctx context.Context, path string) context.Context
 ```
 
-Stores the admin layout function in the context. Used internally by the admin middleware.
+Stores the current request path in the context. Used internally by the admin route middleware.
+
+!!! note
+    The admin layout is injected via `burrow.WithLayout(ctx, layout)` inside the `/admin` route group — there is no separate `admin.Layout` or `admin.WithLayout` helper.
 
 ## CSRF Helpers
 
