@@ -59,11 +59,12 @@ func main() {
 	authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
 
 	cmd := &cli.Command{
-		Name:    "example",
-		Usage:   "Example application using the burrow framework",
-		Version: version,
-		Flags:   srv.Flags(nil),
-		Action:  srv.Run,
+		Name:     "example",
+		Usage:    "Example application using the burrow framework",
+		Version:  version,
+		Flags:    srv.Flags(nil),
+		Action:   srv.Run,
+		Commands: srv.Registry().AllCLICommands(),
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
