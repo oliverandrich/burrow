@@ -12,6 +12,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	notestpl "codeberg.org/oliverandrich/burrow/example/internal/notes/templates"
 	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
 )
@@ -71,6 +72,27 @@ func (r *Repository) Delete(ctx context.Context, noteID, userID int64) error {
 	return nil
 }
 
+// ListAll returns all notes across all users, most recent first.
+func (r *Repository) ListAll(ctx context.Context) ([]Note, error) {
+	var notes []Note
+	if err := r.db.NewSelect().Model(&notes).
+		Order("created_at DESC", "id DESC").
+		Scan(ctx); err != nil {
+		return nil, fmt.Errorf("list all notes: %w", err)
+	}
+	return notes, nil
+}
+
+// AdminDelete soft-deletes any note by ID without user ownership check.
+func (r *Repository) AdminDelete(ctx context.Context, noteID int64) error {
+	if _, err := r.db.NewDelete().Model((*Note)(nil)).
+		Where("id = ?", noteID).
+		Exec(ctx); err != nil {
+		return fmt.Errorf("admin delete note %d: %w", noteID, err)
+	}
+	return nil
+}
+
 // --- App ---
 
 // App implements the notes contrib app.
@@ -111,6 +133,28 @@ func (a *App) NavItems() []burrow.NavItem {
 	}
 }
 
+func (a *App) AdminRoutes(r chi.Router) {
+	if a.handlers == nil {
+		return
+	}
+	h := a.handlers
+
+	r.Get("/notes", burrow.Handle(h.AdminList))
+	r.Delete("/notes/{id}", burrow.Handle(h.AdminDelete))
+}
+
+func (a *App) AdminNavItems() []burrow.NavItem {
+	return []burrow.NavItem{
+		{
+			Label:     "Notes",
+			URL:       "/admin/notes",
+			Icon:      "bi bi-journal-text",
+			Position:  30,
+			AdminOnly: true,
+		},
+	}
+}
+
 func (a *App) Routes(r chi.Router) {
 	if a.handlers == nil {
 		return
@@ -137,7 +181,7 @@ func NewHandlers(repo *Repository) *Handlers {
 	return &Handlers{repo: repo}
 }
 
-// List renders the user's notes as JSON.
+// List renders the user's notes as an HTML page.
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	user := auth.GetUser(r)
 	if user == nil {
@@ -149,7 +193,17 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
 	}
 
-	return burrow.JSON(w, http.StatusOK, notes)
+	tplNotes := make([]notestpl.Note, len(notes))
+	for i, n := range notes {
+		tplNotes[i] = notestpl.Note{ID: n.ID, Title: n.Title, Content: n.Content}
+	}
+
+	content := notestpl.ListPage(tplNotes)
+	layout := burrow.Layout(r.Context())
+	if layout != nil {
+		return burrow.Render(w, r, http.StatusOK, layout("Notes", content))
+	}
+	return burrow.Render(w, r, http.StatusOK, content)
 }
 
 // Create adds a new note for the authenticated user.
@@ -176,6 +230,46 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
 	return nil
+}
+
+// AdminList renders the admin notes list page.
+func (h *Handlers) AdminList(w http.ResponseWriter, r *http.Request) error {
+	notes, err := h.repo.ListAll(r.Context())
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
+	}
+
+	tplNotes := make([]notestpl.AdminNote, len(notes))
+	for i, n := range notes {
+		tplNotes[i] = notestpl.AdminNote{
+			ID:        n.ID,
+			Title:     n.Title,
+			Content:   n.Content,
+			UserID:    n.UserID,
+			CreatedAt: n.CreatedAt,
+		}
+	}
+
+	content := notestpl.AdminListPage(tplNotes)
+	layout := burrow.Layout(r.Context())
+	if layout != nil {
+		return burrow.Render(w, r, http.StatusOK, layout("Notes", content))
+	}
+	return burrow.Render(w, r, http.StatusOK, content)
+}
+
+// AdminDelete removes any note by ID (admin privilege, no user check).
+func (h *Handlers) AdminDelete(w http.ResponseWriter, r *http.Request) error {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusBadRequest, "invalid note id")
+	}
+
+	if err := h.repo.AdminDelete(r.Context(), id); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete note")
+	}
+
+	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 // Delete removes a note owned by the authenticated user.

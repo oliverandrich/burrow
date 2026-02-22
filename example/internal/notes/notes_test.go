@@ -25,6 +25,7 @@ var (
 	_ burrow.HasRoutes       = (*App)(nil)
 	_ burrow.HasNavItems     = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
+	_ burrow.HasAdmin        = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -240,4 +241,114 @@ func TestDeleteNoteHandler(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+// --- Repository admin tests ---
+
+func TestListAll(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Create notes for different users.
+	require.NoError(t, repo.Create(ctx, &Note{Title: "User1 Note", Content: "A", UserID: 1}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "User2 Note", Content: "B", UserID: 2}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "User1 Second", Content: "C", UserID: 1}))
+
+	notes, err := repo.ListAll(ctx)
+	require.NoError(t, err)
+	require.Len(t, notes, 3)
+	// Most recent first.
+	assert.Equal(t, "User1 Second", notes[0].Title)
+	assert.Equal(t, "User2 Note", notes[1].Title)
+	assert.Equal(t, "User1 Note", notes[2].Title)
+}
+
+func TestListAllEmpty(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	notes, err := repo.ListAll(t.Context())
+	require.NoError(t, err)
+	assert.Empty(t, notes)
+}
+
+func TestAdminDelete(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	note := &Note{Title: "Admin Delete", Content: "Gone", UserID: 1}
+	require.NoError(t, repo.Create(ctx, note))
+
+	// Admin deletes without user ownership check.
+	err := repo.AdminDelete(ctx, note.ID)
+	require.NoError(t, err)
+
+	notes, err := repo.ListAll(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, notes)
+}
+
+// --- Admin handler tests ---
+
+func TestAdminListHandler(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Admin View", Content: "Visible", UserID: 42}))
+
+	h := NewHandlers(repo)
+	req := httptest.NewRequest(http.MethodGet, "/admin/notes", nil)
+	rec := httptest.NewRecorder()
+
+	err := h.AdminList(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Admin View")
+}
+
+func TestAdminDeleteHandler(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	note := &Note{Title: "Delete Me", Content: "Bye", UserID: 42}
+	require.NoError(t, repo.Create(ctx, note))
+
+	h := NewHandlers(repo)
+
+	r := chi.NewRouter()
+	r.Delete("/admin/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+		err := h.AdminDelete(w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/notes/1", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"status":"deleted"`)
+
+	// Verify it's actually deleted.
+	notes, err := repo.ListAll(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, notes)
+}
+
+func TestAdminNavItems(t *testing.T) {
+	app := New()
+	items := app.AdminNavItems()
+
+	require.Len(t, items, 1)
+	assert.Equal(t, "Notes", items[0].Label)
+	assert.Equal(t, "/admin/notes", items[0].URL)
+	assert.True(t, items[0].AdminOnly)
+	assert.Equal(t, "bi bi-journal-text", items[0].Icon)
+	assert.Equal(t, 30, items[0].Position)
 }

@@ -1,0 +1,38 @@
+package templates
+
+// HomePage renders the example app's welcome page.
+templ HomePage() {
+	<div class="py-4">
+		<h1 class="mb-3">Welcome to Burrow</h1>
+		<p class="lead text-body-secondary">
+			A Go web framework built on chi, Bun/SQLite, and Templ.
+		</p>
+		<hr class="my-4"/>
+		<div class="row g-4">
+			<div class="col-md-4">
+				<div class="card h-100">
+					<div class="card-body">
+						<h5 class="card-title"><i class="bi bi-key me-2"></i>Passkey Auth</h5>
+						<p class="card-text">WebAuthn-based authentication with recovery codes and email verification — no passwords.</p>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-4">
+				<div class="card h-100">
+					<div class="card-body">
+						<h5 class="card-title"><i class="bi bi-puzzle me-2"></i>Contrib Apps</h5>
+						<p class="card-text">Session, CSRF, i18n, admin panel, static files, and health checks — all as pluggable apps.</p>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-4">
+				<div class="card h-100">
+					<div class="card-body">
+						<h5 class="card-title"><i class="bi bi-lightning me-2"></i>htmx Ready</h5>
+						<p class="card-text">Bootstrap 5 and htmx included via the static files pipeline with content-hashed URLs.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}

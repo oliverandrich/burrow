@@ -20,7 +20,9 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
+	"codeberg.org/oliverandrich/burrow/example/internal/layout"
 	"codeberg.org/oliverandrich/burrow/example/internal/notes"
+	"codeberg.org/oliverandrich/burrow/example/internal/pages"
 	"github.com/urfave/cli/v3"
 )
 
@@ -57,10 +59,14 @@ func main() {
 		authApp,
 		bootstrap.New(),
 		&healthcheck.App{},
+		pages.New(),
 		notes.New(),
 		admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
 		staticApp,
 	)
+
+	// Use the app layout with navbar (overrides bare bootstrap layout).
+	srv.SetLayout(layout.Layout())
 
 	// Wire admin renderer for auth admin pages (users, invites).
 	authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
