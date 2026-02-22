@@ -91,7 +91,8 @@ func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
 	require.NoError(t, err)
 
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
-		LoginRedirect: "/dashboard",
+		LoginRedirect:  "/dashboard",
+		LogoutRedirect: "/auth/login",
 	})
 	return h, repo, renderer
 }
@@ -106,6 +107,7 @@ func newTestHandlersEmailMode(t *testing.T) (*Handlers, *Repository, *mockRender
 
 	h := NewHandlers(repo, waSvc, &mockEmailService{}, renderer, &Config{
 		LoginRedirect:       "/dashboard",
+		LogoutRedirect:      "/auth/login",
 		UseEmail:            true,
 		RequireVerification: true,
 	})
@@ -121,8 +123,9 @@ func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRende
 	require.NoError(t, err)
 
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
-		LoginRedirect: "/dashboard",
-		InviteOnly:    true,
+		LoginRedirect:  "/dashboard",
+		LogoutRedirect: "/auth/login",
+		InviteOnly:     true,
 	})
 	return h, repo, renderer
 }
@@ -504,11 +507,34 @@ func TestLogout(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "/", rec.Header().Get("Location"))
+	assert.Equal(t, "/auth/login", rec.Header().Get("Location"))
 
 	cookies := rec.Result().Cookies()
 	require.NotEmpty(t, cookies)
 	assert.Equal(t, -1, cookies[0].MaxAge)
+}
+
+func TestLogoutCustomRedirect(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	renderer := &mockRenderer{}
+	waSvc, err := NewWebAuthnService("Test App", "localhost", "http://localhost:8080")
+	require.NoError(t, err)
+
+	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
+		LoginRedirect:  "/dashboard",
+		LogoutRedirect: "/goodbye",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err = h.Logout(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/goodbye", rec.Header().Get("Location"))
 }
 
 // --- CredentialsPage tests ---

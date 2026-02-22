@@ -353,7 +353,7 @@ func (h *Handlers) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 // Logout clears the session cookie.
 func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) error {
 	session.Clear(w, r)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, h.config.LogoutRedirect, http.StatusSeeOther)
 	return nil
 }
 
