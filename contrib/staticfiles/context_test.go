@@ -11,7 +11,7 @@ import (
 )
 
 func TestURL(t *testing.T) {
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	ctx := context.WithValue(context.Background(), ctxKeyApp{}, app)
 
 	hash := contentHash([]byte("body{}"))
@@ -19,7 +19,7 @@ func TestURL(t *testing.T) {
 }
 
 func TestURLFallback(t *testing.T) {
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	ctx := context.WithValue(context.Background(), ctxKeyApp{}, app)
 
 	// Unknown file returns prefix + name as-is.
@@ -33,7 +33,7 @@ func TestURLWithoutContext(t *testing.T) {
 }
 
 func TestURLCustomPrefix(t *testing.T) {
-	app := New(testFS, WithPrefix("/assets/"))
+	app := mustNew(t, testFS, WithPrefix("/assets/"))
 	ctx := context.WithValue(context.Background(), ctxKeyApp{}, app)
 
 	hash := contentHash([]byte("body{}"))
@@ -41,7 +41,7 @@ func TestURLCustomPrefix(t *testing.T) {
 }
 
 func TestMiddlewareInjectsContext(t *testing.T) {
-	app := New(testFS)
+	app := mustNew(t, testFS)
 
 	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {

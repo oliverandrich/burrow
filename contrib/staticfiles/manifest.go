@@ -26,11 +26,11 @@ func hashedName(path, hash string) string {
 
 // buildManifest walks the FS, computes content hashes, and returns two maps:
 // manifest maps original paths to hashed paths, files maps hashed paths back to originals.
-func buildManifest(fsys fs.FS) (manifest map[string]string, files map[string]string) {
-	manifest = make(map[string]string)
-	files = make(map[string]string)
+func buildManifest(fsys fs.FS) (map[string]string, map[string]string, error) {
+	manifest := make(map[string]string)
+	files := make(map[string]string)
 
-	_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, walkErr error) error {
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -51,7 +51,7 @@ func buildManifest(fsys fs.FS) (manifest map[string]string, files map[string]str
 		return nil
 	})
 
-	return manifest, files
+	return manifest, files, err
 }
 
 func readFile(fsys fs.FS, path string) ([]byte, error) {

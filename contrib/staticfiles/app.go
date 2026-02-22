@@ -2,6 +2,7 @@ package staticfiles
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -30,7 +31,7 @@ func WithPrefix(prefix string) Option {
 
 // New creates a staticfiles app that serves files from the given filesystem.
 // It walks the FS at creation time, computing content hashes for all files.
-func New(fsys fs.FS, opts ...Option) *App {
+func New(fsys fs.FS, opts ...Option) (*App, error) {
 	a := &App{
 		fsys:   fsys,
 		prefix: "/static/",
@@ -39,11 +40,14 @@ func New(fsys fs.FS, opts ...Option) *App {
 		opt(a)
 	}
 
-	manifest, files := buildManifest(fsys)
+	manifest, files, err := buildManifest(fsys)
+	if err != nil {
+		return nil, fmt.Errorf("build manifest: %w", err)
+	}
 	a.manifest = manifest
 	a.hfs = &hashedFS{fsys: fsys, files: files}
 
-	return a
+	return a, nil
 }
 
 func (a *App) Name() string { return "staticfiles" }
@@ -55,7 +59,10 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	for _, app := range cfg.Registry.Apps() {
 		if provider, ok := app.(burrow.HasStaticFiles); ok {
 			prefix, fsys := provider.StaticFS()
-			m, f := buildManifest(fsys)
+			m, f, err := buildManifest(fsys)
+			if err != nil {
+				return fmt.Errorf("build manifest for %q: %w", prefix, err)
+			}
 			for orig, hashed := range m {
 				a.manifest[prefix+"/"+orig] = prefix + "/" + hashed
 			}

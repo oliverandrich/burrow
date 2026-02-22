@@ -42,6 +42,12 @@ func main() {
 	// Create the auth app with default renderers (batteries-included templates).
 	authApp := auth.New(authtpl.DefaultRenderer())
 
+	// Create the staticfiles app (walks FS to compute content hashes).
+	staticApp, err := staticfiles.New(emptyFS)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Create the server with apps in dependency order.
 	// Session must come before auth (auth depends on session).
 	srv := burrow.NewServer(
@@ -53,7 +59,7 @@ func main() {
 		&healthcheck.App{},
 		notes.New(),
 		admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
-		staticfiles.New(emptyFS),
+		staticApp,
 	)
 
 	// Wire admin renderer for auth admin pages (users, invites).

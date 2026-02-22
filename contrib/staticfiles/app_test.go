@@ -2,6 +2,7 @@ package staticfiles
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +22,14 @@ var (
 	_ burrow.HasRoutes     = (*App)(nil)
 )
 
+// mustNew is a test helper that creates a staticfiles App and fails the test on error.
+func mustNew(t *testing.T, fsys fs.FS, opts ...Option) *App {
+	t.Helper()
+	app, err := New(fsys, opts...)
+	require.NoError(t, err)
+	return app
+}
+
 // testFS uses unhashed filenames — the App computes content hashes itself.
 var testFS = fstest.MapFS{
 	"dist/styles.css": &fstest.MapFile{Data: []byte("body{}")},
@@ -35,7 +44,7 @@ var testFSWithExternal = fstest.MapFS{
 
 // contribApp is a test app implementing HasStaticFiles.
 type contribApp struct {
-	fsys   fstest.MapFS
+	fsys   fs.FS
 	name   string
 	prefix string
 }
@@ -44,19 +53,40 @@ func (a *contribApp) Name() string                       { return a.name }
 func (a *contribApp) Register(_ *burrow.AppConfig) error { return nil }
 func (a *contribApp) StaticFS() (string, fs.FS)          { return a.prefix, a.fsys }
 
+func TestNewError(t *testing.T) {
+	_, err := New(&brokenFS{err: errors.New("disk on fire")})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "disk on fire")
+}
+
+func TestRegisterContribFSError(t *testing.T) {
+	registry := burrow.NewRegistry()
+	registry.Add(&contribApp{
+		name:   "broken",
+		prefix: "broken",
+		fsys:   &brokenFS{err: errors.New("contrib broken")},
+	})
+
+	app := mustNew(t, testFS)
+	registry.Add(app)
+	err := app.Register(&burrow.AppConfig{Registry: registry})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "contrib broken")
+}
+
 func TestAppName(t *testing.T) {
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	assert.Equal(t, "staticfiles", app.Name())
 }
 
 func TestRegisterIsNoop(t *testing.T) {
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	err := app.Register(&burrow.AppConfig{})
 	require.NoError(t, err)
 }
 
 func TestStaticFileServing(t *testing.T) {
-	app := New(testFS)
+	app := mustNew(t, testFS)
 
 	r := chi.NewRouter()
 	app.Routes(r)
@@ -75,7 +105,7 @@ func TestStaticFileServing(t *testing.T) {
 
 func TestStaticFileServingFallback(t *testing.T) {
 	// Externally-hashed files (e.g. esbuild font output) should be served directly.
-	app := New(testFSWithExternal)
+	app := mustNew(t, testFSWithExternal)
 
 	r := chi.NewRouter()
 	app.Routes(r)
@@ -89,7 +119,7 @@ func TestStaticFileServingFallback(t *testing.T) {
 }
 
 func TestCacheHeadersHashedAsset(t *testing.T) {
-	app := New(testFS)
+	app := mustNew(t, testFS)
 
 	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
@@ -110,7 +140,7 @@ func TestCacheHeadersHashedAsset(t *testing.T) {
 }
 
 func TestCacheHeadersUnhashedAsset(t *testing.T) {
-	app := New(testFS)
+	app := mustNew(t, testFS)
 
 	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
@@ -130,7 +160,7 @@ func TestCacheHeadersUnhashedAsset(t *testing.T) {
 }
 
 func TestCacheHeadersNonStaticPath(t *testing.T) {
-	app := New(testFS)
+	app := mustNew(t, testFS)
 
 	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
@@ -150,7 +180,7 @@ func TestCacheHeadersNonStaticPath(t *testing.T) {
 }
 
 func TestCustomPrefix(t *testing.T) {
-	app := New(testFS, WithPrefix("/assets/"))
+	app := mustNew(t, testFS, WithPrefix("/assets/"))
 
 	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
@@ -185,7 +215,7 @@ func TestRegisterCollectsContribFS(t *testing.T) {
 	registry := burrow.NewRegistry()
 	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -202,7 +232,7 @@ func TestContribFileServing(t *testing.T) {
 	registry := burrow.NewRegistry()
 	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -226,7 +256,7 @@ func TestContribFileURL(t *testing.T) {
 	registry := burrow.NewRegistry()
 	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -244,7 +274,7 @@ func TestContribAndUserFilesCoexist(t *testing.T) {
 	registry := burrow.NewRegistry()
 	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -278,7 +308,7 @@ func TestContribFileCacheHeaders(t *testing.T) {
 	registry := burrow.NewRegistry()
 	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -300,7 +330,7 @@ func TestContribFileCacheHeaders(t *testing.T) {
 func TestNoContribsStillWorks(t *testing.T) {
 	registry := burrow.NewRegistry()
 
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -329,7 +359,7 @@ func TestMultipleContribs(t *testing.T) {
 	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 	registry.Add(&contribApp{name: "test-theme", prefix: "theme", fsys: themeFS})
 
-	app := New(testFS)
+	app := mustNew(t, testFS)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 

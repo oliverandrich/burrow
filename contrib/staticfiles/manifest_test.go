@@ -1,12 +1,23 @@
 package staticfiles
 
 import (
+	"errors"
+	"io/fs"
 	"testing"
 	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// brokenFS always returns an error from WalkDir.
+type brokenFS struct {
+	err error
+}
+
+func (b *brokenFS) Open(string) (fs.File, error) {
+	return nil, b.err
+}
 
 func TestContentHash(t *testing.T) {
 	hash := contentHash([]byte("body{}"))
@@ -44,13 +55,22 @@ func TestHashedName(t *testing.T) {
 	}
 }
 
+func TestBuildManifestError(t *testing.T) {
+	fsys := &brokenFS{err: errors.New("disk on fire")}
+
+	_, _, err := buildManifest(fsys)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "disk on fire")
+}
+
 func TestBuildManifest(t *testing.T) {
 	fsys := fstest.MapFS{
 		"dist/styles.css": &fstest.MapFile{Data: []byte("body{}")},
 		"dist/app.js":     &fstest.MapFile{Data: []byte("alert(1)")},
 	}
 
-	manifest, files := buildManifest(fsys)
+	manifest, files, err := buildManifest(fsys)
+	require.NoError(t, err)
 
 	// manifest maps original → hashed
 	stylesHash := contentHash([]byte("body{}"))
@@ -69,8 +89,10 @@ func TestBuildManifestDeterministic(t *testing.T) {
 		"dist/styles.css": &fstest.MapFile{Data: []byte("body{}")},
 	}
 
-	m1, _ := buildManifest(fsys)
-	m2, _ := buildManifest(fsys)
+	m1, _, err1 := buildManifest(fsys)
+	require.NoError(t, err1)
+	m2, _, err2 := buildManifest(fsys)
+	require.NoError(t, err2)
 
 	assert.Equal(t, m1, m2)
 }
