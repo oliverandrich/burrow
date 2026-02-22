@@ -1,8 +1,10 @@
 package auth
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -98,14 +100,14 @@ func TestGenerateInviteToken(t *testing.T) {
 // --- WebAuthn service tests ---
 
 func TestNewWebAuthnService(t *testing.T) {
-	svc, err := NewWebAuthnService("Test App", "localhost", "http://localhost:8080")
+	svc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 	require.NotNil(t, svc)
 	assert.NotNil(t, svc.WebAuthn())
 }
 
 func TestWebAuthnServiceRegistrationSession(t *testing.T) {
-	svc, err := NewWebAuthnService("Test App", "localhost", "http://localhost:8080")
+	svc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
 	data := &gowebauthn.SessionData{Challenge: "test-challenge"}
@@ -121,7 +123,7 @@ func TestWebAuthnServiceRegistrationSession(t *testing.T) {
 }
 
 func TestWebAuthnServiceDiscoverableSession(t *testing.T) {
-	svc, err := NewWebAuthnService("Test App", "localhost", "http://localhost:8080")
+	svc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
 	data := &gowebauthn.SessionData{Challenge: "disco-challenge"}
@@ -136,7 +138,7 @@ func TestWebAuthnServiceDiscoverableSession(t *testing.T) {
 }
 
 func TestWebAuthnServiceNotFound(t *testing.T) {
-	svc, err := NewWebAuthnService("Test App", "localhost", "http://localhost:8080")
+	svc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
 	_, err = svc.GetRegistrationSession(999)
@@ -144,4 +146,23 @@ func TestWebAuthnServiceNotFound(t *testing.T) {
 
 	_, err = svc.GetDiscoverableSession("nonexistent")
 	require.Error(t, err)
+}
+
+func TestWebAuthnServiceCleanupStopsOnCancel(t *testing.T) {
+	before := runtime.NumGoroutine()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	_, err := NewWebAuthnService(ctx, "Test App", "localhost", "http://localhost:8080")
+	require.NoError(t, err)
+
+	// Cleanup goroutine should be running.
+	afterCreate := runtime.NumGoroutine()
+	assert.Greater(t, afterCreate, before, "cleanup goroutine should be running")
+
+	// Cancel the context — goroutine should stop.
+	cancel()
+	time.Sleep(50 * time.Millisecond)
+
+	afterCancel := runtime.NumGoroutine()
+	assert.LessOrEqual(t, afterCancel, before, "cleanup goroutine should have stopped")
 }

@@ -34,6 +34,7 @@ type App struct {
 	adminRenderer AdminRenderer
 	config        *Config
 	globalConfig  *burrow.Config
+	cancelCleanup context.CancelFunc
 }
 
 // Config holds auth-specific configuration.
@@ -139,12 +140,15 @@ func (a *App) Configure(cmd *cli.Command) error {
 		BaseURL:             baseURL,
 	}
 
-	// Create WebAuthn service.
+	// Create WebAuthn service with a cancellable context for the cleanup goroutine.
 	rpOrigin := cmd.String("webauthn-rp-origin")
 	if rpOrigin == "" {
 		rpOrigin = baseURL
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	a.cancelCleanup = cancel
 	waSvc, err := NewWebAuthnService(
+		ctx,
 		cmd.String("webauthn-rp-display-name"),
 		cmd.String("webauthn-rp-id"),
 		rpOrigin,
@@ -161,6 +165,15 @@ func (a *App) Configure(cmd *cli.Command) error {
 		a.adminHandlers = newAdminHandlers(a.repo, a.adminRenderer, a.config, nil)
 	}
 
+	return nil
+}
+
+// Close stops the background cleanup goroutine. Safe to call multiple times or if
+// Configure was never called.
+func (a *App) Close() error {
+	if a.cancelCleanup != nil {
+		a.cancelCleanup()
+	}
 	return nil
 }
 

@@ -162,7 +162,8 @@ type webauthnSessionEntry struct {
 }
 
 // NewWebAuthnService creates a new WebAuthn service with the given RP configuration.
-func NewWebAuthnService(rpDisplayName, rpID, rpOrigin string) (WebAuthnService, error) {
+// The context controls the lifetime of the background cleanup goroutine.
+func NewWebAuthnService(ctx context.Context, rpDisplayName, rpID, rpOrigin string) (WebAuthnService, error) {
 	wa, err := gowebauthn.New(&gowebauthn.Config{
 		RPDisplayName: rpDisplayName,
 		RPID:          rpID,
@@ -175,7 +176,7 @@ func NewWebAuthnService(rpDisplayName, rpID, rpOrigin string) (WebAuthnService, 
 		wa:    wa,
 		store: make(map[string]*webauthnSessionEntry),
 	}
-	go svc.cleanup()
+	go svc.cleanup(ctx)
 	return svc, nil
 }
 
@@ -222,18 +223,23 @@ func (s *webauthnService) pop(key string) (*gowebauthn.SessionData, error) {
 	return entry.data, nil
 }
 
-func (s *webauthnService) cleanup() {
+func (s *webauthnService) cleanup(ctx context.Context) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		s.mu.Lock()
-		now := time.Now()
-		for key, entry := range s.store {
-			if now.After(entry.expiresAt) {
-				delete(s.store, key)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.mu.Lock()
+			now := time.Now()
+			for key, entry := range s.store {
+				if now.After(entry.expiresAt) {
+					delete(s.store, key)
+				}
 			}
+			s.mu.Unlock()
 		}
-		s.mu.Unlock()
 	}
 }

@@ -87,7 +87,7 @@ func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	renderer := &mockRenderer{}
-	waSvc, err := NewWebAuthnService("Test App", "localhost", "http://localhost:8080")
+	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
@@ -102,7 +102,7 @@ func newTestHandlersEmailMode(t *testing.T) (*Handlers, *Repository, *mockRender
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	renderer := &mockRenderer{}
-	waSvc, err := NewWebAuthnService("Test App", "localhost", "http://localhost:8080")
+	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
 	h := NewHandlers(repo, waSvc, &mockEmailService{}, renderer, &Config{
@@ -119,7 +119,7 @@ func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRende
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	renderer := &mockRenderer{}
-	waSvc, err := NewWebAuthnService("Test App", "localhost", "http://localhost:8080")
+	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
@@ -518,7 +518,7 @@ func TestLogoutCustomRedirect(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	renderer := &mockRenderer{}
-	waSvc, err := NewWebAuthnService("Test App", "localhost", "http://localhost:8080")
+	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
