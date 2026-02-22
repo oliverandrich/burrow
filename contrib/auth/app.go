@@ -148,6 +148,11 @@ func (a *App) Configure(cmd *cli.Command) error {
 	// Create handlers (email service is set via SetEmailService if needed).
 	a.handlers = NewHandlers(a.repo, waSvc, nil, a.renderer, a.config)
 
+	// Create admin handlers if SetAdminRenderer was called before Register/Configure.
+	if a.adminRenderer != nil && a.adminHandlers == nil {
+		a.adminHandlers = newAdminHandlers(a.repo, a.adminRenderer, a.config, nil)
+	}
+
 	return nil
 }
 

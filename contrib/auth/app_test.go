@@ -657,6 +657,49 @@ func TestAdminRoutes(t *testing.T) {
 	assert.Equal(t, "AdminUsersPage", mockAdminR.lastMethod)
 }
 
+func TestAdminRoutesWithLifecycleOrder(t *testing.T) {
+	db := openTestDB(t)
+
+	// Simulate real lifecycle: New → SetAdminRenderer → Register → Configure → AdminRoutes.
+	app := New(nil)
+	mockAdminR := &mockAdminRenderer{}
+	app.SetAdminRenderer(mockAdminR)
+
+	// Register sets repo (happens inside srv.Run → bootstrap).
+	err := app.Register(&burrow.AppConfig{DB: db})
+	require.NoError(t, err)
+
+	// Configure creates handlers (happens inside srv.Run after Register).
+	cmd := &cli.Command{
+		Flags: app.Flags(),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
+	}
+	require.NoError(t, cmd.Run(context.Background(), []string{"test"}))
+
+	require.NotNil(t, app.adminHandlers, "adminHandlers should be created during Configure")
+
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := WithUser(r.Context(), &User{ID: 1, Role: RoleAdmin})
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	r.Route("/admin", func(r chi.Router) {
+		r.Use(RequireAuth(), RequireAdmin())
+		app.AdminRoutes(r)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/users", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "AdminUsersPage", mockAdminR.lastMethod)
+}
+
 func TestAdminRoutesNilRenderer(t *testing.T) {
 	app := &App{}
 
