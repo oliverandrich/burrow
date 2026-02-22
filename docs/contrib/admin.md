@@ -47,8 +47,9 @@ All routes require authentication and admin role:
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/admin/users` | List all users |
-| GET | `/admin/users/:id` | User detail |
-| POST | `/admin/users/:id/role` | Update user role |
+| GET | `/admin/users/:id` | User detail / edit form |
+| POST | `/admin/users/:id` | Update user |
+| DELETE | `/admin/users/:id` | Delete user |
 
 ## CLI Commands
 
@@ -90,17 +91,6 @@ NavItem{
 }
 ```
 
-## Context Helpers
-
-The admin package provides context helpers for admin navigation:
-
-```go
-admin.NavItems(ctx)            // Returns admin nav items from context
-admin.WithNavItems(ctx, items) // Stores admin nav items in context
-```
-
-The admin layout is set via `burrow.WithLayout(ctx, fn)` inside the `/admin` route group, so it only applies to admin pages. Templates read it via `burrow.Layout(ctx)`. The middleware only injects admin nav items globally.
-
 ## HasAdmin Interface
 
 Apps contribute admin views by implementing `HasAdmin`:
@@ -120,5 +110,4 @@ The admin app collects all `HasAdmin` implementations and mounts their routes un
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `HasRoutes` | Creates `/admin` group and delegates to `HasAdmin` apps |
-| `HasMiddleware` | Injects admin nav items into the request context |
 | `HasDependencies` | Requires `auth` |

@@ -36,21 +36,6 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	return nil
 }
 
-// Middleware returns middleware that injects admin nav items into the
-// request context. The admin layout is injected inside the /admin route
-// group instead, so that it only applies to admin pages.
-func (a *App) Middleware() []func(http.Handler) http.Handler {
-	items := a.registry.AllAdminNavItems()
-	return []func(http.Handler) http.Handler{
-		func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ctx := WithNavItems(r.Context(), items)
-				next.ServeHTTP(w, r.WithContext(ctx))
-			})
-		},
-	}
-}
-
 // indexPage renders the admin dashboard page.
 func (a *App) indexPage(w http.ResponseWriter, r *http.Request) error {
 	content := templates.AdminIndex()

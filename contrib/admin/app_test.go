@@ -22,7 +22,6 @@ import (
 var (
 	_ burrow.App             = (*App)(nil)
 	_ burrow.HasRoutes       = (*App)(nil)
-	_ burrow.HasMiddleware   = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
 )
 
@@ -183,49 +182,6 @@ func TestRoutesNoRegistryNoPanic(t *testing.T) {
 	assert.NotPanics(t, func() { app.Routes(r) })
 }
 
-func TestMiddlewareInjectsAdminNavItems(t *testing.T) {
-	registry := burrow.NewRegistry()
-
-	registry.Add(&session.App{})
-	authApp := auth.New(nil)
-	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
-
-	provider := &hasAdminApp{}
-	registry.Add(provider)
-
-	app := New(nil)
-	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
-
-	mws := app.Middleware()
-	require.Len(t, mws, 1)
-
-	var got []burrow.NavItem
-	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got = NavItems(r.Context())
-		w.WriteHeader(http.StatusOK)
-	})
-
-	handler := mws[0](inner)
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	require.NotEmpty(t, got)
-	// The test provider contributes "Test Resource"; auth contributes others.
-	var found bool
-	for _, item := range got {
-		if item.Label == "Test Resource" {
-			found = true
-			break
-		}
-	}
-	assert.True(t, found, "admin nav items should include items from HasAdmin apps")
-}
-
 func TestNewWithLayout(t *testing.T) {
 	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
 		return content
@@ -259,9 +215,6 @@ func TestAdminIndexPage(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	for _, mw := range app.Middleware() {
-		r.Use(mw)
-	}
 	app.Routes(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
@@ -303,9 +256,6 @@ func TestAdminIndexPageRendersSidebar(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	for _, mw := range app.Middleware() {
-		r.Use(mw)
-	}
 	app.Routes(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
@@ -347,38 +297,6 @@ func TestLayout(t *testing.T) {
 	assert.Contains(t, html, "bootstrap.bundle.min.js")
 	assert.Contains(t, html, "htmx.min.js")
 	assert.Contains(t, html, "<p>test content</p>")
-}
-
-func TestMiddlewareDoesNotInjectLayout(t *testing.T) {
-	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
-	})
-
-	registry := burrow.NewRegistry()
-	registry.Add(&session.App{})
-	authApp := auth.New(nil)
-	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
-
-	app := New(layout)
-	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
-
-	mws := app.Middleware()
-
-	var got burrow.LayoutFunc
-	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got = burrow.Layout(r.Context())
-		w.WriteHeader(http.StatusOK)
-	})
-
-	handler := mws[0](inner)
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-
-	assert.Nil(t, got, "middleware should not inject layout (layout is injected in route group)")
 }
 
 // layoutCheckApp captures burrow.Layout from context inside the /admin group.
