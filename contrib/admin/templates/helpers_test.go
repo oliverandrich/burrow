@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +33,7 @@ func TestGroupLabelFallback(t *testing.T) {
 func TestSortNavGroups(t *testing.T) {
 	ctx := context.Background()
 
-	groups := []NavGroup{
+	groups := []admin.NavGroup{
 		{AppName: "session", Items: []burrow.NavItem{{Label: "S"}}},
 		{AppName: "auth", Items: []burrow.NavItem{{Label: "A"}}},
 		{AppName: "i18n", Items: []burrow.NavItem{{Label: "I"}}},
@@ -49,7 +50,7 @@ func TestSortNavGroups(t *testing.T) {
 func TestSortNavGroupsDoesNotMutateOriginal(t *testing.T) {
 	ctx := context.Background()
 
-	groups := []NavGroup{
+	groups := []admin.NavGroup{
 		{AppName: "zebra", Items: []burrow.NavItem{{Label: "Z"}}},
 		{AppName: "alpha", Items: []burrow.NavItem{{Label: "A"}}},
 	}
@@ -66,22 +67,6 @@ func TestSortNavGroupsEmpty(t *testing.T) {
 	assert.Nil(t, sorted)
 }
 
-func TestNavGroupsContext(t *testing.T) {
-	groups := []NavGroup{
-		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users"}}},
-	}
-
-	ctx := WithNavGroups(context.Background(), groups)
-	got := NavGroupsFromContext(ctx)
-
-	assert.Equal(t, groups, got)
-}
-
-func TestNavGroupsContextEmpty(t *testing.T) {
-	got := NavGroupsFromContext(context.Background())
-	assert.Nil(t, got)
-}
-
 func TestItemLabelWithKey(t *testing.T) {
 	// Without i18n context, LabelKey is returned as-is by i18n.T,
 	// so itemLabel falls back to Label.
@@ -94,15 +79,6 @@ func TestItemLabelWithoutKey(t *testing.T) {
 	ctx := context.Background()
 	item := burrow.NavItem{Label: "Dashboard"}
 	assert.Equal(t, "Dashboard", itemLabel(ctx, item))
-}
-
-func TestRequestPathContext(t *testing.T) {
-	ctx := WithRequestPath(context.Background(), "/admin/users")
-	assert.Equal(t, "/admin/users", RequestPathFromContext(ctx))
-}
-
-func TestRequestPathContextEmpty(t *testing.T) {
-	assert.Empty(t, RequestPathFromContext(context.Background()))
 }
 
 func TestIsActivePath(t *testing.T) {
@@ -123,14 +99,14 @@ func TestIsActivePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := WithRequestPath(context.Background(), tt.path)
+			ctx := admin.WithRequestPath(context.Background(), tt.path)
 			assert.Equal(t, tt.want, isActivePath(ctx, tt.itemURL))
 		})
 	}
 }
 
 func TestSidebarLinkClass(t *testing.T) {
-	ctx := WithRequestPath(context.Background(), "/admin/users")
+	ctx := admin.WithRequestPath(context.Background(), "/admin/users")
 
 	active := sidebarLinkClass(ctx, "/admin/users")
 	assert.Contains(t, active, "active")

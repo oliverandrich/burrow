@@ -13,12 +13,12 @@ srv := burrow.NewServer(
     auth.New(authRenderer),
     bootstrap.New(),                    // provides base layout + Bootstrap/htmx assets
     &healthcheck.App{},
-    admin.New(admin.Layout()),   // admin layout references bootstrap assets
+    admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
     staticfiles.New(myStaticFS),
 )
 ```
 
-The `bootstrap` app must be registered before apps that reference its assets (like `admin.Layout()`). The `staticfiles` app must also be registered to serve the embedded CSS and JS.
+The `bootstrap` app must be registered before apps that reference its assets (like `admintpl.Layout()`). The `staticfiles` app must also be registered to serve the embedded CSS and JS.
 
 ## Layout
 

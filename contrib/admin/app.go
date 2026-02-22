@@ -4,27 +4,26 @@ import (
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"github.com/go-chi/chi/v5"
 )
 
+// DashboardRenderer renders the admin dashboard page.
+type DashboardRenderer interface {
+	DashboardPage(w http.ResponseWriter, r *http.Request) error
+}
+
 // App implements the admin coordinator contrib app.
 type App struct {
-	registry *burrow.Registry
-	layout   burrow.LayoutFunc
+	registry  *burrow.Registry
+	layout    burrow.LayoutFunc
+	dashboard DashboardRenderer
 }
 
-// New creates a new admin app. The optional layout wraps admin pages.
-func New(layout burrow.LayoutFunc) *App {
-	return &App{layout: layout}
-}
-
-// Layout returns a batteries-included admin layout using Bootstrap 5
-// and htmx. It serves as a ready-to-use admin layout that reads static file
-// URLs and nav items from the request context.
-func Layout() burrow.LayoutFunc {
-	return templates.Layout
+// New creates a new admin app. The layout wraps admin pages, and dashboard
+// renders the index page. Both are optional (pass nil for either).
+func New(layout burrow.LayoutFunc, dashboard DashboardRenderer) *App {
+	return &App{layout: layout, dashboard: dashboard}
 }
 
 func (a *App) Name() string { return "admin" }
@@ -38,22 +37,20 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 
 // indexPage renders the admin dashboard page.
 func (a *App) indexPage(w http.ResponseWriter, r *http.Request) error {
-	content := templates.AdminIndex()
-	layout := burrow.Layout(r.Context())
-	if layout == nil {
-		return burrow.Render(w, r, http.StatusOK, content)
+	if a.dashboard != nil {
+		return a.dashboard.DashboardPage(w, r)
 	}
-	return burrow.Render(w, r, http.StatusOK, layout("Admin", content))
+	return burrow.Text(w, http.StatusOK, "admin dashboard")
 }
 
 // buildNavGroups collects nav groups from all HasAdmin apps.
-func (a *App) buildNavGroups() []templates.NavGroup {
-	var groups []templates.NavGroup
+func (a *App) buildNavGroups() []NavGroup {
+	var groups []NavGroup
 	for _, app := range a.registry.Apps() {
 		if provider, ok := app.(burrow.HasAdmin); ok {
 			items := provider.AdminNavItems()
 			if len(items) > 0 {
-				groups = append(groups, templates.NavGroup{
+				groups = append(groups, NavGroup{
 					AppName: app.Name(),
 					Items:   items,
 				})
@@ -81,8 +78,8 @@ func (a *App) Routes(r chi.Router) {
 				if a.layout != nil {
 					ctx = burrow.WithLayout(ctx, a.layout)
 				}
-				ctx = templates.WithNavGroups(ctx, groups)
-				ctx = templates.WithRequestPath(ctx, r.URL.Path)
+				ctx = WithNavGroups(ctx, groups)
+				ctx = WithRequestPath(ctx, r.URL.Path)
 				next.ServeHTTP(w, r.WithContext(ctx))
 			})
 		})

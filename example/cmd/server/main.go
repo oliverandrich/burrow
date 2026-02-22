@@ -11,6 +11,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin"
+	admintpl "codeberg.org/oliverandrich/burrow/contrib/admin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/bootstrap"
@@ -51,7 +52,7 @@ func main() {
 		bootstrap.New(),
 		&healthcheck.App{},
 		notes.New(),
-		admin.New(admin.Layout()),
+		admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
 		staticfiles.New(emptyFS),
 	)
 

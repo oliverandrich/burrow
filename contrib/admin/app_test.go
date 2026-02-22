@@ -1,15 +1,11 @@
 package admin
 
 import (
-	"context"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/a-h/templ"
@@ -26,17 +22,17 @@ var (
 )
 
 func TestAppName(t *testing.T) {
-	app := New(nil)
+	app := New(nil, nil)
 	assert.Equal(t, "admin", app.Name())
 }
 
 func TestAppDependencies(t *testing.T) {
-	app := New(nil)
+	app := New(nil, nil)
 	assert.Equal(t, []string{"auth"}, app.Dependencies())
 }
 
 func TestAppRegister(t *testing.T) {
-	app := New(nil)
+	app := New(nil, nil)
 	registry := burrow.NewRegistry()
 
 	registry.Add(&session.App{})
@@ -57,7 +53,7 @@ func TestAppRegisterMissingAuthPanics(t *testing.T) {
 
 	assert.PanicsWithValue(t,
 		`burrow: app "admin" requires "auth" to be registered first`,
-		func() { registry.Add(New(nil)) },
+		func() { registry.Add(New(nil, nil)) },
 	)
 }
 
@@ -92,7 +88,7 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
-	app := New(nil)
+	app := New(nil, nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -127,7 +123,7 @@ func TestRoutesRequiresAuth(t *testing.T) {
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
-	app := New(nil)
+	app := New(nil, nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -154,7 +150,7 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
-	app := New(nil)
+	app := New(nil, nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -176,7 +172,7 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 }
 
 func TestRoutesNoRegistryNoPanic(t *testing.T) {
-	app := New(nil)
+	app := New(nil, nil)
 	r := chi.NewRouter()
 	// Routes should not panic when registry is nil.
 	assert.NotPanics(t, func() { app.Routes(r) })
@@ -187,116 +183,51 @@ func TestNewWithLayout(t *testing.T) {
 		return content
 	})
 
-	app := New(layout)
+	app := New(layout, nil)
 	assert.NotNil(t, app.layout)
 }
 
 func TestNewWithoutLayout(t *testing.T) {
-	app := New(nil)
+	app := New(nil, nil)
 	assert.Nil(t, app.layout)
 }
 
-func TestAdminIndexPage(t *testing.T) {
-	registry := burrow.NewRegistry()
+// mockDashboardRenderer is a mock DashboardRenderer for testing.
+type mockDashboardRenderer struct {
+	called bool
+}
 
-	registry.Add(&session.App{})
-	authApp := auth.New(nil)
-	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
+func (m *mockDashboardRenderer) DashboardPage(w http.ResponseWriter, _ *http.Request) error {
+	m.called = true
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("mock-dashboard"))
+	return nil
+}
 
-	app := New(Layout())
-	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
-
-	r := chi.NewRouter()
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Username: "admin", Role: auth.RoleAdmin})
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
-	app.Routes(r)
+func TestIndexPageWithDashboardRenderer(t *testing.T) {
+	mock := &mockDashboardRenderer{}
+	app := New(nil, mock)
 
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-	body, _ := io.ReadAll(rec.Body)
-	html := string(body)
-	assert.Contains(t, html, "<!doctype html>")
-	assert.Contains(t, html, "<title>Admin – Admin</title>")
-	assert.Contains(t, html, "admin-dashboard-title")
-	// User menu should show the logged-in user and a logout form.
-	assert.Contains(t, html, "admin")
-	assert.Contains(t, html, `action="/auth/logout"`)
-	assert.Contains(t, html, `name="gorilla.csrf.Token"`)
-	assert.Contains(t, html, "bi-person-circle")
-}
+	err := app.indexPage(rec, req)
 
-func TestAdminIndexPageRendersSidebar(t *testing.T) {
-	registry := burrow.NewRegistry()
-
-	registry.Add(&session.App{})
-	authApp := auth.New(nil)
-	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
-
-	provider := &hasAdminApp{}
-	registry.Add(provider)
-
-	app := New(Layout())
-	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
-
-	r := chi.NewRouter()
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleAdmin})
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
-	app.Routes(r)
-
-	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	body, _ := io.ReadAll(rec.Body)
-	html := string(body)
-	// Nav items should appear in the sidebar.
-	assert.Contains(t, html, `href="/admin/test-resource"`)
-	assert.Contains(t, html, "Test Resource")
-	// The sidebar should contain the collapsible group.
-	assert.Contains(t, html, `data-bs-toggle="collapse"`)
-	assert.Contains(t, html, `id="collapse-test-admin-provider"`)
-}
-
-func TestLayout(t *testing.T) {
-	layout := Layout()
-	require.NotNil(t, layout)
-
-	content := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		_, err := io.WriteString(w, "<p>test content</p>")
-		return err
-	})
-
-	component := layout("Test Page", content)
-	require.NotNil(t, component)
-
-	var buf strings.Builder
-	err := component.Render(context.Background(), &buf)
 	require.NoError(t, err)
+	assert.True(t, mock.called)
+	assert.Equal(t, "mock-dashboard", rec.Body.String())
+}
 
-	html := buf.String()
-	assert.Contains(t, html, "<!doctype html>")
-	assert.Contains(t, html, "<title>Test Page – Admin</title>")
-	assert.Contains(t, html, "bootstrap.min.css")
-	assert.Contains(t, html, "bootstrap-icons.min.css")
-	assert.Contains(t, html, "bootstrap.bundle.min.js")
-	assert.Contains(t, html, "htmx.min.js")
-	assert.Contains(t, html, "<p>test content</p>")
+func TestIndexPageWithoutDashboardRenderer(t *testing.T) {
+	app := New(nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+
+	err := app.indexPage(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, "admin dashboard", rec.Body.String())
 }
 
 // layoutCheckApp captures burrow.Layout from context inside the /admin group.
@@ -328,7 +259,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 	checker := &layoutCheckApp{}
 	registry.Add(checker)
 
-	app := New(layout)
+	app := New(layout, nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -361,7 +292,7 @@ func TestBuildNavGroups(t *testing.T) {
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
-	app := New(nil)
+	app := New(nil, nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -380,14 +311,14 @@ func TestBuildNavGroups(t *testing.T) {
 
 // navGroupsCheckApp captures nav groups from context inside the /admin group.
 type navGroupsCheckApp struct {
-	gotGroups []templates.NavGroup
+	gotGroups []NavGroup
 }
 
 func (a *navGroupsCheckApp) Name() string                       { return "nav-groups-check" }
 func (a *navGroupsCheckApp) Register(_ *burrow.AppConfig) error { return nil }
 func (a *navGroupsCheckApp) AdminRoutes(r chi.Router) {
 	r.Get("/nav-groups-check", func(w http.ResponseWriter, r *http.Request) {
-		a.gotGroups = templates.NavGroupsFromContext(r.Context())
+		a.gotGroups = NavGroupsFromContext(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
 }
@@ -405,7 +336,7 @@ func TestRoutesInjectNavGroups(t *testing.T) {
 	checker := &navGroupsCheckApp{}
 	registry.Add(checker)
 
-	app := New(nil)
+	app := New(nil, nil)
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 

@@ -18,7 +18,7 @@ srv := burrow.NewServer(
     &session.App{},
     &csrf.App{},
     authApp,
-    admin.New(admin.Layout()),
+    admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
     staticfiles.New(emptyFS), // serves auth + admin static files
     // ... other apps
 )

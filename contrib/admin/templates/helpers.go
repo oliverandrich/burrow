@@ -6,16 +6,17 @@ import (
 	"strings"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 )
 
 // sortNavGroups returns a copy of groups sorted alphabetically
 // by their translated display name.
-func sortNavGroups(ctx context.Context, groups []NavGroup) []NavGroup {
+func sortNavGroups(ctx context.Context, groups []admin.NavGroup) []admin.NavGroup {
 	if len(groups) == 0 {
 		return nil
 	}
-	sorted := make([]NavGroup, len(groups))
+	sorted := make([]admin.NavGroup, len(groups))
 	copy(sorted, groups)
 	sort.SliceStable(sorted, func(i, j int) bool {
 		return groupLabel(ctx, sorted[i].AppName) < groupLabel(ctx, sorted[j].AppName)
@@ -62,7 +63,7 @@ func sidebarLinkClass(ctx context.Context, itemURL string) string {
 // It uses prefix matching so that sub-pages (e.g. /admin/users/1) highlight
 // the parent nav item (/admin/users). The admin root (/admin) only matches exactly.
 func isActivePath(ctx context.Context, itemURL string) bool {
-	current := RequestPathFromContext(ctx)
+	current := admin.RequestPathFromContext(ctx)
 	if current == "" || itemURL == "" {
 		return false
 	}

@@ -9,28 +9,30 @@ User management panel with CLI commands for promoting users and creating invites
 ## Setup
 
 ```go
+import admintpl "codeberg.org/oliverandrich/burrow/contrib/admin/templates"
+
 srv := burrow.NewServer(
     &session.App{},
     auth.New(authRenderer),
-    admin.New(admin.Layout()), // batteries-included layout
-    staticfiles.New(myStaticFS),      // serves admin + user static files
+    admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
+    staticfiles.New(myStaticFS), // serves admin + user static files
     // ... other apps
 )
 ```
 
-The layout parameter accepts three forms:
+The parameters accept these forms:
 
 ```go
-admin.New(admin.Layout())  // batteries-included (Bootstrap 5 + htmx)
-admin.New(myCustomLayout)         // custom LayoutFunc
-admin.New(nil)                    // no layout wrapping
+admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()) // batteries-included
+admin.New(myCustomLayout, myCustomDashboard)  // custom layout + dashboard
+admin.New(nil, nil)                           // no layout, plain text dashboard
 ```
 
 The admin app discovers admin views from other apps via the `HasAdmin` interface. Any app that implements `HasAdmin` gets its routes mounted under `/admin` with auth protection.
 
 ## Default Layout
 
-`DefaultLayout()` returns a `LayoutFunc` that renders a full HTML page with:
+`admintpl.Layout()` returns a `LayoutFunc` that renders a full HTML page with:
 
 - [Bootstrap 5](https://getbootstrap.com/) — responsive CSS framework
 - [Bootstrap Icons](https://icons.getbootstrap.com/) — icon webfont
@@ -38,7 +40,7 @@ The admin app discovers admin views from other apps via the `HasAdmin` interface
 
 The layout reads admin nav items from context and renders them in a `<nav>` element. Static assets are served via the `staticfiles` app using content-hashed URLs.
 
-**Note:** When using `DefaultLayout()`, the `bootstrap` app must be registered to serve CSS/JS assets. The admin default layout references static files under the `"bootstrap"` prefix.
+**Note:** When using `admintpl.Layout()`, the `bootstrap` app must be registered to serve CSS/JS assets. The admin default layout references static files under the `"bootstrap"` prefix.
 
 ## Routes
 

@@ -9,14 +9,15 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 )
 
-// Layout renders a full admin HTML page with a Bootstrap 5 sidebar and htmx.
-func Layout(title string, content templ.Component) templ.Component {
+// layout renders a full admin HTML page with a Bootstrap 5 sidebar and htmx.
+func layout(title string, content templ.Component) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -44,7 +45,7 @@ func Layout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 17, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 18, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -57,7 +58,7 @@ func Layout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var3 templ.SafeURL
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(staticfiles.URL(ctx, "bootstrap/bootstrap.min.css"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 18, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 19, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -70,7 +71,7 @@ func Layout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(staticfiles.URL(ctx, "bootstrap/bootstrap-icons.min.css"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 19, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 20, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -83,7 +84,7 @@ func Layout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(staticfiles.URL(ctx, "bootstrap/bootstrap.bundle.min.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 20, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 21, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -96,7 +97,7 @@ func Layout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(staticfiles.URL(ctx, "bootstrap/htmx.min.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 21, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 22, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -156,7 +157,7 @@ func sidebar() templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		if groups := sortNavGroups(ctx, NavGroupsFromContext(ctx)); len(groups) > 0 {
+		if groups := sortNavGroups(ctx, admin.NavGroupsFromContext(ctx)); len(groups) > 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<ul class=\"list-unstyled ps-0\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -169,7 +170,7 @@ func sidebar() templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs("#collapse-" + g.AppName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 96, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 97, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -182,7 +183,7 @@ func sidebar() templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(groupLabel(ctx, g.AppName))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 99, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 100, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -195,7 +196,7 @@ func sidebar() templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs("collapse-" + g.AppName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 101, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 102, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -222,7 +223,7 @@ func sidebar() templ.Component {
 					var templ_7745c5c3_Var12 templ.SafeURL
 					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(item.URL))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 106, Col: 40}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 107, Col: 40}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 					if templ_7745c5c3_Err != nil {
@@ -272,7 +273,7 @@ func sidebar() templ.Component {
 					var templ_7745c5c3_Var16 string
 					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(itemLabel(ctx, item))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 112, Col: 32}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 113, Col: 32}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 					if templ_7745c5c3_Err != nil {
@@ -327,7 +328,7 @@ func userMenu() templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 135, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 136, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -340,7 +341,7 @@ func userMenu() templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(csrf.Token(ctx))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 140, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 141, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -353,7 +354,7 @@ func userMenu() templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "admin-logout"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 141, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/layout.templ`, Line: 142, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {

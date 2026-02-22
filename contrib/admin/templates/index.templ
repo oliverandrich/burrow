@@ -1,13 +1,16 @@
 package templates
 
-import "codeberg.org/oliverandrich/burrow/contrib/i18n"
+import (
+	"codeberg.org/oliverandrich/burrow/contrib/admin"
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+)
 
-// AdminIndex renders the admin dashboard page with quick-links to all admin sections.
-templ AdminIndex() {
+// adminIndex renders the admin dashboard page with quick-links to all admin sections.
+templ adminIndex() {
 	<div class="d-flex justify-content-between align-items-center mb-4">
 		<h2 class="mb-0">{ i18n.T(ctx, "admin-dashboard-title") }</h2>
 	</div>
-	if groups := sortNavGroups(ctx, NavGroupsFromContext(ctx)); len(groups) > 0 {
+	if groups := sortNavGroups(ctx, admin.NavGroupsFromContext(ctx)); len(groups) > 0 {
 		for _, g := range groups {
 			<h5 class="text-body-secondary mb-3">{ groupLabel(ctx, g.AppName) }</h5>
 			<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3 mb-4">

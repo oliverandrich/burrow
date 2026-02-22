@@ -1,14 +1,15 @@
 package templates
 
 import (
+	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 )
 
-// Layout renders a full admin HTML page with a Bootstrap 5 sidebar and htmx.
-templ Layout(title string, content templ.Component) {
+// layout renders a full admin HTML page with a Bootstrap 5 sidebar and htmx.
+templ layout(title string, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en" data-bs-theme="auto">
 		<head>
@@ -86,7 +87,7 @@ templ Layout(title string, content templ.Component) {
 
 // sidebar renders the collapsible nav groups from context.
 templ sidebar() {
-	if groups := sortNavGroups(ctx, NavGroupsFromContext(ctx)); len(groups) > 0 {
+	if groups := sortNavGroups(ctx, admin.NavGroupsFromContext(ctx)); len(groups) > 0 {
 		<ul class="list-unstyled ps-0">
 			for _, g := range groups {
 				<li class="mb-1">

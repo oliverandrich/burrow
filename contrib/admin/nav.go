@@ -1,4 +1,4 @@
-package templates
+package admin
 
 import "codeberg.org/oliverandrich/burrow"
 

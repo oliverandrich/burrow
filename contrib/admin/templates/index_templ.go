@@ -8,10 +8,13 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "codeberg.org/oliverandrich/burrow/contrib/i18n"
+import (
+	"codeberg.org/oliverandrich/burrow/contrib/admin"
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+)
 
-// AdminIndex renders the admin dashboard page with quick-links to all admin sections.
-func AdminIndex() templ.Component {
+// adminIndex renders the admin dashboard page with quick-links to all admin sections.
+func adminIndex() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -39,7 +42,7 @@ func AdminIndex() templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "admin-dashboard-title"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 8, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 11, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -49,7 +52,7 @@ func AdminIndex() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if groups := sortNavGroups(ctx, NavGroupsFromContext(ctx)); len(groups) > 0 {
+		if groups := sortNavGroups(ctx, admin.NavGroupsFromContext(ctx)); len(groups) > 0 {
 			for _, g := range groups {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<h5 class=\"text-body-secondary mb-3\">")
 				if templ_7745c5c3_Err != nil {
@@ -58,7 +61,7 @@ func AdminIndex() templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(groupLabel(ctx, g.AppName))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 12, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 15, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -76,7 +79,7 @@ func AdminIndex() templ.Component {
 					var templ_7745c5c3_Var4 templ.SafeURL
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(item.URL))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 16, Col: 39}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 19, Col: 39}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -117,7 +120,7 @@ func AdminIndex() templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(itemLabel(ctx, item))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 21, Col: 66}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 24, Col: 66}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -141,7 +144,7 @@ func AdminIndex() templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "admin-dashboard-empty"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 29, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/admin/templates/index.templ`, Line: 32, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
