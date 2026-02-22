@@ -255,7 +255,7 @@ func TestAdminIndexPage(t *testing.T) {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleAdmin})
+			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Username: "admin", Role: auth.RoleAdmin})
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
@@ -274,6 +274,11 @@ func TestAdminIndexPage(t *testing.T) {
 	assert.Contains(t, html, "<!doctype html>")
 	assert.Contains(t, html, "<title>Admin – Admin</title>")
 	assert.Contains(t, html, `<li class="breadcrumb-item active" aria-current="page">Admin</li>`)
+	// User menu should show the logged-in user and a logout form.
+	assert.Contains(t, html, "admin")
+	assert.Contains(t, html, `action="/auth/logout"`)
+	assert.Contains(t, html, `name="gorilla.csrf.Token"`)
+	assert.Contains(t, html, "bi-person-circle")
 }
 
 func TestAdminIndexPageRendersSidebar(t *testing.T) {

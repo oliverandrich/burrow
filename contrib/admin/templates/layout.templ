@@ -1,6 +1,9 @@
 package templates
 
 import (
+	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 )
 
@@ -57,12 +60,15 @@ templ Layout(title string, content templ.Component) {
 		</head>
 		<body hx-boost="true">
 			<div class="d-flex">
-				<div class="flex-shrink-0 p-3 bg-body-tertiary border-end" style="width: 280px; min-height: 100vh;">
+				<div class="flex-shrink-0 p-3 bg-body-tertiary border-end d-flex flex-column" style="width: 280px; min-height: 100vh;">
 					<a href="/admin" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom">
 						<i class="bi bi-gear-fill me-2 fs-5"></i>
 						<span class="fs-5 fw-semibold">Admin</span>
 					</a>
-					@sidebar()
+					<div class="flex-grow-1">
+						@sidebar()
+					</div>
+					@userMenu()
 				</div>
 				<main class="flex-grow-1 p-4">
 					@content
@@ -106,5 +112,31 @@ templ sidebar() {
 				</li>
 			}
 		</ul>
+	}
+}
+
+// userMenu renders a dropup with the logged-in user's name and a sign-out action.
+templ userMenu() {
+	if user := auth.UserFromContext(ctx); user != nil {
+		<div class="border-top pt-3 mt-3">
+			<div class="dropup">
+				<button
+					class="btn btn-link d-flex align-items-center link-body-emphasis text-decoration-none dropdown-toggle p-0"
+					data-bs-toggle="dropdown"
+					aria-expanded="false"
+				>
+					<i class="bi bi-person-circle me-2"></i>
+					{ user.Username }
+				</button>
+				<ul class="dropdown-menu text-small shadow">
+					<li>
+						<form method="post" action="/auth/logout">
+							<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
+							<button type="submit" class="dropdown-item">{ i18n.T(ctx, "admin-logout") }</button>
+						</form>
+					</li>
+				</ul>
+			</div>
+		</div>
 	}
 }
