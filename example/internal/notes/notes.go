@@ -12,6 +12,8 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
+	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	notestpl "codeberg.org/oliverandrich/burrow/example/internal/notes/templates"
 	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
@@ -234,6 +236,25 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to create note")
 	}
 
+	if err := messages.AddSuccess(w, r, "Note created."); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
+	}
+
+	// HTMX: return updated notes list with OOB alerts.
+	if r.Header.Get("HX-Request") == "true" {
+		notes, err := h.repo.ListByUserID(r.Context(), user.ID)
+		if err != nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
+		}
+
+		tplNotes := make([]notestpl.Note, len(notes))
+		for i, n := range notes {
+			tplNotes[i] = notestpl.Note{ID: n.ID, Title: n.Title, Content: n.Content}
+		}
+
+		return burrow.Render(w, r, http.StatusOK, notestpl.CreateResponse(tplNotes))
+	}
+
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
 	return nil
 }
@@ -275,7 +296,11 @@ func (h *Handlers) AdminDelete(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete note")
 	}
 
-	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+	if err := messages.AddSuccess(w, r, "Note deleted."); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
+	}
+
+	return burrow.Render(w, r, http.StatusOK, bstpl.AlertsOOB())
 }
 
 // Delete removes a note owned by the authenticated user.
@@ -294,5 +319,9 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete note")
 	}
 
-	return burrow.JSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+	if err := messages.AddSuccess(w, r, "Note deleted."); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
+	}
+
+	return burrow.Render(w, r, http.StatusOK, bstpl.AlertsOOB())
 }

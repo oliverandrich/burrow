@@ -11,6 +11,8 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/messages"
+	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -192,10 +194,49 @@ func TestCreateNoteHandler(t *testing.T) {
 	repo := NewRepository(db)
 
 	h := NewHandlers(repo)
+
+	// Use chi router + messages middleware so flash messages work.
+	msgMW := messages.New().Middleware()[0]
+	r := chi.NewRouter()
+	r.Use(msgMW)
+	r.Post("/notes", func(w http.ResponseWriter, r *http.Request) {
+		err := h.Create(w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
+	form := strings.NewReader("title=My+Note&content=Some+content")
+	req := httptest.NewRequest(http.MethodPost, "/notes", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	req = requestWithUser(req, &auth.User{ID: 42})
+	req = session.Inject(req, map[string]any{})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "My Note")
+	assert.Contains(t, body, `hx-swap-oob="true"`)
+	assert.Contains(t, body, "Note created.")
+
+	notes, err := repo.ListByUserID(context.Background(), 42)
+	require.NoError(t, err)
+	require.Len(t, notes, 1)
+	assert.Equal(t, "My Note", notes[0].Title)
+}
+
+func TestCreateNoteHandlerNonHTMX(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	h := NewHandlers(repo)
 	form := strings.NewReader("title=My+Note&content=Some+content")
 	req := httptest.NewRequest(http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = requestWithUser(req, &auth.User{ID: 42})
+	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 
 	err := h.Create(rec, req)
@@ -238,8 +279,10 @@ func TestDeleteNoteHandler(t *testing.T) {
 
 	h := NewHandlers(repo)
 
-	// Use chi router to inject URL params.
+	// Use chi router to inject URL params; include messages middleware for store.
+	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
+	r.Use(msgMW)
 	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Delete(w, r)
 		if err != nil {
@@ -249,10 +292,13 @@ func TestDeleteNoteHandler(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodDelete, "/notes/1", nil)
 	req = requestWithUser(req, &auth.User{ID: 42})
+	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `hx-swap-oob="true"`)
+	assert.Contains(t, rec.Body.String(), "Note deleted.")
 }
 
 // --- Repository admin tests ---
@@ -332,7 +378,9 @@ func TestAdminDeleteHandler(t *testing.T) {
 
 	h := NewHandlers(repo)
 
+	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
+	r.Use(msgMW)
 	r.Delete("/admin/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.AdminDelete(w, r)
 		if err != nil {
@@ -341,11 +389,13 @@ func TestAdminDeleteHandler(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodDelete, "/admin/notes/1", nil)
+	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `"status":"deleted"`)
+	assert.Contains(t, rec.Body.String(), `hx-swap-oob="true"`)
+	assert.Contains(t, rec.Body.String(), "Note deleted.")
 
 	// Verify it's actually deleted.
 	notes, err := repo.ListAll(ctx)

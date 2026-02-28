@@ -1,6 +1,7 @@
 package templates
 
 import (
+	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"strconv"
@@ -13,28 +14,8 @@ type Note struct {
 	Content string
 }
 
-// ListPage renders the notes list with an add form and delete buttons.
-templ ListPage(notes []Note) {
-	<div class="d-flex justify-content-between align-items-center mb-4">
-		<h1 class="mb-0">{ i18n.T(ctx, "notes-title") }</h1>
-	</div>
-	<div class="card mb-4">
-		<div class="card-body">
-			<h5 class="card-title">{ i18n.T(ctx, "notes-new-title") }</h5>
-			<form method="post" action="/notes">
-				<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
-				<div class="mb-3">
-					<label for="title" class="form-label">{ i18n.T(ctx, "notes-label-title") }</label>
-					<input type="text" class="form-control" id="title" name="title" required/>
-				</div>
-				<div class="mb-3">
-					<label for="content" class="form-label">{ i18n.T(ctx, "notes-label-content") }</label>
-					<textarea class="form-control" id="content" name="content" rows="3"></textarea>
-				</div>
-				<button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>{ i18n.T(ctx, "notes-add-button") }</button>
-			</form>
-		</div>
-	</div>
+// NotesList renders the notes grid or empty state.
+templ NotesList(notes []Note) {
 	if len(notes) == 0 {
 		<div class="text-center text-body-secondary py-5">
 			<i class="bi bi-journal-text" style="font-size: 3rem;"></i>
@@ -68,6 +49,46 @@ templ ListPage(notes []Note) {
 			}
 		</div>
 	}
+}
+
+// CreateResponse returns the updated notes list with OOB alerts for HTMX.
+templ CreateResponse(notes []Note) {
+	@NotesList(notes)
+	@bstpl.AlertsOOB()
+}
+
+// ListPage renders the notes list with an add form and delete buttons.
+templ ListPage(notes []Note) {
+	<div class="d-flex justify-content-between align-items-center mb-4">
+		<h1 class="mb-0">{ i18n.T(ctx, "notes-title") }</h1>
+	</div>
+	<div class="card mb-4">
+		<div class="card-body">
+			<h5 class="card-title">{ i18n.T(ctx, "notes-new-title") }</h5>
+			<form
+				method="post"
+				action="/notes"
+				hx-post="/notes"
+				hx-target="#notes-list"
+				hx-swap="innerHTML"
+				hx-on::after-request="if(event.detail.successful) this.reset()"
+			>
+				<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
+				<div class="mb-3">
+					<label for="title" class="form-label">{ i18n.T(ctx, "notes-label-title") }</label>
+					<input type="text" class="form-control" id="title" name="title" required/>
+				</div>
+				<div class="mb-3">
+					<label for="content" class="form-label">{ i18n.T(ctx, "notes-label-content") }</label>
+					<textarea class="form-control" id="content" name="content" rows="3"></textarea>
+				</div>
+				<button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>{ i18n.T(ctx, "notes-add-button") }</button>
+			</form>
+		</div>
+	</div>
+	<div id="notes-list">
+		@NotesList(notes)
+	</div>
 }
 
 func itoa(id int64) string {
