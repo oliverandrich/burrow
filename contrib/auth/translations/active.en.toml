@@ -116,6 +116,7 @@ admin-invites-existing-title = "Existing Invites"
 admin-invites-none = "No invites found."
 
 # Admin sidebar
+admin-sidebar-title = "Admin"
 admin-app-auth = "Authentication"
 admin-nav-users = "Users"
 admin-nav-invites = "Invites"

@@ -1,0 +1,25 @@
+# Notes list page
+notes-title = "My Notes"
+notes-new-title = "New Note"
+notes-label-title = "Title"
+notes-label-content = "Content"
+notes-add-button = "Add Note"
+notes-empty = "No notes yet. Create your first one above!"
+notes-delete-confirm = "Delete this note?"
+notes-delete-button = "Delete"
+
+# Admin sidebar
+admin-app-notes = "Notes"
+admin-nav-notes = "Notes"
+
+# Admin notes list page
+admin-notes-title = "Notes"
+admin-notes-breadcrumb-admin = "Admin"
+admin-notes-breadcrumb-notes = "Notes"
+admin-notes-col-id = "ID"
+admin-notes-col-title = "Title"
+admin-notes-col-content = "Content"
+admin-notes-col-user-id = "User ID"
+admin-notes-col-created = "Created"
+admin-notes-delete-confirm = "Delete this note?"
+admin-notes-empty = "No notes found."

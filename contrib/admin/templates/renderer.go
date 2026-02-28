@@ -5,6 +5,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin"
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"github.com/a-h/templ"
 )
 
@@ -25,7 +26,7 @@ func DefaultDashboardRenderer() admin.DashboardRenderer {
 type defaultDashboardRenderer struct{}
 
 func (d *defaultDashboardRenderer) DashboardPage(w http.ResponseWriter, r *http.Request) error {
-	return renderWithLayout(w, r, "Admin", adminIndex())
+	return renderWithLayout(w, r, i18n.T(r.Context(), "admin-sidebar-title"), adminIndex())
 }
 
 // renderWithLayout wraps content in the layout from context, or renders bare content.

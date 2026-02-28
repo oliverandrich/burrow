@@ -1,0 +1,16 @@
+# Layout
+layout-brand = "Burrow"
+layout-toggle-nav = "Navigation umschalten"
+layout-admin = "Admin"
+layout-sign-out = "Abmelden"
+layout-sign-in = "Anmelden"
+
+# Startseite
+home-title = "Willkommen bei Burrow"
+home-subtitle = "Ein Go-Webframework basierend auf chi, Bun/SQLite und Templ."
+home-card-passkey-title = "Passkey-Authentifizierung"
+home-card-passkey-text = "WebAuthn-basierte Authentifizierung mit Wiederherstellungscodes und E-Mail-Verifizierung — ohne Passwörter."
+home-card-contrib-title = "Contrib-Apps"
+home-card-contrib-text = "Session, CSRF, i18n, Admin-Panel, statische Dateien und Health-Checks — alles als modulare Apps."
+home-card-htmx-title = "htmx-fähig"
+home-card-htmx-text = "Bootstrap 5 und htmx über die Pipeline für statische Dateien mit inhaltsbasierten URLs."

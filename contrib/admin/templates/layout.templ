@@ -15,7 +15,7 @@ templ layout(title string, content templ.Component) {
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>{ title } – Admin</title>
+			<title>{ title } – { i18n.T(ctx, "admin-sidebar-title") }</title>
 			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap.min.css") }/>
 			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap-icons.min.css") }/>
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/bootstrap.bundle.min.js") }></script>
@@ -70,7 +70,7 @@ templ layout(title string, content templ.Component) {
 				<div class="flex-shrink-0 p-3 bg-body-tertiary border-end d-flex flex-column" style="width: 280px; min-height: 100vh;">
 					<a href="/admin" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom">
 						<i class="bi bi-gear-fill me-2 fs-5"></i>
-						<span class="fs-5 fw-semibold">Admin</span>
+						<span class="fs-5 fw-semibold">{ i18n.T(ctx, "admin-sidebar-title") }</span>
 					</a>
 					<div class="flex-grow-1">
 						@sidebar()

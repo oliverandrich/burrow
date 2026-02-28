@@ -20,6 +20,9 @@ import (
 //go:embed migrations
 var migrationFS embed.FS
 
+//go:embed translations
+var translationFS embed.FS
+
 // Note represents a user's note.
 type Note struct { //nolint:govet // fieldalignment: readability over optimization
 	bun.BaseModel `bun:"table:notes,alias:n"`
@@ -116,6 +119,8 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	return nil
 }
 
+func (a *App) TranslationFS() fs.FS { return translationFS }
+
 func (a *App) MigrationFS() fs.FS {
 	sub, _ := fs.Sub(migrationFS, "migrations")
 	return sub
@@ -147,6 +152,7 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 	return []burrow.NavItem{
 		{
 			Label:     "Notes",
+			LabelKey:  "admin-nav-notes",
 			URL:       "/admin/notes",
 			Icon:      "bi bi-journal-text",
 			Position:  30,

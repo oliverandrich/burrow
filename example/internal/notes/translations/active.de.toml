@@ -1,0 +1,25 @@
+# Notizen-Listenseite
+notes-title = "Meine Notizen"
+notes-new-title = "Neue Notiz"
+notes-label-title = "Titel"
+notes-label-content = "Inhalt"
+notes-add-button = "Notiz hinzufügen"
+notes-empty = "Noch keine Notizen. Erstellen Sie oben Ihre erste!"
+notes-delete-confirm = "Diese Notiz löschen?"
+notes-delete-button = "Löschen"
+
+# Admin-Seitenleiste
+admin-app-notes = "Notizen"
+admin-nav-notes = "Notizen"
+
+# Admin-Notizen-Listenseite
+admin-notes-title = "Notizen"
+admin-notes-breadcrumb-admin = "Admin"
+admin-notes-breadcrumb-notes = "Notizen"
+admin-notes-col-id = "ID"
+admin-notes-col-title = "Titel"
+admin-notes-col-content = "Inhalt"
+admin-notes-col-user-id = "Benutzer-ID"
+admin-notes-col-created = "Erstellt"
+admin-notes-delete-confirm = "Diese Notiz löschen?"
+admin-notes-empty = "Keine Notizen gefunden."

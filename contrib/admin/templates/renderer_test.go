@@ -36,7 +36,7 @@ func TestLayout(t *testing.T) {
 
 	html := buf.String()
 	assert.Contains(t, html, "<!doctype html>")
-	assert.Contains(t, html, "<title>Test Page – Admin</title>")
+	assert.Contains(t, html, "<title>Test Page – admin-sidebar-title</title>")
 	assert.Contains(t, html, "bootstrap.min.css")
 	assert.Contains(t, html, "bootstrap-icons.min.css")
 	assert.Contains(t, html, "bootstrap.bundle.min.js")

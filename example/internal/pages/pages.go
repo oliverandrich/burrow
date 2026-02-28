@@ -3,6 +3,8 @@
 package pages
 
 import (
+	"embed"
+	"io/fs"
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
@@ -10,6 +12,9 @@ import (
 	"codeberg.org/oliverandrich/burrow/example/internal/pages/templates"
 	"github.com/go-chi/chi/v5"
 )
+
+//go:embed translations
+var translationFS embed.FS
 
 // App implements the pages app.
 type App struct{}
@@ -19,6 +24,7 @@ func New() *App { return &App{} }
 
 func (a *App) Name() string                       { return "pages" }
 func (a *App) Register(_ *burrow.AppConfig) error { return nil }
+func (a *App) TranslationFS() fs.FS               { return translationFS }
 
 func (a *App) NavItems() []burrow.NavItem {
 	return []burrow.NavItem{

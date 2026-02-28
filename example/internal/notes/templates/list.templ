@@ -2,6 +2,7 @@ package templates
 
 import (
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"strconv"
 )
 
@@ -15,29 +16,29 @@ type Note struct {
 // ListPage renders the notes list with an add form and delete buttons.
 templ ListPage(notes []Note) {
 	<div class="d-flex justify-content-between align-items-center mb-4">
-		<h1 class="mb-0">My Notes</h1>
+		<h1 class="mb-0">{ i18n.T(ctx, "notes-title") }</h1>
 	</div>
 	<div class="card mb-4">
 		<div class="card-body">
-			<h5 class="card-title">New Note</h5>
+			<h5 class="card-title">{ i18n.T(ctx, "notes-new-title") }</h5>
 			<form method="post" action="/notes">
 				<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
 				<div class="mb-3">
-					<label for="title" class="form-label">Title</label>
+					<label for="title" class="form-label">{ i18n.T(ctx, "notes-label-title") }</label>
 					<input type="text" class="form-control" id="title" name="title" required/>
 				</div>
 				<div class="mb-3">
-					<label for="content" class="form-label">Content</label>
+					<label for="content" class="form-label">{ i18n.T(ctx, "notes-label-content") }</label>
 					<textarea class="form-control" id="content" name="content" rows="3"></textarea>
 				</div>
-				<button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Note</button>
+				<button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>{ i18n.T(ctx, "notes-add-button") }</button>
 			</form>
 		</div>
 	</div>
 	if len(notes) == 0 {
 		<div class="text-center text-body-secondary py-5">
 			<i class="bi bi-journal-text" style="font-size: 3rem;"></i>
-			<p class="mt-3">No notes yet. Create your first one above!</p>
+			<p class="mt-3">{ i18n.T(ctx, "notes-empty") }</p>
 		</div>
 	} else {
 		<div class="row g-3">
@@ -57,9 +58,9 @@ templ ListPage(notes []Note) {
 								hx-target={ "#note-" + itoa(note.ID) }
 								hx-swap="outerHTML swap:0.3s"
 								hx-headers={ `{"X-CSRF-Token":"` + csrf.Token(ctx) + `"}` }
-								hx-confirm="Delete this note?"
+								hx-confirm={ i18n.T(ctx, "notes-delete-confirm") }
 							>
-								<i class="bi bi-trash me-1"></i>Delete
+								<i class="bi bi-trash me-1"></i>{ i18n.T(ctx, "notes-delete-button") }
 							</button>
 						</div>
 					</div>

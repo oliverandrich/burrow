@@ -3,6 +3,7 @@ package notes
 import (
 	"context"
 	"database/sql"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,6 +27,7 @@ var (
 	_ burrow.HasNavItems     = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
 	_ burrow.HasAdmin        = (*App)(nil)
+	_ burrow.HasTranslations = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -40,6 +42,16 @@ func TestNavItems(t *testing.T) {
 	assert.Equal(t, "Notes", items[0].Label)
 	assert.Equal(t, "/notes", items[0].URL)
 	assert.True(t, items[0].AuthOnly)
+}
+
+func TestTranslationFS(t *testing.T) {
+	app := New()
+	fsys := app.TranslationFS()
+	require.NotNil(t, fsys)
+
+	matches, err := fs.Glob(fsys, "translations/*.toml")
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, len(matches), 2, "expected at least en and de translation files")
 }
 
 func TestMigrationFS(t *testing.T) {
@@ -347,6 +359,7 @@ func TestAdminNavItems(t *testing.T) {
 
 	require.Len(t, items, 1)
 	assert.Equal(t, "Notes", items[0].Label)
+	assert.Equal(t, "admin-nav-notes", items[0].LabelKey)
 	assert.Equal(t, "/admin/notes", items[0].URL)
 	assert.True(t, items[0].AdminOnly)
 	assert.Equal(t, "bi bi-journal-text", items[0].Icon)
