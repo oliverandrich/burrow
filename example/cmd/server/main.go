@@ -18,6 +18,7 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 	"codeberg.org/oliverandrich/burrow/example/internal/layout"
@@ -56,6 +57,7 @@ func main() {
 		session.New(),
 		csrf.New(),
 		i18n.New(),
+		messages.New(),
 		authApp,
 		bootstrap.New(),
 		healthcheck.New(),

@@ -1,0 +1,39 @@
+package templates
+
+import "codeberg.org/oliverandrich/burrow/contrib/messages"
+
+func alertClass(level messages.Level) string {
+	switch level {
+	case messages.Success:
+		return "alert-success"
+	case messages.Warning:
+		return "alert-warning"
+	case messages.Error:
+		return "alert-danger"
+	default:
+		return "alert-info"
+	}
+}
+
+templ Alerts() {
+	<div id="alerts">
+		for _, msg := range messages.Get(ctx) {
+			@alert(msg)
+		}
+	</div>
+}
+
+templ AlertsOOB() {
+	<div id="alerts" hx-swap-oob="true">
+		for _, msg := range messages.Get(ctx) {
+			@alert(msg)
+		}
+	</div>
+}
+
+templ alert(msg messages.Message) {
+	<div class={ "alert", alertClass(msg.Level), "alert-dismissible", "fade", "show" } role="alert">
+		{ msg.Text }
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+}

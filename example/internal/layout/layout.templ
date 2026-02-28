@@ -2,6 +2,7 @@ package layout
 
 import (
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
@@ -23,6 +24,7 @@ templ layout(title string, content templ.Component) {
 		<body>
 			@navbar()
 			<main class="container py-4">
+				@bstpl.Alerts()
 				@content
 			</main>
 		</body>

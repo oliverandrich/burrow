@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
+	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
+	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -98,6 +100,69 @@ func TestMiddlewareInjectsLayout(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.NotNil(t, got, "middleware should inject layout when none is set")
+}
+
+func TestAlertsEmpty(t *testing.T) {
+	var buf strings.Builder
+	err := bstpl.Alerts().Render(context.Background(), &buf)
+	require.NoError(t, err)
+
+	html := buf.String()
+	assert.Contains(t, html, `<div id="alerts">`)
+	assert.NotContains(t, html, "alert-dismissible")
+}
+
+func TestAlertsRendersMessages(t *testing.T) {
+	ctx := messages.Inject(context.Background(), []messages.Message{
+		{Level: messages.Success, Text: "Note created"},
+		{Level: messages.Error, Text: "Something failed"},
+	})
+
+	var buf strings.Builder
+	err := bstpl.Alerts().Render(ctx, &buf)
+	require.NoError(t, err)
+
+	html := buf.String()
+	assert.Contains(t, html, `<div id="alerts">`)
+	assert.NotContains(t, html, "hx-swap-oob")
+	assert.Contains(t, html, "alert-success")
+	assert.Contains(t, html, "Note created")
+	assert.Contains(t, html, "alert-danger")
+	assert.Contains(t, html, "Something failed")
+	assert.Contains(t, html, "alert-dismissible")
+	assert.Contains(t, html, "btn-close")
+}
+
+func TestAlertsOOBEmpty(t *testing.T) {
+	var buf strings.Builder
+	err := bstpl.AlertsOOB().Render(context.Background(), &buf)
+	require.NoError(t, err)
+
+	html := buf.String()
+	assert.Contains(t, html, `<div id="alerts"`)
+	assert.Contains(t, html, `hx-swap-oob="true"`)
+	assert.NotContains(t, html, "alert-dismissible")
+}
+
+func TestAlertsOOBRendersMessages(t *testing.T) {
+	ctx := messages.Inject(context.Background(), []messages.Message{
+		{Level: messages.Success, Text: "Note created"},
+		{Level: messages.Error, Text: "Something failed"},
+	})
+
+	var buf strings.Builder
+	err := bstpl.AlertsOOB().Render(ctx, &buf)
+	require.NoError(t, err)
+
+	html := buf.String()
+	assert.Contains(t, html, `<div id="alerts"`)
+	assert.Contains(t, html, `hx-swap-oob="true"`)
+	assert.Contains(t, html, "alert-success")
+	assert.Contains(t, html, "Note created")
+	assert.Contains(t, html, "alert-danger")
+	assert.Contains(t, html, "Something failed")
+	assert.Contains(t, html, "alert-dismissible")
+	assert.Contains(t, html, "btn-close")
 }
 
 func TestMiddlewareDoesNotOverride(t *testing.T) {
