@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1250,6 +1251,190 @@ func TestAdminDeleteUserSelf(t *testing.T) {
 	users, err := repo.ListUsers(ctx)
 	require.NoError(t, err)
 	assert.Len(t, users, 1)
+}
+
+// --- SetAuthLayout tests ---
+
+func TestSetAuthLayout(t *testing.T) {
+	app := &App{}
+	assert.Nil(t, app.authLayout, "authLayout should be nil by default")
+
+	testLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
+		return content
+	})
+	app.SetAuthLayout(testLayout)
+	assert.NotNil(t, app.authLayout, "authLayout should be set after SetAuthLayout")
+}
+
+func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
+	// Set up a mock renderer that captures the layout from context.
+	var capturedLayout burrow.LayoutFunc
+	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
+
+	app := &App{
+		renderer: mockR,
+		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}),
+	}
+
+	authLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
+		return content
+	})
+	app.SetAuthLayout(authLayout)
+
+	// Set up a global layout that should be overridden on public routes.
+	globalLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
+		return content
+	})
+
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.WithLayout(r.Context(), globalLayout)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	app.Routes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	// The captured layout should be the auth layout, not the global one.
+	require.NotNil(t, *mockR.capturedLayout, "layout should be set in context")
+}
+
+func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	// Set up a mock renderer that captures the layout from context.
+	var capturedLayout burrow.LayoutFunc
+	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
+
+	app := &App{
+		repo:     repo,
+		renderer: mockR,
+		handlers: NewHandlers(repo, nil, nil, mockR, &Config{LoginRedirect: "/"}),
+	}
+
+	authLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
+		return content
+	})
+	app.SetAuthLayout(authLayout)
+
+	// Set up a global layout.
+	globalLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
+		return content
+	})
+
+	// Create a user so the credentials handler can look up credentials.
+	user, err := repo.CreateUser(context.Background(), "alice", "Alice")
+	require.NoError(t, err)
+
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.WithLayout(r.Context(), globalLayout)
+			// Inject the user so RequireAuth passes.
+			ctx = WithUser(ctx, user)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	app.Routes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/credentials/", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	// The captured layout should be the global layout, not the auth layout.
+	require.NotNil(t, *mockR.capturedLayout, "layout should be set in context")
+}
+
+func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
+	// When no auth layout is set, public routes should keep the global layout.
+	var capturedLayout burrow.LayoutFunc
+	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
+
+	app := &App{
+		renderer: mockR,
+		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}),
+	}
+	// No SetAuthLayout call.
+
+	globalLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
+		return content
+	})
+
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.WithLayout(r.Context(), globalLayout)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	app.Routes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	require.NotNil(t, *mockR.capturedLayout, "global layout should be preserved when no auth layout is set")
+}
+
+// layoutCapturingRenderer is a mock Renderer that captures the layout from context.
+type layoutCapturingRenderer struct {
+	capturedLayout *burrow.LayoutFunc
+}
+
+func (m *layoutCapturingRenderer) LoginPage(w http.ResponseWriter, r *http.Request, _ string) error {
+	lay := burrow.Layout(r.Context())
+	*m.capturedLayout = lay
+	return burrow.Text(w, http.StatusOK, "login")
+}
+
+func (m *layoutCapturingRenderer) RegisterPage(w http.ResponseWriter, r *http.Request, _, _ bool, _, _ string) error {
+	lay := burrow.Layout(r.Context())
+	*m.capturedLayout = lay
+	return burrow.Text(w, http.StatusOK, "register")
+}
+
+func (m *layoutCapturingRenderer) CredentialsPage(w http.ResponseWriter, r *http.Request, _ []Credential) error {
+	lay := burrow.Layout(r.Context())
+	*m.capturedLayout = lay
+	return burrow.Text(w, http.StatusOK, "credentials")
+}
+
+func (m *layoutCapturingRenderer) RecoveryPage(w http.ResponseWriter, r *http.Request, _ string) error {
+	lay := burrow.Layout(r.Context())
+	*m.capturedLayout = lay
+	return burrow.Text(w, http.StatusOK, "recovery")
+}
+
+func (m *layoutCapturingRenderer) RecoveryCodesPage(w http.ResponseWriter, r *http.Request, _ []string) error {
+	lay := burrow.Layout(r.Context())
+	*m.capturedLayout = lay
+	return burrow.Text(w, http.StatusOK, "recovery-codes")
+}
+
+func (m *layoutCapturingRenderer) VerifyPendingPage(w http.ResponseWriter, r *http.Request) error {
+	lay := burrow.Layout(r.Context())
+	*m.capturedLayout = lay
+	return burrow.Text(w, http.StatusOK, "verify-pending")
+}
+
+func (m *layoutCapturingRenderer) VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error {
+	lay := burrow.Layout(r.Context())
+	*m.capturedLayout = lay
+	return burrow.Text(w, http.StatusOK, "verify-success")
+}
+
+func (m *layoutCapturingRenderer) VerifyEmailError(w http.ResponseWriter, r *http.Request, _ string) error {
+	lay := burrow.Layout(r.Context())
+	*m.capturedLayout = lay
+	return burrow.Text(w, http.StatusBadRequest, "verify-error")
 }
 
 // --- Static files tests ---

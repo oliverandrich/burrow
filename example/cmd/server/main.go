@@ -68,6 +68,9 @@ func main() {
 	// Use the app layout with navbar (overrides bare bootstrap layout).
 	srv.SetLayout(layout.Layout())
 
+	// Use a minimal layout for public auth pages (login, register, recovery).
+	authApp.SetAuthLayout(authtpl.AuthLayout())
+
 	// Wire admin renderer for auth admin pages (users, invites).
 	authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
 

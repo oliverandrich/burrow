@@ -32,6 +32,7 @@ type App struct {
 	adminHandlers *adminHandlers
 	renderer      Renderer
 	adminRenderer AdminRenderer
+	authLayout    burrow.LayoutFunc
 	config        *Config
 	globalConfig  *burrow.Config
 	cancelCleanup context.CancelFunc
@@ -206,17 +207,28 @@ func (a *App) Routes(r chi.Router) {
 	h := a.handlers
 
 	r.Route("/auth", func(r chi.Router) {
-		r.Get("/register", burrow.Handle(h.RegisterPage))
-		r.Post("/register/begin", burrow.Handle(h.RegisterBegin))
-		r.Post("/register/finish", burrow.Handle(h.RegisterFinish))
-		r.Get("/login", burrow.Handle(h.LoginPage))
-		r.Post("/login/begin", burrow.Handle(h.LoginBegin))
-		r.Post("/login/finish", burrow.Handle(h.LoginFinish))
-		r.Post("/logout", burrow.Handle(h.Logout))
-		r.Get("/recovery", burrow.Handle(h.RecoveryPage))
-		r.Post("/recovery", burrow.Handle(h.RecoveryLogin))
+		// Public routes — use auth layout if set.
+		r.Group(func(r chi.Router) {
+			if a.authLayout != nil {
+				r.Use(authLayoutMiddleware(a.authLayout))
+			}
+			r.Get("/register", burrow.Handle(h.RegisterPage))
+			r.Post("/register/begin", burrow.Handle(h.RegisterBegin))
+			r.Post("/register/finish", burrow.Handle(h.RegisterFinish))
+			r.Get("/login", burrow.Handle(h.LoginPage))
+			r.Post("/login/begin", burrow.Handle(h.LoginBegin))
+			r.Post("/login/finish", burrow.Handle(h.LoginFinish))
+			r.Post("/logout", burrow.Handle(h.Logout))
+			r.Get("/recovery", burrow.Handle(h.RecoveryPage))
+			r.Post("/recovery", burrow.Handle(h.RecoveryLogin))
 
-		// Authenticated credential management.
+			// Email verification routes.
+			r.Get("/verify-pending", burrow.Handle(h.VerifyPendingPage))
+			r.Get("/verify-email", burrow.Handle(h.VerifyEmail))
+			r.Post("/resend-verification", burrow.Handle(h.ResendVerification))
+		})
+
+		// Authenticated credential management — keeps global layout.
 		r.Route("/credentials", func(r chi.Router) {
 			r.Use(RequireAuth())
 			r.Get("/", burrow.Handle(h.CredentialsPage))
@@ -225,19 +237,24 @@ func (a *App) Routes(r chi.Router) {
 			r.Delete("/{id}", burrow.Handle(h.DeleteCredential))
 		})
 
-		// Authenticated recovery code management.
+		// Authenticated recovery code management — keeps global layout.
 		r.Route("/recovery-codes", func(r chi.Router) {
 			r.Use(RequireAuth())
 			r.Get("/", burrow.Handle(h.RecoveryCodesPage))
 			r.Post("/ack", burrow.Handle(h.AcknowledgeRecoveryCodes))
 			r.Post("/regenerate", burrow.Handle(h.RegenerateRecoveryCodes))
 		})
-
-		// Email verification routes.
-		r.Get("/verify-pending", burrow.Handle(h.VerifyPendingPage))
-		r.Get("/verify-email", burrow.Handle(h.VerifyEmail))
-		r.Post("/resend-verification", burrow.Handle(h.ResendVerification))
 	})
+}
+
+// authLayoutMiddleware overrides the layout in context for auth pages.
+func authLayoutMiddleware(fn burrow.LayoutFunc) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.WithLayout(r.Context(), fn)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 // AdminRoutes registers admin routes for user and invite management.
@@ -320,6 +337,14 @@ func (a *App) SetEmailService(email EmailService) {
 	if a.handlers != nil {
 		a.handlers.email = email
 	}
+}
+
+// SetAuthLayout sets an optional layout for public (unauthenticated) auth pages.
+// When set, pages like login, register, and recovery use this layout instead
+// of the global app layout. Authenticated routes (credentials, recovery codes)
+// continue to use the global layout.
+func (a *App) SetAuthLayout(fn burrow.LayoutFunc) {
+	a.authLayout = fn
 }
 
 // SetAdminRenderer sets the admin page renderer for user management.

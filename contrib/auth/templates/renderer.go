@@ -10,6 +10,14 @@ import (
 	"github.com/a-h/templ"
 )
 
+// AuthLayout returns a minimal HTML layout for unauthenticated auth pages.
+// It renders a clean page with Bootstrap CSS but no navbar or navigation.
+// Pass this to auth.App.SetAuthLayout() to override the global app layout
+// on login, register, recovery, and verification pages.
+func AuthLayout() burrow.LayoutFunc {
+	return authLayout
+}
+
 // DefaultRenderer returns a Renderer that uses the built-in Templ templates.
 // Templates read burrow.Layout(ctx) at render time: if a layout is set,
 // page content is wrapped in it; otherwise bare content is rendered.
