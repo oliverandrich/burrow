@@ -23,6 +23,9 @@ srv := burrow.NewServer(
     // ... other apps
 )
 
+// Use a minimal layout for public auth pages (login, register, recovery).
+authApp.SetAuthLayout(authtpl.AuthLayout())
+
 // Wire admin renderer for user/invite management pages.
 authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
 ```
@@ -47,6 +50,24 @@ The default templates:
 - Include inline JavaScript for WebAuthn browser ceremonies
 
 **Note:** When using default templates, register the `staticfiles` app so that `webauthn.js` is served. The auth app implements `HasStaticFiles` and contributes its assets under the `"auth"` prefix automatically.
+
+## Auth Layout
+
+By default, public auth pages (login, register, recovery, email verification) render inside the global app layout — which typically includes a full navbar. This is often undesirable for unauthenticated users.
+
+Use `SetAuthLayout()` to override the layout for public auth pages. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+
+```go
+// Use the built-in minimal auth layout (Bootstrap CSS, no navbar).
+authApp.SetAuthLayout(authtpl.AuthLayout())
+
+// Or provide your own custom layout.
+authApp.SetAuthLayout(myMinimalLayout)
+```
+
+The built-in `authtpl.AuthLayout()` renders a minimal HTML shell with Bootstrap CSS but no navigation — just a clean, centered page suitable for login and registration forms.
+
+This follows the same pattern as the admin app, which overrides the layout inside its `/admin` route group.
 
 ## Models
 
