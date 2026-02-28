@@ -32,12 +32,12 @@ var testTranslationsFS = fstest.MapFS{
 }
 
 func TestAppName(t *testing.T) {
-	app := &App{}
+	app := New()
 	assert.Equal(t, "i18n", app.Name())
 }
 
 func TestAppFlags(t *testing.T) {
-	app := &App{}
+	app := New()
 	flags := app.Flags()
 
 	names := make(map[string]bool)
@@ -51,7 +51,7 @@ func TestAppFlags(t *testing.T) {
 
 func configuredApp(t *testing.T) *App {
 	t.Helper()
-	app := &App{}
+	app := New()
 	_ = app.Register(&burrow.AppConfig{})
 
 	cmd := &cli.Command{
@@ -125,7 +125,7 @@ func TestAutoDiscoverTranslations(t *testing.T) {
 	registry := burrow.NewRegistry()
 	registry.Add(mock)
 
-	app := &App{}
+	app := New()
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
 	cmd := &cli.Command{
@@ -147,12 +147,12 @@ func TestAutoDiscoverTranslations(t *testing.T) {
 
 func TestAutoDiscoverSkipsAppsWithoutTranslations(t *testing.T) {
 	// An app that does not implement HasTranslations.
-	plainApp := &App{}
+	plainApp := New()
 
 	registry := burrow.NewRegistry()
 	registry.Add(plainApp)
 
-	app := &App{}
+	app := New()
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
 	cmd := &cli.Command{

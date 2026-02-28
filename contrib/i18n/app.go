@@ -14,6 +14,9 @@ import (
 	"golang.org/x/text/language"
 )
 
+// New creates a new i18n app.
+func New() *App { return &App{} }
+
 // App implements the i18n contrib app.
 type App struct {
 	bundle      *i18nlib.Bundle

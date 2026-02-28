@@ -18,7 +18,7 @@ var testHashKey = hex.EncodeToString(make([]byte, 32))
 
 func configuredApp(t *testing.T) *App {
 	t.Helper()
-	app := &App{}
+	app := New()
 	_ = app.Register(&burrow.AppConfig{})
 
 	cmd := &cli.Command{
@@ -58,12 +58,12 @@ var (
 // --- App tests ---
 
 func TestAppName(t *testing.T) {
-	app := &App{}
+	app := New()
 	assert.Equal(t, "session", app.Name())
 }
 
 func TestAppFlags(t *testing.T) {
-	app := &App{}
+	app := New()
 	flags := app.Flags()
 
 	names := make(map[string]bool)

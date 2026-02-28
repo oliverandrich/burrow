@@ -12,7 +12,7 @@ Admin panel coordinator that discovers and mounts admin views from other apps.
 import admintpl "codeberg.org/oliverandrich/burrow/contrib/admin/templates"
 
 srv := burrow.NewServer(
-    &session.App{},
+    session.New(),
     auth.New(authRenderer),
     admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
     staticfiles.New(myStaticFS), // serves admin + user static files

@@ -8,8 +8,8 @@ Cross-Site Request Forgery protection using `gorilla/csrf`.
 
 ```go
 srv := burrow.NewServer(
-    &session.App{},
-    &csrf.App{},
+    session.New(),
+    csrf.New(),
     // ... other apps
 )
 ```

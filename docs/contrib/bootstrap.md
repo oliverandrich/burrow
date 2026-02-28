@@ -8,11 +8,11 @@ Swappable design system using [Bootstrap 5](https://getbootstrap.com/), [Bootstr
 
 ```go
 srv := burrow.NewServer(
-    &session.App{},
-    &csrf.App{},
+    session.New(),
+    csrf.New(),
     auth.New(authRenderer),
     bootstrap.New(),                    // provides base layout + Bootstrap/htmx assets
-    &healthcheck.App{},
+    healthcheck.New(),
     admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
     staticfiles.New(myStaticFS),
 )

@@ -30,12 +30,12 @@ var (
 )
 
 func TestAppName(t *testing.T) {
-	app := &App{}
+	app := New()
 	assert.Equal(t, "healthcheck", app.Name())
 }
 
 func TestAppRegister(t *testing.T) {
-	app := &App{}
+	app := New()
 	db := testDB(t)
 	cfg := &burrow.AppConfig{DB: db}
 
@@ -45,7 +45,7 @@ func TestAppRegister(t *testing.T) {
 }
 
 func TestHealthEndpoint(t *testing.T) {
-	app := &App{}
+	app := New()
 	db := testDB(t)
 	app.db = db
 
@@ -61,7 +61,7 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestHealthEndpointDBCheck(t *testing.T) {
-	app := &App{}
+	app := New()
 	db := testDB(t)
 	app.db = db
 

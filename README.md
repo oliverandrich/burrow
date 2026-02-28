@@ -31,9 +31,9 @@ import (
 
 func main() {
     srv := burrow.NewServer(
-        &session.App{},
+        session.New(),
         auth.New(nil),
-        &healthcheck.App{},
+        healthcheck.New(),
     )
 
     cmd := &cli.Command{

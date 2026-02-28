@@ -8,9 +8,9 @@ The `Server` is the main entry point for the framework. It holds the app registr
 
 ```go
 srv := burrow.NewServer(
-    &session.App{},
+    session.New(),
     auth.New(nil),
-    &healthcheck.App{},
+    healthcheck.New(),
     myApp,
 )
 ```

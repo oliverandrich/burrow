@@ -9,6 +9,9 @@ import (
 	"github.com/uptrace/bun"
 )
 
+// New creates a new healthcheck app.
+func New() *App { return &App{} }
+
 // App implements the burrow.App and burrow.HasRoutes interfaces.
 // It registers a /healthz endpoint that returns the server and database status.
 type App struct {

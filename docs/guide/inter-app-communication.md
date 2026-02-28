@@ -42,7 +42,7 @@ If a dependency is missing when `NewServer` processes your app, it panics at sta
     ```go
     // Correct: session before auth, auth before notes
     srv := burrow.NewServer(
-        &session.App{},
+        session.New(),
         auth.New(nil),
         notes.New(),
     )

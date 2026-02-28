@@ -9,6 +9,9 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New creates a new CSRF app.
+func New() *App { return &App{} }
+
 // App implements CSRF protection as a burrow contrib app.
 type App struct {
 	config  *burrow.Config

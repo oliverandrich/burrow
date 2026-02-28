@@ -10,6 +10,9 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New creates a new session app.
+func New() *App { return &App{} }
+
 // App implements the session contrib app.
 type App struct {
 	manager *Manager

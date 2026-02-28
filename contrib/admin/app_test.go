@@ -35,7 +35,7 @@ func TestAppRegister(t *testing.T) {
 	app := New(nil, nil)
 	registry := burrow.NewRegistry()
 
-	registry.Add(&session.App{})
+	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))
@@ -80,7 +80,7 @@ func (a *hasAdminApp) AdminNavItems() []burrow.NavItem {
 func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 	registry := burrow.NewRegistry()
 
-	registry.Add(&session.App{})
+	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))
@@ -115,7 +115,7 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 func TestRoutesRequiresAuth(t *testing.T) {
 	registry := burrow.NewRegistry()
 
-	registry.Add(&session.App{})
+	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))
@@ -142,7 +142,7 @@ func TestRoutesRequiresAuth(t *testing.T) {
 func TestRoutesRequiresAdmin(t *testing.T) {
 	registry := burrow.NewRegistry()
 
-	registry.Add(&session.App{})
+	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))
@@ -251,7 +251,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 	})
 
 	registry := burrow.NewRegistry()
-	registry.Add(&session.App{})
+	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))
@@ -284,7 +284,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 func TestBuildNavGroups(t *testing.T) {
 	registry := burrow.NewRegistry()
 
-	registry.Add(&session.App{})
+	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))
@@ -328,7 +328,7 @@ func (a *navGroupsCheckApp) AdminNavItems() []burrow.NavItem {
 
 func TestRoutesInjectNavGroups(t *testing.T) {
 	registry := burrow.NewRegistry()
-	registry.Add(&session.App{})
+	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
 	require.NoError(t, registry.Bootstrap(nil))

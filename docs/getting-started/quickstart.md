@@ -58,9 +58,9 @@ func main() {
     // Create the server with apps in dependency order.
     // Session must come before auth (auth depends on session).
     srv := burrow.NewServer(
-        &session.App{},
+        session.New(),
         auth.New(nil), // nil renderer = API-only, no HTML pages
-        &healthcheck.App{},
+        healthcheck.New(),
     )
 
     srv.SetLayout(appLayout)

@@ -8,7 +8,7 @@ Cookie-based session management using `gorilla/securecookie`.
 
 ```go
 srv := burrow.NewServer(
-    &session.App{},
+    session.New(),
     // ... other apps
 )
 ```

@@ -53,12 +53,12 @@ func main() {
 	// Create the server with apps in dependency order.
 	// Session must come before auth (auth depends on session).
 	srv := burrow.NewServer(
-		&session.App{},
-		&csrf.App{},
-		&i18n.App{},
+		session.New(),
+		csrf.New(),
+		i18n.New(),
 		authApp,
 		bootstrap.New(),
-		&healthcheck.App{},
+		healthcheck.New(),
 		pages.New(),
 		notes.New(),
 		admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),

@@ -15,8 +15,8 @@ import authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"
 authApp := auth.New(authtpl.DefaultRenderer())
 
 srv := burrow.NewServer(
-    &session.App{},
-    &csrf.App{},
+    session.New(),
+    csrf.New(),
     authApp,
     admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
     staticfiles.New(emptyFS), // serves auth + admin static files
@@ -263,9 +263,9 @@ The auth app implements `HasTranslations` and ships English and German translati
 
 ```go
 srv := burrow.NewServer(
-    &session.App{},
-    &csrf.App{},
-    &i18n.App{},    // must come before auth for middleware order
+    session.New(),
+    csrf.New(),
+    i18n.New(),     // must come before auth for middleware order
     authApp,
     // ...
 )

@@ -8,7 +8,7 @@ A minimal health check endpoint that reports server and database status.
 
 ```go
 srv := burrow.NewServer(
-    &healthcheck.App{},
+    healthcheck.New(),
     // ... other apps
 )
 ```
