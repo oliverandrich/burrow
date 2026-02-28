@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/a-h/templ v0.3.977
+	github.com/a-h/templ v0.3.1001
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/httplog/v3 v3.3.0
 	github.com/go-webauthn/webauthn v0.15.0
