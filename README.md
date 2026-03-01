@@ -1,5 +1,9 @@
 # Burrow
 
+<p align="center">
+  <img src="docs/assets/cover.png" alt="Burrow — Go gophers building a modular burrow" width="600">
+</p>
+
 A Go web framework library built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and [Templ](https://templ.guide/). Designed around composable apps with a Django-inspired architecture.
 
 ## Features
