@@ -4,12 +4,13 @@ import "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 
 templ Layout(title string, content templ.Component) {
 	<!DOCTYPE html>
-	<html lang="en" data-bs-theme="auto">
+	<html lang="en">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title }</title>
 			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap.min.css") }/>
+			@ThemeScript()
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/bootstrap.bundle.min.js") }></script>
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/htmx.min.js") }></script>
 		</head>

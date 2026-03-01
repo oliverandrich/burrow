@@ -1,18 +1,22 @@
 package templates
 
-import "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
+import (
+	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
+	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
+)
 
 // authLayout renders a minimal HTML shell for unauthenticated auth pages.
 // It includes Bootstrap CSS for the default auth templates but no navbar
 // or navigation — just a clean, centered page.
 templ authLayout(title string, content templ.Component) {
 	<!DOCTYPE html>
-	<html lang="en" data-bs-theme="auto">
+	<html lang="en">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title }</title>
 			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap.min.css") }/>
+			@bstpl.ThemeScript()
 		</head>
 		<body>
 			@content

@@ -1,0 +1,93 @@
+package templates
+
+import "codeberg.org/oliverandrich/burrow/contrib/bsicons"
+
+// ThemeScript renders a synchronous inline script that sets the Bootstrap
+// color theme from localStorage before the first paint, preventing FOUC.
+// Place it in <head> after the CSS link.
+templ ThemeScript() {
+	<script>
+		(function(){
+			var s=localStorage.getItem("theme")||"auto";
+			var t=s;
+			if(s==="auto"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}
+			document.documentElement.setAttribute("data-bs-theme",t)
+		})()
+	</script>
+}
+
+func themeSwitcherClass(dropup bool) string {
+	if dropup {
+		return "dropup"
+	}
+	return "dropdown"
+}
+
+// ThemeSwitcher renders a Bootstrap dropdown with Light / Dark / Auto options.
+// It reads the stored preference, highlights the active choice, and updates
+// the theme on click. In auto mode it listens for OS preference changes.
+// Set dropup to true when the switcher sits at the bottom of a sidebar.
+templ ThemeSwitcher(dropup bool) {
+	<div class={ themeSwitcherClass(dropup) } id="bd-theme">
+		<button
+			class="btn btn-link d-flex align-items-center link-body-emphasis text-decoration-none dropdown-toggle p-0"
+			type="button"
+			data-bs-toggle="dropdown"
+			aria-expanded="false"
+			aria-label="Toggle theme"
+			id="bd-theme-btn"
+		>
+			<span class="theme-icon" data-theme-icon="light">@bsicons.SunFill()</span>
+			<span class="theme-icon d-none" data-theme-icon="dark">@bsicons.MoonStarsFill()</span>
+			<span class="theme-icon d-none" data-theme-icon="auto">@bsicons.CircleHalf()</span>
+		</button>
+		<ul class="dropdown-menu dropdown-menu-end shadow">
+			<li>
+				<button type="button" class="dropdown-item d-flex align-items-center" data-bs-theme-value="light">
+					<span class="me-2">@bsicons.SunFill()</span>
+					Light
+				</button>
+			</li>
+			<li>
+				<button type="button" class="dropdown-item d-flex align-items-center" data-bs-theme-value="dark">
+					<span class="me-2">@bsicons.MoonStarsFill()</span>
+					Dark
+				</button>
+			</li>
+			<li>
+				<button type="button" class="dropdown-item d-flex align-items-center" data-bs-theme-value="auto">
+					<span class="me-2">@bsicons.CircleHalf()</span>
+					Auto
+				</button>
+			</li>
+		</ul>
+	</div>
+	<script>
+		(function(){
+			var root=document.documentElement;
+			var mq=window.matchMedia("(prefers-color-scheme: dark)");
+			var container=document.getElementById("bd-theme");
+			var icons=container.querySelectorAll(".theme-icon");
+			var items=container.querySelectorAll("[data-bs-theme-value]");
+
+			function resolve(s){return s==="auto"?(mq.matches?"dark":"light"):s}
+
+			function apply(s){
+				localStorage.setItem("theme",s);
+				root.setAttribute("data-bs-theme",resolve(s));
+				icons.forEach(function(el){el.classList.toggle("d-none",el.getAttribute("data-theme-icon")!==s)});
+				items.forEach(function(el){el.classList.toggle("active",el.getAttribute("data-bs-theme-value")===s)});
+			}
+
+			apply(localStorage.getItem("theme")||"auto");
+
+			items.forEach(function(btn){
+				btn.addEventListener("click",function(){apply(btn.getAttribute("data-bs-theme-value"))})
+			});
+
+			mq.addEventListener("change",function(){
+				if((localStorage.getItem("theme")||"auto")==="auto"){root.setAttribute("data-bs-theme",resolve("auto"))}
+			});
+		})()
+	</script>
+}

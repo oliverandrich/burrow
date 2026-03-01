@@ -3,6 +3,7 @@ package templates
 import (
 	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
@@ -12,12 +13,13 @@ import (
 // layout renders a full admin HTML page with a Bootstrap 5 sidebar and htmx.
 templ layout(title string, content templ.Component) {
 	<!DOCTYPE html>
-	<html lang="en" data-bs-theme="auto">
+	<html lang="en">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title } – { i18n.T(ctx, "admin-sidebar-title") }</title>
 			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap.min.css") }/>
+			@bstpl.ThemeScript()
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/bootstrap.bundle.min.js") }></script>
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/htmx.min.js") }></script>
 			<style>
@@ -113,8 +115,8 @@ templ sidebar() {
 
 // userMenu renders a dropup with the logged-in user's name and a sign-out action.
 templ userMenu() {
-	if user := auth.UserFromContext(ctx); user != nil {
-		<div class="border-top pt-3 mt-3">
+	<div class="border-top pt-3 mt-3 d-flex align-items-center justify-content-between">
+		if user := auth.UserFromContext(ctx); user != nil {
 			<div class="dropup">
 				<button
 					class="btn btn-link d-flex align-items-center link-body-emphasis text-decoration-none dropdown-toggle p-0"
@@ -133,6 +135,7 @@ templ userMenu() {
 					</li>
 				</ul>
 			</div>
-		</div>
-	}
+		}
+		@bstpl.ThemeSwitcher(true)
+	</div>
 }

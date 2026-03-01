@@ -12,12 +12,13 @@ import (
 // layout renders a full HTML page with a Bootstrap 5 navbar, static assets, and htmx.
 templ layout(title string, content templ.Component) {
 	<!DOCTYPE html>
-	<html lang="en" data-bs-theme="auto">
+	<html lang="en">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title }</title>
 			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap.min.css") }/>
+			@bstpl.ThemeScript()
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/bootstrap.bundle.min.js") }></script>
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/htmx.min.js") }></script>
 		</head>
@@ -60,6 +61,9 @@ templ navbar() {
 						</li>
 					}
 				</ul>
+				<div class="me-3">
+					@bstpl.ThemeSwitcher(false)
+				</div>
 				@userMenu()
 			</div>
 		</div>

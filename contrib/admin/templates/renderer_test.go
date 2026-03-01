@@ -42,6 +42,7 @@ func TestLayout(t *testing.T) {
 	assert.NotContains(t, html, "bootstrap-icons.min.css")
 	assert.Contains(t, html, "bootstrap.bundle.min.js")
 	assert.Contains(t, html, "htmx.min.js")
+	assert.Contains(t, html, "localStorage")
 	assert.Contains(t, html, "<p>test content</p>")
 }
 

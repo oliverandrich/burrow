@@ -34,7 +34,7 @@ templ AdminListPage(notes []AdminNote) {
 	if len(notes) > 0 {
 		<div class="table-responsive">
 			<table class="table table-striped table-hover table-sm">
-				<thead class="table-light">
+				<thead>
 					<tr>
 						<th scope="col">{ i18n.T(ctx, "admin-notes-col-id") }</th>
 						<th scope="col">{ i18n.T(ctx, "admin-notes-col-title") }</th>

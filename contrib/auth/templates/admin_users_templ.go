@@ -80,7 +80,7 @@ func adminUsersPage(users []auth.User) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(users) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"table-responsive\"><table class=\"table table-striped table-hover table-sm\"><thead class=\"table-light\"><tr><th scope=\"col\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"table-responsive\"><table class=\"table table-striped table-hover table-sm\"><thead><tr><th scope=\"col\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

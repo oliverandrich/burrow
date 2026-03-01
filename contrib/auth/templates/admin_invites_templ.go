@@ -259,7 +259,7 @@ func adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) t
 			return templ_7745c5c3_Err
 		}
 		if len(invites) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"table-responsive\"><table class=\"table table-striped table-hover table-sm align-middle\"><thead class=\"table-light\"><tr><th scope=\"col\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"table-responsive\"><table class=\"table table-striped table-hover table-sm align-middle\"><thead><tr><th scope=\"col\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
