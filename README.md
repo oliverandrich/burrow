@@ -154,4 +154,4 @@ Requires Go 1.25+. Run `just setup` to verify your dev environment.
 
 ## License
 
-See [LICENSE](LICENSE).
+See [LICENSE](LICENSE). Third-party licenses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
