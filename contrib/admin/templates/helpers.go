@@ -49,14 +49,13 @@ func itemLabel(ctx context.Context, item burrow.NavItem) string {
 	return item.Label
 }
 
-// sidebarLinkClass returns the CSS classes for a sidebar link,
+// sidebarLinkClass returns the CSS classes for a sidebar nav-pill link,
 // adding "active" when the link matches the current request path.
 func sidebarLinkClass(ctx context.Context, itemURL string) string {
-	base := "link-body-emphasis d-inline-flex text-decoration-none rounded"
 	if isActivePath(ctx, itemURL) {
-		return base + " active"
+		return "nav-link active"
 	}
-	return base
+	return "nav-link text-body-emphasis"
 }
 
 // isActivePath checks whether the current request path matches a nav item URL.

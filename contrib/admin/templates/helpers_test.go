@@ -109,8 +109,8 @@ func TestSidebarLinkClass(t *testing.T) {
 	ctx := admin.WithRequestPath(context.Background(), "/admin/users")
 
 	active := sidebarLinkClass(ctx, "/admin/users")
-	assert.Contains(t, active, "active")
+	assert.Equal(t, "nav-link active", active)
 
 	inactive := sidebarLinkClass(ctx, "/admin/invites")
-	assert.NotContains(t, inactive, "active")
+	assert.Equal(t, "nav-link text-body-emphasis", inactive)
 }

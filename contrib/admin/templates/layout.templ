@@ -21,61 +21,49 @@ templ layout(title string, content templ.Component) {
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/bootstrap.bundle.min.js") }></script>
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/htmx.min.js") }></script>
 			<style>
-				.btn-toggle {
-					padding: .25rem .5rem;
-					font-weight: 600;
-					color: var(--bs-emphasis-color);
-					background-color: transparent;
-				}
-				.btn-toggle:hover,
-				.btn-toggle:focus {
-					color: rgba(var(--bs-emphasis-color-rgb), .85);
-					background-color: var(--bs-tertiary-bg);
-				}
-				.btn-toggle::before {
-					width: 1.25em;
-					line-height: 0;
-					content: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0,.5%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e");
-					transition: transform .35s ease;
-					transform-origin: .5em 50%;
-				}
-				[data-bs-theme="dark"] .btn-toggle::before {
-					content: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255,.5%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e");
-				}
-				.btn-toggle[aria-expanded="true"] {
-					color: rgba(var(--bs-emphasis-color-rgb), .85);
-				}
-				.btn-toggle[aria-expanded="true"]::before {
-					transform: rotate(90deg);
-				}
-				.btn-toggle-nav a {
-					padding: .1875rem .5rem;
-					margin-top: .125rem;
-					margin-left: 1.25rem;
-					border-radius: .375rem;
-					transition: background-color .15s ease-in-out;
-				}
-				.btn-toggle-nav a:hover,
-				.btn-toggle-nav a:focus {
-					background-color: var(--bs-tertiary-bg);
-				}
-				.btn-toggle-nav a.active {
-					background-color: var(--bs-primary);
-					color: #fff !important;
-				}
+				.sidebar-chevron { transition: transform .2s; }
+				[aria-expanded="true"] > .sidebar-chevron { transform: rotate(90deg); }
 			</style>
 		</head>
 		<body hx-boost="true">
+			<!-- Mobile navbar with offcanvas toggle -->
+			<nav class="navbar d-md-none bg-body-tertiary border-bottom">
+				<div class="container-fluid">
+					<button
+						class="navbar-toggler"
+						type="button"
+						data-bs-toggle="offcanvas"
+						data-bs-target="#admin-sidebar"
+						aria-controls="admin-sidebar"
+						aria-label="Toggle sidebar"
+					>
+						<span class="navbar-toggler-icon"></span>
+					</button>
+					<span class="navbar-brand mb-0 fw-semibold">{ i18n.T(ctx, "admin-sidebar-title") }</span>
+				</div>
+			</nav>
 			<div class="d-flex">
-				<div class="flex-shrink-0 p-3 bg-body-tertiary border-end d-flex flex-column" style="width: 280px; min-height: 100vh;">
-					<a href="/admin" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom">
-						<span class="me-2 fs-5">@bsicons.GearFill()</span>
-						<span class="fs-5 fw-semibold">{ i18n.T(ctx, "admin-sidebar-title") }</span>
-					</a>
-					<div class="flex-grow-1">
-						@sidebar()
+				<!-- Sidebar: static on desktop, offcanvas overlay on mobile -->
+				<div
+					class="offcanvas-md offcanvas-start bg-body-tertiary border-end"
+					tabindex="-1"
+					id="admin-sidebar"
+					aria-labelledby="admin-sidebar-label"
+				>
+					<div class="offcanvas-header border-bottom d-md-none">
+						<h5 class="offcanvas-title" id="admin-sidebar-label">{ i18n.T(ctx, "admin-sidebar-title") }</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#admin-sidebar" aria-label="Close"></button>
 					</div>
-					@userMenu()
+					<div class="offcanvas-body p-3 d-flex flex-column" style="width: 280px; min-height: 100vh;">
+						<a href="/admin" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom d-none d-md-flex">
+							<span class="me-2 fs-5">@bsicons.GearFill()</span>
+							<span class="fs-5 fw-semibold">{ i18n.T(ctx, "admin-sidebar-title") }</span>
+						</a>
+						<div class="flex-grow-1">
+							@sidebar()
+						</div>
+						@userMenu()
+					</div>
 				</div>
 				<main class="flex-grow-1 p-4">
 					@content
@@ -88,21 +76,22 @@ templ layout(title string, content templ.Component) {
 // sidebar renders the collapsible nav groups from context.
 templ sidebar() {
 	if groups := sortNavGroups(ctx, admin.NavGroupsFromContext(ctx)); len(groups) > 0 {
-		<ul class="list-unstyled ps-0">
+		<nav>
 			for _, g := range groups {
-				<li class="mb-1">
+				<div class="mb-1">
 					<button
-						class="btn btn-toggle d-inline-flex align-items-center rounded border-0"
+						class="btn btn-sm d-inline-flex align-items-center fw-semibold text-body-emphasis bg-transparent border-0 rounded px-2 py-1"
 						data-bs-toggle="collapse"
 						data-bs-target={ "#collapse-" + g.AppName }
 						aria-expanded="true"
 					>
+						<span class="sidebar-chevron me-1">@bsicons.ChevronRight()</span>
 						{ groupLabel(ctx, g.AppName) }
 					</button>
 					<div class="collapse show" id={ "collapse-" + g.AppName }>
-						<ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+						<ul class="nav nav-pills flex-column ms-3 small">
 							for _, item := range g.Items {
-								<li>
+								<li class="nav-item">
 									<a
 										href={ templ.SafeURL(item.URL) }
 										class={ sidebarLinkClass(ctx, item.URL) }
@@ -116,9 +105,9 @@ templ sidebar() {
 							}
 						</ul>
 					</div>
-				</li>
+				</div>
 			}
-		</ul>
+		</nav>
 	}
 }
 
