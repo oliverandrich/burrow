@@ -14,7 +14,10 @@ A Go web framework library built on [Chi](https://go-chi.io/), [Bun](https://bun
 - **CSS-agnostic** — bring your own CSS framework (Bootstrap, Tailwind, etc.)
 - **Layout system** — app layout via server, admin layout via admin package
 - **CLI configuration** — flags, environment variables, and TOML config via [urfave/cli](https://github.com/urfave/cli)
-- **Contrib apps** — auth (WebAuthn/passkeys), sessions, i18n, admin, healthcheck, static files
+- **CSRF protection** — automatic token generation and validation
+- **Flash messages** — session-based flash message system
+- **Bootstrap integration** — Bootstrap 5 CSS/JS, Bootstrap Icons, htmx, and dark mode theme switcher
+- **Contrib apps** — auth (WebAuthn/passkeys), sessions, i18n, admin, CSRF, flash messages, healthcheck, static files
 
 ## Quick Start
 
@@ -27,7 +30,6 @@ import (
     "os"
 
     "codeberg.org/oliverandrich/burrow"
-    "codeberg.org/oliverandrich/burrow/contrib/auth"
     "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
     "codeberg.org/oliverandrich/burrow/contrib/session"
     "github.com/urfave/cli/v3"
@@ -36,7 +38,6 @@ import (
 func main() {
     srv := burrow.NewServer(
         session.New(),
-        auth.New(nil),
         healthcheck.New(),
     )
 
@@ -52,15 +53,21 @@ func main() {
 }
 ```
 
+See [`example/cmd/server/`](example/cmd/server/) for a complete example with auth, admin, i18n, and more.
+
 ## Architecture
 
 ```
 contrib/        Reusable apps
+  admin/        Admin panel coordinator
   auth/         WebAuthn passkeys, recovery codes, email verification
-  session/      Cookie-based sessions
-  i18n/         Locale detection and translations
-  admin/        Admin panel
+  bootstrap/    Bootstrap 5 CSS/JS/htmx assets, theme switcher
+  bsicons/      Bootstrap Icons as templ components
+  csrf/         CSRF protection
   healthcheck/  /healthz endpoint
+  i18n/         Locale detection and translations
+  messages/     Flash messages
+  session/      Cookie-based sessions
   staticfiles/  Static file serving with content-hashed URLs
 example/        Example application with a notes app
 ```
@@ -87,6 +94,10 @@ Apps can optionally implement additional interfaces:
 | `Configurable` | Define CLI flags and read configuration |
 | `HasCLICommands` | Contribute CLI subcommands |
 | `Seedable` | Seed the database with initial data |
+| `HasAdmin` | Contribute admin panel routes and nav items |
+| `HasStaticFiles` | Contribute embedded static file assets |
+| `HasTranslations` | Contribute translation files |
+| `HasDependencies` | Declare required apps |
 
 ### Layouts
 
@@ -99,7 +110,7 @@ srv.SetLayout(appLayout)
 The admin layout is owned by the admin package:
 
 ```go
-admin.New(adminLayout)
+admin.New(layout, dashboardRenderer)
 ```
 
 A `LayoutFunc` receives a page title and content, and returns a wrapped component:
@@ -151,6 +162,10 @@ just example        # Run the example application
 ```
 
 Requires Go 1.25+. Run `just setup` to verify your dev environment.
+
+## Documentation
+
+Full documentation is available in the [`docs/`](docs/) directory.
 
 ## License
 
