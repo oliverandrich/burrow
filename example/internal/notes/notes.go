@@ -13,6 +13,7 @@ import (
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	notestpl "codeberg.org/oliverandrich/burrow/example/internal/notes/templates"
 	"github.com/go-chi/chi/v5"
@@ -133,7 +134,7 @@ func (a *App) NavItems() []burrow.NavItem {
 		{
 			Label:    "Notes",
 			URL:      "/notes",
-			Icon:     "bi bi-journal-text",
+			Icon:     bsicons.JournalText(),
 			Position: 20,
 			AuthOnly: true,
 		},
@@ -156,7 +157,7 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 			Label:     "Notes",
 			LabelKey:  "admin-nav-notes",
 			URL:       "/admin/notes",
-			Icon:      "bi bi-journal-text",
+			Icon:      bsicons.JournalText(),
 			Position:  30,
 			AdminOnly: true,
 		},

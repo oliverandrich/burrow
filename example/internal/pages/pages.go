@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/example/internal/layout"
 	"codeberg.org/oliverandrich/burrow/example/internal/pages/templates"
 	"github.com/go-chi/chi/v5"
@@ -28,7 +29,7 @@ func (a *App) TranslationFS() fs.FS               { return translationFS }
 
 func (a *App) NavItems() []burrow.NavItem {
 	return []burrow.NavItem{
-		{Label: "Home", URL: "/", Icon: "bi bi-house", Position: 1},
+		{Label: "Home", URL: "/", Icon: bsicons.House(), Position: 1},
 	}
 }
 

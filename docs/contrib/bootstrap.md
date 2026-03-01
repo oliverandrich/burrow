@@ -1,6 +1,6 @@
 # Bootstrap
 
-Swappable design system using [Bootstrap 5](https://getbootstrap.com/), [Bootstrap Icons](https://icons.getbootstrap.com/), and [htmx](https://htmx.org/). Provides static assets and a base HTML layout for all pages.
+Swappable design system using [Bootstrap 5](https://getbootstrap.com/) and [htmx](https://htmx.org/). Provides static assets and a base HTML layout for all pages. For icons, see [`bsicons`](bsicons.md).
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/bootstrap`
 
@@ -22,7 +22,7 @@ The `bootstrap` app must be registered before apps that reference its assets (li
 
 ## Layout
 
-`Layout()` returns a `LayoutFunc` that renders a base HTML page with Bootstrap CSS, Bootstrap Icons, Bootstrap JS bundle (includes Popper), and htmx:
+`Layout()` returns a `LayoutFunc` that renders a base HTML page with Bootstrap CSS, Bootstrap JS bundle (includes Popper), and htmx:
 
 ```go
 bootstrap.Layout() // returns burrow.LayoutFunc
@@ -48,9 +48,6 @@ The bootstrap app embeds these static assets and implements `HasStaticFiles` to 
 |------|-------------|
 | `bootstrap.min.css` | Bootstrap 5 CSS |
 | `bootstrap.bundle.min.js` | Bootstrap 5 JS bundle (includes Popper) |
-| `bootstrap-icons.min.css` | Bootstrap Icons webfont CSS |
-| `fonts/bootstrap-icons.woff2` | Bootstrap Icons webfont (woff2) |
-| `fonts/bootstrap-icons.woff` | Bootstrap Icons webfont (woff) |
 | `htmx.min.js` | htmx library for progressive enhancement |
 
 These are served at `/static/bootstrap/bootstrap.min.css`, etc. when the `staticfiles` app is registered.

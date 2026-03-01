@@ -35,7 +35,7 @@ The admin app discovers admin views from other apps via the `HasAdmin` interface
 `admintpl.Layout()` returns a `LayoutFunc` that renders a full HTML page with:
 
 - [Bootstrap 5](https://getbootstrap.com/) — responsive CSS framework
-- [Bootstrap Icons](https://icons.getbootstrap.com/) — icon webfont
+- [`bsicons`](bsicons.md) — inline SVG icons
 - [htmx](https://htmx.org/) — for progressive enhancement
 
 The layout reads admin nav items from context and renders them in a `<nav>` element. Static assets are served via the `staticfiles` app using content-hashed URLs.

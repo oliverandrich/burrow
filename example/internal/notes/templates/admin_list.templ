@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"time"
@@ -60,7 +61,7 @@ templ AdminListPage(notes []AdminNote) {
 									hx-headers={ fmt.Sprintf(`{"X-CSRF-Token":"%s"}`, csrf.Token(ctx)) }
 									hx-confirm={ i18n.T(ctx, "admin-notes-delete-confirm") }
 								>
-									<i class="bi bi-trash"></i>
+									@bsicons.Trash()
 								</button>
 							</td>
 						</tr>
@@ -70,7 +71,7 @@ templ AdminListPage(notes []AdminNote) {
 		</div>
 	} else {
 		<div class="text-center py-5 text-body-secondary">
-			<i class="bi bi-journal-text fs-1 d-block mb-2"></i>
+			@bsicons.JournalText("fs-1 d-block mb-2")
 			<p>{ i18n.T(ctx, "admin-notes-empty") }</p>
 		</div>
 	}

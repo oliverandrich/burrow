@@ -10,6 +10,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin"
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,7 @@ func TestLayout(t *testing.T) {
 	assert.Contains(t, html, "<!doctype html>")
 	assert.Contains(t, html, "<title>Test Page – admin-sidebar-title</title>")
 	assert.Contains(t, html, "bootstrap.min.css")
-	assert.Contains(t, html, "bootstrap-icons.min.css")
+	assert.NotContains(t, html, "bootstrap-icons.min.css")
 	assert.Contains(t, html, "bootstrap.bundle.min.js")
 	assert.Contains(t, html, "htmx.min.js")
 	assert.Contains(t, html, "<p>test content</p>")
@@ -85,7 +86,7 @@ func TestDefaultDashboardRendererWithLayout(t *testing.T) {
 func TestDefaultDashboardRendererWithNavGroups(t *testing.T) {
 	r := DefaultDashboardRenderer()
 	groups := []admin.NavGroup{
-		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users", URL: "/admin/users", Icon: "bi bi-people"}}},
+		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users", URL: "/admin/users", Icon: bsicons.People()}}},
 	}
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
 	ctx := admin.WithNavGroups(req.Context(), groups)

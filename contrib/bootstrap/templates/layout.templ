@@ -10,7 +10,6 @@ templ Layout(title string, content templ.Component) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title }</title>
 			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap.min.css") }/>
-			<link rel="stylesheet" href={ staticfiles.URL(ctx, "bootstrap/bootstrap-icons.min.css") }/>
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/bootstrap.bundle.min.js") }></script>
 			<script defer src={ staticfiles.URL(ctx, "bootstrap/htmx.min.js") }></script>
 		</head>

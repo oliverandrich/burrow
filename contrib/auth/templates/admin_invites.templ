@@ -1,6 +1,7 @@
 package templates
 
 import "fmt"
+import "codeberg.org/oliverandrich/burrow/contrib/bsicons"
 import "codeberg.org/oliverandrich/burrow/contrib/auth"
 import "codeberg.org/oliverandrich/burrow/contrib/csrf"
 import "codeberg.org/oliverandrich/burrow/contrib/i18n"
@@ -16,6 +17,7 @@ templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) 
 			<li class="breadcrumb-item active" aria-current="page">{ i18n.T(ctx, "admin-invites-title") }</li>
 		</ol>
 	</nav>
+	<template id="icon-check-lg">@bsicons.CheckLg()</template>
 	if createdURL != "" {
 		<div class="alert alert-success alert-dismissible fade show" role="alert">
 			<strong>{ i18n.T(ctx, "admin-invites-created") }</strong>
@@ -27,7 +29,8 @@ templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) 
 					onclick={ copyToClipboard(createdURL, i18n.T(ctx, "admin-invites-copy-done")) }
 					title={ i18n.T(ctx, "admin-invites-copy") }
 				>
-					<i class="bi bi-clipboard"></i> { i18n.T(ctx, "admin-invites-copy") }
+					@bsicons.Clipboard()
+					{ i18n.T(ctx, "admin-invites-copy") }
 				</button>
 			</div>
 			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -106,7 +109,7 @@ templ adminInvitesPage(invites []auth.Invite, createdURL string, useEmail bool) 
 		</div>
 	} else {
 		<div class="text-center py-4 text-body-secondary">
-			<i class="bi bi-envelope fs-1 d-block mb-2"></i>
+			@bsicons.Envelope("fs-1 d-block mb-2")
 			<p>{ i18n.T(ctx, "admin-invites-none") }</p>
 		</div>
 	}
@@ -117,7 +120,7 @@ script copyToClipboard(text string, doneLabel string) {
 	navigator.clipboard.writeText(text).then(function() {
 		var btn = event.currentTarget;
 		var original = btn.innerHTML;
-		btn.innerHTML = '<i class="bi bi-check-lg"></i> ' + doneLabel;
+		var iconSvg = document.getElementById('icon-check-lg').innerHTML; btn.innerHTML = iconSvg + ' ' + doneLabel;
 		setTimeout(function() { btn.innerHTML = original; }, 2000);
 	});
 }

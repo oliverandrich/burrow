@@ -188,7 +188,7 @@ func (a *App) NavItems() []burrow.NavItem { // (3)!
         {
             Label:    "Notes",
             URL:      "/notes",
-            Icon:     "bi bi-journal-text",
+            Icon:     bsicons.JournalText(),
             Position: 20,
             AuthOnly: true,
         },

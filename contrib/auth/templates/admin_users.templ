@@ -1,6 +1,7 @@
 package templates
 
 import "fmt"
+import "codeberg.org/oliverandrich/burrow/contrib/bsicons"
 import "codeberg.org/oliverandrich/burrow/contrib/auth"
 import "codeberg.org/oliverandrich/burrow/contrib/csrf"
 import "codeberg.org/oliverandrich/burrow/contrib/i18n"
@@ -42,7 +43,7 @@ templ adminUsersPage(users []auth.User) {
 								if user.Email != nil {
 									{ *user.Email }
 									if user.EmailVerified {
-										<span class="text-success ms-1" title={ i18n.T(ctx, "admin-users-verified") }><i class="bi bi-check-circle-fill"></i></span>
+										<span class="text-success ms-1" title={ i18n.T(ctx, "admin-users-verified") }>@bsicons.CheckCircleFill()</span>
 									}
 								}
 							</td>
@@ -61,7 +62,7 @@ templ adminUsersPage(users []auth.User) {
 		</div>
 	} else {
 		<div class="text-center py-5 text-body-secondary">
-			<i class="bi bi-people fs-1 d-block mb-2"></i>
+			@bsicons.People("fs-1 d-block mb-2")
 			<p>{ i18n.T(ctx, "admin-users-none") }</p>
 		</div>
 	}

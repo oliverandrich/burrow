@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
@@ -297,7 +298,7 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 			Label:     "Users",
 			LabelKey:  "admin-nav-users",
 			URL:       "/admin/users",
-			Icon:      "bi bi-people",
+			Icon:      bsicons.People(),
 			Position:  10,
 			AdminOnly: true,
 		},
@@ -305,7 +306,7 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 			Label:     "Invites",
 			LabelKey:  "admin-nav-invites",
 			URL:       "/admin/invites",
-			Icon:      "bi bi-envelope",
+			Icon:      bsicons.Envelope(),
 			Position:  20,
 			AdminOnly: true,
 		},

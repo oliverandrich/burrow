@@ -83,8 +83,9 @@ Returns navigation entries collected into the request context by the framework:
 ```go
 type NavItem struct {
     Label     string
+    LabelKey  string          // i18n message ID
     URL       string
-    Icon      string
+    Icon      templ.Component // nil = no icon
     Position  int
     AuthOnly  bool
     AdminOnly bool

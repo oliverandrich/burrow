@@ -44,10 +44,7 @@ func TestStaticFS(t *testing.T) {
 	for _, name := range []string{
 		"bootstrap.min.css",
 		"bootstrap.bundle.min.js",
-		"bootstrap-icons.min.css",
 		"htmx.min.js",
-		"fonts/bootstrap-icons.woff2",
-		"fonts/bootstrap-icons.woff",
 	} {
 		f, err := fsys.Open(name)
 		require.NoError(t, err, "expected %s to exist in static FS", name)
@@ -75,7 +72,7 @@ func TestLayout(t *testing.T) {
 	assert.Contains(t, html, "<!doctype html>")
 	assert.Contains(t, html, "<title>Test Page</title>")
 	assert.Contains(t, html, "bootstrap.min.css")
-	assert.Contains(t, html, "bootstrap-icons.min.css")
+	assert.NotContains(t, html, "bootstrap-icons.min.css")
 	assert.Contains(t, html, "bootstrap.bundle.min.js")
 	assert.Contains(t, html, "htmx.min.js")
 	assert.Contains(t, html, "<p>test content</p>")

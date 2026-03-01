@@ -61,6 +61,7 @@ nav:
       - CSRF: contrib/csrf.md
       - Auth: contrib/auth.md
       - Bootstrap: contrib/bootstrap.md
+      - Bootstrap Icons: contrib/bsicons.md
       - Admin: contrib/admin.md
       - i18n: contrib/i18n.md
       - Healthcheck: contrib/healthcheck.md

@@ -12,7 +12,7 @@ func (a *App) NavItems() []burrow.NavItem {
         {
             Label:    "Notes",
             URL:      "/notes",
-            Icon:     "bi bi-journal-text",
+            Icon:     bsicons.JournalText(),
             Position: 20,
             AuthOnly: true,
         },
@@ -27,7 +27,7 @@ func (a *App) NavItems() []burrow.NavItem {
 | `Label` | `string` | Display text for the link |
 | `LabelKey` | `string` | i18n message ID; translated at render time, falls back to `Label` |
 | `URL` | `string` | Target path |
-| `Icon` | `string` | CSS icon class (e.g., Bootstrap Icons) |
+| `Icon` | `templ.Component` | Icon component (e.g., `bsicons.House()`), `nil` for no icon |
 | `Position` | `int` | Sort order (lower = earlier, stable sort preserves insertion order for equal positions) |
 | `AuthOnly` | `bool` | Only show to authenticated users |
 | `AdminOnly` | `bool` | Only show to admin users |

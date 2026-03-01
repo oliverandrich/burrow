@@ -1,6 +1,9 @@
 package burrow
 
-import "github.com/uptrace/bun"
+import (
+	"github.com/a-h/templ"
+	"github.com/uptrace/bun"
+)
 
 // App is the required interface that all apps must implement.
 // An app has a unique name and a Register method that receives
@@ -19,11 +22,11 @@ type AppConfig struct {
 }
 
 // NavItem represents a navigation entry contributed by an app.
-type NavItem struct {
+type NavItem struct { //nolint:govet // fieldalignment: readability over optimization
 	Label     string
 	LabelKey  string // i18n message ID; translated at render time, falls back to Label
 	URL       string
-	Icon      string
+	Icon      templ.Component
 	Position  int
 	AuthOnly  bool
 	AdminOnly bool

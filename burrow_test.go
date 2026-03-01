@@ -11,6 +11,7 @@ import (
 	"sort"
 	"testing"
 
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -166,14 +167,14 @@ func TestNavItemFields(t *testing.T) {
 	item := NavItem{
 		Label:    "Dashboard",
 		URL:      "/dashboard",
-		Icon:     "bi bi-speedometer2",
+		Icon:     bsicons.Speedometer2(),
 		Position: 10,
 		AuthOnly: true,
 	}
 
 	assert.Equal(t, "Dashboard", item.Label)
 	assert.Equal(t, "/dashboard", item.URL)
-	assert.Equal(t, "bi bi-speedometer2", item.Icon)
+	assert.NotNil(t, item.Icon)
 	assert.Equal(t, 10, item.Position)
 	assert.True(t, item.AuthOnly)
 }
