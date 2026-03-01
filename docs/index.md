@@ -1,7 +1,7 @@
 # Burrow
 
 <p align="center">
-  <img src="assets/cover.png" alt="Burrow — Go gophers building a modular burrow" width="600">
+  <img src="assets/cover.png" alt="Burrow — Go gophers building a modular burrow">
 </p>
 
 A modular Go web framework built on [Chi](https://go-chi.io/), [Bun/SQLite](https://bun.uptrace.dev/), and [Templ](https://templ.guide/) templates.
