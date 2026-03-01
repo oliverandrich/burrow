@@ -14,9 +14,9 @@ templ loginPageContent(loginRedirect string) {
 		id="i18n-strings"
 		data-login-waiting={ i18n.T(ctx, "login-waiting") }
 		data-login-button={ i18n.T(ctx, "login-button") }
-		style="display:none"
+		class="d-none"
 	></div>
-	<div id="error-message" class="alert alert-danger" style="display:none"></div>
+	<div id="error-message" class="alert alert-danger d-none"></div>
 	<button id="login-btn" type="button" class="btn btn-primary btn-lg w-100">{ i18n.T(ctx, "login-button") }</button>
 	<p class="text-center mt-4">
 		<a href="/auth/register">{ i18n.T(ctx, "login-create-account") }</a>
@@ -29,7 +29,7 @@ templ loginPageContent(loginRedirect string) {
 			var btn = this;
 			var errEl = document.getElementById("error-message");
 			var strings = document.getElementById("i18n-strings").dataset;
-			errEl.style.display = "none";
+			errEl.classList.add("d-none");
 			btn.disabled = true;
 			btn.textContent = strings.loginWaiting;
 			try {
@@ -39,7 +39,7 @@ templ loginPageContent(loginRedirect string) {
 				}
 			} catch(e) {
 				errEl.textContent = e.message;
-				errEl.style.display = "block";
+				errEl.classList.remove("d-none");
 				btn.disabled = false;
 				btn.textContent = strings.loginButton;
 			}

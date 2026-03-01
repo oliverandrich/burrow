@@ -92,7 +92,7 @@ func loginPageContent(loginRedirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" style=\"display:none\"></div><div id=\"error-message\" class=\"alert alert-danger\" style=\"display:none\"></div><button id=\"login-btn\" type=\"button\" class=\"btn btn-primary btn-lg w-100\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"d-none\"></div><div id=\"error-message\" class=\"alert alert-danger d-none\"></div><button id=\"login-btn\" type=\"button\" class=\"btn btn-primary btn-lg w-100\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -144,7 +144,7 @@ func loginPageContent(loginRedirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></script><script>\n\t\tdocument.getElementById(\"login-btn\").addEventListener(\"click\", async function() {\n\t\t\tvar btn = this;\n\t\t\tvar errEl = document.getElementById(\"error-message\");\n\t\t\tvar strings = document.getElementById(\"i18n-strings\").dataset;\n\t\t\terrEl.style.display = \"none\";\n\t\t\tbtn.disabled = true;\n\t\t\tbtn.textContent = strings.loginWaiting;\n\t\t\ttry {\n\t\t\t\tvar result = await webauthnLogin(\"/auth/login/begin\", \"/auth/login/finish\");\n\t\t\t\tif (result.redirect) {\n\t\t\t\t\twindow.location.href = result.redirect;\n\t\t\t\t}\n\t\t\t} catch(e) {\n\t\t\t\terrEl.textContent = e.message;\n\t\t\t\terrEl.style.display = \"block\";\n\t\t\t\tbtn.disabled = false;\n\t\t\t\tbtn.textContent = strings.loginButton;\n\t\t\t}\n\t\t});\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></script><script>\n\t\tdocument.getElementById(\"login-btn\").addEventListener(\"click\", async function() {\n\t\t\tvar btn = this;\n\t\t\tvar errEl = document.getElementById(\"error-message\");\n\t\t\tvar strings = document.getElementById(\"i18n-strings\").dataset;\n\t\t\terrEl.classList.add(\"d-none\");\n\t\t\tbtn.disabled = true;\n\t\t\tbtn.textContent = strings.loginWaiting;\n\t\t\ttry {\n\t\t\t\tvar result = await webauthnLogin(\"/auth/login/begin\", \"/auth/login/finish\");\n\t\t\t\tif (result.redirect) {\n\t\t\t\t\twindow.location.href = result.redirect;\n\t\t\t\t}\n\t\t\t} catch(e) {\n\t\t\t\terrEl.textContent = e.message;\n\t\t\t\terrEl.classList.remove(\"d-none\");\n\t\t\t\tbtn.disabled = false;\n\t\t\t\tbtn.textContent = strings.loginButton;\n\t\t\t}\n\t\t});\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

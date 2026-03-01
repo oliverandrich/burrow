@@ -10,7 +10,7 @@ templ recoveryCodesPage(codes []string) {
 
 templ recoveryCodesPageContent(codes []string) {
 	<p>{ i18n.T(ctx, "recovery-codes-description") }</p>
-	<pre class="bg-light p-3 rounded" style="font-size:0.9rem">
+	<pre class="bg-light p-3 rounded small">
 		for i, code := range codes {
 			if i > 0 {
 				{ "\n" }
@@ -35,10 +35,10 @@ templ recoveryPageContent(loginRedirect string) {
 		id="i18n-strings"
 		data-recovery-warning-prefix={ i18n.T(ctx, "recovery-warning-prefix") }
 		data-recovery-warning-suffix={ i18n.T(ctx, "recovery-warning-suffix") }
-		style="display:none"
+		class="d-none"
 	></div>
 	<p>{ i18n.T(ctx, "recovery-description") }</p>
-	<div id="error-message" class="alert alert-danger" style="display:none"></div>
+	<div id="error-message" class="alert alert-danger d-none"></div>
 	<form id="recovery-form">
 		<label for="username" class="form-label">{ i18n.T(ctx, "recovery-username-label") }</label>
 		<input type="text" id="username" name="username" class="form-control mb-3" placeholder="Username" required autocomplete="username"/>
@@ -54,7 +54,7 @@ templ recoveryPageContent(loginRedirect string) {
 			e.preventDefault();
 			var errEl = document.getElementById("error-message");
 			var strings = document.getElementById("i18n-strings").dataset;
-			errEl.style.display = "none";
+			errEl.classList.add("d-none");
 			try {
 				var csrfEl = document.getElementById("csrf-token");
 				var csrfVal = csrfEl ? csrfEl.value : "";
@@ -74,7 +74,7 @@ templ recoveryPageContent(loginRedirect string) {
 				window.location.href = data.redirect || "/";
 			} catch(e) {
 				errEl.textContent = e.message;
-				errEl.style.display = "block";
+				errEl.classList.remove("d-none");
 			}
 		});
 	</script>

@@ -75,7 +75,7 @@ func recoveryCodesPageContent(codes []string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</p><pre class=\"bg-light p-3 rounded\" style=\"font-size:0.9rem\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</p><pre class=\"bg-light p-3 rounded small\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -220,7 +220,7 @@ func recoveryPageContent(loginRedirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" style=\"display:none\"></div><p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"d-none\"></div><p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -233,7 +233,7 @@ func recoveryPageContent(loginRedirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</p><div id=\"error-message\" class=\"alert alert-danger\" style=\"display:none\"></div><form id=\"recovery-form\"><label for=\"username\" class=\"form-label\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</p><div id=\"error-message\" class=\"alert alert-danger d-none\"></div><form id=\"recovery-form\"><label for=\"username\" class=\"form-label\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -285,7 +285,7 @@ func recoveryPageContent(loginRedirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</a></p><script>\n\t\tdocument.getElementById(\"recovery-form\").addEventListener(\"submit\", async function(e) {\n\t\t\te.preventDefault();\n\t\t\tvar errEl = document.getElementById(\"error-message\");\n\t\t\tvar strings = document.getElementById(\"i18n-strings\").dataset;\n\t\t\terrEl.style.display = \"none\";\n\t\t\ttry {\n\t\t\t\tvar csrfEl = document.getElementById(\"csrf-token\");\n\t\t\t\tvar csrfVal = csrfEl ? csrfEl.value : \"\";\n\t\t\t\tvar resp = await fetch(\"/auth/recovery\", {\n\t\t\t\t\tmethod: \"POST\",\n\t\t\t\t\theaders: { \"Content-Type\": \"application/json\", \"X-CSRF-Token\": csrfVal },\n\t\t\t\t\tbody: JSON.stringify({\n\t\t\t\t\t\tusername: document.getElementById(\"username\").value,\n\t\t\t\t\t\tcode: document.getElementById(\"code\").value\n\t\t\t\t\t})\n\t\t\t\t});\n\t\t\t\tvar data = await resp.json();\n\t\t\t\tif (!resp.ok) throw new Error(data.error || \"Recovery failed\");\n\t\t\t\tif (data.remaining_codes !== undefined && data.remaining_codes <= 2) {\n\t\t\t\t\talert(strings.recoveryWarningPrefix + data.remaining_codes + strings.recoveryWarningSuffix);\n\t\t\t\t}\n\t\t\t\twindow.location.href = data.redirect || \"/\";\n\t\t\t} catch(e) {\n\t\t\t\terrEl.textContent = e.message;\n\t\t\t\terrEl.style.display = \"block\";\n\t\t\t}\n\t\t});\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</a></p><script>\n\t\tdocument.getElementById(\"recovery-form\").addEventListener(\"submit\", async function(e) {\n\t\t\te.preventDefault();\n\t\t\tvar errEl = document.getElementById(\"error-message\");\n\t\t\tvar strings = document.getElementById(\"i18n-strings\").dataset;\n\t\t\terrEl.classList.add(\"d-none\");\n\t\t\ttry {\n\t\t\t\tvar csrfEl = document.getElementById(\"csrf-token\");\n\t\t\t\tvar csrfVal = csrfEl ? csrfEl.value : \"\";\n\t\t\t\tvar resp = await fetch(\"/auth/recovery\", {\n\t\t\t\t\tmethod: \"POST\",\n\t\t\t\t\theaders: { \"Content-Type\": \"application/json\", \"X-CSRF-Token\": csrfVal },\n\t\t\t\t\tbody: JSON.stringify({\n\t\t\t\t\t\tusername: document.getElementById(\"username\").value,\n\t\t\t\t\t\tcode: document.getElementById(\"code\").value\n\t\t\t\t\t})\n\t\t\t\t});\n\t\t\t\tvar data = await resp.json();\n\t\t\t\tif (!resp.ok) throw new Error(data.error || \"Recovery failed\");\n\t\t\t\tif (data.remaining_codes !== undefined && data.remaining_codes <= 2) {\n\t\t\t\t\talert(strings.recoveryWarningPrefix + data.remaining_codes + strings.recoveryWarningSuffix);\n\t\t\t\t}\n\t\t\t\twindow.location.href = data.redirect || \"/\";\n\t\t\t} catch(e) {\n\t\t\t\terrEl.textContent = e.message;\n\t\t\t\terrEl.classList.remove(\"d-none\");\n\t\t\t}\n\t\t});\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -14,9 +14,9 @@ templ registerPageContent(useEmail, inviteOnly bool, email, invite string) {
 		id="i18n-strings"
 		data-register-waiting={ i18n.T(ctx, "register-waiting") }
 		data-register-button={ i18n.T(ctx, "register-button") }
-		style="display:none"
+		class="d-none"
 	></div>
-	<div id="error-message" class="alert alert-danger" style="display:none"></div>
+	<div id="error-message" class="alert alert-danger d-none"></div>
 	<form id="register-form">
 		if useEmail {
 			<label for="email" class="form-label">{ i18n.T(ctx, "register-email-label") }</label>
@@ -46,7 +46,7 @@ templ registerPageContent(useEmail, inviteOnly bool, email, invite string) {
 			var btn = document.getElementById("register-btn");
 			var errEl = document.getElementById("error-message");
 			var strings = document.getElementById("i18n-strings").dataset;
-			errEl.style.display = "none";
+			errEl.classList.add("d-none");
 			btn.disabled = true;
 			btn.textContent = strings.registerWaiting;
 
@@ -69,7 +69,7 @@ templ registerPageContent(useEmail, inviteOnly bool, email, invite string) {
 				}
 			} catch(e) {
 				errEl.textContent = e.message;
-				errEl.style.display = "block";
+				errEl.classList.remove("d-none");
 				btn.disabled = false;
 				btn.textContent = strings.registerButton;
 			}
