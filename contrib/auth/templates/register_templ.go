@@ -33,7 +33,7 @@ func registerPage(useEmail, inviteOnly bool, email, invite string) templ.Compone
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = authCard(i18n.T(ctx, "register-title"), registerPageContent(useEmail, inviteOnly, email, invite)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = authCard("", registerPageContent(useEmail, inviteOnly, email, invite)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

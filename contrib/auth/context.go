@@ -8,6 +8,8 @@ package auth
 import (
 	"context"
 	"net/http"
+
+	"github.com/a-h/templ"
 )
 
 // ctxKeyUser is the context key for the authenticated user.
@@ -38,6 +40,20 @@ func UserFromContext(ctx context.Context) *User {
 // WithUser returns a new context with the user set.
 func WithUser(ctx context.Context, user *User) context.Context {
 	return context.WithValue(ctx, ctxKeyUser{}, user)
+}
+
+// ctxKeyLogo is the context key for the optional auth page logo component.
+type ctxKeyLogo struct{}
+
+// WithLogo returns a new context with the logo component set.
+func WithLogo(ctx context.Context, logo templ.Component) context.Context {
+	return context.WithValue(ctx, ctxKeyLogo{}, logo)
+}
+
+// LogoFromContext retrieves the logo component from context, or nil if not set.
+func LogoFromContext(ctx context.Context) templ.Component {
+	logo, _ := ctx.Value(ctxKeyLogo{}).(templ.Component)
+	return logo
 }
 
 // Admin edit flags — set by UserDetail handler, read by templates.

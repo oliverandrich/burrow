@@ -5,7 +5,7 @@ import "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 
 // loginPage renders the login page with a passkey button and links to register/recovery.
 templ loginPage(loginRedirect string) {
-	@authCard(i18n.T(ctx, "login-title"), loginPageContent(loginRedirect))
+	@authCentered(loginPageContent(loginRedirect))
 }
 
 templ loginPageContent(loginRedirect string) {
@@ -17,7 +17,7 @@ templ loginPageContent(loginRedirect string) {
 		style="display:none"
 	></div>
 	<div id="error-message" class="alert alert-danger" style="display:none"></div>
-	<button id="login-btn" type="button" class="btn btn-primary w-100">{ i18n.T(ctx, "login-button") }</button>
+	<button id="login-btn" type="button" class="btn btn-primary btn-lg w-100">{ i18n.T(ctx, "login-button") }</button>
 	<p class="text-center mt-4">
 		<a href="/auth/register">{ i18n.T(ctx, "login-create-account") }</a>
 		&middot;

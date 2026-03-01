@@ -26,7 +26,7 @@ templ recoveryCodesPageContent(codes []string) {
 
 // recoveryPage renders the recovery login form.
 templ recoveryPage(loginRedirect string) {
-	@authCard(i18n.T(ctx, "recovery-title"), recoveryPageContent(loginRedirect))
+	@authCard("", recoveryPageContent(loginRedirect))
 }
 
 templ recoveryPageContent(loginRedirect string) {

@@ -32,9 +32,8 @@ func TestDefaultRendererLoginPage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "login-title")
 	assert.Contains(t, body, "login-button")
-	assert.Contains(t, body, "card shadow-sm", "login page should be wrapped in a card")
+	assert.NotContains(t, body, "card shadow-sm", "login page should not have a card frame")
 }
 
 func TestDefaultRendererRegisterPage(t *testing.T) {
@@ -47,7 +46,6 @@ func TestDefaultRendererRegisterPage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "register-title")
 	assert.Contains(t, body, "register-username-label")
 	assert.Contains(t, body, "card shadow-sm", "register page should be wrapped in a card")
 }
@@ -92,7 +90,8 @@ func TestDefaultRendererRecoveryPage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "recovery-title")
+	assert.Contains(t, body, "recovery-description")
+	assert.NotContains(t, body, "card-title", "recovery page should not have a card title")
 	assert.Contains(t, body, "card shadow-sm", "recovery page should be wrapped in a card")
 }
 
@@ -155,6 +154,38 @@ func TestDefaultRendererVerifyEmailError(t *testing.T) {
 	assert.Contains(t, body, "verify-error-title")
 	assert.Contains(t, body, "verify-error-invalid-token")
 	assert.Contains(t, body, "card shadow-sm", "verify email error page should be wrapped in a card")
+}
+
+func TestDefaultRendererLoginPageWithLogo(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	logo := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		_, err := io.WriteString(w, `<span class="test-logo">My Brand</span>`)
+		return err
+	})
+	ctx := auth.WithLogo(req.Context(), logo)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := r.LoginPage(rec, req, "/dashboard")
+
+	require.NoError(t, err)
+	body := rec.Body.String()
+	assert.Contains(t, body, "test-logo")
+	assert.Contains(t, body, "My Brand")
+}
+
+func TestDefaultRendererLoginPageWithoutLogo(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.LoginPage(rec, req, "/dashboard")
+
+	require.NoError(t, err)
+	body := rec.Body.String()
+	// Without a logo, the logo wrapper div should not appear.
+	assert.NotContains(t, body, "text-center mb-4")
 }
 
 func TestDefaultRendererWithLayout(t *testing.T) {

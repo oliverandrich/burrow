@@ -9,6 +9,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"github.com/a-h/templ"
 )
 
 // ctxKeyRequestPath is used to pass the request path into the template context.
@@ -17,6 +18,11 @@ type ctxKeyRequestPath struct{}
 // Layout returns a LayoutFunc that wraps page content in the app layout.
 func Layout() burrow.LayoutFunc {
 	return layout
+}
+
+// Logo returns a brand logo component for auth pages.
+func Logo() templ.Component {
+	return logo()
 }
 
 // Middleware returns middleware that stores the request path in context

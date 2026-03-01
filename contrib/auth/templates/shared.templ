@@ -1,17 +1,43 @@
 package templates
 
-import "codeberg.org/oliverandrich/burrow/contrib/csrf"
+import (
+	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+)
+
+// authCentered wraps content in a horizontally and vertically centered column.
+templ authCentered(content templ.Component) {
+	<div class="container min-vh-100 d-flex align-items-center justify-content-center">
+		<div class="row justify-content-center w-100">
+			<div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
+				@authLogo()
+				@content
+			</div>
+		</div>
+	</div>
+}
+
+// authLogo renders the optional logo component from context.
+templ authLogo() {
+	if logo := auth.LogoFromContext(ctx); logo != nil {
+		<div class="text-center mb-4">
+			@logo
+		</div>
+	}
+}
 
 // authCard wraps content in a horizontally and vertically centered Bootstrap card.
 templ authCard(title string, content templ.Component) {
-	<div class="d-flex justify-content-center align-items-center min-vh-100">
-		<div class="col-12 col-sm-8 col-md-6 col-lg-4">
-			<div class="card shadow-sm">
-				<div class="card-body">
-					<h2 class="card-title text-center mb-4">{ title }</h2>
-					@content
-				</div>
-			</div>
+	@authCentered(authCardInner(title, content))
+}
+
+templ authCardInner(title string, content templ.Component) {
+	<div class="card shadow-sm">
+		<div class="card-body">
+			if title != "" {
+				<h2 class="card-title text-center mb-4">{ title }</h2>
+			}
+			@content
 		</div>
 	</div>
 }

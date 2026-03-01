@@ -66,6 +66,11 @@ templ navbar() {
 	</nav>
 }
 
+// logo renders a simple text-based brand logo for auth pages.
+templ logo() {
+	<h1 class="display-5 fw-bold">{ i18n.T(ctx, "layout-brand") }</h1>
+}
+
 // userMenu renders login/register links or a user dropdown with logout.
 templ userMenu() {
 	<ul class="navbar-nav">

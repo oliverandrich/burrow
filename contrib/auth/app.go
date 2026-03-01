@@ -12,6 +12,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
+	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/urfave/cli/v3"
 )
@@ -33,6 +34,7 @@ type App struct {
 	renderer      Renderer
 	adminRenderer AdminRenderer
 	authLayout    burrow.LayoutFunc
+	logo          templ.Component
 	config        *Config
 	globalConfig  *burrow.Config
 	cancelCleanup context.CancelFunc
@@ -207,10 +209,13 @@ func (a *App) Routes(r chi.Router) {
 	h := a.handlers
 
 	r.Route("/auth", func(r chi.Router) {
-		// Public routes — use auth layout if set.
+		// Public routes — use auth layout and logo if set.
 		r.Group(func(r chi.Router) {
 			if a.authLayout != nil {
 				r.Use(authLayoutMiddleware(a.authLayout))
+			}
+			if a.logo != nil {
+				r.Use(authLogoMiddleware(a.logo))
 			}
 			r.Get("/register", burrow.Handle(h.RegisterPage))
 			r.Post("/register/begin", burrow.Handle(h.RegisterBegin))
@@ -252,6 +257,16 @@ func authLayoutMiddleware(fn burrow.LayoutFunc) func(http.Handler) http.Handler 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := burrow.WithLayout(r.Context(), fn)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// authLogoMiddleware injects the logo component into the request context.
+func authLogoMiddleware(logo templ.Component) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := WithLogo(r.Context(), logo)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -337,6 +352,12 @@ func (a *App) SetEmailService(email EmailService) {
 	if a.handlers != nil {
 		a.handlers.email = email
 	}
+}
+
+// SetLogo sets an optional logo component rendered above auth page content.
+// When set, the logo appears on login, register, and recovery pages.
+func (a *App) SetLogo(c templ.Component) {
+	a.logo = c
 }
 
 // SetAuthLayout sets an optional layout for public (unauthenticated) auth pages.

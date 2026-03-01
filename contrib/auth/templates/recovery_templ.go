@@ -161,7 +161,7 @@ func recoveryPage(loginRedirect string) templ.Component {
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = authCard(i18n.T(ctx, "recovery-title"), recoveryPageContent(loginRedirect)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = authCard("", recoveryPageContent(loginRedirect)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

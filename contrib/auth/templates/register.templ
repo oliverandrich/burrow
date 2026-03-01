@@ -5,7 +5,7 @@ import "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 
 // registerPage renders the registration page with username/email field and passkey creation.
 templ registerPage(useEmail, inviteOnly bool, email, invite string) {
-	@authCard(i18n.T(ctx, "register-title"), registerPageContent(useEmail, inviteOnly, email, invite))
+	@authCard("", registerPageContent(useEmail, inviteOnly, email, invite))
 }
 
 templ registerPageContent(useEmail, inviteOnly bool, email, invite string) {

@@ -33,7 +33,7 @@ func loginPage(loginRedirect string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = authCard(i18n.T(ctx, "login-title"), loginPageContent(loginRedirect)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = authCentered(loginPageContent(loginRedirect)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -92,14 +92,14 @@ func loginPageContent(loginRedirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" style=\"display:none\"></div><div id=\"error-message\" class=\"alert alert-danger\" style=\"display:none\"></div><button id=\"login-btn\" type=\"button\" class=\"btn btn-primary w-100\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" style=\"display:none\"></div><div id=\"error-message\" class=\"alert alert-danger\" style=\"display:none\"></div><button id=\"login-btn\" type=\"button\" class=\"btn btn-primary btn-lg w-100\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "login-button"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/auth/templates/login.templ`, Line: 20, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `contrib/auth/templates/login.templ`, Line: 20, Col: 104}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

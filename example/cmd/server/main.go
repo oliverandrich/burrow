@@ -73,6 +73,9 @@ func main() {
 	// Use a minimal layout for public auth pages (login, register, recovery).
 	authApp.SetAuthLayout(authtpl.AuthLayout())
 
+	// Show a brand logo above the auth forms.
+	authApp.SetLogo(layout.Logo())
+
 	// Wire admin renderer for auth admin pages (users, invites).
 	authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
 
