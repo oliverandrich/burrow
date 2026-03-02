@@ -16,10 +16,11 @@ type Config struct {
 
 // ServerConfig holds HTTP server settings.
 type ServerConfig struct {
-	Host        string
-	BaseURL     string
-	Port        int
-	MaxBodySize int // in MB
+	Host            string
+	BaseURL         string
+	Port            int
+	MaxBodySize     int // in MB
+	ShutdownTimeout int // in seconds
 }
 
 // DatabaseConfig holds database settings.
@@ -40,10 +41,11 @@ type TLSConfig struct {
 func NewConfig(cmd *cli.Command) *Config {
 	return &Config{
 		Server: ServerConfig{
-			Host:        cmd.String("host"),
-			Port:        int(cmd.Int("port")),
-			BaseURL:     cmd.String("base-url"),
-			MaxBodySize: int(cmd.Int("max-body-size")),
+			Host:            cmd.String("host"),
+			Port:            int(cmd.Int("port")),
+			BaseURL:         cmd.String("base-url"),
+			MaxBodySize:     int(cmd.Int("max-body-size")),
+			ShutdownTimeout: int(cmd.Int("shutdown-timeout")),
 		},
 		Database: DatabaseConfig{
 			DSN: cmd.String("database-dsn"),
@@ -140,6 +142,12 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Value:   1,
 			Usage:   "Maximum request body size in MB",
 			Sources: src("MAX_BODY_SIZE", "server.max_body_size"),
+		},
+		&cli.IntFlag{
+			Name:    "shutdown-timeout",
+			Value:   10,
+			Usage:   "Graceful shutdown timeout in seconds",
+			Sources: src("SHUTDOWN_TIMEOUT", "server.shutdown_timeout"),
 		},
 		&cli.StringFlag{
 			Name:    "database-dsn",

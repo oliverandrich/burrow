@@ -18,7 +18,7 @@ func TestCoreFlags(t *testing.T) {
 	}
 
 	expected := []string{
-		"host", "port", "base-url", "max-body-size",
+		"host", "port", "base-url", "max-body-size", "shutdown-timeout",
 		"database-dsn",
 		"tls-mode", "tls-cert-dir", "tls-email", "tls-cert-file", "tls-key-file",
 	}
@@ -46,6 +46,7 @@ func TestCoreDefaultValues(t *testing.T) {
 	assert.Equal(t, 8080, cfg.Server.Port)
 	assert.Empty(t, cfg.Server.BaseURL)
 	assert.Equal(t, 1, cfg.Server.MaxBodySize)
+	assert.Equal(t, 10, cfg.Server.ShutdownTimeout)
 	assert.Equal(t, "./data/app.db", cfg.Database.DSN)
 	assert.Equal(t, "auto", cfg.TLS.Mode)
 	assert.Equal(t, "./data/certs", cfg.TLS.CertDir)
@@ -66,6 +67,16 @@ func TestCoreFlagOverrides(t *testing.T) {
 	assert.Equal(t, "0.0.0.0", cfg.Server.Host)
 	assert.Equal(t, 3000, cfg.Server.Port)
 	assert.Equal(t, "/tmp/test.db", cfg.Database.DSN)
+}
+
+func TestShutdownTimeoutOverride(t *testing.T) {
+	cmd := testCommand(CoreFlags(nil))
+
+	err := cmd.Run(t.Context(), []string{"test", "--shutdown-timeout", "30"})
+	require.NoError(t, err)
+
+	cfg := NewConfig(cmd)
+	assert.Equal(t, 30, cfg.Server.ShutdownTimeout)
 }
 
 func TestBuildBaseURL(t *testing.T) {
