@@ -154,6 +154,7 @@ type webauthnService struct { //nolint:govet // fieldalignment: readability over
 	wa    *gowebauthn.WebAuthn
 	mu    sync.Mutex
 	store map[string]*webauthnSessionEntry
+	done  chan struct{} // closed when cleanup goroutine exits
 }
 
 type webauthnSessionEntry struct {
@@ -175,6 +176,7 @@ func NewWebAuthnService(ctx context.Context, rpDisplayName, rpID, rpOrigin strin
 	svc := &webauthnService{
 		wa:    wa,
 		store: make(map[string]*webauthnSessionEntry),
+		done:  make(chan struct{}),
 	}
 	go svc.cleanup(ctx)
 	return svc, nil
@@ -224,6 +226,7 @@ func (s *webauthnService) pop(key string) (*gowebauthn.SessionData, error) {
 }
 
 func (s *webauthnService) cleanup(ctx context.Context) {
+	defer close(s.done)
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 

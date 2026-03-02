@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -149,20 +148,19 @@ func TestWebAuthnServiceNotFound(t *testing.T) {
 }
 
 func TestWebAuthnServiceCleanupStopsOnCancel(t *testing.T) {
-	before := runtime.NumGoroutine()
-
 	ctx, cancel := context.WithCancel(t.Context())
-	_, err := NewWebAuthnService(ctx, "Test App", "localhost", "http://localhost:8080")
+	svc, err := NewWebAuthnService(ctx, "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	// Cleanup goroutine should be running.
-	afterCreate := runtime.NumGoroutine()
-	assert.Greater(t, afterCreate, before, "cleanup goroutine should be running")
+	ws := svc.(*webauthnService)
 
-	// Cancel the context — goroutine should stop.
+	// Cancel the context — cleanup goroutine should exit.
 	cancel()
-	time.Sleep(50 * time.Millisecond)
 
-	afterCancel := runtime.NumGoroutine()
-	assert.LessOrEqual(t, afterCancel, before, "cleanup goroutine should have stopped")
+	select {
+	case <-ws.done:
+		// OK, goroutine exited.
+	case <-time.After(time.Second):
+		t.Fatal("cleanup goroutine did not stop within 1 second")
+	}
 }
