@@ -50,6 +50,7 @@ nav:
       - Project Structure: getting-started/project-structure.md
   - Guide:
       - Creating an App: guide/creating-an-app.md
+      - Validation: guide/validation.md
       - Configuration: guide/configuration.md
       - Layouts & Rendering: guide/layouts.md
       - Migrations: guide/migrations.md

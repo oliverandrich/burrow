@@ -134,11 +134,11 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
     }
 
     var req struct {
-        Title   string `form:"title"`
+        Title   string `form:"title"   validate:"required"`
         Content string `form:"content"`
     }
     if err := burrow.Bind(r, &req); err != nil {
-        return err
+        return err // (1)!
     }
 
     note := &Note{
@@ -155,6 +155,8 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
     return nil
 }
 ```
+
+1. `Bind` decodes the request body **and** validates it. Returns a `*burrow.ValidationError` when validation fails — see [Validation](validation.md).
 
 ## Step 5: Assemble the App
 
