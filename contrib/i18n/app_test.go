@@ -170,6 +170,22 @@ func TestAutoDiscoverSkipsAppsWithoutTranslations(t *testing.T) {
 	assert.Equal(t, "nonexistent", T(ctx, "nonexistent"))
 }
 
+func TestBuiltinValidationTranslationsEnglish(t *testing.T) {
+	app := configuredApp(t)
+
+	ctx := app.WithLocale(context.Background(), "en")
+	got := TData(ctx, "validation-required", map[string]any{"Field": "Email", "Param": ""})
+	assert.Equal(t, "Email is required", got)
+}
+
+func TestBuiltinValidationTranslationsGerman(t *testing.T) {
+	app := configuredApp(t)
+
+	ctx := app.WithLocale(context.Background(), "de")
+	got := TData(ctx, "validation-min", map[string]any{"Field": "Name", "Param": "3"})
+	assert.Equal(t, "Name muss mindestens 3 sein", got)
+}
+
 func TestMiddlewareDefaultsToEnglish(t *testing.T) {
 	app := configuredApp(t)
 	err := app.AddTranslations(testTranslationsFS)

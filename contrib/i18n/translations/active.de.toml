@@ -1,0 +1,8 @@
+validation-required = "{{.Field}} ist erforderlich"
+validation-email = "{{.Field}} muss eine gültige E-Mail-Adresse sein"
+validation-min = "{{.Field}} muss mindestens {{.Param}} sein"
+validation-max = "{{.Field}} darf höchstens {{.Param}} sein"
+validation-len = "{{.Field}} muss genau {{.Param}} Zeichen lang sein"
+validation-gte = "{{.Field}} muss größer oder gleich {{.Param}} sein"
+validation-lte = "{{.Field}} muss kleiner oder gleich {{.Param}} sein"
+validation-url = "{{.Field}} muss eine gültige URL sein"

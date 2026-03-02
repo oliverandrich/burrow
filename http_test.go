@@ -173,6 +173,104 @@ func TestHandle4xxErrorNotLogged(t *testing.T) {
 	assert.Empty(t, buf.String(), "4xx errors should not produce log output")
 }
 
+func TestBindFormWithNonStringFields(t *testing.T) {
+	type payload struct {
+		Name   string  `form:"name"`
+		Age    int     `form:"age"`
+		Active bool    `form:"active"`
+		Score  float64 `form:"score"`
+	}
+	body := strings.NewReader("name=alice&age=30&active=true&score=9.5")
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	var p payload
+	err := Bind(req, &p)
+
+	require.NoError(t, err)
+	assert.Equal(t, "alice", p.Name)
+	assert.Equal(t, 30, p.Age)
+	assert.True(t, p.Active)
+	assert.InDelta(t, 9.5, p.Score, 0.001)
+}
+
+func TestBindMultipartForm(t *testing.T) {
+	type payload struct {
+		Name  string `form:"name"`
+		Email string `form:"email"`
+	}
+	// Build a multipart form body.
+	boundary := "testboundary"
+	body := "--" + boundary + "\r\n" +
+		"Content-Disposition: form-data; name=\"name\"\r\n\r\nalice\r\n" +
+		"--" + boundary + "\r\n" +
+		"Content-Disposition: form-data; name=\"email\"\r\n\r\nalice@example.com\r\n" +
+		"--" + boundary + "--\r\n"
+
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+
+	var p payload
+	err := Bind(req, &p)
+
+	require.NoError(t, err)
+	assert.Equal(t, "alice", p.Name)
+	assert.Equal(t, "alice@example.com", p.Email)
+}
+
+func TestBindWithValidationFailure(t *testing.T) {
+	type payload struct {
+		Email string `form:"email" validate:"required,email"`
+		Name  string `form:"name" validate:"required"`
+	}
+	body := strings.NewReader("email=notanemail")
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	var p payload
+	err := Bind(req, &p)
+
+	require.Error(t, err)
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve)
+	assert.True(t, ve.HasField("name"))
+	assert.True(t, ve.HasField("email"))
+}
+
+func TestBindJSONWithValidation(t *testing.T) {
+	type payload struct {
+		Email string `json:"email" validate:"required,email"`
+	}
+	body := strings.NewReader(`{"email":""}`)
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	var p payload
+	err := Bind(req, &p)
+
+	require.Error(t, err)
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve)
+	assert.True(t, ve.HasField("email"))
+}
+
+func TestHandleValidationErrorIsUnhandled(t *testing.T) {
+	handler := Handle(func(_ http.ResponseWriter, _ *http.Request) error {
+		return &ValidationError{
+			Errors: []FieldError{
+				{Field: "email", Tag: "required", Message: "email is required"},
+			},
+		}
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal server error")
+}
+
 func TestHandleUnhandledErrorIsLogged(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))

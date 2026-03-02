@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -13,6 +14,9 @@ import (
 	"github.com/urfave/cli/v3"
 	"golang.org/x/text/language"
 )
+
+//go:embed translations
+var builtinTranslationFS embed.FS
 
 // New creates a new i18n app.
 func New() *App { return &App{} }
@@ -68,6 +72,10 @@ func (a *App) Configure(cmd *cli.Command) error {
 	a.matcher = language.NewMatcher(tags)
 	a.bundle = i18nlib.NewBundle(a.defaultLang)
 	a.bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
+
+	if err := a.AddTranslations(builtinTranslationFS); err != nil {
+		return fmt.Errorf("load built-in translations: %w", err)
+	}
 
 	if a.registry != nil {
 		for _, app := range a.registry.Apps() {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"reflect"
 	"strings"
 )
 
@@ -80,50 +79,33 @@ func HTML(w http.ResponseWriter, code int, s string) error {
 	return err
 }
 
-// Bind parses the request body into the given struct.
-// It supports JSON and form-encoded bodies. For form-encoded bodies,
-// only string fields are populated (see bindForm).
+const defaultMaxMemory = 32 << 20 // 32 MB
+
+// Bind parses the request body into the given struct and validates it.
+// It supports JSON, multipart/form-data, and form-encoded bodies.
+// Form decoding supports all types (string, int, bool, float, etc.) via struct tags.
+// Validation uses "validate" struct tags; structs without them pass through unchanged.
 func Bind(r *http.Request, v any) error {
 	ct := r.Header.Get("Content-Type")
-	if strings.HasPrefix(ct, "application/json") {
-		return json.NewDecoder(r.Body).Decode(v)
-	}
-	// Form binding.
-	if err := r.ParseForm(); err != nil {
-		return fmt.Errorf("parse form: %w", err)
-	}
-	return bindForm(r, v)
-}
-
-// bindForm maps form values to struct fields using the "form" tag.
-// Only string fields are supported; non-string fields (bool, int, etc.)
-// are silently skipped. Falls back to the "json" tag if no "form" tag is set.
-func bindForm(r *http.Request, v any) error {
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("bind: expected pointer to struct")
-	}
-	rv = rv.Elem()
-	rt := rv.Type()
-
-	for i := range rt.NumField() {
-		field := rt.Field(i)
-		tag := field.Tag.Get("form")
-		if tag == "" || tag == "-" {
-			// Fall back to json tag.
-			tag = field.Tag.Get("json")
-			if tag == "" || tag == "-" {
-				continue
-			}
-			// Strip options like ",omitempty".
-			if idx := strings.IndexByte(tag, ','); idx != -1 {
-				tag = tag[:idx]
-			}
+	switch {
+	case strings.HasPrefix(ct, "application/json"):
+		if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+			return fmt.Errorf("decode json: %w", err)
 		}
-		val := r.FormValue(tag)
-		if val != "" && rv.Field(i).CanSet() && rv.Field(i).Kind() == reflect.String {
-			rv.Field(i).SetString(val)
+	case strings.HasPrefix(ct, "multipart/form-data"):
+		if err := r.ParseMultipartForm(defaultMaxMemory); err != nil {
+			return fmt.Errorf("parse multipart form: %w", err)
+		}
+		if err := formDecoder.Decode(v, r.Form); err != nil {
+			return fmt.Errorf("decode form: %w", err)
+		}
+	default: // application/x-www-form-urlencoded
+		if err := r.ParseForm(); err != nil {
+			return fmt.Errorf("parse form: %w", err)
+		}
+		if err := formDecoder.Decode(v, r.Form); err != nil {
+			return fmt.Errorf("decode form: %w", err)
 		}
 	}
-	return nil
+	return Validate(v)
 }
