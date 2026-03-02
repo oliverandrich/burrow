@@ -7,7 +7,6 @@ package auth
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/a-h/templ"
 )
@@ -15,26 +14,17 @@ import (
 // ctxKeyUser is the context key for the authenticated user.
 type ctxKeyUser struct{}
 
-// GetUser retrieves the authenticated user from the request context.
-func GetUser(r *http.Request) *User {
-	if user, ok := r.Context().Value(ctxKeyUser{}).(*User); ok {
-		return user
-	}
-	return nil
-}
-
-// IsAuthenticated returns true if a user is logged in.
-func IsAuthenticated(r *http.Request) bool {
-	return GetUser(r) != nil
-}
-
-// UserFromContext retrieves the authenticated user from a context.
-// This is useful in templ templates where only context.Context is available.
+// UserFromContext retrieves the authenticated user from the context.
 func UserFromContext(ctx context.Context) *User {
 	if user, ok := ctx.Value(ctxKeyUser{}).(*User); ok {
 		return user
 	}
 	return nil
+}
+
+// IsAuthenticated returns true if a user is present in the context.
+func IsAuthenticated(ctx context.Context) bool {
+	return UserFromContext(ctx) != nil
 }
 
 // WithUser returns a new context with the user set.

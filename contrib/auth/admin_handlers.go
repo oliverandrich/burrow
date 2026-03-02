@@ -56,7 +56,7 @@ func (h *adminHandlers) UserDetail(w http.ResponseWriter, r *http.Request) error
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get user")
 	}
 
-	currentUser := GetUser(r)
+	currentUser := UserFromContext(r.Context())
 	isSelf := currentUser != nil && currentUser.ID == user.ID
 
 	adminCount, err := h.repo.CountAdminUsers(r.Context())
@@ -77,7 +77,7 @@ func (h *adminHandlers) DeleteUser(w http.ResponseWriter, r *http.Request) error
 	}
 
 	// Prevent self-deletion.
-	currentUser := GetUser(r)
+	currentUser := UserFromContext(r.Context())
 	if currentUser != nil && currentUser.ID == id {
 		return burrow.NewHTTPError(http.StatusBadRequest, "cannot delete your own account")
 	}

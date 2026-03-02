@@ -192,7 +192,7 @@ func NewHandlers(repo *Repository) *Handlers {
 
 // List renders the user's notes as an HTML page.
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
-	user := auth.GetUser(r)
+	user := auth.UserFromContext(r.Context())
 	if user == nil {
 		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}
@@ -217,7 +217,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 
 // Create adds a new note for the authenticated user.
 func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
-	user := auth.GetUser(r)
+	user := auth.UserFromContext(r.Context())
 	if user == nil {
 		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}
@@ -306,7 +306,7 @@ func (h *Handlers) AdminDelete(w http.ResponseWriter, r *http.Request) error {
 
 // Delete removes a note owned by the authenticated user.
 func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
-	user := auth.GetUser(r)
+	user := auth.UserFromContext(r.Context())
 	if user == nil {
 		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}

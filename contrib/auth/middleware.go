@@ -13,7 +13,7 @@ import (
 func RequireAuth() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !IsAuthenticated(r) {
+			if !IsAuthenticated(r.Context()) {
 				target := r.URL.RequestURI()
 				_ = session.Set(w, r, "redirect_after_login", target)
 				http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
@@ -28,7 +28,7 @@ func RequireAuth() func(http.Handler) http.Handler {
 func RequireAdmin() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user := GetUser(r)
+			user := UserFromContext(r.Context())
 			if user == nil || !user.IsAdmin() {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return

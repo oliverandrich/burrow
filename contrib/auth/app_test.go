@@ -517,7 +517,7 @@ func TestAuthMiddlewareNoSession(t *testing.T) {
 
 	var gotUser *User
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-		gotUser = GetUser(r)
+		gotUser = UserFromContext(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
 

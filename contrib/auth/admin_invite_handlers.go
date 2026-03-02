@@ -34,7 +34,7 @@ func (h *adminHandlers) CreateInvite(w http.ResponseWriter, r *http.Request) err
 		return burrow.NewHTTPError(http.StatusBadRequest, "email is required")
 	}
 
-	user := GetUser(r)
+	user := UserFromContext(r.Context())
 	if user == nil {
 		return burrow.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}
