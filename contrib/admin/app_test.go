@@ -38,7 +38,7 @@ func TestAppRegister(t *testing.T) {
 	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
+	require.NoError(t, registry.RegisterAll(nil))
 
 	err := app.Register(&burrow.AppConfig{
 		Registry: registry,
@@ -83,7 +83,7 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
+	require.NoError(t, registry.RegisterAll(nil))
 
 	provider := &hasAdminApp{}
 	registry.Add(provider)
@@ -118,7 +118,7 @@ func TestRoutesRequiresAuth(t *testing.T) {
 	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
+	require.NoError(t, registry.RegisterAll(nil))
 
 	provider := &hasAdminApp{}
 	registry.Add(provider)
@@ -145,7 +145,7 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
+	require.NoError(t, registry.RegisterAll(nil))
 
 	provider := &hasAdminApp{}
 	registry.Add(provider)
@@ -254,7 +254,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
+	require.NoError(t, registry.RegisterAll(nil))
 
 	checker := &layoutCheckApp{}
 	registry.Add(checker)
@@ -287,7 +287,7 @@ func TestBuildNavGroups(t *testing.T) {
 	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
+	require.NoError(t, registry.RegisterAll(nil))
 
 	provider := &hasAdminApp{}
 	registry.Add(provider)
@@ -331,7 +331,7 @@ func TestRoutesInjectNavGroups(t *testing.T) {
 	registry.Add(session.New())
 	authApp := auth.New(nil)
 	registry.Add(authApp)
-	require.NoError(t, registry.Bootstrap(nil))
+	require.NoError(t, registry.RegisterAll(nil))
 
 	checker := &navGroupsCheckApp{}
 	registry.Add(checker)

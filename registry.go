@@ -95,9 +95,10 @@ func (r *Registry) Apps() []App {
 	return result
 }
 
-// Bootstrap calls Register on each app in order, passing
-// the shared AppConfig. It stops and returns on the first error.
-func (r *Registry) Bootstrap(db *bun.DB) error {
+// RegisterAll calls Register on each app in order, passing a partial AppConfig
+// (DB + Registry only, no Config/migrations/seeds). This is a test convenience;
+// the real boot sequence lives in Server.bootstrap().
+func (r *Registry) RegisterAll(db *bun.DB) error {
 	r.db = db
 	cfg := &AppConfig{
 		DB:       db,

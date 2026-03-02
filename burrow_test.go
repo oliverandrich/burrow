@@ -295,20 +295,20 @@ func TestRegistryAddLogsMinimalCapabilities(t *testing.T) {
 	assert.NotContains(t, output, "routes")
 }
 
-func TestRegistryBootstrapCallsRegister(t *testing.T) {
+func TestRegistryRegisterAllCallsRegister(t *testing.T) {
 	reg := NewRegistry()
 	app1 := &trackingApp{name: "first"}
 	app2 := &trackingApp{name: "second"}
 	reg.Add(app1)
 	reg.Add(app2)
 
-	err := reg.Bootstrap(nil)
+	err := reg.RegisterAll(nil)
 	require.NoError(t, err)
 	assert.True(t, app1.registered)
 	assert.True(t, app2.registered)
 }
 
-func TestRegistryBootstrapPassesConfig(t *testing.T) {
+func TestRegistryRegisterAllPassesConfig(t *testing.T) {
 	reg := NewRegistry()
 	var received *AppConfig
 	app := &trackingApp{
@@ -320,13 +320,13 @@ func TestRegistryBootstrapPassesConfig(t *testing.T) {
 	}
 	reg.Add(app)
 
-	err := reg.Bootstrap(nil)
+	err := reg.RegisterAll(nil)
 	require.NoError(t, err)
 	require.NotNil(t, received)
 	assert.Equal(t, reg, received.Registry)
 }
 
-func TestRegistryBootstrapStopsOnError(t *testing.T) {
+func TestRegistryRegisterAllStopsOnError(t *testing.T) {
 	reg := NewRegistry()
 	errBoom := errors.New("boom")
 	app1 := &failingApp{name: "bad", failOn: "register", err: errBoom}
@@ -334,7 +334,7 @@ func TestRegistryBootstrapStopsOnError(t *testing.T) {
 	reg.Add(app1)
 	reg.Add(app2)
 
-	err := reg.Bootstrap(nil)
+	err := reg.RegisterAll(nil)
 	require.ErrorIs(t, err, errBoom)
 	assert.Contains(t, err.Error(), "bad")
 	assert.False(t, app2.registered)
