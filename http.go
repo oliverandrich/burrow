@@ -81,7 +81,8 @@ func HTML(w http.ResponseWriter, code int, s string) error {
 }
 
 // Bind parses the request body into the given struct.
-// It supports JSON and form-encoded bodies.
+// It supports JSON and form-encoded bodies. For form-encoded bodies,
+// only string fields are populated (see bindForm).
 func Bind(r *http.Request, v any) error {
 	ct := r.Header.Get("Content-Type")
 	if strings.HasPrefix(ct, "application/json") {
@@ -95,6 +96,8 @@ func Bind(r *http.Request, v any) error {
 }
 
 // bindForm maps form values to struct fields using the "form" tag.
+// Only string fields are supported; non-string fields (bool, int, etc.)
+// are silently skipped. Falls back to the "json" tag if no "form" tag is set.
 func bindForm(r *http.Request, v any) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {

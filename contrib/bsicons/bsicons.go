@@ -1,5 +1,8 @@
 // Package bsicons provides all Bootstrap Icons as inline SVG templ.Components.
 //
+// This is a standalone utility package — it does not implement [burrow.App]
+// and requires no registration. Import it and call icon functions directly.
+//
 // Each icon is available as a named function (e.g. bsicons.Trash(), bsicons.House())
 // that returns a templ.Component rendering an inline <svg> element. Icons scale with
 // font-size (width/height="1em") and inherit text color (fill="currentColor").
