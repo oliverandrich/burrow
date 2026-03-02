@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/internal/cryptokey"
 	"github.com/gorilla/securecookie"
 	"github.com/urfave/cli/v3"
 )
@@ -54,14 +55,14 @@ func (a *App) Flags() []cli.Flag {
 }
 
 func (a *App) Configure(cmd *cli.Command) error {
-	hashKey, err := resolveKey(cmd.String("session-hash-key"), "hash")
+	hashKey, err := cryptokey.Resolve(cmd.String("session-hash-key"), "session hash")
 	if err != nil {
 		return err
 	}
 
 	var blockKey []byte
 	if bk := cmd.String("session-block-key"); bk != "" {
-		blockKey, err = decodeKey(bk, "block")
+		blockKey, err = cryptokey.Decode(bk, "session block")
 		if err != nil {
 			return err
 		}

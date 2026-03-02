@@ -3,13 +3,7 @@
 // the CSRF token in templates.
 package csrf
 
-import (
-	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"errors"
-	"log/slog"
-)
+import "context"
 
 // ctxKeyCSRFToken is the context key for the CSRF token.
 type ctxKeyCSRFToken struct{}
@@ -25,32 +19,4 @@ func Token(ctx context.Context) string {
 		return token
 	}
 	return ""
-}
-
-// --- Key utilities ---
-
-func resolveKey(keyHex string) ([]byte, error) {
-	if keyHex != "" {
-		return decodeKey(keyHex)
-	}
-
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		return nil, errors.New("csrf: failed to generate auth key")
-	}
-	slog.Warn("No CSRF key configured, using random key (tokens will not persist across restarts)",
-		"generated_key", hex.EncodeToString(key),
-	)
-	return key, nil
-}
-
-func decodeKey(keyHex string) ([]byte, error) {
-	key, err := hex.DecodeString(keyHex)
-	if err != nil {
-		return nil, errors.New("csrf: invalid key: must be hex encoded")
-	}
-	if len(key) != 32 {
-		return nil, errors.New("csrf: invalid key: must be 32 bytes")
-	}
-	return key, nil
 }

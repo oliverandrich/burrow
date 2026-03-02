@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/internal/cryptokey"
 	gorillacsrf "github.com/gorilla/csrf"
 	"github.com/urfave/cli/v3"
 )
@@ -45,7 +46,7 @@ func (a *App) Configure(cmd *cli.Command) error {
 // configure sets up the gorilla/csrf middleware with the given key and secure flag.
 // Extracted for testability without requiring a cli.Command.
 func (a *App) configure(keyHex string, secure bool) error {
-	key, err := resolveKey(keyHex)
+	key, err := cryptokey.Resolve(keyHex, "csrf")
 	if err != nil {
 		return err
 	}

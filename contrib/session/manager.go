@@ -1,8 +1,6 @@
 package session
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -88,32 +86,4 @@ func (m *Manager) Clear() *http.Cookie {
 		Secure:   m.secure,
 		SameSite: http.SameSiteLaxMode,
 	}
-}
-
-// --- Key utilities ---
-
-func resolveKey(keyHex, keyType string) ([]byte, error) {
-	if keyHex != "" {
-		return decodeKey(keyHex, keyType)
-	}
-
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		return nil, errors.New("failed to generate session " + keyType + " key")
-	}
-	slog.Warn("No session "+keyType+" key configured, using random key (sessions will not persist across restarts)",
-		"generated_key", hex.EncodeToString(key),
-	)
-	return key, nil
-}
-
-func decodeKey(keyHex, keyType string) ([]byte, error) {
-	key, err := hex.DecodeString(keyHex)
-	if err != nil {
-		return nil, errors.New("invalid session " + keyType + " key: must be hex encoded")
-	}
-	if len(key) != 32 {
-		return nil, errors.New("invalid session " + keyType + " key: must be 32 bytes")
-	}
-	return key, nil
 }
