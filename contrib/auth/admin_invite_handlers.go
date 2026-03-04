@@ -55,23 +55,24 @@ func (h *adminHandlers) CreateInvite(w http.ResponseWriter, r *http.Request) err
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to create invite")
 	}
 
+	baseURL := ""
+	if h.config != nil {
+		baseURL = h.config.BaseURL
+	}
+	createdURL := baseURL + "/auth/register?invite=" + plainToken
+
 	if h.email != nil && req.Email != "" {
+		inviteURL := createdURL
 		go func() {
 			sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
-			if sendErr := h.email.SendInvite(sendCtx, req.Email, plainToken); sendErr != nil {
+			if sendErr := h.email.SendInvite(sendCtx, req.Email, inviteURL); sendErr != nil {
 				slog.Error("failed to send invite email", "error", sendErr, "email", req.Email)
 			}
 		}()
 	}
 
 	slog.Info("invite created", "invite_id", invite.ID, "created_by", user.ID) //nolint:gosec // G706: IDs are int64, not user-controlled strings
-
-	baseURL := ""
-	if h.config != nil {
-		baseURL = h.config.BaseURL
-	}
-	createdURL := baseURL + "/auth/register?invite=" + plainToken
 	return h.renderInvitesPage(w, r, createdURL)
 }
 

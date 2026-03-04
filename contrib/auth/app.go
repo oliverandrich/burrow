@@ -353,6 +353,9 @@ func (a *App) SetEmailService(email EmailService) {
 	if a.handlers != nil {
 		a.handlers.email = email
 	}
+	if a.adminHandlers != nil {
+		a.adminHandlers.email = email
+	}
 }
 
 // SetLogo sets an optional logo component rendered above auth page content.

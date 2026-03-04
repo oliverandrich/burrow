@@ -66,10 +66,6 @@ type mockEmailService struct {
 	sendCalled bool
 }
 
-func (m *mockEmailService) GenerateToken() (string, string, time.Time, error) {
-	return "plaintoken", HashToken("plaintoken"), time.Now().Add(24 * time.Hour), nil
-}
-
 func (m *mockEmailService) SendVerification(_ context.Context, _, _ string) error {
 	m.sendCalled = true
 	return nil
@@ -110,6 +106,7 @@ func newTestHandlersEmailMode(t *testing.T) (*Handlers, *Repository, *mockRender
 		LogoutRedirect:      "/auth/login",
 		UseEmail:            true,
 		RequireVerification: true,
+		BaseURL:             "http://localhost:8080",
 	})
 	return h, repo, renderer
 }

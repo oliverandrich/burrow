@@ -223,7 +223,7 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 
 	// Email mode: send verification email and redirect to pending page.
 	if h.UseEmailMode() && user.Email != nil && h.config.RequireVerification {
-		plainToken, tokenHash, expiresAt, tokenErr := h.email.GenerateToken()
+		plainToken, tokenHash, expiresAt, tokenErr := GenerateToken()
 		if tokenErr != nil {
 			return errorJSONLog(w, http.StatusInternalServerError, "failed to generate verification token", tokenErr)
 		}
@@ -231,10 +231,11 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 			return errorJSONLog(w, http.StatusInternalServerError, "failed to store verification token", tokenErr)
 		}
 
+		verifyURL := h.config.BaseURL + "/auth/verify-email?token=" + plainToken
 		go func() {
 			sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
-			if sendErr := h.email.SendVerification(sendCtx, *user.Email, plainToken); sendErr != nil {
+			if sendErr := h.email.SendVerification(sendCtx, *user.Email, verifyURL); sendErr != nil {
 				slog.Error("failed to send verification email", "error", sendErr, "email", *user.Email)
 			}
 		}()
@@ -611,7 +612,7 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 
 	_ = h.repo.DeleteUserEmailVerificationTokens(ctx, user.ID)
 
-	plainToken, tokenHash, expiresAt, tokenErr := h.email.GenerateToken()
+	plainToken, tokenHash, expiresAt, tokenErr := GenerateToken()
 	if tokenErr != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to send verification email", tokenErr)
 	}
@@ -619,10 +620,11 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to send verification email", tokenErr)
 	}
 
+	verifyURL := h.config.BaseURL + "/auth/verify-email?token=" + plainToken
 	go func() {
 		sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		if sendErr := h.email.SendVerification(sendCtx, *user.Email, plainToken); sendErr != nil {
+		if sendErr := h.email.SendVerification(sendCtx, *user.Email, verifyURL); sendErr != nil {
 			slog.Error("failed to send verification email", "error", sendErr, "email", *user.Email)
 		}
 	}()

@@ -19,9 +19,8 @@ import (
 
 // EmailService defines email operations.
 type EmailService interface {
-	GenerateToken() (string, string, time.Time, error)
-	SendVerification(ctx context.Context, toEmail, token string) error
-	SendInvite(ctx context.Context, toEmail, token string) error
+	SendVerification(ctx context.Context, toEmail, verifyURL string) error
+	SendInvite(ctx context.Context, toEmail, inviteURL string) error
 }
 
 // WebAuthnService defines WebAuthn operations.

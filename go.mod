@@ -19,6 +19,7 @@ require (
 	github.com/uptrace/bun/dialect/sqlitedialect v1.2.16
 	github.com/uptrace/bun/driver/sqliteshim v1.2.16
 	github.com/urfave/cli/v3 v3.6.2
+	github.com/wneessen/go-mail v0.7.2
 	golang.org/x/crypto v0.48.0
 	golang.org/x/text v0.34.0
 )
