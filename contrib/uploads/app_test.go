@@ -7,12 +7,48 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewDefaults(t *testing.T) {
+	app := New()
+	assert.Equal(t, "data/uploads", app.dir)
+	assert.Equal(t, "/uploads/", app.urlPrefix)
+	assert.Nil(t, app.allowedTypes)
+}
+
+func TestNewWithBaseDir(t *testing.T) {
+	app := New(WithBaseDir("/var/app"))
+	assert.Equal(t, filepath.Join("/var/app", "uploads"), app.dir)
+	assert.Equal(t, "/uploads/", app.urlPrefix)
+}
+
+func TestNewWithURLPrefix(t *testing.T) {
+	app := New(WithURLPrefix("/media/"))
+	assert.Equal(t, "data/uploads", app.dir)
+	assert.Equal(t, "/media/", app.urlPrefix)
+}
+
+func TestNewWithAllowedTypes(t *testing.T) {
+	app := New(WithAllowedTypes("image/jpeg", "image/png"))
+	assert.Equal(t, []string{"image/jpeg", "image/png"}, app.AllowedTypes())
+}
+
+func TestNewCombinedOptions(t *testing.T) {
+	app := New(
+		WithBaseDir("./mydata"),
+		WithURLPrefix("/files/"),
+		WithAllowedTypes("image/png"),
+	)
+	assert.Equal(t, filepath.Join("./mydata", "uploads"), app.dir)
+	assert.Equal(t, "/files/", app.urlPrefix)
+	assert.Equal(t, []string{"image/png"}, app.allowedTypes)
+}
 
 func TestContextHelpers(t *testing.T) {
 	s := newTestStorage(t)
@@ -70,11 +106,6 @@ func TestServingRoute(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "public, max-age=31536000, immutable", rec.Header().Get("Cache-Control"))
 	assert.Contains(t, rec.Body.String(), "served content")
-}
-
-func TestNewWithAllowedTypes(t *testing.T) {
-	app := New("./data", "/media/", WithAllowedTypes("image/jpeg", "image/png"))
-	assert.Equal(t, []string{"image/jpeg", "image/png"}, app.AllowedTypes())
 }
 
 func TestDefaultAllowedTypesApplied(t *testing.T) {

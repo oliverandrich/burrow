@@ -2,11 +2,18 @@ package uploads
 
 import (
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"codeberg.org/oliverandrich/burrow"
 	"github.com/go-chi/chi/v5"
 	"github.com/urfave/cli/v3"
+)
+
+const (
+	defaultBaseDir   = "data"
+	defaultDirName   = "uploads"
+	defaultURLPrefix = "/uploads/"
 )
 
 // App implements the uploads contrib app for file storage and serving.
@@ -20,6 +27,22 @@ type App struct {
 // Option configures the uploads app.
 type Option func(*App)
 
+// WithBaseDir sets the base directory for uploads. The upload directory
+// becomes {baseDir}/uploads. Defaults to "data" (i.e. data/uploads),
+// matching the framework's data directory convention (data/app.db).
+func WithBaseDir(dir string) Option {
+	return func(a *App) {
+		a.dir = filepath.Join(dir, defaultDirName)
+	}
+}
+
+// WithURLPrefix sets the URL prefix for serving uploaded files.
+func WithURLPrefix(prefix string) Option {
+	return func(a *App) {
+		a.urlPrefix = prefix
+	}
+}
+
 // WithAllowedTypes sets the default allowed MIME types for uploads.
 // Per-call StoreOptions.AllowedTypes overrides this default.
 func WithAllowedTypes(types ...string) Option {
@@ -28,12 +51,17 @@ func WithAllowedTypes(types ...string) Option {
 	}
 }
 
-// New creates an uploads app with the given default directory and URL prefix.
-// These defaults can be overridden by CLI flags (--upload-dir, --upload-url-prefix).
-func New(dir, urlPrefix string, opts ...Option) *App {
+// New creates an uploads app with sensible defaults:
+//   - Upload directory: ./uploads (relative to working directory)
+//   - URL prefix: /uploads/
+//   - Allowed types: all
+//
+// Use options to customize, or override at runtime via CLI flags
+// (--upload-dir, --upload-url-prefix, --upload-allowed-types).
+func New(opts ...Option) *App {
 	a := &App{
-		dir:       dir,
-		urlPrefix: urlPrefix,
+		dir:       filepath.Join(defaultBaseDir, defaultDirName),
+		urlPrefix: defaultURLPrefix,
 	}
 	for _, opt := range opts {
 		opt(a)
@@ -49,11 +77,13 @@ func (a *App) Flags() []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "upload-dir",
+			Value:   a.dir,
 			Usage:   "Directory for uploaded files",
 			Sources: cli.EnvVars("UPLOAD_DIR"),
 		},
 		&cli.StringFlag{
 			Name:    "upload-url-prefix",
+			Value:   a.urlPrefix,
 			Usage:   "URL prefix for serving uploaded files",
 			Sources: cli.EnvVars("UPLOAD_URL_PREFIX"),
 		},
@@ -66,12 +96,9 @@ func (a *App) Flags() []cli.Flag {
 }
 
 func (a *App) Configure(cmd *cli.Command) error {
-	if v := cmd.String("upload-dir"); v != "" {
-		a.dir = v
-	}
-	if v := cmd.String("upload-url-prefix"); v != "" {
-		a.urlPrefix = v
-	}
+	a.dir = cmd.String("upload-dir")
+	a.urlPrefix = cmd.String("upload-url-prefix")
+
 	if v := cmd.String("upload-allowed-types"); v != "" {
 		a.allowedTypes = strings.Split(v, ",")
 		for i := range a.allowedTypes {
