@@ -17,21 +17,21 @@ type stubRenderer struct {
 	inviteURL string
 }
 
-func (s *stubRenderer) RenderVerificationHTML(verifyURL string) (string, string, error) {
+func (s *stubRenderer) RenderVerificationHTML(_ context.Context, verifyURL string) (string, string, error) {
 	s.verifyURL = verifyURL
 	return "Verify Subject", "<h1>Verify</h1>", nil
 }
 
-func (s *stubRenderer) RenderVerificationText(verifyURL string) (string, string, error) {
+func (s *stubRenderer) RenderVerificationText(_ context.Context, verifyURL string) (string, string, error) {
 	return "Verify Subject", "Verify: " + verifyURL, nil
 }
 
-func (s *stubRenderer) RenderInviteHTML(inviteURL string) (string, string, error) {
+func (s *stubRenderer) RenderInviteHTML(_ context.Context, inviteURL string) (string, string, error) {
 	s.inviteURL = inviteURL
 	return "Invite Subject", "<h1>Invite</h1>", nil
 }
 
-func (s *stubRenderer) RenderInviteText(inviteURL string) (string, string, error) {
+func (s *stubRenderer) RenderInviteText(_ context.Context, inviteURL string) (string, string, error) {
 	return "Invite Subject", "Invite: " + inviteURL, nil
 }
 

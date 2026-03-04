@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"context"
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow/contrib/authmail"
@@ -13,7 +14,7 @@ var _ authmail.Renderer = DefaultRenderer()
 
 func TestDefaultRendererVerificationHTML(t *testing.T) {
 	r := DefaultRenderer()
-	subject, html, err := r.RenderVerificationHTML("https://example.com/verify?token=abc123")
+	subject, html, err := r.RenderVerificationHTML(context.Background(), "https://example.com/verify?token=abc123")
 
 	require.NoError(t, err)
 	assert.Equal(t, "Verify your email", subject)
@@ -24,7 +25,7 @@ func TestDefaultRendererVerificationHTML(t *testing.T) {
 
 func TestDefaultRendererVerificationText(t *testing.T) {
 	r := DefaultRenderer()
-	subject, text, err := r.RenderVerificationText("https://example.com/verify?token=abc123")
+	subject, text, err := r.RenderVerificationText(context.Background(), "https://example.com/verify?token=abc123")
 
 	require.NoError(t, err)
 	assert.Equal(t, "Verify your email", subject)
@@ -33,7 +34,7 @@ func TestDefaultRendererVerificationText(t *testing.T) {
 
 func TestDefaultRendererInviteHTML(t *testing.T) {
 	r := DefaultRenderer()
-	subject, html, err := r.RenderInviteHTML("https://example.com/register?invite=xyz789")
+	subject, html, err := r.RenderInviteHTML(context.Background(), "https://example.com/register?invite=xyz789")
 
 	require.NoError(t, err)
 	assert.Equal(t, "You've been invited", subject)
@@ -44,7 +45,7 @@ func TestDefaultRendererInviteHTML(t *testing.T) {
 
 func TestDefaultRendererInviteText(t *testing.T) {
 	r := DefaultRenderer()
-	subject, text, err := r.RenderInviteText("https://example.com/register?invite=xyz789")
+	subject, text, err := r.RenderInviteText(context.Background(), "https://example.com/register?invite=xyz789")
 
 	require.NoError(t, err)
 	assert.Equal(t, "You've been invited", subject)

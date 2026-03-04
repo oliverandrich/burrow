@@ -34,11 +34,11 @@ func NewMailer(config SMTPConfig, renderer authmail.Renderer) *Mailer {
 
 // SendVerification sends a verification email with the given URL.
 func (m *Mailer) SendVerification(ctx context.Context, toEmail, verifyURL string) error {
-	subject, html, err := m.renderer.RenderVerificationHTML(verifyURL)
+	subject, html, err := m.renderer.RenderVerificationHTML(ctx, verifyURL)
 	if err != nil {
 		return fmt.Errorf("render verification html: %w", err)
 	}
-	_, text, err := m.renderer.RenderVerificationText(verifyURL)
+	_, text, err := m.renderer.RenderVerificationText(ctx, verifyURL)
 	if err != nil {
 		return fmt.Errorf("render verification text: %w", err)
 	}
@@ -47,11 +47,11 @@ func (m *Mailer) SendVerification(ctx context.Context, toEmail, verifyURL string
 
 // SendInvite sends an invite email with the given URL.
 func (m *Mailer) SendInvite(ctx context.Context, toEmail, inviteURL string) error {
-	subject, html, err := m.renderer.RenderInviteHTML(inviteURL)
+	subject, html, err := m.renderer.RenderInviteHTML(ctx, inviteURL)
 	if err != nil {
 		return fmt.Errorf("render invite html: %w", err)
 	}
-	_, text, err := m.renderer.RenderInviteText(inviteURL)
+	_, text, err := m.renderer.RenderInviteText(ctx, inviteURL)
 	if err != nil {
 		return fmt.Errorf("render invite text: %w", err)
 	}
