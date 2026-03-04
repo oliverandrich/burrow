@@ -100,7 +100,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	s.registry.RegisterMiddleware(r)
 	s.registry.RegisterRoutes(r)
 
-	return startServer(ctx, r, cfg)
+	return startServer(ctx, r, cfg, s.registry)
 }
 
 // bootstrap runs migrations, registers all apps, and seeds the database.
@@ -176,7 +176,7 @@ func setupCoreMiddleware(r chi.Router, cfg *Config) {
 	r.Use(chimw.RequestSize(int64(cfg.Server.MaxBodySize) * 1024 * 1024))
 }
 
-func startServer(ctx context.Context, handler http.Handler, cfg *Config) error {
+func startServer(ctx context.Context, handler http.Handler, cfg *Config, registry *Registry) error {
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	server := &http.Server{
 		Addr:              addr,
@@ -206,6 +206,10 @@ func startServer(ctx context.Context, handler http.Handler, cfg *Config) error {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Server.ShutdownTimeout)*time.Second)
 	defer cancel()
+
+	if err := registry.Shutdown(shutdownCtx); err != nil {
+		slog.Error("app shutdown errors", "error", err)
+	}
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("server shutdown error", "error", err)

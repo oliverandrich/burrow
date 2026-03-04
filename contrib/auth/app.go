@@ -172,9 +172,9 @@ func (a *App) Configure(cmd *cli.Command) error {
 	return nil
 }
 
-// Close stops the background cleanup goroutine. Safe to call multiple times or if
-// Configure was never called.
-func (a *App) Close() error {
+// Shutdown stops the background cleanup goroutine. Safe to call multiple
+// times or if Configure was never called.
+func (a *App) Shutdown(_ context.Context) error {
 	if a.cancelCleanup != nil {
 		a.cancelCleanup()
 	}

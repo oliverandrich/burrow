@@ -164,3 +164,13 @@ type HasDependencies interface {
 ```
 
 Returns app names that must be registered before this app. The registry panics at startup if any are missing.
+
+### HasShutdown
+
+```go
+type HasShutdown interface {
+    Shutdown(ctx context.Context) error
+}
+```
+
+Performs cleanup during graceful shutdown (e.g., stopping background goroutines, flushing buffers). Called in **reverse** registration order before the HTTP server stops. Errors are logged but do not prevent other apps from shutting down. The context carries the server's shutdown timeout.

@@ -2,6 +2,7 @@ package burrow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -78,6 +79,9 @@ func (r *Registry) Add(app App) {
 	}
 	if _, ok := app.(HasDependencies); ok {
 		caps = append(caps, "dependencies")
+	}
+	if _, ok := app.(HasShutdown); ok {
+		caps = append(caps, "shutdown")
 	}
 	slog.Debug("app registered", "name", name, "capabilities", caps)
 }
@@ -199,6 +203,22 @@ func (r *Registry) RegisterRoutes(router chi.Router) {
 			provider.Routes(router)
 		}
 	}
+}
+
+// Shutdown calls Shutdown on each HasShutdown app in reverse
+// registration order. Errors are collected but do not prevent
+// other apps from shutting down.
+func (r *Registry) Shutdown(ctx context.Context) error {
+	var errs []error
+	for i := len(r.apps) - 1; i >= 0; i-- {
+		if provider, ok := r.apps[i].(HasShutdown); ok {
+			if err := provider.Shutdown(ctx); err != nil {
+				slog.Error("app shutdown error", "app", r.apps[i].Name(), "error", err)
+				errs = append(errs, fmt.Errorf("shutdown app %q: %w", r.apps[i].Name(), err))
+			}
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // Seed calls Seed on each Seedable app in order.

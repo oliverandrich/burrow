@@ -36,6 +36,7 @@ var (
 	_ burrow.HasDependencies = (*App)(nil)
 	_ burrow.HasStaticFiles  = (*App)(nil)
 	_ burrow.HasTranslations = (*App)(nil)
+	_ burrow.HasShutdown     = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {

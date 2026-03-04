@@ -75,3 +75,11 @@ type HasTranslations interface {
 type HasDependencies interface {
 	Dependencies() []string
 }
+
+// HasShutdown is implemented by apps that need to perform cleanup
+// during graceful shutdown (e.g., stopping background goroutines,
+// flushing buffers). Called in reverse registration order before
+// the HTTP server stops.
+type HasShutdown interface {
+	Shutdown(ctx context.Context) error
+}
