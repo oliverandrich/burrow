@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"codeberg.org/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
@@ -212,4 +213,178 @@ func TestRepository_RescueStale(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, StatusPending, updated.Status)
 	assert.Nil(t, updated.LockedAt)
+}
+
+func TestRepository_GetByID(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	job, err := repo.Enqueue(ctx, "send_email", `{"to":"a@b.com"}`, 3, time.Now())
+	require.NoError(t, err)
+
+	got, err := repo.GetByID(ctx, job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, job.ID, got.ID)
+	assert.Equal(t, "send_email", got.Type)
+
+	// Not found.
+	_, err = repo.GetByID(ctx, 99999)
+	require.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestRepository_ListPaged(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Create jobs with different statuses.
+	for i := range 5 {
+		j, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now().Add(-time.Duration(5-i)*time.Second))
+		require.NoError(t, err)
+		if i >= 3 {
+			require.NoError(t, repo.Complete(ctx, j.ID))
+		}
+	}
+
+	// List all (no status filter).
+	jobs, page, err := repo.ListPaged(ctx, burrow.PageRequest{Limit: 10, Page: 1}, "")
+	require.NoError(t, err)
+	assert.Len(t, jobs, 5)
+	assert.Equal(t, 5, page.TotalCount)
+
+	// Filter by pending.
+	jobs, page, err = repo.ListPaged(ctx, burrow.PageRequest{Limit: 10, Page: 1}, StatusPending)
+	require.NoError(t, err)
+	assert.Len(t, jobs, 3)
+	assert.Equal(t, 3, page.TotalCount)
+
+	// Pagination: page 1 with limit 2.
+	jobs, page, err = repo.ListPaged(ctx, burrow.PageRequest{Limit: 2, Page: 1}, "")
+	require.NoError(t, err)
+	assert.Len(t, jobs, 2)
+	assert.Equal(t, 5, page.TotalCount)
+	assert.Equal(t, 3, page.TotalPages)
+	assert.True(t, page.HasMore)
+
+	// Verify order: newest first (highest ID first).
+	assert.Greater(t, jobs[0].ID, jobs[1].ID)
+}
+
+func TestRepository_Delete(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	require.NoError(t, err)
+
+	err = repo.Delete(ctx, job.ID)
+	require.NoError(t, err)
+
+	// Verify gone.
+	_, err = repo.GetByID(ctx, job.ID)
+	require.ErrorIs(t, err, ErrNotFound)
+
+	// Delete non-existent — should return ErrNotFound.
+	err = repo.Delete(ctx, 99999)
+	require.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestRepository_Retry(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	t.Run("from dead", func(t *testing.T) {
+		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		require.NoError(t, err)
+		require.NoError(t, repo.Fail(ctx, job.ID, "boom", 3, 3)) // marks dead
+
+		err = repo.Retry(ctx, job.ID)
+		require.NoError(t, err)
+
+		got, err := repo.GetByID(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, StatusPending, got.Status)
+		assert.Equal(t, 0, got.Attempts)
+		assert.Empty(t, got.LastError)
+		assert.Nil(t, got.FailedAt)
+		assert.Nil(t, got.LockedAt)
+	})
+
+	t.Run("from failed", func(t *testing.T) {
+		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		require.NoError(t, err)
+		require.NoError(t, repo.Fail(ctx, job.ID, "oops", 1, 3)) // marks failed
+
+		err = repo.Retry(ctx, job.ID)
+		require.NoError(t, err)
+
+		got, err := repo.GetByID(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, StatusPending, got.Status)
+	})
+
+	t.Run("invalid status", func(t *testing.T) {
+		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		require.NoError(t, err) // pending
+
+		err = repo.Retry(ctx, job.ID)
+		require.ErrorIs(t, err, ErrInvalidStatus)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		err := repo.Retry(ctx, 99999)
+		require.ErrorIs(t, err, ErrNotFound)
+	})
+}
+
+func TestRepository_Cancel(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	t.Run("from pending", func(t *testing.T) {
+		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		require.NoError(t, err)
+
+		err = repo.Cancel(ctx, job.ID)
+		require.NoError(t, err)
+
+		got, err := repo.GetByID(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, StatusDead, got.Status)
+		assert.NotNil(t, got.FailedAt)
+		assert.Nil(t, got.LockedAt)
+	})
+
+	t.Run("from running", func(t *testing.T) {
+		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		require.NoError(t, err)
+		claimed, err := repo.Claim(ctx, 1)
+		require.NoError(t, err)
+		require.Len(t, claimed, 1)
+
+		err = repo.Cancel(ctx, job.ID)
+		require.NoError(t, err)
+
+		got, err := repo.GetByID(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, StatusDead, got.Status)
+	})
+
+	t.Run("invalid status — completed", func(t *testing.T) {
+		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		require.NoError(t, err)
+		require.NoError(t, repo.Complete(ctx, job.ID))
+
+		err = repo.Cancel(ctx, job.ID)
+		require.ErrorIs(t, err, ErrInvalidStatus)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		err := repo.Cancel(ctx, 99999)
+		require.ErrorIs(t, err, ErrNotFound)
+	})
 }

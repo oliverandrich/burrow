@@ -2,11 +2,20 @@ package jobs
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"time"
 
+	"codeberg.org/oliverandrich/burrow"
 	"github.com/uptrace/bun"
+)
+
+// Sentinel errors for admin operations.
+var (
+	ErrNotFound      = sql.ErrNoRows
+	ErrInvalidStatus = errors.New("invalid job status for this operation")
 )
 
 // Repository provides data access for the jobs queue.
@@ -110,6 +119,113 @@ func (r *Repository) DeleteCompleted(ctx context.Context, olderThan time.Duratio
 	}
 	n, _ := res.RowsAffected()
 	return n, nil
+}
+
+// GetByID returns a single job by ID.
+func (r *Repository) GetByID(ctx context.Context, id int64) (*Job, error) {
+	job := new(Job)
+	if err := r.db.NewSelect().Model(job).Where("id = ?", id).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get job %d: %w", id, err)
+	}
+	return job, nil
+}
+
+// ListPaged returns a paginated list of jobs, optionally filtered by status.
+// Results are ordered by created_at DESC, id DESC.
+func (r *Repository) ListPaged(ctx context.Context, pr burrow.PageRequest, status JobStatus) ([]Job, burrow.PageResult, error) {
+	q := r.db.NewSelect().Model((*Job)(nil))
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+
+	totalCount, err := q.Count(ctx)
+	if err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("count jobs: %w", err)
+	}
+
+	var jobs []Job
+	q = r.db.NewSelect().Model(&jobs).
+		OrderExpr("created_at DESC, id DESC")
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	q = burrow.ApplyOffset(q, pr)
+
+	if err := q.Scan(ctx); err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("list jobs: %w", err)
+	}
+
+	return jobs, burrow.OffsetResult(pr, totalCount), nil
+}
+
+// Delete hard-deletes a job by ID (any status).
+func (r *Repository) Delete(ctx context.Context, id int64) error {
+	res, err := r.db.NewDelete().Model((*Job)(nil)).
+		Where("id = ?", id).
+		ForceDelete().
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("delete job %d: %w", id, err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// Retry resets a dead or failed job back to pending for re-processing.
+func (r *Repository) Retry(ctx context.Context, id int64) error {
+	job, err := r.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if job.Status != StatusFailed && job.Status != StatusDead {
+		return ErrInvalidStatus
+	}
+
+	now := time.Now()
+	_, err = r.db.NewUpdate().Model((*Job)(nil)).
+		Set("status = ?", StatusPending).
+		Set("attempts = 0").
+		Set("last_error = ''").
+		Set("failed_at = NULL").
+		Set("locked_at = NULL").
+		Set("run_at = ?", now).
+		Set("updated_at = ?", now).
+		Where("id = ?", id).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("retry job %d: %w", id, err)
+	}
+	return nil
+}
+
+// Cancel marks a pending, running, or failed job as dead.
+func (r *Repository) Cancel(ctx context.Context, id int64) error {
+	job, err := r.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if job.Status != StatusPending && job.Status != StatusRunning && job.Status != StatusFailed {
+		return ErrInvalidStatus
+	}
+
+	now := time.Now()
+	_, err = r.db.NewUpdate().Model((*Job)(nil)).
+		Set("status = ?", StatusDead).
+		Set("failed_at = ?", now).
+		Set("locked_at = NULL").
+		Set("updated_at = ?", now).
+		Where("id = ?", id).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("cancel job %d: %w", id, err)
+	}
+	return nil
 }
 
 // RescueStale resets running jobs that have been locked longer than the

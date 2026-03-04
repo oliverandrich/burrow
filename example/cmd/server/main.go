@@ -18,6 +18,8 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+	"codeberg.org/oliverandrich/burrow/contrib/jobs"
+	jobstpl "codeberg.org/oliverandrich/burrow/contrib/jobs/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
@@ -45,6 +47,9 @@ func main() {
 	// Create the auth app with default renderers (batteries-included templates).
 	authApp := auth.New(authtpl.DefaultRenderer())
 
+	// Create the jobs app for background job processing.
+	jobsApp := jobs.New()
+
 	// Create the staticfiles app (walks FS to compute content hashes).
 	staticApp, err := staticfiles.New(emptyFS)
 	if err != nil {
@@ -61,6 +66,7 @@ func main() {
 		authApp,
 		bootstrap.New(),
 		healthcheck.New(),
+		jobsApp,
 		pages.New(),
 		notes.New(),
 		admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
@@ -78,6 +84,9 @@ func main() {
 
 	// Wire admin renderer for auth admin pages (users, invites).
 	authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
+
+	// Wire admin renderer for jobs admin pages.
+	jobsApp.SetAdminRenderer(jobstpl.DefaultAdminRenderer())
 
 	cmd := &cli.Command{
 		Name:     "example",

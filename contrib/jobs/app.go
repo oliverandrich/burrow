@@ -9,11 +9,16 @@ import (
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
+	"github.com/go-chi/chi/v5"
 	"github.com/urfave/cli/v3"
 )
 
 //go:embed migrations
 var migrationFS embed.FS
+
+//go:embed translations
+var translationFS embed.FS
 
 // JobOption configures job handler registration.
 type JobOption func(*handlerConfig)
@@ -31,11 +36,13 @@ func WithMaxRetries(n int) JobOption {
 
 // App implements the jobs contrib app.
 type App struct {
-	repo       *Repository
-	handlers   map[string]HandlerFunc
-	retries    map[string]int
-	worker     *Worker
-	cancelFunc context.CancelFunc
+	repo          *Repository
+	handlers      map[string]HandlerFunc
+	retries       map[string]int
+	worker        *Worker
+	cancelFunc    context.CancelFunc
+	adminRenderer AdminRenderer
+	adminHdl      *adminHandlers
 }
 
 // New creates a new jobs app.
@@ -50,6 +57,11 @@ func (a *App) Name() string { return "jobs" }
 
 func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
+
+	// Create admin handlers if SetAdminRenderer was called before Register.
+	if a.adminRenderer != nil {
+		a.adminHdl = newAdminHandlers(a.repo, a.adminRenderer)
+	}
 	return nil
 }
 
@@ -132,10 +144,52 @@ func (a *App) EnqueueAt(ctx context.Context, typeName string, payload any, runAt
 	return a.repo.Enqueue(ctx, typeName, string(data), maxRetries, runAt)
 }
 
+// SetAdminRenderer sets the admin page renderer for job management.
+// Call this before or after Register — admin routes are only active when set.
+func (a *App) SetAdminRenderer(r AdminRenderer) {
+	a.adminRenderer = r
+	if a.repo != nil && r != nil {
+		a.adminHdl = newAdminHandlers(a.repo, r)
+	}
+}
+
+// AdminRoutes registers admin routes for job management.
+func (a *App) AdminRoutes(r chi.Router) {
+	if a.adminHdl == nil {
+		return
+	}
+	h := a.adminHdl
+
+	r.Get("/jobs", burrow.Handle(h.ListPage))
+	r.Get("/jobs/{id}", burrow.Handle(h.DetailPage))
+	r.Delete("/jobs/{id}", burrow.Handle(h.DeleteJob))
+	r.Post("/jobs/{id}/retry", burrow.Handle(h.RetryJob))
+	r.Post("/jobs/{id}/cancel", burrow.Handle(h.CancelJob))
+}
+
+// AdminNavItems returns navigation items for the admin panel.
+func (a *App) AdminNavItems() []burrow.NavItem {
+	return []burrow.NavItem{
+		{
+			Label:     "Jobs",
+			LabelKey:  "admin-nav-jobs",
+			URL:       "/admin/jobs",
+			Icon:      bsicons.ListTask(),
+			Position:  40,
+			AdminOnly: true,
+		},
+	}
+}
+
+// TranslationFS returns the embedded translation files.
+func (a *App) TranslationFS() fs.FS { return translationFS }
+
 // Compile-time interface assertions.
 var (
-	_ burrow.App          = (*App)(nil)
-	_ burrow.Migratable   = (*App)(nil)
-	_ burrow.Configurable = (*App)(nil)
-	_ burrow.HasShutdown  = (*App)(nil)
+	_ burrow.App             = (*App)(nil)
+	_ burrow.Migratable      = (*App)(nil)
+	_ burrow.Configurable    = (*App)(nil)
+	_ burrow.HasShutdown     = (*App)(nil)
+	_ burrow.HasAdmin        = (*App)(nil)
+	_ burrow.HasTranslations = (*App)(nil)
 )
