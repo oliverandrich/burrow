@@ -55,6 +55,7 @@ nav:
       - Layouts & Rendering: guide/layouts.md
       - Migrations: guide/migrations.md
       - Navigation: guide/navigation.md
+      - Pagination: guide/pagination.md
       - Inter-App Communication: guide/inter-app-communication.md
   - Contrib Apps:
       - Session: contrib/session.md

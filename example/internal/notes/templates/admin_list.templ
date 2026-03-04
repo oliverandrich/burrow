@@ -2,6 +2,8 @@ package templates
 
 import (
 	"fmt"
+	"codeberg.org/oliverandrich/burrow"
+	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
@@ -18,11 +20,11 @@ type AdminNote struct {
 }
 
 // AdminListPage renders the admin notes list with a table and delete buttons.
-templ AdminListPage(notes []AdminNote) {
+templ AdminListPage(notes []AdminNote, page burrow.PageResult) {
 	<div class="d-flex justify-content-between align-items-center mb-2">
 		<h2 class="mb-0">
 			{ i18n.T(ctx, "admin-notes-title") }
-			<span class="badge text-bg-secondary fs-6 align-middle ms-2">{ fmt.Sprintf("%d", len(notes)) }</span>
+			<span class="badge text-bg-secondary fs-6 align-middle ms-2">{ fmt.Sprintf("%d", page.TotalCount) }</span>
 		</h2>
 	</div>
 	<nav aria-label="breadcrumb" class="mb-4">
@@ -69,6 +71,7 @@ templ AdminListPage(notes []AdminNote) {
 				</tbody>
 			</table>
 		</div>
+		@bstpl.Pagination(page, "/admin/notes")
 	} else {
 		<div class="text-center py-5 text-body-secondary">
 			@bsicons.JournalText("fs-1 d-block mb-2")

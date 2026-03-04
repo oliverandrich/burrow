@@ -3,6 +3,7 @@ package notes
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -329,6 +330,57 @@ func TestListAllEmpty(t *testing.T) {
 	notes, err := repo.ListAll(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, notes)
+}
+
+func TestListAllPaged(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Create 5 notes across users.
+	for i := range 5 {
+		require.NoError(t, repo.Create(ctx, &Note{
+			Title:   fmt.Sprintf("Note %d", i+1),
+			Content: "body",
+			UserID:  int64(i%2 + 1),
+		}))
+	}
+
+	t.Run("first page", func(t *testing.T) {
+		pr := burrow.PageRequest{Limit: 2, Page: 1}
+		notes, page, err := repo.ListAllPaged(ctx, pr)
+		require.NoError(t, err)
+
+		assert.Len(t, notes, 2)
+		assert.Equal(t, 1, page.Page)
+		assert.Equal(t, 5, page.TotalCount)
+		assert.Equal(t, 3, page.TotalPages)
+		assert.True(t, page.HasMore)
+		// Most recent first.
+		assert.Equal(t, "Note 5", notes[0].Title)
+		assert.Equal(t, "Note 4", notes[1].Title)
+	})
+
+	t.Run("last page", func(t *testing.T) {
+		pr := burrow.PageRequest{Limit: 2, Page: 3}
+		notes, page, err := repo.ListAllPaged(ctx, pr)
+		require.NoError(t, err)
+
+		assert.Len(t, notes, 1)
+		assert.Equal(t, 3, page.Page)
+		assert.False(t, page.HasMore)
+	})
+
+	t.Run("beyond last page returns empty", func(t *testing.T) {
+		pr := burrow.PageRequest{Limit: 2, Page: 10}
+		notes, page, err := repo.ListAllPaged(ctx, pr)
+		require.NoError(t, err)
+
+		assert.Empty(t, notes)
+		assert.Equal(t, 5, page.TotalCount)
+		assert.Equal(t, 3, page.TotalPages)
+		assert.False(t, page.HasMore)
+	})
 }
 
 func TestAdminDelete(t *testing.T) {

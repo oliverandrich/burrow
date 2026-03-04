@@ -7,6 +7,7 @@ notes-add-button = "Add Note"
 notes-empty = "No notes yet. Create your first one above!"
 notes-delete-confirm = "Delete this note?"
 notes-delete-button = "Delete"
+notes-loading = "Loading…"
 
 # Admin sidebar
 admin-app-notes = "Notes"

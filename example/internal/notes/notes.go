@@ -68,6 +68,25 @@ func (r *Repository) ListByUserID(ctx context.Context, userID int64) ([]Note, er
 	return notes, nil
 }
 
+// ListByUserIDPaged returns paginated notes for a user using cursor-based pagination.
+// Notes are ordered by ID descending (newest first).
+func (r *Repository) ListByUserIDPaged(ctx context.Context, userID int64, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
+	var notes []Note
+	q := r.db.NewSelect().Model(&notes).Where("user_id = ?", userID)
+	q = burrow.ApplyCursor(q, pr, "id")
+	if err := q.Scan(ctx); err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("list notes for user %d: %w", userID, err)
+	}
+
+	notes, hasMore := burrow.TrimCursorResults(notes, pr.Limit)
+	var lastID string
+	if len(notes) > 0 {
+		lastID = strconv.FormatInt(notes[len(notes)-1].ID, 10)
+	}
+
+	return notes, burrow.CursorResult(lastID, hasMore), nil
+}
+
 // Delete soft-deletes a note owned by the given user.
 func (r *Repository) Delete(ctx context.Context, noteID, userID int64) error {
 	if _, err := r.db.NewDelete().Model((*Note)(nil)).
@@ -87,6 +106,23 @@ func (r *Repository) ListAll(ctx context.Context) ([]Note, error) {
 		return nil, fmt.Errorf("list all notes: %w", err)
 	}
 	return notes, nil
+}
+
+// ListAllPaged returns paginated notes across all users using offset-based pagination.
+func (r *Repository) ListAllPaged(ctx context.Context, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
+	count, err := r.db.NewSelect().Model((*Note)(nil)).Count(ctx)
+	if err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("count all notes: %w", err)
+	}
+
+	var notes []Note
+	q := r.db.NewSelect().Model(&notes).Order("created_at DESC", "id DESC")
+	q = burrow.ApplyOffset(q, pr)
+	if err := q.Scan(ctx); err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("list all notes paged: %w", err)
+	}
+
+	return notes, burrow.OffsetResult(pr, count), nil
 }
 
 // AdminDelete soft-deletes any note by ID without user ownership check.
@@ -190,14 +226,15 @@ func NewHandlers(repo *Repository) *Handlers {
 	return &Handlers{repo: repo}
 }
 
-// List renders the user's notes as an HTML page.
+// List renders the user's notes as an HTML page with cursor-based pagination.
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
 		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}
 
-	notes, err := h.repo.ListByUserID(r.Context(), user.ID)
+	pr := burrow.ParsePageRequest(r)
+	notes, page, err := h.repo.ListByUserIDPaged(r.Context(), user.ID, pr)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
 	}
@@ -207,7 +244,12 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 		tplNotes[i] = notestpl.Note{ID: n.ID, Title: n.Title, Content: n.Content}
 	}
 
-	content := notestpl.ListPage(tplNotes)
+	// HTMX infinite scroll: return only the notes fragment.
+	if r.Header.Get("HX-Request") == "true" && pr.Cursor != "" {
+		return burrow.Render(w, r, http.StatusOK, notestpl.NotesPage(tplNotes, page))
+	}
+
+	content := notestpl.ListPage(tplNotes, page)
 	layout := burrow.Layout(r.Context())
 	if layout != nil {
 		return burrow.Render(w, r, http.StatusOK, layout("Notes", content))
@@ -241,19 +283,10 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	// HTMX: return updated notes list with OOB alerts.
+	// HTMX: return only the new card (prepended via hx-swap="afterbegin") with OOB alerts.
 	if r.Header.Get("HX-Request") == "true" {
-		notes, err := h.repo.ListByUserID(r.Context(), user.ID)
-		if err != nil {
-			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
-		}
-
-		tplNotes := make([]notestpl.Note, len(notes))
-		for i, n := range notes {
-			tplNotes[i] = notestpl.Note{ID: n.ID, Title: n.Title, Content: n.Content}
-		}
-
-		return burrow.Render(w, r, http.StatusOK, notestpl.CreateResponse(tplNotes))
+		tplNote := notestpl.Note{ID: note.ID, Title: note.Title, Content: note.Content}
+		return burrow.Render(w, r, http.StatusOK, notestpl.CreateResponse(tplNote))
 	}
 
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
@@ -262,7 +295,8 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 // AdminList renders the admin notes list page.
 func (h *Handlers) AdminList(w http.ResponseWriter, r *http.Request) error {
-	notes, err := h.repo.ListAll(r.Context())
+	pr := burrow.ParsePageRequest(r)
+	notes, page, err := h.repo.ListAllPaged(r.Context(), pr)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
 	}
@@ -278,7 +312,7 @@ func (h *Handlers) AdminList(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	content := notestpl.AdminListPage(tplNotes)
+	content := notestpl.AdminListPage(tplNotes, page)
 	layout := burrow.Layout(r.Context())
 	if layout != nil {
 		return burrow.Render(w, r, http.StatusOK, layout("Notes", content))

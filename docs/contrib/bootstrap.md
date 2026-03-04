@@ -52,6 +52,35 @@ The bootstrap app embeds these static assets and implements `HasStaticFiles` to 
 
 These are served at `/static/bootstrap/bootstrap.min.css`, etc. when the `staticfiles` app is registered.
 
+## Pagination Component
+
+The `templates` sub-package provides a reusable Bootstrap 5 pagination nav for offset-based pagination:
+
+```go
+import bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
+```
+
+```templ
+@bstpl.Pagination(page, "/admin/notes")
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | `burrow.PageResult` | Pagination metadata from `burrow.OffsetResult()` |
+| `baseURL` | `string` | Path without query params (e.g., `/admin/notes`) |
+
+**Behavior:**
+
+- Renders nothing when `TotalPages <= 1` (single page or empty)
+- Shows previous/next buttons (`«`/`»`) with disabled state on first/last page
+- Displays page numbers with ellipsis (`…`) when there are more than 7 pages
+- Current page highlighted with Bootstrap's `active` class
+- Links include `?page=N&limit=N` query parameters
+
+For full pagination documentation, see the [Pagination Guide](../guide/pagination.md).
+
 ## Swapping Design Systems
 
 The `bootstrap` package is intentionally self-contained. To use a different CSS framework, create a new contrib app (e.g., `contrib/pico` or `contrib/tailwind`) that provides its own assets and layout, and register it instead of `bootstrap.New()`.
