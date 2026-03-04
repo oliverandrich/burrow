@@ -7,12 +7,15 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
+	"codeberg.org/oliverandrich/burrow"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v3"
 )
 
 func TestNewDefaults(t *testing.T) {
@@ -48,6 +51,94 @@ func TestNewCombinedOptions(t *testing.T) {
 	assert.Equal(t, filepath.Join("./mydata", "uploads"), app.dir)
 	assert.Equal(t, "/files/", app.urlPrefix)
 	assert.Equal(t, []string{"image/png"}, app.allowedTypes)
+}
+
+// --- Configure / lifecycle tests ---
+
+func configuredApp(t *testing.T, args ...string) *App {
+	t.Helper()
+	app := New()
+	_ = app.Register(&burrow.AppConfig{})
+
+	cmd := &cli.Command{
+		Name:  "test",
+		Flags: app.Flags(),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
+	}
+	allArgs := append([]string{"test"}, args...)
+	err := cmd.Run(t.Context(), allArgs)
+	require.NoError(t, err)
+	return app
+}
+
+func TestName(t *testing.T) {
+	assert.Equal(t, "uploads", New().Name())
+}
+
+func TestConfigureCreatesStorage(t *testing.T) {
+	app := configuredApp(t)
+	require.NotNil(t, app.Storage())
+}
+
+func TestConfigureDefaults(t *testing.T) {
+	app := configuredApp(t)
+	assert.Equal(t, "data/uploads", app.dir)
+	assert.Equal(t, "/uploads/", app.urlPrefix)
+	assert.Nil(t, app.allowedTypes)
+}
+
+func TestConfigureFlagOverrides(t *testing.T) {
+	dir := t.TempDir()
+	app := configuredApp(t,
+		"--upload-dir", dir,
+		"--upload-url-prefix", "/files/",
+		"--upload-allowed-types", "image/jpeg, image/png",
+	)
+	assert.Equal(t, dir, app.dir)
+	assert.Equal(t, "/files/", app.urlPrefix)
+	assert.Equal(t, []string{"image/jpeg", "image/png"}, app.AllowedTypes())
+	require.NotNil(t, app.Storage())
+}
+
+func TestConfigureInvalidDir(t *testing.T) {
+	// Point upload-dir at an invalid path to trigger NewLocalStorage error
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "afile")
+	require.NoError(t, os.WriteFile(filePath, []byte("x"), 0o644))
+
+	app := New()
+	_ = app.Register(&burrow.AppConfig{})
+
+	cmd := &cli.Command{
+		Name:  "test",
+		Flags: app.Flags(),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
+	}
+	err := cmd.Run(t.Context(), []string{"test", "--upload-dir", filepath.Join(filePath, "subdir")})
+	require.Error(t, err)
+}
+
+func TestConfigureOptionDefaultsShownInFlags(t *testing.T) {
+	app := New(WithBaseDir("/var/app"), WithURLPrefix("/media/"))
+	flags := app.Flags()
+
+	var dirDefault, prefixDefault string
+	for _, f := range flags {
+		if sf, ok := f.(*cli.StringFlag); ok {
+			switch sf.Name {
+			case "upload-dir":
+				dirDefault = sf.Value
+			case "upload-url-prefix":
+				prefixDefault = sf.Value
+			}
+		}
+	}
+	assert.Equal(t, filepath.Join("/var/app", "uploads"), dirDefault)
+	assert.Equal(t, "/media/", prefixDefault)
 }
 
 func TestContextHelpers(t *testing.T) {

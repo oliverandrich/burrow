@@ -68,6 +68,20 @@ func TestDetectMIME(t *testing.T) {
 		_, _, err := detectMIME(bytes.NewReader(nil))
 		assert.ErrorIs(t, err, ErrEmptyFile)
 	})
+
+	t.Run("large file preserves all content", func(t *testing.T) {
+		// File larger than 512-byte detection buffer
+		data := bytes.Repeat([]byte("x"), 2048)
+		_, content, err := detectMIME(bytes.NewReader(data))
+		require.NoError(t, err)
+		assert.Equal(t, data, content)
+	})
+
+	t.Run("reader error propagates", func(t *testing.T) {
+		_, _, err := detectMIME(&failingReader{err: io.ErrClosedPipe})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, io.ErrClosedPipe)
+	})
 }
 
 func TestIsTypeAllowed(t *testing.T) {
@@ -77,7 +91,27 @@ func TestIsTypeAllowed(t *testing.T) {
 	assert.True(t, isTypeAllowed("text/plain; charset=utf-8", []string{"text/plain"}), "prefix match")
 }
 
+// failingReader always returns an error on Read.
+type failingReader struct {
+	err error
+}
+
+func (r *failingReader) Read(_ []byte) (int, error) {
+	return 0, r.err
+}
+
 // --- LocalStorage tests ---
+
+func TestNewLocalStorage_InvalidRoot(t *testing.T) {
+	// Use a path under a file (not a directory) to trigger MkdirAll failure
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "afile")
+	require.NoError(t, os.WriteFile(filePath, []byte("x"), 0o644))
+
+	_, err := NewLocalStorage(filepath.Join(filePath, "subdir"), "/media/")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create root dir")
+}
 
 func newTestStorage(t *testing.T) *LocalStorage {
 	t.Helper()
