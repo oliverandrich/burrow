@@ -18,6 +18,7 @@ type Config struct {
 type ServerConfig struct {
 	Host            string
 	BaseURL         string
+	PIDFile         string
 	Port            int
 	MaxBodySize     int // in MB
 	ShutdownTimeout int // in seconds
@@ -44,6 +45,7 @@ func NewConfig(cmd *cli.Command) *Config {
 			Host:            cmd.String("host"),
 			Port:            int(cmd.Int("port")),
 			BaseURL:         cmd.String("base-url"),
+			PIDFile:         cmd.String("pid-file"),
 			MaxBodySize:     int(cmd.Int("max-body-size")),
 			ShutdownTimeout: int(cmd.Int("shutdown-timeout")),
 		},
@@ -180,6 +182,11 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Value:   1,
 			Usage:   "Maximum request body size in MB",
 			Sources: src("MAX_BODY_SIZE", "server.max_body_size"),
+		},
+		&cli.StringFlag{
+			Name:    "pid-file",
+			Usage:   "Path to PID file (for systemd/supervisor integration)",
+			Sources: src("PID_FILE", "server.pid_file"),
 		},
 		&cli.IntFlag{
 			Name:    "shutdown-timeout",

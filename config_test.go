@@ -18,7 +18,7 @@ func TestCoreFlags(t *testing.T) {
 	}
 
 	expected := []string{
-		"host", "port", "base-url", "max-body-size", "shutdown-timeout",
+		"host", "port", "base-url", "pid-file", "max-body-size", "shutdown-timeout",
 		"database-dsn",
 		"tls-mode", "tls-cert-dir", "tls-email", "tls-cert-file", "tls-key-file",
 	}
@@ -45,6 +45,7 @@ func TestCoreDefaultValues(t *testing.T) {
 	assert.Equal(t, "localhost", cfg.Server.Host)
 	assert.Equal(t, 8080, cfg.Server.Port)
 	assert.Empty(t, cfg.Server.BaseURL)
+	assert.Empty(t, cfg.Server.PIDFile)
 	assert.Equal(t, 1, cfg.Server.MaxBodySize)
 	assert.Equal(t, 10, cfg.Server.ShutdownTimeout)
 	assert.Equal(t, "./data/app.db", cfg.Database.DSN)

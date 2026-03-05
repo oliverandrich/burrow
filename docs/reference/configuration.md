@@ -12,6 +12,8 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--port` | `PORT` | `server.port` | `8080` | Port to listen on |
 | `--base-url` | `BASE_URL` | `server.base_url` | (auto-resolved) | Base URL for the application |
 | `--max-body-size` | `MAX_BODY_SIZE` | `server.max_body_size` | `1` | Maximum request body size in MB |
+| `--shutdown-timeout` | `SHUTDOWN_TIMEOUT` | `server.shutdown_timeout` | `10` | Graceful shutdown timeout in seconds |
+| `--pid-file` | `PID_FILE` | `server.pid_file` | (none) | Path to PID file (for systemd/supervisor) |
 
 ### Database
 
@@ -74,6 +76,7 @@ host = "0.0.0.0"
 port = 8080
 base_url = "https://myapp.example.com"
 max_body_size = 2
+pid_file = "/run/myapp/server.pid"
 
 [database]
 dsn = "./data/production.db"

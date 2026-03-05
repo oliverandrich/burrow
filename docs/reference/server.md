@@ -72,7 +72,7 @@ When `Run()` is called, the following happens in order:
 7. **Inject nav items and layout** — collects nav items from all `HasNavItems` apps and the layout function into request context
 8. **Register middleware** — applies middleware from all `HasMiddleware` apps
 9. **Register routes** — calls `Routes()` on all `HasRoutes` apps
-10. **Start HTTP server** — listens on the configured address with graceful shutdown
+10. **Start HTTP server** — listens on the configured address with graceful shutdown and zero-downtime restart via SIGHUP (see [Deployment Guide](../guide/deployment.md))
 
 !!! note "Logging"
     The framework uses `slog.Default()` for all logging. Configure your preferred logger (text, JSON, [tint](https://github.com/lmittmann/tint), etc.) by calling `slog.SetDefault()` before starting the server.
