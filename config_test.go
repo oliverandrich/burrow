@@ -117,6 +117,67 @@ func TestIsLocalhost(t *testing.T) {
 	assert.False(t, IsLocalhost("example.com"))
 }
 
+func TestValidateTLS_ACMERejectsExplicitPort(t *testing.T) {
+	cmd := runCommand(t, "--tls-mode", "acme", "--host", "example.com", "--port", "9090")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateTLS(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--port")
+}
+
+func TestValidateTLS_ACMEWithoutExplicitPort(t *testing.T) {
+	cmd := runCommand(t, "--tls-mode", "acme", "--host", "example.com")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateTLS(cmd)
+	require.NoError(t, err)
+}
+
+func TestValidateTLS_ManualMissingCertFile(t *testing.T) {
+	cmd := runCommand(t, "--tls-mode", "manual", "--tls-key-file", "/tmp/key.pem")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateTLS(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--tls-cert-file")
+}
+
+func TestValidateTLS_ManualMissingKeyFile(t *testing.T) {
+	cmd := runCommand(t, "--tls-mode", "manual", "--tls-cert-file", "/tmp/cert.pem")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateTLS(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--tls-key-file")
+}
+
+func TestValidateTLS_AutoRemoteRejectsExplicitPort(t *testing.T) {
+	cmd := runCommand(t, "--host", "example.com", "--port", "9090")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateTLS(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--port")
+}
+
+func TestValidateTLS_OffIsAlwaysValid(t *testing.T) {
+	cmd := runCommand(t, "--tls-mode", "off", "--port", "9090")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateTLS(cmd)
+	require.NoError(t, err)
+}
+
+func TestValidateTLS_UnknownMode(t *testing.T) {
+	cmd := runCommand(t, "--tls-mode", "bogus")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateTLS(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown TLS mode")
+}
+
 func TestConfigInAppConfig(t *testing.T) {
 	cfg := &AppConfig{
 		Config: &Config{

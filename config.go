@@ -87,6 +87,44 @@ func (c *Config) ResolveBaseURL() string {
 	return fmt.Sprintf("%s://%s:%d", scheme, host, port)
 }
 
+// ValidateTLS checks that the TLS configuration is consistent.
+// Call this early (before opening the database) to fail fast on misconfigurations.
+func (c *Config) ValidateTLS(cmd *cli.Command) error {
+	mode := c.resolvedTLSMode()
+
+	switch mode {
+	case "off", "selfsigned":
+		return nil
+	case "manual":
+		if c.TLS.CertFile == "" {
+			return fmt.Errorf("manual TLS mode requires --tls-cert-file")
+		}
+		if c.TLS.KeyFile == "" {
+			return fmt.Errorf("manual TLS mode requires --tls-key-file")
+		}
+		return nil
+	case "acme":
+		if cmd.IsSet("port") {
+			return fmt.Errorf("ACME mode uses ports 443/80; do not set --port explicitly")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown TLS mode: %q", c.TLS.Mode)
+	}
+}
+
+// resolvedTLSMode returns the effective TLS mode after resolving "auto".
+func (c *Config) resolvedTLSMode() string {
+	mode := strings.ToLower(c.TLS.Mode)
+	if mode == "" || mode == "auto" {
+		if IsLocalhost(c.Server.Host) {
+			return "off"
+		}
+		return "acme"
+	}
+	return mode
+}
+
 func shouldUseTLS(mode, host string) bool {
 	switch mode {
 	case "off":

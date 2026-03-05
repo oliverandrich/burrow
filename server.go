@@ -62,6 +62,10 @@ func (s *Server) Flags(configSource func(key string) cli.ValueSource) []cli.Flag
 func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	cfg := NewConfig(cmd)
 
+	if err := cfg.ValidateTLS(cmd); err != nil {
+		return err
+	}
+
 	if cfg.Server.BaseURL == "" {
 		cfg.Server.BaseURL = cfg.ResolveBaseURL()
 	}
@@ -177,18 +181,46 @@ func setupCoreMiddleware(r chi.Router, cfg *Config) {
 }
 
 func startServer(ctx context.Context, handler http.Handler, cfg *Config, registry *Registry) error {
-	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
-	server := &http.Server{
-		Addr:              addr,
-		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second,
+	setup, err := configureTLS(cfg)
+	if err != nil {
+		return fmt.Errorf("configure TLS: %w", err)
 	}
 
-	errChan := make(chan error, 1)
+	server := &http.Server{
+		Addr:              setup.addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		TLSConfig:         setup.tlsConfig,
+	}
+
+	errChan := make(chan error, 2)
+
+	// Start ACME HTTP challenge/redirect server if needed.
+	var httpServer *http.Server
+	if setup.httpHandler != nil {
+		httpServer = &http.Server{
+			Addr:              setup.httpAddr,
+			Handler:           setup.httpHandler,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		go func() {
+			slog.Info("http redirect server listening", "addr", setup.httpAddr)
+			if listenErr := httpServer.ListenAndServe(); listenErr != nil && !errors.Is(listenErr, http.ErrServerClosed) {
+				errChan <- listenErr
+			}
+		}()
+	}
+
 	go func() {
-		slog.Info("server listening", "addr", addr)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errChan <- err
+		slog.Info("server listening", "addr", setup.addr, "tls", setup.tlsConfig != nil)
+		var listenErr error
+		if setup.tlsConfig != nil {
+			listenErr = server.ListenAndServeTLS("", "")
+		} else {
+			listenErr = server.ListenAndServe()
+		}
+		if listenErr != nil && !errors.Is(listenErr, http.ErrServerClosed) {
+			errChan <- listenErr
 		}
 	}()
 
@@ -209,6 +241,12 @@ func startServer(ctx context.Context, handler http.Handler, cfg *Config, registr
 
 	if err := registry.Shutdown(shutdownCtx); err != nil {
 		slog.Error("app shutdown errors", "error", err)
+	}
+
+	if httpServer != nil {
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			slog.Error("http redirect server shutdown error", "error", err)
+		}
 	}
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
