@@ -23,6 +23,7 @@ require (
 	github.com/wneessen/go-mail v0.7.2
 	golang.org/x/crypto v0.48.0
 	golang.org/x/text v0.34.0
+	golang.org/x/time v0.14.0
 )
 
 require (
