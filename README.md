@@ -110,7 +110,7 @@ srv.SetLayout(appLayout)
 The admin layout is owned by the admin package:
 
 ```go
-admin.New(layout, dashboardRenderer)
+admin.New(admin.WithLayout(layout), admin.WithDashboardRenderer(dashboardRenderer))
 ```
 
 A `LayoutFunc` receives a page title and content, and returns a wrapped component:

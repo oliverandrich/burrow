@@ -11,33 +11,31 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 ```go
 import authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"
 
-// With default templates (batteries-included).
-authApp := auth.New(authtpl.DefaultRenderer())
-
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
-    authApp,
-    admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
+    auth.New(
+        auth.WithRenderer(authtpl.DefaultRenderer()),
+        auth.WithAuthLayout(authtpl.AuthLayout()),
+        auth.WithAdminRenderer(authtpl.DefaultAdminRenderer()),
+    ),
+    admin.New(
+        admin.WithLayout(admintpl.Layout()),
+        admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
+    ),
     staticfiles.New(emptyFS), // serves auth + admin static files
     // ... other apps
 )
-
-// Use a minimal layout for public auth pages (login, register, recovery).
-authApp.SetAuthLayout(authtpl.AuthLayout())
-
-// Wire admin renderer for user/invite management pages.
-authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
 ```
 
 Or with custom renderers:
 
 ```go
 // With custom templates.
-authApp := auth.New(myCustomRenderer)
+auth.New(auth.WithRenderer(myCustomRenderer))
 
 // API-only (no HTML pages).
-authApp := auth.New(nil)
+auth.New()
 ```
 
 ## Default Templates
@@ -55,14 +53,14 @@ The default templates:
 
 By default, public auth pages (login, register, recovery, email verification) render inside the global app layout — which typically includes a full navbar. This is often undesirable for unauthenticated users.
 
-Use `SetAuthLayout()` to override the layout for public auth pages. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+Use `auth.WithAuthLayout()` to override the layout for public auth pages. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
 ```go
-// Use the built-in minimal auth layout (Bootstrap CSS, no navbar).
-authApp.SetAuthLayout(authtpl.AuthLayout())
-
-// Or provide your own custom layout.
-authApp.SetAuthLayout(myMinimalLayout)
+auth.New(
+    auth.WithRenderer(authtpl.DefaultRenderer()),
+    auth.WithAuthLayout(authtpl.AuthLayout()),    // built-in minimal layout
+    // auth.WithAuthLayout(myMinimalLayout),       // or your own custom layout
+)
 ```
 
 The built-in `authtpl.AuthLayout()` renders a minimal HTML shell with Bootstrap CSS but no navigation — just a clean, centered page suitable for login and registration forms.
@@ -232,9 +230,10 @@ Use `authtpl.DefaultAdminRenderer()` (from the `auth/templates` sub-package) for
 For email verification and invite emails, set an email service after configuration:
 
 ```go
-authApp := auth.New(authtpl.DefaultRenderer())
-// ... after srv.Run boots the server ...
-authApp.SetEmailService(myEmailService)
+auth.New(
+    auth.WithRenderer(authtpl.DefaultRenderer()),
+    auth.WithEmailService(myEmailService),
+)
 ```
 
 The `EmailService` interface:

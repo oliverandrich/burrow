@@ -12,7 +12,7 @@ import (
 
 // AuthLayout returns a minimal HTML layout for unauthenticated auth pages.
 // It renders a clean page with Bootstrap CSS but no navbar or navigation.
-// Pass this to auth.App.SetAuthLayout() to override the global app layout
+// Pass this to auth.WithAuthLayout() to override the global app layout
 // on login, register, recovery, and verification pages.
 func AuthLayout() burrow.LayoutFunc {
 	return authLayout

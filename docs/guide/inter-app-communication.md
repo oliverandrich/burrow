@@ -43,14 +43,14 @@ If a dependency is missing when `NewServer` processes your app, it panics at sta
     // Correct: session before auth, auth before notes
     srv := burrow.NewServer(
         session.New(),
-        auth.New(nil),
+        auth.New(),
         notes.New(),
     )
 
     // Wrong: notes before auth — panics at startup
     srv := burrow.NewServer(
         notes.New(),   // needs "auth"
-        auth.New(nil), // not registered yet!
+        auth.New(), // not registered yet!
     )
     ```
 

@@ -36,6 +36,7 @@ type App struct {
 	adminRenderer AdminRenderer
 	authLayout    burrow.LayoutFunc
 	logo          templ.Component
+	emailService  EmailService
 	config        *Config
 	globalConfig  *burrow.Config
 	cancelCleanup context.CancelFunc
@@ -51,9 +52,45 @@ type Config struct { //nolint:govet // fieldalignment: readability over optimiza
 	BaseURL             string // Populated from global config at Configure time.
 }
 
-// New creates a new auth app with the given page renderer.
-func New(renderer Renderer) *App {
-	return &App{renderer: renderer}
+// Option configures the auth app.
+type Option func(*App)
+
+// WithRenderer sets the page renderer for auth views.
+func WithRenderer(r Renderer) Option {
+	return func(a *App) { a.renderer = r }
+}
+
+// WithAuthLayout sets an optional layout for public (unauthenticated) auth pages.
+// When set, pages like login, register, and recovery use this layout instead
+// of the global app layout. Authenticated routes (credentials, recovery codes)
+// continue to use the global layout.
+func WithAuthLayout(fn burrow.LayoutFunc) Option {
+	return func(a *App) { a.authLayout = fn }
+}
+
+// WithLogoComponent sets an optional logo component rendered above auth page content.
+// When set, the logo appears on login, register, and recovery pages.
+func WithLogoComponent(c templ.Component) Option {
+	return func(a *App) { a.logo = c }
+}
+
+// WithAdminRenderer sets the admin page renderer for user management.
+func WithAdminRenderer(r AdminRenderer) Option {
+	return func(a *App) { a.adminRenderer = r }
+}
+
+// WithEmailService sets the email service for the auth app.
+func WithEmailService(e EmailService) Option {
+	return func(a *App) { a.emailService = e }
+}
+
+// New creates a new auth app with the given options.
+func New(opts ...Option) *App {
+	a := &App{}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
 }
 
 func (a *App) Name() string { return "auth" }
@@ -161,12 +198,12 @@ func (a *App) Configure(cmd *cli.Command) error {
 		return fmt.Errorf("create webauthn service: %w", err)
 	}
 
-	// Create handlers (email service is set via SetEmailService if needed).
-	a.handlers = NewHandlers(a.repo, waSvc, nil, a.renderer, a.config)
+	// Create handlers with the stored email service (if any).
+	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config)
 
-	// Create admin handlers if SetAdminRenderer was called before Register/Configure.
+	// Create admin handlers if an admin renderer was provided.
 	if a.adminRenderer != nil && a.adminHandlers == nil {
-		a.adminHandlers = newAdminHandlers(a.repo, a.adminRenderer, a.config, nil)
+		a.adminHandlers = newAdminHandlers(a.repo, a.adminRenderer, a.config, a.emailService)
 	}
 
 	return nil
@@ -346,44 +383,6 @@ func (a *App) Repo() *Repository { return a.repo }
 
 // Handlers returns the auth handlers for external access.
 func (a *App) Handlers() *Handlers { return a.handlers }
-
-// SetEmailService sets the email service for the auth app.
-// Call this after Configure if email mode is enabled.
-func (a *App) SetEmailService(email EmailService) {
-	if a.handlers != nil {
-		a.handlers.email = email
-	}
-	if a.adminHandlers != nil {
-		a.adminHandlers.email = email
-	}
-}
-
-// SetLogo sets an optional logo component rendered above auth page content.
-// When set, the logo appears on login, register, and recovery pages.
-func (a *App) SetLogo(c templ.Component) {
-	a.logo = c
-}
-
-// SetAuthLayout sets an optional layout for public (unauthenticated) auth pages.
-// When set, pages like login, register, and recovery use this layout instead
-// of the global app layout. Authenticated routes (credentials, recovery codes)
-// continue to use the global layout.
-func (a *App) SetAuthLayout(fn burrow.LayoutFunc) {
-	a.authLayout = fn
-}
-
-// SetAdminRenderer sets the admin page renderer for user management.
-// Call this after Register if admin rendering is needed.
-func (a *App) SetAdminRenderer(r AdminRenderer) {
-	a.adminRenderer = r
-	if a.repo != nil && r != nil {
-		var email EmailService
-		if a.handlers != nil {
-			email = a.handlers.email
-		}
-		a.adminHandlers = newAdminHandlers(a.repo, r, a.config, email)
-	}
-}
 
 func (a *App) setRole(ctx context.Context, cmd *cli.Command, role string) error {
 	username := cmd.Args().First()

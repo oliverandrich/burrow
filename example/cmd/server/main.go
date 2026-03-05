@@ -44,12 +44,6 @@ func main() {
 		Level: slog.LevelDebug,
 	})))
 
-	// Create the auth app with default renderers (batteries-included templates).
-	authApp := auth.New(authtpl.DefaultRenderer())
-
-	// Create the jobs app for background job processing.
-	jobsApp := jobs.New()
-
 	// Create the staticfiles app (walks FS to compute content hashes).
 	staticApp, err := staticfiles.New(emptyFS)
 	if err != nil {
@@ -63,30 +57,28 @@ func main() {
 		csrf.New(),
 		i18n.New(),
 		messages.New(),
-		authApp,
+		auth.New(
+			auth.WithRenderer(authtpl.DefaultRenderer()),
+			auth.WithAuthLayout(authtpl.AuthLayout()),
+			auth.WithLogoComponent(layout.Logo()),
+			auth.WithAdminRenderer(authtpl.DefaultAdminRenderer()),
+		),
 		bootstrap.New(),
 		healthcheck.New(),
-		jobsApp,
+		jobs.New(
+			jobs.WithAdminRenderer(jobstpl.DefaultAdminRenderer()),
+		),
 		pages.New(),
 		notes.New(),
-		admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
+		admin.New(
+			admin.WithLayout(admintpl.Layout()),
+			admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
+		),
 		staticApp,
 	)
 
 	// Use the app layout with navbar (overrides bare bootstrap layout).
 	srv.SetLayout(layout.Layout())
-
-	// Use a minimal layout for public auth pages (login, register, recovery).
-	authApp.SetAuthLayout(authtpl.AuthLayout())
-
-	// Show a brand logo above the auth forms.
-	authApp.SetLogo(layout.Logo())
-
-	// Wire admin renderer for auth admin pages (users, invites).
-	authApp.SetAdminRenderer(authtpl.DefaultAdminRenderer())
-
-	// Wire admin renderer for jobs admin pages.
-	jobsApp.SetAdminRenderer(jobstpl.DefaultAdminRenderer())
 
 	cmd := &cli.Command{
 		Name:     "example",

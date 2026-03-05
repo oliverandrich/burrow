@@ -34,6 +34,14 @@ func WithMaxRetries(n int) JobOption {
 	}
 }
 
+// Option configures the jobs app.
+type Option func(*App)
+
+// WithAdminRenderer sets the admin page renderer for job management.
+func WithAdminRenderer(r AdminRenderer) Option {
+	return func(a *App) { a.adminRenderer = r }
+}
+
 // App implements the jobs contrib app.
 type App struct {
 	repo          *Repository
@@ -45,12 +53,16 @@ type App struct {
 	adminHdl      *adminHandlers
 }
 
-// New creates a new jobs app.
-func New() *App {
-	return &App{
+// New creates a new jobs app with the given options.
+func New(opts ...Option) *App {
+	a := &App{
 		handlers: make(map[string]HandlerFunc),
 		retries:  make(map[string]int),
 	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
 }
 
 func (a *App) Name() string { return "jobs" }
@@ -58,7 +70,7 @@ func (a *App) Name() string { return "jobs" }
 func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 
-	// Create admin handlers if SetAdminRenderer was called before Register.
+	// Create admin handlers if WithAdminRenderer was provided.
 	if a.adminRenderer != nil {
 		a.adminHdl = newAdminHandlers(a.repo, a.adminRenderer)
 	}
@@ -142,15 +154,6 @@ func (a *App) EnqueueAt(ctx context.Context, typeName string, payload any, runAt
 
 	maxRetries := a.retries[typeName]
 	return a.repo.Enqueue(ctx, typeName, string(data), maxRetries, runAt)
-}
-
-// SetAdminRenderer sets the admin page renderer for job management.
-// Call this before or after Register — admin routes are only active when set.
-func (a *App) SetAdminRenderer(r AdminRenderer) {
-	a.adminRenderer = r
-	if a.repo != nil && r != nil {
-		a.adminHdl = newAdminHandlers(a.repo, r)
-	}
 }
 
 // AdminRoutes registers admin routes for job management.

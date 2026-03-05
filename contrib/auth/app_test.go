@@ -670,8 +670,8 @@ func TestAdminRoutes(t *testing.T) {
 	repo := NewRepository(db)
 
 	mockAdminR := &mockAdminRenderer{}
-	app := &App{repo: repo}
-	app.SetAdminRenderer(mockAdminR)
+	app := &App{repo: repo, adminRenderer: mockAdminR}
+	app.adminHandlers = newAdminHandlers(repo, mockAdminR, &Config{}, nil)
 
 	r := chi.NewRouter()
 	// Inject admin user into context.
@@ -697,10 +697,9 @@ func TestAdminRoutes(t *testing.T) {
 func TestAdminRoutesWithLifecycleOrder(t *testing.T) {
 	db := openTestDB(t)
 
-	// Simulate real lifecycle: New → SetAdminRenderer → Register → Configure → AdminRoutes.
-	app := New(nil)
+	// Simulate real lifecycle: New (with options) → Register → Configure → AdminRoutes.
 	mockAdminR := &mockAdminRenderer{}
-	app.SetAdminRenderer(mockAdminR)
+	app := New(WithAdminRenderer(mockAdminR))
 
 	// Register sets repo (happens inside srv.Run → bootstrap).
 	err := app.Register(&burrow.AppConfig{DB: db})
@@ -1254,17 +1253,14 @@ func TestAdminDeleteUserSelf(t *testing.T) {
 	assert.Len(t, users, 1)
 }
 
-// --- SetAuthLayout tests ---
+// --- WithAuthLayout option tests ---
 
-func TestSetAuthLayout(t *testing.T) {
-	app := &App{}
-	assert.Nil(t, app.authLayout, "authLayout should be nil by default")
-
+func TestWithAuthLayoutOption(t *testing.T) {
 	testLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
 		return content
 	})
-	app.SetAuthLayout(testLayout)
-	assert.NotNil(t, app.authLayout, "authLayout should be set after SetAuthLayout")
+	app := New(WithAuthLayout(testLayout))
+	assert.NotNil(t, app.authLayout, "authLayout should be set via WithAuthLayout option")
 }
 
 func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
@@ -1280,7 +1276,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 	authLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
 		return content
 	})
-	app.SetAuthLayout(authLayout)
+	app.authLayout = authLayout
 
 	// Set up a global layout that should be overridden on public routes.
 	globalLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
@@ -1322,7 +1318,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	authLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
 		return content
 	})
-	app.SetAuthLayout(authLayout)
+	app.authLayout = authLayout
 
 	// Set up a global layout.
 	globalLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {

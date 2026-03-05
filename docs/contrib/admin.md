@@ -13,19 +13,25 @@ import admintpl "codeberg.org/oliverandrich/burrow/contrib/admin/templates"
 
 srv := burrow.NewServer(
     session.New(),
-    auth.New(authRenderer),
-    admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()),
+    auth.New(auth.WithRenderer(authRenderer)),
+    admin.New(
+        admin.WithLayout(admintpl.Layout()),
+        admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
+    ),
     staticfiles.New(myStaticFS), // serves admin + user static files
     // ... other apps
 )
 ```
 
-The parameters accept these forms:
+Options:
 
 ```go
-admin.New(admintpl.Layout(), admintpl.DefaultDashboardRenderer()) // batteries-included
-admin.New(myCustomLayout, myCustomDashboard)  // custom layout + dashboard
-admin.New(nil, nil)                           // no layout, plain text dashboard
+admin.New(                                                        // batteries-included
+    admin.WithLayout(admintpl.Layout()),
+    admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
+)
+admin.New(admin.WithLayout(myCustomLayout), admin.WithDashboardRenderer(myCustomDashboard))
+admin.New()                                                       // no layout, plain text dashboard
 ```
 
 The admin app discovers admin views from other apps via the `HasAdmin` interface. Any app that implements `HasAdmin` gets its routes mounted under `/admin` with auth protection.

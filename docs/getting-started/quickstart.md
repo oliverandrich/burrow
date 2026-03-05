@@ -59,7 +59,7 @@ func main() {
     // Session must come before auth (auth depends on session).
     srv := burrow.NewServer(
         session.New(),
-        auth.New(nil), // nil renderer = API-only, no HTML pages
+        auth.New(), // no renderer = API-only, no HTML pages
         healthcheck.New(),
     )
 

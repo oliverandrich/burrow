@@ -20,10 +20,26 @@ type App struct {
 	dashboard DashboardRenderer
 }
 
-// New creates a new admin app. The layout wraps admin pages, and dashboard
-// renders the index page. Both are optional (pass nil for either).
-func New(layout burrow.LayoutFunc, dashboard DashboardRenderer) *App {
-	return &App{layout: layout, dashboard: dashboard}
+// Option configures the admin app.
+type Option func(*App)
+
+// WithLayout sets the layout for admin pages.
+func WithLayout(fn burrow.LayoutFunc) Option {
+	return func(a *App) { a.layout = fn }
+}
+
+// WithDashboardRenderer sets the dashboard page renderer.
+func WithDashboardRenderer(r DashboardRenderer) Option {
+	return func(a *App) { a.dashboard = r }
+}
+
+// New creates a new admin app with the given options.
+func New(opts ...Option) *App {
+	a := &App{}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
 }
 
 func (a *App) Name() string { return "admin" }

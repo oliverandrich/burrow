@@ -234,7 +234,7 @@ In `main.go`:
 ```go
 srv := burrow.NewServer(
     session.New(),
-    auth.New(nil),
+    auth.New(),
     healthcheck.New(),
     notes.New(), // Add your app here
 )
