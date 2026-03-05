@@ -57,6 +57,7 @@ nav:
       - Navigation: guide/navigation.md
       - Pagination: guide/pagination.md
       - Inter-App Communication: guide/inter-app-communication.md
+      - Deployment: guide/deployment.md
   - Contrib Apps:
       - Session: contrib/session.md
       - Messages: contrib/messages.md
