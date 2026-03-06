@@ -1,0 +1,199 @@
+package templates
+
+import (
+	"fmt"
+
+	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+)
+
+// formPage renders a create or edit form.
+templ formPage(item any, fields []modeladmin.FormField, validationErrors *burrow.ValidationError, cfg modeladmin.RenderConfig) {
+	if item != nil {
+		<div class="d-flex justify-content-between align-items-center mb-2">
+			<h2 class="mb-0">Edit { cfg.Display }</h2>
+		</div>
+		<nav aria-label="breadcrumb" class="mb-4">
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+				<li class="breadcrumb-item"><a href={ templ.SafeURL("/admin/" + cfg.Slug) }>{ cfg.Display }</a></li>
+				<li class="breadcrumb-item active" aria-current="page">Edit</li>
+			</ol>
+		</nav>
+	} else {
+		<div class="d-flex justify-content-between align-items-center mb-2">
+			<h2 class="mb-0">New { cfg.Display }</h2>
+		</div>
+		<nav aria-label="breadcrumb" class="mb-4">
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+				<li class="breadcrumb-item"><a href={ templ.SafeURL("/admin/" + cfg.Slug) }>{ cfg.Display }</a></li>
+				<li class="breadcrumb-item active" aria-current="page">New</li>
+			</ol>
+		</nav>
+	}
+	if item != nil {
+		<form method="post" action={ templ.SafeURL(fmt.Sprintf("/admin/%s/%v", cfg.Slug, modeladmin.FieldValue(item, cfg.IDField))) }>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
+			@formFields(fields, validationErrors)
+			@formButtons(item, cfg)
+		</form>
+	} else {
+		<form method="post" action={ templ.SafeURL("/admin/" + cfg.Slug) }>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
+			@formFields(fields, validationErrors)
+			@formButtons(item, cfg)
+		</form>
+	}
+}
+
+// formFields renders all form field inputs.
+templ formFields(fields []modeladmin.FormField, validationErrors *burrow.ValidationError) {
+	for _, field := range fields {
+		@formField(field, validationErrors)
+	}
+}
+
+// formField renders a single form field based on its type.
+templ formField(field modeladmin.FormField, validationErrors *burrow.ValidationError) {
+	switch field.Type {
+		case "hidden":
+			<input type="hidden" name={ field.FormName() } value={ fmt.Sprintf("%v", field.Value) }/>
+		case "textarea":
+			<div class="mb-3">
+				<label for={ field.FormName() } class="form-label">{ field.Label }</label>
+				<textarea
+					class={ "form-control", templ.KV("is-invalid", hasFieldError(validationErrors, field.FormName())) }
+					id={ field.FormName() }
+					name={ field.FormName() }
+					rows="4"
+					if field.Required {
+						required
+					}
+				>{ fmt.Sprintf("%v", field.Value) }</textarea>
+				@fieldError(validationErrors, field.FormName())
+			</div>
+		case "select":
+			<div class="mb-3">
+				<label for={ field.FormName() } class="form-label">{ field.Label }</label>
+				<select
+					class={ "form-select", templ.KV("is-invalid", hasFieldError(validationErrors, field.FormName())) }
+					id={ field.FormName() }
+					name={ field.FormName() }
+					if field.Required {
+						required
+					}
+				>
+					for _, choice := range field.Choices {
+						<option value={ choice.Value } selected?={ fmt.Sprintf("%v", field.Value) == choice.Value }>{ choice.Label }</option>
+					}
+				</select>
+				@fieldError(validationErrors, field.FormName())
+			</div>
+		case "checkbox":
+			<div class="mb-3 form-check">
+				<input
+					type="checkbox"
+					class={ "form-check-input", templ.KV("is-invalid", hasFieldError(validationErrors, field.FormName())) }
+					id={ field.FormName() }
+					name={ field.FormName() }
+					checked?={ isTruthy(field.Value) }
+				/>
+				<label class="form-check-label" for={ field.FormName() }>{ field.Label }</label>
+				@fieldError(validationErrors, field.FormName())
+			</div>
+		case "number":
+			<div class="mb-3">
+				<label for={ field.FormName() } class="form-label">{ field.Label }</label>
+				<input
+					type="number"
+					class={ "form-control", templ.KV("is-invalid", hasFieldError(validationErrors, field.FormName())) }
+					id={ field.FormName() }
+					name={ field.FormName() }
+					value={ fmt.Sprintf("%v", field.Value) }
+					if field.Required {
+						required
+					}
+				/>
+				@fieldError(validationErrors, field.FormName())
+			</div>
+		case "email":
+			<div class="mb-3">
+				<label for={ field.FormName() } class="form-label">{ field.Label }</label>
+				<input
+					type="email"
+					class={ "form-control", templ.KV("is-invalid", hasFieldError(validationErrors, field.FormName())) }
+					id={ field.FormName() }
+					name={ field.FormName() }
+					value={ fmt.Sprintf("%v", field.Value) }
+					if field.Required {
+						required
+					}
+				/>
+				@fieldError(validationErrors, field.FormName())
+			</div>
+		case "date":
+			<div class="mb-3">
+				<label for={ field.FormName() } class="form-label">{ field.Label }</label>
+				<input
+					type="date"
+					class={ "form-control", templ.KV("is-invalid", hasFieldError(validationErrors, field.FormName())) }
+					id={ field.FormName() }
+					name={ field.FormName() }
+					value={ formatDateValue(field.Value) }
+					if field.Required {
+						required
+					}
+				/>
+				@fieldError(validationErrors, field.FormName())
+			</div>
+		default:
+			<div class="mb-3">
+				<label for={ field.FormName() } class="form-label">{ field.Label }</label>
+				<input
+					type="text"
+					class={ "form-control", templ.KV("is-invalid", hasFieldError(validationErrors, field.FormName())) }
+					id={ field.FormName() }
+					name={ field.FormName() }
+					value={ fmt.Sprintf("%v", field.Value) }
+					if field.Required {
+						required
+					}
+				/>
+				@fieldError(validationErrors, field.FormName())
+			</div>
+	}
+}
+
+// fieldError renders a validation error message for a field.
+templ fieldError(validationErrors *burrow.ValidationError, fieldName string) {
+	if validationErrors != nil {
+		for _, fe := range validationErrors.Errors {
+			if fe.Field == fieldName {
+				<div class="invalid-feedback">{ fe.Message }</div>
+			}
+		}
+	}
+}
+
+// formButtons renders the submit and delete buttons.
+templ formButtons(item any, cfg modeladmin.RenderConfig) {
+	<div class="d-flex gap-2 mt-4">
+		<button type="submit" class="btn btn-primary">Save</button>
+		if item != nil {
+			<button type="submit" name="_continue" value="1" class="btn btn-outline-secondary">Save &amp; continue</button>
+			if cfg.CanDelete {
+				<button
+					type="button"
+					class="btn btn-outline-danger ms-auto"
+					hx-delete={ fmt.Sprintf("/admin/%s/%v", cfg.Slug, modeladmin.FieldValue(item, cfg.IDField)) }
+					hx-headers={ fmt.Sprintf(`{"X-CSRF-Token":"%s"}`, csrf.Token(ctx)) }
+					hx-confirm="Are you sure you want to delete this item?"
+				>
+					Delete
+				</button>
+			}
+		}
+	</div>
+}

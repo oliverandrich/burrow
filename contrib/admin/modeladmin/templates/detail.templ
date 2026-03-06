@@ -1,0 +1,48 @@
+package templates
+
+import (
+	"fmt"
+
+	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+)
+
+// detailPage renders a read-only detail view for an item.
+templ detailPage(item any, cfg modeladmin.RenderConfig) {
+	<div class="d-flex justify-content-between align-items-center mb-2">
+		<h2 class="mb-0">{ fmt.Sprintf("%v", modeladmin.FieldValue(item, cfg.IDField)) }</h2>
+	</div>
+	<nav aria-label="breadcrumb" class="mb-4">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+			<li class="breadcrumb-item"><a href={ templ.SafeURL("/admin/" + cfg.Slug) }>{ cfg.Display }</a></li>
+			<li class="breadcrumb-item active" aria-current="page">{ fmt.Sprintf("%v", modeladmin.FieldValue(item, cfg.IDField)) }</li>
+		</ol>
+	</nav>
+	<div class="card mb-4">
+		<div class="card-header">
+			<h5 class="card-title mb-0">Details</h5>
+		</div>
+		<div class="card-body">
+			<dl class="row mb-0">
+				for _, field := range cfg.ListFields {
+					<dt class="col-sm-3">{ field }</dt>
+					<dd class="col-sm-9">@modeladmin.ColumnValue(item, field)</dd>
+				}
+			</dl>
+		</div>
+	</div>
+	if cfg.CanDelete {
+		<div class="d-flex">
+			<button
+				type="button"
+				class="btn btn-outline-danger ms-auto"
+				hx-delete={ fmt.Sprintf("/admin/%s/%v", cfg.Slug, modeladmin.FieldValue(item, cfg.IDField)) }
+				hx-headers={ fmt.Sprintf(`{"X-CSRF-Token":"%s"}`, csrf.Token(ctx)) }
+				hx-confirm="Are you sure you want to delete this item?"
+			>
+				Delete
+			</button>
+		</div>
+	}
+}
