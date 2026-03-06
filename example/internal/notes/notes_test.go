@@ -302,125 +302,30 @@ func TestDeleteNoteHandler(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Note deleted.")
 }
 
-// --- Repository admin tests ---
+// --- ModelAdmin integration tests ---
 
-func TestListAll(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-	ctx := context.Background()
-
-	// Create notes for different users.
-	require.NoError(t, repo.Create(ctx, &Note{Title: "User1 Note", Content: "A", UserID: 1}))
-	require.NoError(t, repo.Create(ctx, &Note{Title: "User2 Note", Content: "B", UserID: 2}))
-	require.NoError(t, repo.Create(ctx, &Note{Title: "User1 Second", Content: "C", UserID: 1}))
-
-	notes, err := repo.ListAll(ctx)
-	require.NoError(t, err)
-	require.Len(t, notes, 3)
-	// Most recent first.
-	assert.Equal(t, "User1 Second", notes[0].Title)
-	assert.Equal(t, "User2 Note", notes[1].Title)
-	assert.Equal(t, "User1 Note", notes[2].Title)
-}
-
-func TestListAllEmpty(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	notes, err := repo.ListAll(t.Context())
-	require.NoError(t, err)
-	assert.Empty(t, notes)
-}
-
-func TestListAllPaged(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-	ctx := context.Background()
-
-	// Create 5 notes across users.
-	for i := range 5 {
-		require.NoError(t, repo.Create(ctx, &Note{
-			Title:   fmt.Sprintf("Note %d", i+1),
-			Content: "body",
-			UserID:  int64(i%2 + 1),
-		}))
-	}
-
-	t.Run("first page", func(t *testing.T) {
-		pr := burrow.PageRequest{Limit: 2, Page: 1}
-		notes, page, err := repo.ListAllPaged(ctx, pr)
-		require.NoError(t, err)
-
-		assert.Len(t, notes, 2)
-		assert.Equal(t, 1, page.Page)
-		assert.Equal(t, 5, page.TotalCount)
-		assert.Equal(t, 3, page.TotalPages)
-		assert.True(t, page.HasMore)
-		// Most recent first.
-		assert.Equal(t, "Note 5", notes[0].Title)
-		assert.Equal(t, "Note 4", notes[1].Title)
-	})
-
-	t.Run("last page", func(t *testing.T) {
-		pr := burrow.PageRequest{Limit: 2, Page: 3}
-		notes, page, err := repo.ListAllPaged(ctx, pr)
-		require.NoError(t, err)
-
-		assert.Len(t, notes, 1)
-		assert.Equal(t, 3, page.Page)
-		assert.False(t, page.HasMore)
-	})
-
-	t.Run("beyond last page returns empty", func(t *testing.T) {
-		pr := burrow.PageRequest{Limit: 2, Page: 10}
-		notes, page, err := repo.ListAllPaged(ctx, pr)
-		require.NoError(t, err)
-
-		assert.Empty(t, notes)
-		assert.Equal(t, 5, page.TotalCount)
-		assert.Equal(t, 3, page.TotalPages)
-		assert.False(t, page.HasMore)
-	})
-}
-
-func TestAdminDelete(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-	ctx := context.Background()
-
-	note := &Note{Title: "Admin Delete", Content: "Gone", UserID: 1}
-	require.NoError(t, repo.Create(ctx, note))
-
-	// Admin deletes without user ownership check.
-	err := repo.AdminDelete(ctx, note.ID)
-	require.NoError(t, err)
-
-	notes, err := repo.ListAll(ctx)
-	require.NoError(t, err)
-	assert.Empty(t, notes)
-}
-
-// --- Admin handler tests ---
-
-func TestAdminListHandler(t *testing.T) {
+func TestModelAdminRoutes_List(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Admin View", Content: "Visible", UserID: 42}))
 
-	h := NewHandlers(repo)
-	req := httptest.NewRequest(http.MethodGet, "/admin/notes", nil)
+	app := New()
+	require.NoError(t, app.Register(&burrow.AppConfig{DB: db}))
+
+	r := chi.NewRouter()
+	app.AdminRoutes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
 	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
 
-	err := h.AdminList(rec, req)
-
-	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "Admin View")
 }
 
-func TestAdminDeleteHandler(t *testing.T) {
+func TestModelAdminRoutes_Delete(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -428,31 +333,23 @@ func TestAdminDeleteHandler(t *testing.T) {
 	note := &Note{Title: "Delete Me", Content: "Bye", UserID: 42}
 	require.NoError(t, repo.Create(ctx, note))
 
-	h := NewHandlers(repo)
+	app := New()
+	require.NoError(t, app.Register(&burrow.AppConfig{DB: db}))
 
-	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
-	r.Use(msgMW)
-	r.Delete("/admin/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
-		err := h.AdminDelete(w, r)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
+	app.AdminRoutes(r)
 
-	req := httptest.NewRequest(http.MethodDelete, "/admin/notes/1", nil)
-	req = session.Inject(req, map[string]any{})
+	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/notes/%d", note.ID), nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `hx-swap-oob="true"`)
-	assert.Contains(t, rec.Body.String(), "Note deleted.")
+	assert.Equal(t, "/admin/notes", rec.Header().Get("HX-Redirect"))
 
-	// Verify it's actually deleted.
-	notes, err := repo.ListAll(ctx)
+	// Verify deletion.
+	count, err := db.NewSelect().Model((*Note)(nil)).Count(ctx)
 	require.NoError(t, err)
-	assert.Empty(t, notes)
+	assert.Equal(t, 0, count)
 }
 
 func TestAdminNavItems(t *testing.T) {

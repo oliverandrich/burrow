@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+	matpl "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
@@ -31,11 +33,11 @@ type Note struct { //nolint:govet // fieldalignment: readability over optimizati
 	bun.BaseModel `bun:"table:notes,alias:n"`
 
 	ID        int64     `bun:",pk,autoincrement" json:"id"`
-	UserID    int64     `bun:",notnull" json:"user_id"`
-	Title     string    `bun:",notnull" json:"title"`
-	Content   string    `bun:",notnull,default:''" json:"content"`
-	CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	DeletedAt time.Time `bun:",soft_delete,nullzero" json:"-"`
+	UserID    int64     `bun:",notnull" json:"user_id" form:"-"`
+	Title     string    `bun:",notnull" json:"title" form:"label=Title"`
+	Content   string    `bun:",notnull,default:''" json:"content" form:"label=Content,widget=textarea"`
+	CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-"`
+	DeletedAt time.Time `bun:",soft_delete,nullzero" json:"-" form:"-"`
 }
 
 // Repository provides data access for notes.
@@ -97,50 +99,13 @@ func (r *Repository) Delete(ctx context.Context, noteID, userID int64) error {
 	return nil
 }
 
-// ListAll returns all notes across all users, most recent first.
-func (r *Repository) ListAll(ctx context.Context) ([]Note, error) {
-	var notes []Note
-	if err := r.db.NewSelect().Model(&notes).
-		Order("created_at DESC", "id DESC").
-		Scan(ctx); err != nil {
-		return nil, fmt.Errorf("list all notes: %w", err)
-	}
-	return notes, nil
-}
-
-// ListAllPaged returns paginated notes across all users using offset-based pagination.
-func (r *Repository) ListAllPaged(ctx context.Context, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
-	count, err := r.db.NewSelect().Model((*Note)(nil)).Count(ctx)
-	if err != nil {
-		return nil, burrow.PageResult{}, fmt.Errorf("count all notes: %w", err)
-	}
-
-	var notes []Note
-	q := r.db.NewSelect().Model(&notes).Order("created_at DESC", "id DESC")
-	q = burrow.ApplyOffset(q, pr)
-	if err := q.Scan(ctx); err != nil {
-		return nil, burrow.PageResult{}, fmt.Errorf("list all notes paged: %w", err)
-	}
-
-	return notes, burrow.OffsetResult(pr, count), nil
-}
-
-// AdminDelete soft-deletes any note by ID without user ownership check.
-func (r *Repository) AdminDelete(ctx context.Context, noteID int64) error {
-	if _, err := r.db.NewDelete().Model((*Note)(nil)).
-		Where("id = ?", noteID).
-		Exec(ctx); err != nil {
-		return fmt.Errorf("admin delete note %d: %w", noteID, err)
-	}
-	return nil
-}
-
 // --- App ---
 
 // App implements the notes contrib app.
 type App struct {
-	repo     *Repository
-	handlers *Handlers
+	repo       *Repository
+	handlers   *Handlers
+	notesAdmin *modeladmin.ModelAdmin[Note]
 }
 
 // New creates a new notes app.
@@ -155,6 +120,17 @@ func (a *App) Dependencies() []string { return []string{"auth"} }
 func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 	a.handlers = NewHandlers(a.repo)
+	a.notesAdmin = &modeladmin.ModelAdmin[Note]{
+		Slug:       "notes",
+		Display:    "Notes",
+		DB:         cfg.DB,
+		Renderer:   matpl.DefaultRenderer[Note](),
+		CanCreate:  true,
+		CanEdit:    true,
+		CanDelete:  true,
+		ListFields: []string{"ID", "Title", "Content", "UserID", "CreatedAt"},
+		OrderBy:    "created_at DESC, id DESC",
+	}
 	return nil
 }
 
@@ -178,13 +154,10 @@ func (a *App) NavItems() []burrow.NavItem {
 }
 
 func (a *App) AdminRoutes(r chi.Router) {
-	if a.handlers == nil {
+	if a.notesAdmin == nil {
 		return
 	}
-	h := a.handlers
-
-	r.Get("/notes", burrow.Handle(h.AdminList))
-	r.Delete("/notes/{id}", burrow.Handle(h.AdminDelete))
+	a.notesAdmin.Routes(r)
 }
 
 func (a *App) AdminNavItems() []burrow.NavItem {
@@ -291,51 +264,6 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
 	return nil
-}
-
-// AdminList renders the admin notes list page.
-func (h *Handlers) AdminList(w http.ResponseWriter, r *http.Request) error {
-	pr := burrow.ParsePageRequest(r)
-	notes, page, err := h.repo.ListAllPaged(r.Context(), pr)
-	if err != nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
-	}
-
-	tplNotes := make([]notestpl.AdminNote, len(notes))
-	for i, n := range notes {
-		tplNotes[i] = notestpl.AdminNote{
-			ID:        n.ID,
-			Title:     n.Title,
-			Content:   n.Content,
-			UserID:    n.UserID,
-			CreatedAt: n.CreatedAt,
-		}
-	}
-
-	content := notestpl.AdminListPage(tplNotes, page)
-	layout := burrow.Layout(r.Context())
-	if layout != nil {
-		return burrow.Render(w, r, http.StatusOK, layout("Notes", content))
-	}
-	return burrow.Render(w, r, http.StatusOK, content)
-}
-
-// AdminDelete removes any note by ID (admin privilege, no user check).
-func (h *Handlers) AdminDelete(w http.ResponseWriter, r *http.Request) error {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		return burrow.NewHTTPError(http.StatusBadRequest, "invalid note id")
-	}
-
-	if err := h.repo.AdminDelete(r.Context(), id); err != nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete note")
-	}
-
-	if err := messages.AddSuccess(w, r, "Note deleted."); err != nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
-	}
-
-	return burrow.Render(w, r, http.StatusOK, bstpl.AlertsOOB())
 }
 
 // Delete removes a note owned by the authenticated user.
