@@ -1,0 +1,103 @@
+{{ define "jobs/admin_detail" -}}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">{{ .Job.Type }} <small class="text-body-secondary">#{{ itoa .Job.ID }}</small></h2>
+</div>
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/">{{ t "admin-jobs-breadcrumb-admin" }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/jobs">{{ t "admin-jobs-breadcrumb-jobs" }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ t "admin-job-detail-breadcrumb-job" }}{{ itoa .Job.ID }}</li>
+    </ol>
+</nav>
+<!-- Job information card -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">{{ t "admin-job-detail-info" }}</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">{{ t "admin-job-detail-id" }}</dt>
+            <dd class="col-sm-9">{{ itoa .Job.ID }}</dd>
+            <dt class="col-sm-3">{{ t "admin-job-detail-type" }}</dt>
+            <dd class="col-sm-9">{{ .Job.Type }}</dd>
+            <dt class="col-sm-3">{{ t "admin-job-detail-status" }}</dt>
+            <dd class="col-sm-9">{{ template "jobs/status_badge" .Job.Status }}</dd>
+            <dt class="col-sm-3">{{ t "admin-job-detail-attempts" }}</dt>
+            <dd class="col-sm-9">{{ printf "%d/%d" .Job.Attempts .Job.MaxRetries }}</dd>
+            <dt class="col-sm-3">{{ t "admin-job-detail-run-at" }}</dt>
+            <dd class="col-sm-9">{{ .Job.RunAt.Format "2006-01-02 15:04:05" }}</dd>
+            {{ if .Job.LockedAt -}}
+            <dt class="col-sm-3">{{ t "admin-job-detail-locked-at" }}</dt>
+            <dd class="col-sm-9">{{ .Job.LockedAt.Format "2006-01-02 15:04:05" }}</dd>
+            {{- end }}
+            {{ if .Job.CompletedAt -}}
+            <dt class="col-sm-3">{{ t "admin-job-detail-completed-at" }}</dt>
+            <dd class="col-sm-9">{{ .Job.CompletedAt.Format "2006-01-02 15:04:05" }}</dd>
+            {{- end }}
+            {{ if .Job.FailedAt -}}
+            <dt class="col-sm-3">{{ t "admin-job-detail-failed-at" }}</dt>
+            <dd class="col-sm-9">{{ .Job.FailedAt.Format "2006-01-02 15:04:05" }}</dd>
+            {{- end }}
+            <dt class="col-sm-3">{{ t "admin-job-detail-created-at" }}</dt>
+            <dd class="col-sm-9">{{ .Job.CreatedAt.Format "2006-01-02 15:04:05" }}</dd>
+            {{ if .Job.UpdatedAt -}}
+            <dt class="col-sm-3">{{ t "admin-job-detail-updated-at" }}</dt>
+            <dd class="col-sm-9">{{ .Job.UpdatedAt.Format "2006-01-02 15:04:05" }}</dd>
+            {{- end }}
+        </dl>
+    </div>
+</div>
+<!-- Payload card -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">{{ t "admin-job-detail-payload" }}</h5>
+    </div>
+    <div class="card-body">
+        <pre class="mb-0"><code>{{ prettyJSON .Job.Payload }}</code></pre>
+    </div>
+</div>
+<!-- Last error card (conditional) -->
+{{ if .Job.LastError -}}
+<div class="card mb-4 border-danger">
+    <div class="card-header text-bg-danger">
+        <h5 class="card-title mb-0">{{ t "admin-job-detail-last-error" }}</h5>
+    </div>
+    <div class="card-body">
+        <pre class="mb-0 text-danger">{{ .Job.LastError }}</pre>
+    </div>
+</div>
+{{- end }}
+<!-- Action buttons -->
+<div class="d-flex gap-2">
+    {{ if or (eq (jobStatus .Job) "failed") (eq (jobStatus .Job) "dead") -}}
+    <button
+        class="btn btn-success"
+        hx-post="/admin/jobs/{{ itoa .Job.ID }}/retry"
+        hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
+    >
+        {{ iconArrowCounterclockwise }}
+        {{ t "admin-job-detail-action-retry" }}
+    </button>
+    {{- end }}
+    {{ if or (eq (jobStatus .Job) "pending") (or (eq (jobStatus .Job) "running") (eq (jobStatus .Job) "failed")) -}}
+    <button
+        class="btn btn-warning"
+        hx-post="/admin/jobs/{{ itoa .Job.ID }}/cancel"
+        hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
+        hx-confirm="{{ t "admin-job-detail-cancel-confirm" }}"
+    >
+        {{ iconXCircle }}
+        {{ t "admin-job-detail-action-cancel" }}
+    </button>
+    {{- end }}
+    <button
+        class="btn btn-outline-danger ms-auto"
+        hx-delete="/admin/jobs/{{ itoa .Job.ID }}"
+        hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
+        hx-confirm="{{ t "admin-job-detail-delete-confirm" }}"
+    >
+        {{ iconTrash }}
+        {{ t "admin-job-detail-action-delete" }}
+    </button>
+</div>
+{{- end }}

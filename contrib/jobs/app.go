@@ -1,10 +1,12 @@
 package jobs
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"time"
 
@@ -19,6 +21,9 @@ var migrationFS embed.FS
 
 //go:embed translations
 var translationFS embed.FS
+
+//go:embed templates/*.html
+var htmlTemplateFS embed.FS
 
 // JobOption configures job handler registration.
 type JobOption func(*handlerConfig)
@@ -184,6 +189,78 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 	}
 }
 
+// TemplateFS returns the embedded HTML template files.
+func (a *App) TemplateFS() fs.FS {
+	sub, _ := fs.Sub(htmlTemplateFS, "templates")
+	return sub
+}
+
+// FuncMap returns static template functions for jobs templates.
+func (a *App) FuncMap() template.FuncMap {
+	return template.FuncMap{
+		"itoa":       func(id int64) string { return fmt.Sprintf("%d", id) },
+		"prettyJSON": prettyJSON,
+		"jobStatus":  func(j Job) string { return string(j.Status) },
+		"string":     func(v any) string { return fmt.Sprint(v) },
+		"jobsPageURL": func(status string, page, limit int) string {
+			if status != "" {
+				return fmt.Sprintf("/admin/jobs?status=%s&page=%d&limit=%d", status, page, limit)
+			}
+			return fmt.Sprintf("/admin/jobs?page=%d&limit=%d", page, limit)
+		},
+		"jobsPageLimit": func(page burrow.PageResult) int {
+			if page.TotalPages == 0 {
+				return 20
+			}
+			return (page.TotalCount + page.TotalPages - 1) / page.TotalPages
+		},
+		"pageNumbers":               pageNumbers,
+		"iconEye":                   func(class ...string) template.HTML { return bsicons.Eye(class...) },
+		"iconArrowCounterclockwise": func(class ...string) template.HTML { return bsicons.ArrowCounterclockwise(class...) },
+		"iconXCircle":               func(class ...string) template.HTML { return bsicons.XCircle(class...) },
+		"iconTrash":                 func(class ...string) template.HTML { return bsicons.Trash(class...) },
+		"iconListTask":              func(class ...string) template.HTML { return bsicons.ListTask(class...) },
+	}
+}
+
+// prettyJSON formats a JSON string with indentation, or returns it as-is if invalid.
+func prettyJSON(s string) string {
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, []byte(s), "", "  "); err != nil {
+		return s
+	}
+	return buf.String()
+}
+
+// pageNumbers returns page numbers to display, using -1 for ellipsis gaps.
+func pageNumbers(current, total int) []int {
+	if total <= 7 {
+		pages := make([]int, total)
+		for i := range total {
+			pages[i] = i + 1
+		}
+		return pages
+	}
+
+	pages := make([]int, 0, 7)
+	pages = append(pages, 1)
+
+	if current > 3 {
+		pages = append(pages, -1)
+	}
+
+	for p := max(2, current-1); p <= min(total-1, current+1); p++ {
+		pages = append(pages, p)
+	}
+
+	if current < total-2 {
+		pages = append(pages, -1)
+	}
+
+	pages = append(pages, total)
+	return pages
+}
+
 // TranslationFS returns the embedded translation files.
 func (a *App) TranslationFS() fs.FS { return translationFS }
 
@@ -195,4 +272,6 @@ var (
 	_ burrow.HasShutdown     = (*App)(nil)
 	_ burrow.HasAdmin        = (*App)(nil)
 	_ burrow.HasTranslations = (*App)(nil)
+	_ burrow.HasTemplates    = (*App)(nil)
+	_ burrow.HasFuncMap      = (*App)(nil)
 )
