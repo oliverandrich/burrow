@@ -75,14 +75,14 @@ func main() {
 	fmt.Println()
 	fmt.Println("package bsicons")
 	fmt.Println()
-	fmt.Println("import \"github.com/a-h/templ\"")
+	fmt.Println("import \"html/template\"")
 	fmt.Println()
 
 	// Named functions — each inlines its SVG data so the linker can
 	// eliminate unused icons from the binary.
 	for _, ic := range icons {
-		fmt.Printf("// %s returns the %q Bootstrap Icon as a templ.Component.\n", ic.FuncName, ic.Name)
-		fmt.Printf("func %s(class ...string) templ.Component { return icon(%q, class...) }\n\n", ic.FuncName, ic.Inner)
+		fmt.Printf("// %s returns the %q Bootstrap Icon as a template.HTML value.\n", ic.FuncName, ic.Name)
+		fmt.Printf("func %s(class ...string) template.HTML { return icon(%q, class...) }\n\n", ic.FuncName, ic.Inner)
 	}
 }
 
