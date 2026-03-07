@@ -95,6 +95,70 @@ func (a *App) handleUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// deactivateUserHandler returns a handler that deactivates a user.
+func deactivateUserHandler(repo *Repository) burrow.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			return burrow.NewHTTPError(http.StatusBadRequest, "invalid user id")
+		}
+
+		currentUser := UserFromContext(r.Context())
+		if currentUser != nil && currentUser.ID == id {
+			return burrow.NewHTTPError(http.StatusBadRequest, "cannot deactivate your own account")
+		}
+
+		if err := repo.SetUserActive(r.Context(), id, false); err != nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to deactivate user")
+		}
+
+		slog.Info("user deactivated", "user_id", id, "deactivated_by", currentUser.ID) //nolint:gosec // G706: IDs are int64
+		w.Header().Set("HX-Redirect", "/admin/users")
+		w.WriteHeader(http.StatusOK)
+		return nil
+	}
+}
+
+// activateUserHandler returns a handler that activates a user.
+func activateUserHandler(repo *Repository) burrow.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			return burrow.NewHTTPError(http.StatusBadRequest, "invalid user id")
+		}
+
+		if err := repo.SetUserActive(r.Context(), id, true); err != nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to activate user")
+		}
+
+		currentUser := UserFromContext(r.Context())
+		slog.Info("user activated", "user_id", id, "activated_by", currentUser.ID) //nolint:gosec // G706: IDs are int64
+		w.Header().Set("HX-Redirect", "/admin/users")
+		w.WriteHeader(http.StatusOK)
+		return nil
+	}
+}
+
+// isDeactivatable returns true if the user is active and not the current request user.
+// Since ShowWhen has no access to the request, we only check IsActive here.
+// The handler itself prevents self-deactivation.
+func isDeactivatable(item any) bool {
+	u, ok := item.(User)
+	if !ok {
+		return false
+	}
+	return u.IsActive
+}
+
+// isActivatable returns true if the user is inactive.
+func isActivatable(item any) bool {
+	u, ok := item.(User)
+	if !ok {
+		return false
+	}
+	return !u.IsActive
+}
+
 // handleDeleteUser soft-deletes a user by ID.
 func (a *App) handleDeleteUser(w http.ResponseWriter, r *http.Request) error {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)

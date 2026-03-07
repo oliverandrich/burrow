@@ -64,10 +64,11 @@ func TestDefaultRenderer_List(t *testing.T) {
 	}
 	page := burrow.PageResult{Page: 1, TotalCount: 2, TotalPages: 1}
 	cfg := modeladmin.RenderConfig{
-		Slug:       "items",
-		Display:    "Items",
-		ListFields: []string{"ID", "Name"},
-		IDField:    "ID",
+		Slug:            "items",
+		Display:         "Items",
+		ListFields:      []string{"ID", "Name"},
+		ListFieldLabels: []string{"ID", "Name"},
+		IDField:         "ID",
 	}
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items", nil)
@@ -155,10 +156,11 @@ func TestDefaultRenderer_Detail(t *testing.T) {
 	r := DefaultRenderer[testItem]()
 	item := &testItem{ID: 1, Name: "Alpha"}
 	cfg := modeladmin.RenderConfig{
-		Slug:       "items",
-		Display:    "Items",
-		ListFields: []string{"ID", "Name"},
-		IDField:    "ID",
+		Slug:            "items",
+		Display:         "Items",
+		ListFields:      []string{"ID", "Name"},
+		ListFieldLabels: []string{"ID", "Name"},
+		IDField:         "ID",
 	}
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/1", nil)

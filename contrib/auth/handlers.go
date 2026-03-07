@@ -332,6 +332,10 @@ func (h *Handlers) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 		slog.Warn("failed to update credential sign count", "error", updateErr)
 	}
 
+	if !foundUser.IsActive {
+		return errorJSON(w, http.StatusForbidden, "account deactivated")
+	}
+
 	if h.UseEmailMode() && h.config.RequireVerification && !foundUser.EmailVerified {
 		return burrow.JSON(w, http.StatusForbidden, map[string]any{
 			"error":    "email_not_verified",
@@ -454,6 +458,10 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 	user, err := h.repo.GetUserByUsername(r.Context(), req.Username)
 	if err != nil {
 		return errorJSON(w, http.StatusUnauthorized, "invalid username or recovery code")
+	}
+
+	if !user.IsActive {
+		return errorJSON(w, http.StatusForbidden, "account deactivated")
 	}
 
 	normalizedCode := NormalizeCode(req.Code)

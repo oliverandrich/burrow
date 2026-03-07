@@ -15,9 +15,9 @@
     </div>
     <div class="card-body">
         <dl class="row mb-0">
-            {{- range .Cfg.ListFields }}
-            <dt class="col-sm-3">{{ . }}</dt>
-            <dd class="col-sm-9">{{ columnValue $.Item . }}</dd>
+            {{- range $i, $field := .Cfg.ListFields }}
+            <dt class="col-sm-3">{{ index $.Cfg.ListFieldLabels $i }}</dt>
+            <dd class="col-sm-9">{{ columnValue $.Item $field }}</dd>
             {{- end }}
         </dl>
     </div>

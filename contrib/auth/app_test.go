@@ -95,6 +95,7 @@ func openTestDB(t *testing.T) *bun.DB {
 	for _, mig := range []string{
 		"migrations/001_initial_schema.up.sql",
 		"migrations/002_invite_label.up.sql",
+		"migrations/003_user_is_active.up.sql",
 	} {
 		data, err := fs.ReadFile(migrationFS, mig)
 		require.NoError(t, err)
@@ -1088,6 +1089,129 @@ func TestAdminDeleteUserSelf(t *testing.T) {
 	users, err := repo.ListUsers(ctx)
 	require.NoError(t, err)
 	assert.Len(t, users, 1)
+}
+
+// --- SetUserActive / Deactivate / Activate tests ---
+
+func TestSetUserActive(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	user, err := repo.CreateUser(ctx, "alice", "Alice")
+	require.NoError(t, err)
+	assert.True(t, user.IsActive, "new users should be active by default")
+
+	// Deactivate.
+	require.NoError(t, repo.SetUserActive(ctx, user.ID, false))
+	updated, err := repo.GetUserByID(ctx, user.ID)
+	require.NoError(t, err)
+	assert.False(t, updated.IsActive)
+
+	// Reactivate.
+	require.NoError(t, repo.SetUserActive(ctx, user.ID, true))
+	updated, err = repo.GetUserByID(ctx, user.ID)
+	require.NoError(t, err)
+	assert.True(t, updated.IsActive)
+}
+
+func TestIsDeactivatable(t *testing.T) {
+	assert.True(t, isDeactivatable(User{IsActive: true}))
+	assert.False(t, isDeactivatable(User{IsActive: false}))
+	assert.False(t, isDeactivatable("not a user"))
+}
+
+func TestIsActivatable(t *testing.T) {
+	assert.True(t, isActivatable(User{IsActive: false}))
+	assert.False(t, isActivatable(User{IsActive: true}))
+	assert.False(t, isActivatable("not a user"))
+}
+
+// userActionRouter creates a chi router with a POST handler and user context.
+func userActionRouter(handler burrow.HandlerFunc, user *User) *chi.Mux {
+	router := chi.NewRouter()
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rctx := WithUser(r.Context(), user)
+			next.ServeHTTP(w, r.WithContext(rctx))
+		})
+	})
+	router.Post("/admin/users/{id}/deactivate", burrow.Handle(handler))
+	router.Post("/admin/users/{id}/activate", burrow.Handle(handler))
+	return router
+}
+
+func TestDeactivateUserSuccess(t *testing.T) {
+	_, repo := newTestApp(t)
+	ctx := context.Background()
+
+	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
+
+	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	require.NoError(t, err)
+
+	router := userActionRouter(deactivateUserHandler(repo), adminUser)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/deactivate", target.ID), nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "/admin/users", rec.Header().Get("HX-Redirect"))
+
+	updated, err := repo.GetUserByID(ctx, target.ID)
+	require.NoError(t, err)
+	assert.False(t, updated.IsActive)
+}
+
+func TestDeactivateUserSelf(t *testing.T) {
+	_, repo := newTestApp(t)
+	ctx := context.Background()
+
+	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
+
+	router := userActionRouter(deactivateUserHandler(repo), adminUser)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/deactivate", adminUser.ID), nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	// User should still be active.
+	updated, err := repo.GetUserByID(ctx, adminUser.ID)
+	require.NoError(t, err)
+	assert.True(t, updated.IsActive)
+}
+
+func TestActivateUserSuccess(t *testing.T) {
+	_, repo := newTestApp(t)
+	ctx := context.Background()
+
+	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
+
+	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserActive(ctx, target.ID, false))
+
+	router := userActionRouter(activateUserHandler(repo), adminUser)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/activate", target.ID), nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "/admin/users", rec.Header().Get("HX-Redirect"))
+
+	updated, err := repo.GetUserByID(ctx, target.ID)
+	require.NoError(t, err)
+	assert.True(t, updated.IsActive)
 }
 
 // --- WithAuthLayout option tests ---

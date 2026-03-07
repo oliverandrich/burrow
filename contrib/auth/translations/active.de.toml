@@ -71,7 +71,11 @@ admin-users-email = "E-Mail"
 admin-users-role = "Rolle"
 admin-users-created = "Erstellt"
 admin-users-none = "Keine Benutzer gefunden."
+admin-users-active = "Aktiv"
 admin-users-verified = "Verifiziert"
+admin-users-action-deactivate = "Deaktivieren"
+admin-users-action-activate = "Aktivieren"
+admin-users-deactivate-confirm = "Möchten Sie diesen Benutzer wirklich deaktivieren? Der Benutzer kann sich dann nicht mehr anmelden."
 
 # Admin: Benutzerdetails
 admin-user-detail-info = "Benutzerinformationen"

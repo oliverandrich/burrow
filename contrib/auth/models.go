@@ -31,6 +31,7 @@ type User struct {
 	Credentials     []Credential `bun:"rel:has-many,join:id=user_id" json:"credentials,omitempty" form:"-"`
 	ID              int64        `bun:",pk,autoincrement" json:"id" admin:"i18n:admin-users-id"`
 	EmailVerified   bool         `bun:",notnull,default:false" json:"email_verified" form:"-"`
+	IsActive        bool         `bun:",notnull,default:true" json:"is_active" form:"-" admin:"i18n:admin-users-active"`
 }
 
 // IsAdmin returns true if the user has the admin role.

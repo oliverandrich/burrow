@@ -104,18 +104,19 @@ type ActiveChoice struct {
 
 // RenderConfig holds display metadata passed to the renderer.
 type RenderConfig struct { //nolint:govet // fieldalignment: readability over optimization
-	Slug           string
-	Display        string
-	CanCreate      bool
-	CanEdit        bool
-	CanDelete      bool
-	ListFields     []string
-	IDField        string // struct field name for the primary key (default: "ID")
-	Filters        []ActiveFilter
-	RowActions     []RenderAction
-	HasRowActions  bool
-	ItemActionSets [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
-	EmptyMessage   string
+	Slug            string
+	Display         string
+	CanCreate       bool
+	CanEdit         bool
+	CanDelete       bool
+	ListFields      []string // Go struct field names (for columnValue/fieldValue lookups)
+	ListFieldLabels []string // translated column headers (parallel to ListFields)
+	IDField         string   // struct field name for the primary key (default: "ID")
+	Filters         []ActiveFilter
+	RowActions      []RenderAction
+	HasRowActions   bool
+	ItemActionSets  [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
+	EmptyMessage    string
 }
 
 // renderConfig returns the RenderConfig for this ModelAdmin.
@@ -152,17 +153,15 @@ func (ma *ModelAdmin[T]) translateRenderConfig(cfg *RenderConfig, r *http.Reques
 
 	// Translate struct field label keys (admin:"i18n:...") via i18n context.
 	labelKeys := fieldLabelKeys[T]()
-	if len(labelKeys) > 0 {
-		translated := make([]string, len(cfg.ListFields))
-		for i, f := range cfg.ListFields {
-			if key, ok := labelKeys[f]; ok {
-				translated[i] = i18n.T(ctx, key)
-			} else {
-				translated[i] = f
-			}
+	labels := make([]string, len(cfg.ListFields))
+	for i, f := range cfg.ListFields {
+		if key, ok := labelKeys[f]; ok {
+			labels[i] = i18n.T(ctx, key)
+		} else {
+			labels[i] = f
 		}
-		cfg.ListFields = translated
 	}
+	cfg.ListFieldLabels = labels
 
 	if ma.DisplayKey != "" {
 		cfg.Display = i18n.T(ctx, ma.DisplayKey)

@@ -110,10 +110,40 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		CanCreate:  false,
 		CanEdit:    false,
 		CanDelete:  false,
-		ListFields: []string{"ID", "Username", "Name", "Email", "Role", "CreatedAt"},
+		ListFields: []string{"ID", "Username", "Name", "Email", "Role", "IsActive", "CreatedAt"},
 		OrderBy:    "id DESC",
 		Filters: []modeladmin.FilterDef{
 			{Field: "role", Label: "Role", LabelKey: "admin-users-role", Type: "select", Choices: roleChoices()},
+		},
+		RowActions: []modeladmin.RowAction{
+			{
+				Slug:     "deactivate",
+				Label:    "admin-users-action-deactivate",
+				Icon:     bsicons.PersonSlash(),
+				Method:   "POST",
+				Class:    "btn-outline-secondary",
+				Confirm:  "admin-users-deactivate-confirm",
+				Handler:  deactivateUserHandler(a.repo),
+				ShowWhen: isDeactivatable,
+			},
+			{
+				Slug:     "activate",
+				Label:    "admin-users-action-activate",
+				Icon:     bsicons.PersonCheck(),
+				Method:   "POST",
+				Class:    "btn-outline-success",
+				Handler:  activateUserHandler(a.repo),
+				ShowWhen: isActivatable,
+			},
+			{
+				Slug:    "delete",
+				Label:   "modeladmin-delete",
+				Icon:    bsicons.Trash(),
+				Method:  "DELETE",
+				Class:   "btn-outline-danger",
+				Confirm: "admin-user-detail-delete-confirm",
+				Handler: a.handleDeleteUser,
+			},
 		},
 		EmptyMessageKey: "admin-users-none",
 	}
@@ -132,11 +162,11 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		RowActions: []modeladmin.RowAction{
 			{
 				Slug:     "revoke",
-				Label:    "Revoke",
+				Label:    "admin-invites-revoke",
 				Method:   "DELETE",
 				Icon:     bsicons.XCircle(),
 				Class:    "btn-outline-danger",
-				Confirm:  "Are you sure?",
+				Confirm:  "admin-invites-revoke-confirm",
 				Handler:  revokeInviteHandler(a.repo),
 				ShowWhen: isRevokable,
 			},
@@ -316,7 +346,7 @@ func (a *App) authMiddleware(next http.Handler) http.Handler {
 		}
 
 		user, err := a.repo.GetUserByID(r.Context(), userID)
-		if err != nil {
+		if err != nil || !user.IsActive {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -402,6 +432,8 @@ func (a *App) AdminRoutes(r chi.Router) {
 		r.Get("/{id}", burrow.Handle(a.handleUserDetail))
 		r.Post("/{id}", burrow.Handle(a.handleUpdateUser))
 		r.Delete("/{id}", burrow.Handle(a.handleDeleteUser))
+		r.Post("/{id}/deactivate", burrow.Handle(deactivateUserHandler(a.repo)))
+		r.Post("/{id}/activate", burrow.Handle(activateUserHandler(a.repo)))
 	})
 	r.Route("/invites", func(r chi.Router) {
 		r.Get("/", burrow.Handle(a.invitesAdmin.HandleList))

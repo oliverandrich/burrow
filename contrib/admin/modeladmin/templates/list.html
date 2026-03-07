@@ -39,7 +39,7 @@
     <table class="table table-striped table-hover">
         <thead>
             <tr>
-                {{- range .Cfg.ListFields }}
+                {{- range .Cfg.ListFieldLabels }}
                 <th scope="col">{{ . }}</th>
                 {{- end }}
                 {{- if .Cfg.HasRowActions }}
@@ -63,12 +63,12 @@
                 {{- end }}
                 {{- if $.Cfg.HasRowActions }}
                 <td class="text-end">
-                    <div class="btn-group btn-group-sm">
+                    <div class="d-flex gap-1 justify-content-end">
                         {{- $itemID := fieldValue $item $.Cfg.IDField }}
                         {{- range index $.Cfg.ItemActionSets $idx }}
                         <button
                             type="button"
-                            class="btn {{ .Class }}"
+                            class="btn btn-sm {{ .Class }}"
                             {{ if eq .Method "DELETE" }}hx-delete{{ else }}hx-post{{ end }}="/admin/{{ $.Cfg.Slug }}/{{ $itemID }}/{{ .Slug }}"
                             hx-headers='{"X-CSRF-Token":"{{ $.CSRFToken }}"}'
                             {{- if .Confirm }}

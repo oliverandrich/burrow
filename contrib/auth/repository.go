@@ -104,6 +104,18 @@ func (r *Repository) SetUserRole(ctx context.Context, userID int64, role string)
 	return nil
 }
 
+// SetUserActive sets a user's is_active flag.
+func (r *Repository) SetUserActive(ctx context.Context, userID int64, active bool) error {
+	if _, err := r.db.NewUpdate().Model((*User)(nil)).
+		Set("is_active = ?", active).
+		Set("updated_at = ?", time.Now()).
+		Where("id = ?", userID).
+		Exec(ctx); err != nil {
+		return fmt.Errorf("set active for user %d: %w", userID, err)
+	}
+	return nil
+}
+
 // MarkEmailVerified marks a user's email as verified.
 func (r *Repository) MarkEmailVerified(ctx context.Context, userID int64) error {
 	now := time.Now()
