@@ -357,7 +357,7 @@ func FieldValue(item any, field string) any {
 }
 
 // columnHTML renders the value of a struct field as safe HTML.
-func columnHTML(item any, field string) template.HTML {
+func columnHTML(item any, field string, t func(string) string) template.HTML {
 	v := reflect.ValueOf(item)
 	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
@@ -378,12 +378,25 @@ func columnHTML(item any, field string) template.HTML {
 		val = fv.Elem().Interface()
 	}
 
+	// Format bool values with i18n.
+	if b, ok := val.(bool); ok {
+		key := "modeladmin-no"
+		if b {
+			key = "modeladmin-yes"
+		}
+		label := key
+		if t != nil {
+			label = t(key)
+		}
+		return template.HTML("<span>" + html.EscapeString(label) + "</span>") //nolint:gosec // value is escaped
+	}
+
 	// Format time values.
-	if t, ok := val.(time.Time); ok {
-		if t.IsZero() {
+	if tm, ok := val.(time.Time); ok {
+		if tm.IsZero() {
 			return "<span>-</span>"
 		}
-		return template.HTML("<span>" + t.Format("2006-01-02 15:04") + "</span>") //nolint:gosec // time format is safe
+		return template.HTML("<span>" + tm.Format("2006-01-02 15:04") + "</span>") //nolint:gosec // time format is safe
 	}
 
 	return template.HTML("<span>" + html.EscapeString(fmt.Sprintf("%v", val)) + "</span>") //nolint:gosec // value is escaped

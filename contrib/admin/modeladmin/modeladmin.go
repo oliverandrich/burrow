@@ -173,5 +173,13 @@ func (ma *ModelAdmin[T]) translateRenderConfig(cfg *RenderConfig, r *http.Reques
 
 // ColumnValue extracts a display value for a list column from an item.
 func ColumnValue(item any, field string) template.HTML {
-	return columnHTML(item, field)
+	return columnHTML(item, field, nil)
+}
+
+// ColumnValueFunc returns a columnValue function that uses the given translator
+// for bool rendering (modeladmin-yes / modeladmin-no).
+func ColumnValueFunc(t func(string) string) func(any, string) template.HTML {
+	return func(item any, field string) template.HTML {
+		return columnHTML(item, field, t)
+	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 )
@@ -43,6 +44,7 @@ func funcMap() template.FuncMap {
 		"pageRange":       pageRange,
 		"dict":            dict,
 		"printf":          fmt.Sprintf,
+		"iconPlus":        func() template.HTML { return bsicons.PlusLg() },
 		"T":               func(key string) string { return key }, // stub, overridden per-request
 	}
 }
@@ -72,7 +74,10 @@ func executeTemplate(name string, t func(string) string, data map[string]any) (t
 	if err != nil {
 		return "", fmt.Errorf("clone templates: %w", err)
 	}
-	tmpl = tmpl.Funcs(template.FuncMap{"T": t})
+	tmpl = tmpl.Funcs(template.FuncMap{
+		"T":           t,
+		"columnValue": modeladmin.ColumnValueFunc(t),
+	})
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 		return "", fmt.Errorf("execute template %s: %w", name, err)

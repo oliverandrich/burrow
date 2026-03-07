@@ -5,8 +5,8 @@
         <span class="badge text-bg-secondary fs-6 align-middle ms-2">{{ .Page.TotalCount }}</span>
     </h2>
     {{- if .Cfg.CanCreate }}
-    <a href="/admin/{{ .Cfg.Slug }}/new" class="btn btn-primary btn-sm">
-        {{ T "modeladmin-new" }}
+    <a href="/admin/{{ .Cfg.Slug }}/new" class="btn btn-primary">
+        {{ iconPlus }} {{ T "modeladmin-new" }}
     </a>
     {{- end }}
 </div>
