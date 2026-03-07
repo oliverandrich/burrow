@@ -44,7 +44,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#admin-sidebar" aria-label="Close"></button>
             </div>
             <div class="offcanvas-body p-3 d-flex flex-column" style="width: 280px; min-height: 100vh;">
-                <a href="/admin" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom d-none d-md-flex">
+                <a href="/admin" hx-get="/admin" hx-target="main" hx-push-url="true" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom d-none d-md-flex">
                     <span class="me-2 fs-5">{{ iconGearFill }}</span>
                     <span class="fs-5 fw-semibold">{{ t "admin-sidebar-title" }}</span>
                 </a>

@@ -7,7 +7,7 @@
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">Admin</a></li>
         <li class="breadcrumb-item active" aria-current="page">{{ t "admin-users-title" }}</li>
     </ol>
 </nav>
@@ -65,8 +65,8 @@
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
-        <li class="breadcrumb-item"><a href="/admin/users">{{ t "admin-users-title" }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/users" hx-get="/admin/users" hx-target="main" hx-push-url="true">{{ t "admin-users-title" }}</a></li>
         <li class="breadcrumb-item active" aria-current="page">{{ .User.Username }}</li>
     </ol>
 </nav>

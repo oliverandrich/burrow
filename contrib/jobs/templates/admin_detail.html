@@ -4,8 +4,8 @@
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/">{{ t "admin-jobs-breadcrumb-admin" }}</a></li>
-        <li class="breadcrumb-item"><a href="/admin/jobs">{{ t "admin-jobs-breadcrumb-jobs" }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">{{ t "admin-jobs-breadcrumb-admin" }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/jobs" hx-get="/admin/jobs" hx-target="main" hx-push-url="true">{{ t "admin-jobs-breadcrumb-jobs" }}</a></li>
         <li class="breadcrumb-item active" aria-current="page">{{ t "admin-job-detail-breadcrumb-job" }}{{ itoa .Job.ID }}</li>
     </ol>
 </nav>
