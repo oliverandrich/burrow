@@ -1,4 +1,4 @@
-package templates
+package bootstrap
 
 import (
 	"testing"
@@ -47,9 +47,13 @@ func TestPageLimit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// pageLimit is not exported, tested via the package-internal function.
 			got := pageLimit(burrow.PageResult{TotalCount: tt.totalCount, TotalPages: tt.totalPages})
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestPageURL(t *testing.T) {
+	assert.Equal(t, "/notes?page=2&limit=20", pageURL("/notes", 2, 20))
+	assert.Equal(t, "/admin/notes?page=1&limit=10", pageURL("/admin/notes", 1, 10))
 }

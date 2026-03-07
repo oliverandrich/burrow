@@ -7,15 +7,20 @@ package bootstrap
 
 import (
 	"embed"
+	"html/template"
 	"io/fs"
+	"maps"
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 )
 
 //go:embed static
 var staticFS embed.FS
+
+//go:embed templates
+var templateFS embed.FS
 
 // App implements a design system contrib app providing Bootstrap CSS/JS and htmx.
 type App struct{}
@@ -25,11 +30,32 @@ func New() *App { return &App{} }
 
 func (a *App) Name() string                       { return "bootstrap" }
 func (a *App) Register(_ *burrow.AppConfig) error { return nil }
+func (a *App) Dependencies() []string             { return []string{"staticfiles"} } //nolint:goconst
 
 // StaticFS returns the embedded static assets under the "bootstrap" prefix.
 func (a *App) StaticFS() (string, fs.FS) {
 	sub, _ := fs.Sub(staticFS, "static")
 	return "bootstrap", sub
+}
+
+// TemplateFS returns the embedded HTML template files.
+func (a *App) TemplateFS() fs.FS {
+	sub, _ := fs.Sub(templateFS, "templates")
+	return sub
+}
+
+// FuncMap returns template functions provided by the bootstrap app.
+func (a *App) FuncMap() template.FuncMap {
+	return template.FuncMap{
+		"iconSunFill":       func() template.HTML { return bsicons.SunFill() },
+		"iconMoonStarsFill": func() template.HTML { return bsicons.MoonStarsFill() },
+		"iconCircleHalf":    func() template.HTML { return bsicons.CircleHalf() },
+		"pageURL":           pageURL,
+		"pageLimit":         pageLimit,
+		"pageNumbers":       pageNumbers,
+		"add":               func(a, b int) int { return a + b },
+		"sub":               func(a, b int) int { return a - b },
+	}
 }
 
 // Middleware returns middleware that injects the bootstrap layout into the
@@ -50,7 +76,26 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 	}
 }
 
-// Layout returns a LayoutFunc using Bootstrap 5 and htmx.
+// Layout returns a LayoutFunc that renders page content inside the
+// bootstrap/layout template.
 func Layout() burrow.LayoutFunc {
-	return templates.Layout
+	return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+		exec := burrow.TemplateExecutorFromContext(r.Context())
+		if exec == nil {
+			return burrow.HTML(w, code, string(content))
+		}
+
+		layoutData := make(map[string]any, len(data)+2)
+		maps.Copy(layoutData, data)
+		layoutData["Content"] = content
+		if _, ok := layoutData["Title"]; !ok {
+			layoutData["Title"] = ""
+		}
+
+		html, err := exec(r, "bootstrap/layout", layoutData)
+		if err != nil {
+			return err
+		}
+		return burrow.HTML(w, code, string(html))
+	}
 }

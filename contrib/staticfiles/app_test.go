@@ -20,6 +20,7 @@ var (
 	_ burrow.App           = (*App)(nil)
 	_ burrow.HasMiddleware = (*App)(nil)
 	_ burrow.HasRoutes     = (*App)(nil)
+	_ burrow.HasFuncMap    = (*App)(nil)
 )
 
 // mustNew is a test helper that creates a staticfiles App and fails the test on error.
@@ -345,6 +346,28 @@ func TestNoContribsStillWorks(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "body{}", rec.Body.String())
+}
+
+func TestFuncMapStaticURL(t *testing.T) {
+	app := mustNew(t, testFS)
+
+	fm := app.FuncMap()
+	require.Contains(t, fm, "staticURL")
+
+	staticURL := fm["staticURL"].(func(string) string)
+
+	hash := contentHash([]byte("body{}"))
+	assert.Equal(t, "/static/dist/styles."+hash+".css", staticURL("dist/styles.css"))
+}
+
+func TestFuncMapStaticURLFallback(t *testing.T) {
+	app := mustNew(t, testFS)
+
+	fm := app.FuncMap()
+	staticURL := fm["staticURL"].(func(string) string)
+
+	// Unknown file falls back to prefix + name.
+	assert.Equal(t, "/static/unknown.css", staticURL("unknown.css"))
 }
 
 func TestMultipleContribs(t *testing.T) {

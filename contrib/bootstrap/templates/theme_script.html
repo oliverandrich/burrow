@@ -1,0 +1,10 @@
+{{ define "bootstrap/theme_script" -}}
+<script>
+    (function(){
+        var s=localStorage.getItem("theme")||"auto";
+        var t=s;
+        if(s==="auto"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}
+        document.documentElement.setAttribute("data-bs-theme",t)
+    })()
+</script>
+{{- end }}

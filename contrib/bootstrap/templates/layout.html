@@ -1,0 +1,19 @@
+{{ define "bootstrap/layout" -}}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }}</title>
+    <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
+    {{ template "bootstrap/theme_script" . }}
+    <script defer src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
+    <script defer src="{{ staticURL "bootstrap/htmx.min.js" }}"></script>
+</head>
+<body>
+    <main class="container py-4">
+        {{ .Content }}
+    </main>
+</body>
+</html>
+{{- end }}

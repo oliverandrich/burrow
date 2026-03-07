@@ -1,0 +1,47 @@
+{{ define "bootstrap/pagination" -}}
+{{ if gt .Page.TotalPages 1 }}
+<nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+        {{ if le .Page.Page 1 -}}
+        <li class="page-item disabled">
+            <span class="page-link" aria-hidden="true">&laquo;</span>
+        </li>
+        {{- else -}}
+        <li class="page-item">
+            <a class="page-link" href="{{ pageURL .BaseURL (sub .Page.Page 1) (pageLimit .Page) }}" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {{- end }}
+        {{ range pageNumbers .Page.Page .Page.TotalPages -}}
+        {{ if eq . -1 -}}
+        <li class="page-item disabled">
+            <span class="page-link">&hellip;</span>
+        </li>
+        {{- else if eq . $.Page.Page -}}
+        <li class="page-item active" aria-current="page">
+            <span class="page-link">{{ . }}</span>
+        </li>
+        {{- else -}}
+        <li class="page-item">
+            <a class="page-link" href="{{ pageURL $.BaseURL . (pageLimit $.Page) }}">
+                {{ . }}
+            </a>
+        </li>
+        {{- end }}
+        {{- end }}
+        {{ if not .Page.HasMore -}}
+        <li class="page-item disabled">
+            <span class="page-link" aria-hidden="true">&raquo;</span>
+        </li>
+        {{- else -}}
+        <li class="page-item">
+            <a class="page-link" href="{{ pageURL .BaseURL (add .Page.Page 1) (pageLimit .Page) }}" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        {{- end }}
+    </ul>
+</nav>
+{{ end }}
+{{- end }}

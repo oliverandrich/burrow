@@ -3,6 +3,7 @@ package staticfiles
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -82,6 +83,17 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 
 func (a *App) Routes(r chi.Router) {
 	r.Handle(a.prefix+"*", http.StripPrefix(a.prefix, http.FileServer(http.FS(a.hfs))))
+}
+
+func (a *App) FuncMap() template.FuncMap {
+	return template.FuncMap{
+		"staticURL": func(name string) string {
+			if hashed, exists := a.manifest[name]; exists {
+				return a.prefix + hashed
+			}
+			return a.prefix + name
+		},
+	}
 }
 
 func (a *App) contextMiddleware(next http.Handler) http.Handler {
