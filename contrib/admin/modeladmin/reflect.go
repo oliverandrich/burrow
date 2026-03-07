@@ -2,12 +2,12 @@ package modeladmin
 
 import (
 	"fmt"
+	"html"
+	"html/template"
 	"net/http"
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/a-h/templ"
 )
 
 // FormField describes a single form field derived from struct introspection.
@@ -328,8 +328,8 @@ func FieldValue(item any, field string) any {
 	return fv.Interface()
 }
 
-// columnComponent creates a templ component that renders the value of a struct field.
-func columnComponent(item any, field string) templ.Component {
+// columnHTML renders the value of a struct field as safe HTML.
+func columnHTML(item any, field string) template.HTML {
 	v := reflect.ValueOf(item)
 	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
@@ -337,7 +337,7 @@ func columnComponent(item any, field string) templ.Component {
 
 	fv := v.FieldByName(field)
 	if !fv.IsValid() {
-		return templ.Raw("<span>-</span>")
+		return "<span>-</span>"
 	}
 
 	val := fv.Interface()
@@ -345,7 +345,7 @@ func columnComponent(item any, field string) templ.Component {
 	// Handle pointer types.
 	if fv.Kind() == reflect.Pointer {
 		if fv.IsNil() {
-			return templ.Raw("<span>-</span>")
+			return "<span>-</span>"
 		}
 		val = fv.Elem().Interface()
 	}
@@ -353,10 +353,10 @@ func columnComponent(item any, field string) templ.Component {
 	// Format time values.
 	if t, ok := val.(time.Time); ok {
 		if t.IsZero() {
-			return templ.Raw("<span>-</span>")
+			return "<span>-</span>"
 		}
-		return templ.Raw(fmt.Sprintf("<span>%s</span>", t.Format("2006-01-02 15:04")))
+		return template.HTML("<span>" + t.Format("2006-01-02 15:04") + "</span>") //nolint:gosec // time format is safe
 	}
 
-	return templ.Raw(fmt.Sprintf("<span>%v</span>", val))
+	return template.HTML("<span>" + html.EscapeString(fmt.Sprintf("%v", val)) + "</span>") //nolint:gosec // value is escaped
 }

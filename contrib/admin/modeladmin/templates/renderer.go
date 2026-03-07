@@ -1,15 +1,79 @@
 package templates
 
 import (
+	"bytes"
+	"embed"
+	"fmt"
+	"html/template"
 	"net/http"
-
-	"github.com/a-h/templ"
+	"sync"
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 )
 
-// DefaultRenderer returns a Renderer that uses the built-in Bootstrap 5 Templ
+//go:embed *.html
+var templateFS embed.FS
+
+var (
+	tmplOnce sync.Once
+	tmpl     *template.Template
+)
+
+func getTemplates() *template.Template {
+	tmplOnce.Do(func() {
+		tmpl = template.Must(
+			template.New("").Funcs(funcMap()).ParseFS(templateFS, "*.html"),
+		)
+	})
+	return tmpl
+}
+
+func funcMap() template.FuncMap {
+	return template.FuncMap{
+		"hasFieldError":   hasFieldError,
+		"isTruthy":        isTruthy,
+		"formatDateValue": formatDateValue,
+		"columnValue":     modeladmin.ColumnValue,
+		"fieldValue":      modeladmin.FieldValue,
+		"add":             func(a, b int) int { return a + b },
+		"sub":             func(a, b int) int { return a - b },
+		"pageRange":       pageRange,
+		"dict":            dict,
+		"printf":          fmt.Sprintf,
+	}
+}
+
+// pageRange returns a slice [1..n] for iteration in pagination templates.
+func pageRange(n int) []int {
+	r := make([]int, n)
+	for i := range n {
+		r[i] = i + 1
+	}
+	return r
+}
+
+// dict creates a map from alternating key-value pairs for sub-template data.
+func dict(pairs ...any) map[string]any {
+	m := make(map[string]any, len(pairs)/2)
+	for i := 0; i+1 < len(pairs); i += 2 {
+		if key, ok := pairs[i].(string); ok {
+			m[key] = pairs[i+1]
+		}
+	}
+	return m
+}
+
+func executeTemplate(name string, data map[string]any) (template.HTML, error) {
+	var buf bytes.Buffer
+	if err := getTemplates().ExecuteTemplate(&buf, name, data); err != nil {
+		return "", fmt.Errorf("execute template %s: %w", name, err)
+	}
+	return template.HTML(buf.String()), nil //nolint:gosec // template output is trusted
+}
+
+// DefaultRenderer returns a Renderer that uses built-in Bootstrap 5 HTML
 // templates for all ModelAdmin views.
 func DefaultRenderer[T any]() modeladmin.Renderer[T] {
 	return &defaultRenderer[T]{}
@@ -18,16 +82,35 @@ func DefaultRenderer[T any]() modeladmin.Renderer[T] {
 type defaultRenderer[T any] struct{}
 
 func (d *defaultRenderer[T]) List(w http.ResponseWriter, r *http.Request, items []T, page burrow.PageResult, cfg modeladmin.RenderConfig) error {
-	// Convert typed slice to []any for the template.
 	anyItems := make([]any, len(items))
 	for i, item := range items {
 		anyItems[i] = item
 	}
-	return renderWithLayout(w, r, cfg.Display, listPage(anyItems, page, cfg))
+	data := map[string]any{
+		"Items": anyItems,
+		"Page":  page,
+		"Cfg":   cfg,
+	}
+	content, err := executeTemplate("modeladmin/list", data)
+	if err != nil {
+		return err
+	}
+	return renderWithLayout(w, r, cfg.Display, content)
 }
 
 func (d *defaultRenderer[T]) Detail(w http.ResponseWriter, r *http.Request, item *T, cfg modeladmin.RenderConfig) error {
-	return renderWithLayout(w, r, cfg.Display, detailPage(any(*item), cfg))
+	itemAny := any(*item)
+	data := map[string]any{
+		"Item":      itemAny,
+		"IDValue":   fmt.Sprintf("%v", modeladmin.FieldValue(itemAny, cfg.IDField)),
+		"Cfg":       cfg,
+		"CSRFToken": csrf.Token(r.Context()),
+	}
+	content, err := executeTemplate("modeladmin/detail", data)
+	if err != nil {
+		return err
+	}
+	return renderWithLayout(w, r, cfg.Display, content)
 }
 
 func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *T, fields []modeladmin.FormField, errors *burrow.ValidationError, cfg modeladmin.RenderConfig) error {
@@ -35,18 +118,40 @@ func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *
 	if item != nil {
 		itemAny = any(*item)
 	}
-	return renderWithLayout(w, r, cfg.Display, formPage(itemAny, fields, errors, cfg))
+
+	// Pre-compute FormName for each field for template access.
+	type fieldData struct { //nolint:govet // fieldalignment: embedded struct
+		modeladmin.FormField
+		FormName string
+	}
+	tplFields := make([]fieldData, len(fields))
+	for i, f := range fields {
+		tplFields[i] = fieldData{FormField: f, FormName: f.FormName()}
+	}
+
+	data := map[string]any{
+		"Item":             itemAny,
+		"Fields":           tplFields,
+		"ValidationErrors": errors,
+		"Cfg":              cfg,
+		"CSRFToken":        csrf.Token(r.Context()),
+	}
+	content, err := executeTemplate("modeladmin/form", data)
+	if err != nil {
+		return err
+	}
+	return renderWithLayout(w, r, cfg.Display, content)
 }
 
 func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Request, item *T, cfg modeladmin.RenderConfig) error {
-	return renderWithLayout(w, r, cfg.Display, detailPage(any(*item), cfg))
+	return d.Detail(w, r, item, cfg)
 }
 
 // renderWithLayout wraps content in the layout from context, or renders bare content.
-func renderWithLayout(w http.ResponseWriter, r *http.Request, title string, content templ.Component) error {
+func renderWithLayout(w http.ResponseWriter, r *http.Request, title string, content template.HTML) error {
 	lay := burrow.Layout(r.Context())
 	if lay != nil {
-		return burrow.Render(w, r, http.StatusOK, lay(title, content))
+		return lay(w, r, http.StatusOK, content, map[string]any{"Title": title})
 	}
-	return burrow.Render(w, r, http.StatusOK, content)
+	return burrow.HTML(w, http.StatusOK, string(content))
 }

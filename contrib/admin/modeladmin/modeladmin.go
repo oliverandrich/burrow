@@ -3,9 +3,9 @@
 package modeladmin
 
 import (
+	"html/template"
 	"net/http"
 
-	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
 
@@ -104,6 +104,6 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 }
 
 // ColumnValue extracts a display value for a list column from an item.
-func ColumnValue(item any, field string) templ.Component {
-	return columnComponent(item, field)
+func ColumnValue(item any, field string) template.HTML {
+	return columnHTML(item, field)
 }

@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,7 +32,7 @@ func TestDefaultRenderer_List(t *testing.T) {
 		IDField:    "ID",
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/items", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items", nil)
 	w := httptest.NewRecorder()
 
 	err := r.List(w, req, items, page, cfg)
@@ -53,7 +54,7 @@ func TestDefaultRenderer_Detail(t *testing.T) {
 		IDField:    "ID",
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/items/1", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/1", nil)
 	w := httptest.NewRecorder()
 
 	err := r.Detail(w, req, item, cfg)
@@ -73,7 +74,7 @@ func TestDefaultRenderer_Form_Create(t *testing.T) {
 		IDField:   "ID",
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/items/new", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/new", nil)
 	w := httptest.NewRecorder()
 
 	err := r.Form(w, req, nil, fields, nil, cfg)
@@ -95,7 +96,7 @@ func TestDefaultRenderer_Form_Edit(t *testing.T) {
 		IDField: "ID",
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/items/42", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/42", nil)
 	w := httptest.NewRecorder()
 
 	err := r.Form(w, req, item, fields, nil, cfg)
@@ -120,7 +121,7 @@ func TestDefaultRenderer_Form_WithValidationErrors(t *testing.T) {
 		IDField: "ID",
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/items/new", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/new", nil)
 	w := httptest.NewRecorder()
 
 	err := r.Form(w, req, nil, fields, ve, cfg)

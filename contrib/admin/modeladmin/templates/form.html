@@ -1,0 +1,130 @@
+{{ define "modeladmin/form" -}}
+{{ if .Item -}}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">Edit {{ .Cfg.Display }}</h2>
+</div>
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}">{{ .Cfg.Display }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Edit</li>
+    </ol>
+</nav>
+{{- else -}}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">New {{ .Cfg.Display }}</h2>
+</div>
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}">{{ .Cfg.Display }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">New</li>
+    </ol>
+</nav>
+{{- end }}
+{{ if .Item -}}
+<form method="post" action="/admin/{{ .Cfg.Slug }}/{{ fieldValue .Item .Cfg.IDField }}">
+{{- else -}}
+<form method="post" action="/admin/{{ .Cfg.Slug }}">
+{{- end }}
+    <input type="hidden" name="gorilla.csrf.Token" value="{{ .CSRFToken }}">
+    {{- range .Fields }}
+    {{- if eq .Type "hidden" }}
+    <input type="hidden" name="{{ .FormName }}" value="{{ printf "%v" .Value }}">
+    {{- else if eq .Type "textarea" }}
+    <div class="mb-3">
+        <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
+        <textarea
+            class="form-control{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            id="{{ .FormName }}"
+            name="{{ .FormName }}"
+            rows="4"
+            {{ if .Required }}required{{ end }}
+        >{{ printf "%v" .Value }}</textarea>
+        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+    </div>
+    {{- else if eq .Type "select" }}
+    {{- $currentVal := printf "%v" .Value }}
+    <div class="mb-3">
+        <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
+        <select
+            class="form-select{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            id="{{ .FormName }}"
+            name="{{ .FormName }}"
+            {{ if .Required }}required{{ end }}
+        >
+            {{- range .Choices }}
+            <option value="{{ .Value }}"{{ if eq $currentVal .Value }} selected{{ end }}>{{ .Label }}</option>
+            {{- end }}
+        </select>
+        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+    </div>
+    {{- else if eq .Type "checkbox" }}
+    <div class="mb-3 form-check">
+        <input
+            type="checkbox"
+            class="form-check-input{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            id="{{ .FormName }}"
+            name="{{ .FormName }}"
+            {{ if isTruthy .Value }}checked{{ end }}
+        >
+        <label class="form-check-label" for="{{ .FormName }}">{{ .Label }}</label>
+        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+    </div>
+    {{- else if eq .Type "date" }}
+    <div class="mb-3">
+        <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
+        <input
+            type="date"
+            class="form-control{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            id="{{ .FormName }}"
+            name="{{ .FormName }}"
+            value="{{ formatDateValue .Value }}"
+            {{ if .Required }}required{{ end }}
+        >
+        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+    </div>
+    {{- else }}
+    <div class="mb-3">
+        <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
+        <input
+            type="{{ if eq .Type "email" }}email{{ else if eq .Type "number" }}number{{ else }}text{{ end }}"
+            class="form-control{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            id="{{ .FormName }}"
+            name="{{ .FormName }}"
+            value="{{ printf "%v" .Value }}"
+            {{ if .Required }}required{{ end }}
+        >
+        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+    </div>
+    {{- end }}
+    {{- end }}
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Save</button>
+        {{- if .Item }}
+        <button type="submit" name="_continue" value="1" class="btn btn-outline-secondary">Save &amp; continue</button>
+        {{- if .Cfg.CanDelete }}
+        <button
+            type="button"
+            class="btn btn-outline-danger ms-auto"
+            hx-delete="/admin/{{ .Cfg.Slug }}/{{ fieldValue .Item .Cfg.IDField }}"
+            hx-headers='{"X-CSRF-Token":"{{ .CSRFToken }}"}'
+            hx-confirm="Are you sure you want to delete this item?"
+        >
+            Delete
+        </button>
+        {{- end }}
+        {{- end }}
+    </div>
+</form>
+{{- end }}
+
+{{ define "modeladmin/field_errors" -}}
+{{- if .Errors }}
+{{- range .Errors.Errors }}
+{{- if eq .Field $.Field }}
+<div class="invalid-feedback">{{ .Message }}</div>
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

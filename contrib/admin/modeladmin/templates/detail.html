@@ -1,0 +1,38 @@
+{{ define "modeladmin/detail" -}}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">{{ .IDValue }}</h2>
+</div>
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}">{{ .Cfg.Display }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ .IDValue }}</li>
+    </ol>
+</nav>
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Details</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            {{- range .Cfg.ListFields }}
+            <dt class="col-sm-3">{{ . }}</dt>
+            <dd class="col-sm-9">{{ columnValue $.Item . }}</dd>
+            {{- end }}
+        </dl>
+    </div>
+</div>
+{{- if .Cfg.CanDelete }}
+<div class="d-flex">
+    <button
+        type="button"
+        class="btn btn-outline-danger ms-auto"
+        hx-delete="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}"
+        hx-headers='{"X-CSRF-Token":"{{ .CSRFToken }}"}'
+        hx-confirm="Are you sure you want to delete this item?"
+    >
+        Delete
+    </button>
+</div>
+{{- end }}
+{{- end }}
