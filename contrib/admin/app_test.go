@@ -21,6 +21,7 @@ var (
 	_ burrow.HasDependencies = (*App)(nil)
 	_ burrow.HasTemplates    = (*App)(nil)
 	_ burrow.HasFuncMap      = (*App)(nil)
+	_ burrow.HasTranslations = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {

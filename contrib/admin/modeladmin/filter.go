@@ -7,16 +7,17 @@ import (
 	"strings"
 
 	"github.com/uptrace/bun"
+
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 )
 
 // FilterDef describes a filter available in the admin list view.
 type FilterDef struct { //nolint:govet // fieldalignment: readability over optimization
-	Field       string   // database column name
-	Label       string   // human-readable label
-	LabelKey    string   // i18n key for the label; translated via TranslateFunc when set
-	Type        string   // "select", "bool", "date_range"
-	Choices     []Choice // for select filters
-	AllLabelKey string   // i18n key for the "All" choice; translated via TranslateFunc when set
+	Field    string   // database column name
+	Label    string   // human-readable label
+	LabelKey string   // i18n key for the label; translated via i18n.T at request time
+	Type     string   // "select", "bool", "date_range"
+	Choices  []Choice // for select filters
 }
 
 // applyFilters applies filter query parameters to the Bun query.
@@ -85,24 +86,20 @@ func isValidChoice(val string, choices []Choice) bool {
 	return false
 }
 
-// translateFunc is the signature for optional i18n translation.
-type translateFunc func(r *http.Request, key string) string
-
 // buildActiveFilters builds ActiveFilter data for template rendering.
-func buildActiveFilters(filters []FilterDef, r *http.Request, tf translateFunc) []ActiveFilter {
+// Labels are translated via i18n.T from the request context.
+func buildActiveFilters(filters []FilterDef, r *http.Request) []ActiveFilter {
 	if len(filters) == 0 {
 		return nil
 	}
+	ctx := r.Context()
 	result := make([]ActiveFilter, len(filters))
 	for i, f := range filters {
 		activeVal := r.URL.Query().Get(f.Field)
 		choices := make([]ActiveChoice, 0, len(f.Choices)+1)
 
 		// "All" choice removes this filter.
-		allLabel := "All"
-		if tf != nil && f.AllLabelKey != "" {
-			allLabel = tf(r, f.AllLabelKey)
-		}
+		allLabel := i18n.T(ctx, "modeladmin-all")
 		choices = append(choices, ActiveChoice{
 			Label:    allLabel,
 			URL:      filterURL(r, f.Field, ""),
@@ -111,8 +108,8 @@ func buildActiveFilters(filters []FilterDef, r *http.Request, tf translateFunc) 
 
 		for _, c := range f.Choices {
 			label := c.Label
-			if tf != nil && c.LabelKey != "" {
-				label = tf(r, c.LabelKey)
+			if c.LabelKey != "" {
+				label = i18n.T(ctx, c.LabelKey)
 			}
 			choices = append(choices, ActiveChoice{
 				Value:    c.Value,
@@ -123,8 +120,8 @@ func buildActiveFilters(filters []FilterDef, r *http.Request, tf translateFunc) 
 		}
 
 		filterLabel := f.Label
-		if tf != nil && f.LabelKey != "" {
-			filterLabel = tf(r, f.LabelKey)
+		if f.LabelKey != "" {
+			filterLabel = i18n.T(ctx, f.LabelKey)
 		}
 		result[i] = ActiveFilter{
 			Field:     f.Field,

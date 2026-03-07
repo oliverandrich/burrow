@@ -1,24 +1,24 @@
 {{ define "modeladmin/form" -}}
 {{ if .Item -}}
 <div class="d-flex justify-content-between align-items-center mb-2">
-    <h2 class="mb-0">Edit {{ .Cfg.Display }}</h2>
+    <h2 class="mb-0">{{ T "modeladmin-edit" }} {{ .Cfg.Display }}</h2>
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">{{ T "modeladmin-admin" }}</a></li>
         <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}" hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">{{ .Cfg.Display }}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Edit</li>
+        <li class="breadcrumb-item active" aria-current="page">{{ T "modeladmin-edit" }}</li>
     </ol>
 </nav>
 {{- else -}}
 <div class="d-flex justify-content-between align-items-center mb-2">
-    <h2 class="mb-0">New {{ .Cfg.Display }}</h2>
+    <h2 class="mb-0">{{ T "modeladmin-new" }} {{ .Cfg.Display }}</h2>
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">{{ T "modeladmin-admin" }}</a></li>
         <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}" hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">{{ .Cfg.Display }}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">New</li>
+        <li class="breadcrumb-item active" aria-current="page">{{ T "modeladmin-new" }}</li>
     </ol>
 </nav>
 {{- end }}
@@ -100,18 +100,18 @@
     {{- end }}
     {{- end }}
     <div class="d-flex gap-2 mt-4">
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" class="btn btn-primary">{{ T "modeladmin-save" }}</button>
         {{- if .Item }}
-        <button type="submit" name="_continue" value="1" class="btn btn-outline-secondary">Save &amp; continue</button>
+        <button type="submit" name="_continue" value="1" class="btn btn-outline-secondary">{{ T "modeladmin-save-continue" }}</button>
         {{- if .Cfg.CanDelete }}
         <button
             type="button"
             class="btn btn-outline-danger ms-auto"
             hx-delete="/admin/{{ .Cfg.Slug }}/{{ fieldValue .Item .Cfg.IDField }}"
             hx-headers='{"X-CSRF-Token":"{{ .CSRFToken }}"}'
-            hx-confirm="Are you sure you want to delete this item?"
+            hx-confirm="{{ T "modeladmin-delete-confirm" }}"
         >
-            Delete
+            {{ T "modeladmin-delete" }}
         </button>
         {{- end }}
         {{- end }}

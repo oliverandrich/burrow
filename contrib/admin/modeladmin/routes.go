@@ -10,21 +10,21 @@ import (
 // within the /admin route group.
 func (ma *ModelAdmin[T]) Routes(r chi.Router) {
 	r.Route("/"+ma.Slug, func(r chi.Router) {
-		r.Get("/", burrow.Handle(ma.handleList))
+		r.Get("/", burrow.Handle(ma.HandleList))
 
 		if ma.CanCreate {
-			r.Get("/new", burrow.Handle(ma.handleNew))
-			r.Post("/", burrow.Handle(ma.handleCreate))
+			r.Get("/new", burrow.Handle(ma.HandleNew))
+			r.Post("/", burrow.Handle(ma.HandleCreate))
 		}
 
-		r.Get("/{id}", burrow.Handle(ma.handleDetail))
+		r.Get("/{id}", burrow.Handle(ma.HandleDetail))
 
 		if ma.CanEdit {
-			r.Post("/{id}", burrow.Handle(ma.handleUpdate))
+			r.Post("/{id}", burrow.Handle(ma.HandleUpdate))
 		}
 
 		if ma.CanDelete {
-			r.Delete("/{id}", burrow.Handle(ma.handleDelete))
+			r.Delete("/{id}", burrow.Handle(ma.HandleDelete))
 		}
 
 		for _, action := range ma.RowActions {

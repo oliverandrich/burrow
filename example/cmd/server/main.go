@@ -61,7 +61,6 @@ func main() {
 			auth.WithRenderer(authtpl.DefaultRenderer()),
 			auth.WithAuthLayout(authtpl.AuthLayout()),
 			auth.WithLogoComponent(pages.Logo()),
-			auth.WithAdminRenderer(authtpl.DefaultAdminRenderer()),
 		),
 		bootstrap.New(),
 		healthcheck.New(),

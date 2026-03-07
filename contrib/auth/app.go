@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+	matpl "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/go-chi/chi/v5"
@@ -34,9 +36,9 @@ var htmlTemplateFS embed.FS
 type App struct {
 	repo          *Repository
 	handlers      *Handlers
-	adminHandlers *adminHandlers
+	usersAdmin    *modeladmin.ModelAdmin[User]
+	invitesAdmin  *modeladmin.ModelAdmin[Invite]
 	renderer      Renderer
-	adminRenderer AdminRenderer
 	emailService  EmailService
 	authLayout    burrow.LayoutFunc
 	cancelCleanup context.CancelFunc
@@ -77,11 +79,6 @@ func WithLogoComponent(c template.HTML) Option {
 	return func(a *App) { a.logo = c }
 }
 
-// WithAdminRenderer sets the admin page renderer for user management.
-func WithAdminRenderer(r AdminRenderer) Option {
-	return func(a *App) { a.adminRenderer = r }
-}
-
 // WithEmailService sets the email service for the auth app.
 func WithEmailService(e EmailService) Option {
 	return func(a *App) { a.emailService = e }
@@ -103,7 +100,59 @@ func (a *App) Dependencies() []string { return []string{"session"} }
 func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 	a.globalConfig = cfg.Config
+
+	a.usersAdmin = &modeladmin.ModelAdmin[User]{
+		Slug:       "users",
+		Display:    "Users",
+		DisplayKey: "admin-users-title",
+		DB:         cfg.DB,
+		Renderer:   matpl.DefaultRenderer[User](),
+		CanCreate:  false,
+		CanEdit:    false,
+		CanDelete:  false,
+		ListFields: []string{"ID", "Username", "Name", "Email", "Role", "CreatedAt"},
+		OrderBy:    "id DESC",
+		Filters: []modeladmin.FilterDef{
+			{Field: "role", Label: "Role", LabelKey: "admin-users-role", Type: "select", Choices: roleChoices()},
+		},
+		EmptyMessageKey: "admin-users-none",
+	}
+
+	a.invitesAdmin = &modeladmin.ModelAdmin[Invite]{
+		Slug:       "invites",
+		Display:    "Invites",
+		DisplayKey: "admin-invites-title",
+		DB:         cfg.DB,
+		Renderer:   matpl.DefaultRenderer[Invite](),
+		CanCreate:  true,
+		CanEdit:    false,
+		CanDelete:  false,
+		ListFields: []string{"ID", "Label", "Email", "ExpiresAt", "CreatedAt"},
+		OrderBy:    "created_at DESC",
+		RowActions: []modeladmin.RowAction{
+			{
+				Slug:     "revoke",
+				Label:    "Revoke",
+				Method:   "DELETE",
+				Icon:     bsicons.XCircle(),
+				Class:    "btn-outline-danger",
+				Confirm:  "Are you sure?",
+				Handler:  revokeInviteHandler(a.repo),
+				ShowWhen: isRevokable,
+			},
+		},
+		EmptyMessageKey: "admin-invites-none",
+	}
+
 	return nil
+}
+
+// roleChoices returns filter choices for the user role field.
+func roleChoices() []modeladmin.Choice {
+	return []modeladmin.Choice{
+		{Value: RoleUser, Label: "User", LabelKey: "admin-user-detail-role-user"},
+		{Value: RoleAdmin, Label: "Admin", LabelKey: "admin-user-detail-role-admin"},
+	}
 }
 
 // StaticFS returns the embedded static assets (webauthn.js) under the "auth" prefix.
@@ -204,11 +253,6 @@ func (a *App) Configure(cmd *cli.Command) error {
 	// Create handlers with the stored email service (if any).
 	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config)
 
-	// Create admin handlers if an admin renderer was provided.
-	if a.adminRenderer != nil && a.adminHandlers == nil {
-		a.adminHandlers = newAdminHandlers(a.repo, a.adminRenderer, a.config, a.emailService)
-	}
-
 	return nil
 }
 
@@ -243,11 +287,6 @@ func (a *App) FuncMap() template.FuncMap {
 			}
 			return ""
 		},
-		"iconCheckCircleFill": func(class ...string) template.HTML { return bsicons.CheckCircleFill(class...) },
-		"iconPeople":          func(class ...string) template.HTML { return bsicons.People(class...) },
-		"iconEnvelope":        func(class ...string) template.HTML { return bsicons.Envelope(class...) },
-		"iconClipboard":       func(class ...string) template.HTML { return bsicons.Clipboard(class...) },
-		"iconCheckLg":         func(class ...string) template.HTML { return bsicons.CheckLg(class...) },
 	}
 }
 
@@ -358,19 +397,18 @@ func authLogoMiddleware(logo template.HTML) func(http.Handler) http.Handler {
 // AdminRoutes registers admin routes for user and invite management.
 // The router is expected to already have auth middleware applied.
 func (a *App) AdminRoutes(r chi.Router) {
-	if a.adminHandlers == nil {
-		return
-	}
-	h := a.adminHandlers
-
-	r.Get("/users", burrow.Handle(h.UsersPage))
-	r.Get("/users/{id}", burrow.Handle(h.UserDetail))
-	r.Post("/users/{id}", burrow.Handle(h.UpdateUser))
-	r.Delete("/users/{id}", burrow.Handle(h.DeleteUser))
-
-	r.Get("/invites", burrow.Handle(h.InvitesPage))
-	r.Post("/invites", burrow.Handle(h.CreateInvite))
-	r.Delete("/invites/{id}", burrow.Handle(h.DeleteInvite))
+	r.Route("/users", func(r chi.Router) {
+		r.Get("/", burrow.Handle(a.usersAdmin.HandleList))
+		r.Get("/{id}", burrow.Handle(a.handleUserDetail))
+		r.Post("/{id}", burrow.Handle(a.handleUpdateUser))
+		r.Delete("/{id}", burrow.Handle(a.handleDeleteUser))
+	})
+	r.Route("/invites", func(r chi.Router) {
+		r.Get("/", burrow.Handle(a.invitesAdmin.HandleList))
+		r.Get("/new", burrow.Handle(a.invitesAdmin.HandleNew))
+		r.Post("/", burrow.Handle(a.handleCreateInvite))
+		r.Delete("/{id}/revoke", burrow.Handle(revokeInviteHandler(a.repo)))
+	})
 }
 
 // AdminNavItems returns navigation items for the admin panel.

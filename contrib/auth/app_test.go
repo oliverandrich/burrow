@@ -668,139 +668,52 @@ func TestAdminNavItems(t *testing.T) {
 	assert.True(t, labels["Invites"], "should have Invites nav item")
 }
 
-func TestAdminRoutes(t *testing.T) {
+// newTestApp creates an App with repo initialized for admin handler tests.
+func newTestApp(t *testing.T) (*App, *Repository) {
+	t.Helper()
 	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	mockAdminR := &mockAdminRenderer{}
-	app := &App{repo: repo, adminRenderer: mockAdminR}
-	app.adminHandlers = newAdminHandlers(repo, mockAdminR, &Config{}, nil)
-
-	r := chi.NewRouter()
-	// Inject admin user into context.
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := WithUser(r.Context(), &User{ID: 1, Role: RoleAdmin})
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
-	r.Route("/admin", func(r chi.Router) {
-		r.Use(RequireAuth(), RequireAdmin())
-		app.AdminRoutes(r)
-	})
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "AdminUsersPage", mockAdminR.lastMethod)
-}
-
-func TestAdminRoutesWithLifecycleOrder(t *testing.T) {
-	db := openTestDB(t)
-
-	// Simulate real lifecycle: New (with options) → Register → Configure → AdminRoutes.
-	mockAdminR := &mockAdminRenderer{}
-	app := New(WithAdminRenderer(mockAdminR))
-
-	// Register sets repo (happens inside srv.Run → bootstrap).
+	app := New()
 	err := app.Register(&burrow.AppConfig{DB: db})
 	require.NoError(t, err)
+	app.config = &Config{}
+	return app, app.repo
+}
 
-	// Configure creates handlers (happens inside srv.Run after Register).
-	cmd := &cli.Command{
-		Flags: app.Flags(),
-		Action: func(_ context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
-		},
+// stubTemplateExecutor returns a TemplateExecutor that renders template name as plain text.
+func stubTemplateExecutor() burrow.TemplateExecutor {
+	return func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+		return template.HTML("<div>" + name + "</div>"), nil //nolint:gosec // test stub
 	}
-	require.NoError(t, cmd.Run(context.Background(), []string{"test"}))
-
-	require.NotNil(t, app.adminHandlers, "adminHandlers should be created during Configure")
-
-	r := chi.NewRouter()
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := WithUser(r.Context(), &User{ID: 1, Role: RoleAdmin})
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
-	r.Route("/admin", func(r chi.Router) {
-		r.Use(RequireAuth(), RequireAdmin())
-		app.AdminRoutes(r)
-	})
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "AdminUsersPage", mockAdminR.lastMethod)
-}
-
-func TestAdminRoutesNilRenderer(t *testing.T) {
-	app := &App{}
-
-	r := chi.NewRouter()
-	// Should not panic when admin renderer is nil.
-	assert.NotPanics(t, func() { app.AdminRoutes(r) })
-}
-
-func TestAdminUsersPageHandler(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-	ctx := context.Background()
-
-	_, err := repo.CreateUser(ctx, "alice", "Alice")
-	require.NoError(t, err)
-	_, err = repo.CreateUser(ctx, "bob", "Bob")
-	require.NoError(t, err)
-
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users", nil)
-	rec := httptest.NewRecorder()
-
-	err = h.UsersPage(rec, req)
-
-	require.NoError(t, err)
-	assert.Equal(t, "AdminUsersPage", r.lastMethod)
 }
 
 func TestAdminUserDetailHandler(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 
 	user, err := repo.CreateUser(ctx, "alice", "Alice")
 	require.NoError(t, err)
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
-
-	// Use chi router to set up path params.
 	router := chi.NewRouter()
-	router.Get("/admin/users/{id}", burrow.Handle(h.UserDetail))
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rctx := burrow.WithTemplateExecutor(r.Context(), stubTemplateExecutor())
+			next.ServeHTTP(w, r.WithContext(rctx))
+		})
+	})
+	router.Get("/admin/users/{id}", burrow.Handle(app.handleUserDetail))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/admin/users/%d", user.ID), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "AdminUserDetailPage", r.lastMethod)
 }
 
 func TestAdminUserDetailNotFound(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+	app, _ := newTestApp(t)
 
 	router := chi.NewRouter()
-	router.Get("/admin/users/{id}", burrow.Handle(h.UserDetail))
+	router.Get("/admin/users/{id}", burrow.Handle(app.handleUserDetail))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users/999", nil)
 	rec := httptest.NewRecorder()
@@ -810,18 +723,14 @@ func TestAdminUserDetailNotFound(t *testing.T) {
 }
 
 func TestAdminUpdateUser(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 
 	user, err := repo.CreateUser(ctx, "alice", "")
 	require.NoError(t, err)
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-
 	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
 
 	body := strings.NewReader("name=Alice+Wonder&bio=Hello+World&email=alice%40example.com&role=admin")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
@@ -842,18 +751,14 @@ func TestAdminUpdateUser(t *testing.T) {
 }
 
 func TestAdminUpdateUserContinueEditing(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 
 	user, err := repo.CreateUser(ctx, "alice", "")
 	require.NoError(t, err)
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-
 	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
 
 	body := strings.NewReader("name=Alice&role=user&_continue=1")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
@@ -866,8 +771,7 @@ func TestAdminUpdateUserContinueEditing(t *testing.T) {
 }
 
 func TestAdminUpdateUserClearsOptionalFields(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 
 	email := "alice@example.com"
@@ -877,11 +781,8 @@ func TestAdminUpdateUserClearsOptionalFields(t *testing.T) {
 	user.Email = &email
 	require.NoError(t, repo.UpdateUser(ctx, user))
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-
 	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
 
 	body := strings.NewReader("name=&bio=&email=&role=user")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
@@ -899,14 +800,10 @@ func TestAdminUpdateUserClearsOptionalFields(t *testing.T) {
 }
 
 func TestAdminUpdateUserNotFound(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
+	app, _ := newTestApp(t)
 
 	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
 
 	body := strings.NewReader("name=Test&role=user")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/999", body)
@@ -918,19 +815,15 @@ func TestAdminUpdateUserNotFound(t *testing.T) {
 }
 
 func TestAdminUpdateUserLastAdminDemotion(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 
 	admin, err := repo.CreateUser(ctx, "admin", "")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, admin.ID, RoleAdmin))
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-
 	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
 
 	body := strings.NewReader("name=Admin&role=user")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", admin.ID), body)
@@ -946,8 +839,7 @@ func TestAdminUpdateUserLastAdminDemotion(t *testing.T) {
 }
 
 func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 
 	admin1, err := repo.CreateUser(ctx, "admin1", "")
@@ -958,11 +850,8 @@ func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, admin2.ID, RoleAdmin))
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-
 	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
 
 	body := strings.NewReader("name=Admin2&role=user")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", admin2.ID), body)
@@ -978,18 +867,14 @@ func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
 }
 
 func TestAdminUpdateUserInvalidRole(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 
 	user, err := repo.CreateUser(ctx, "alice", "")
 	require.NoError(t, err)
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-
 	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
+	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
 
 	body := strings.NewReader("name=Alice&role=superadmin")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
@@ -1002,30 +887,10 @@ func TestAdminUpdateUserInvalidRole(t *testing.T) {
 
 // --- Admin invite handler tests ---
 
-func TestAdminInvitesPage(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/invites", nil)
-	rec := httptest.NewRecorder()
-
-	err := h.InvitesPage(rec, req)
-
-	require.NoError(t, err)
-	assert.Equal(t, "AdminInvitesPage", r.lastMethod)
-}
-
 func TestAdminCreateInvite(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 	user, _ := repo.CreateUser(ctx, "admin", "")
-
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
 	body := strings.NewReader(`label=John+Doe&email=invitee@example.com`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
@@ -1033,10 +898,11 @@ func TestAdminCreateInvite(t *testing.T) {
 	req = requestWithSession(req, user)
 	rec := httptest.NewRecorder()
 
-	err := h.CreateInvite(rec, req)
+	err := app.handleCreateInvite(rec, req)
 
 	require.NoError(t, err)
-	assert.Equal(t, "AdminInvitesPage", r.lastMethod)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/admin/invites", rec.Header().Get("Location"))
 
 	invites, err := repo.ListInvites(ctx)
 	require.NoError(t, err)
@@ -1046,14 +912,10 @@ func TestAdminCreateInvite(t *testing.T) {
 }
 
 func TestAdminCreateInviteNoAuth(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+	app, _ := newTestApp(t)
 
 	router := chi.NewRouter()
-	router.Post("/admin/invites", burrow.Handle(h.CreateInvite))
+	router.Post("/admin/invites", burrow.Handle(app.handleCreateInvite))
 
 	body := strings.NewReader(`email=test@example.com`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
@@ -1065,26 +927,21 @@ func TestAdminCreateInviteNoAuth(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
-func TestAdminDeleteInviteInvalidID(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
+func TestRevokeInviteInvalidID(t *testing.T) {
+	_, repo := newTestApp(t)
 
 	router := chi.NewRouter()
-	router.Delete("/admin/invites/{id}", burrow.Handle(h.DeleteInvite))
+	router.Delete("/admin/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(repo)))
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/invalid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/invalid/revoke", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
-func TestAdminDeleteInviteSuccess(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+func TestRevokeInviteSuccess(t *testing.T) {
+	_, repo := newTestApp(t)
 	ctx := context.Background()
 
 	invite := &Invite{
@@ -1094,13 +951,10 @@ func TestAdminDeleteInviteSuccess(t *testing.T) {
 	}
 	require.NoError(t, repo.CreateInvite(ctx, invite))
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
-
 	router := chi.NewRouter()
-	router.Delete("/admin/invites/{id}", burrow.Handle(h.DeleteInvite))
+	router.Delete("/admin/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(repo)))
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10)+"/revoke", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1113,24 +967,18 @@ func TestAdminDeleteInviteSuccess(t *testing.T) {
 	assert.Empty(t, invites)
 }
 
-// mockAdminRenderer implements AdminRenderer for tests.
-type mockAdminRenderer struct {
-	lastMethod string
-}
+func TestIsRevokable(t *testing.T) {
+	active := Invite{ExpiresAt: time.Now().Add(time.Hour)}
+	assert.True(t, isRevokable(active))
 
-func (m *mockAdminRenderer) AdminUsersPage(w http.ResponseWriter, _ *http.Request, _ []User) error {
-	m.lastMethod = "AdminUsersPage"
-	return burrow.Text(w, http.StatusOK, "admin-users")
-}
+	expired := Invite{ExpiresAt: time.Now().Add(-time.Hour)}
+	assert.False(t, isRevokable(expired))
 
-func (m *mockAdminRenderer) AdminUserDetailPage(w http.ResponseWriter, _ *http.Request, _ *User) error {
-	m.lastMethod = "AdminUserDetailPage"
-	return burrow.Text(w, http.StatusOK, "admin-user-detail")
-}
+	now := time.Now()
+	used := Invite{ExpiresAt: time.Now().Add(time.Hour), UsedAt: &now}
+	assert.False(t, isRevokable(used))
 
-func (m *mockAdminRenderer) AdminInvitesPage(w http.ResponseWriter, _ *http.Request, _ []Invite, _ string, _ bool) error {
-	m.lastMethod = "AdminInvitesPage"
-	return burrow.Text(w, http.StatusOK, "admin-invites")
+	assert.False(t, isRevokable("not an invite"))
 }
 
 // --- Admin delete user tests ---
@@ -1157,9 +1005,9 @@ func TestDeleteUser(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNotFound)
 }
 
-// deleteUserRouter creates a chi router with the DeleteUser handler
+// deleteUserRouter creates a chi router with the handleDeleteUser handler
 // and the given user injected into the request context.
-func deleteUserRouter(h *adminHandlers, user *User) *chi.Mux {
+func deleteUserRouter(app *App, user *User) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1167,13 +1015,12 @@ func deleteUserRouter(h *adminHandlers, user *User) *chi.Mux {
 			next.ServeHTTP(w, r.WithContext(rctx))
 		})
 	})
-	router.Delete("/admin/users/{id}", burrow.Handle(h.DeleteUser))
+	router.Delete("/admin/users/{id}", burrow.Handle(app.handleDeleteUser))
 	return router
 }
 
 func TestAdminDeleteUserSuccess(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 
 	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
@@ -1183,9 +1030,7 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 	target, err := repo.CreateUser(ctx, "alice", "Alice")
 	require.NoError(t, err)
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-	router := deleteUserRouter(h, adminUser)
+	router := deleteUserRouter(app, adminUser)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/admin/users/%d", target.ID), nil)
 	rec := httptest.NewRecorder()
@@ -1202,12 +1047,8 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 }
 
 func TestAdminDeleteUserInvalidID(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-	router := deleteUserRouter(h, &User{ID: 1, Role: RoleAdmin})
+	app, _ := newTestApp(t)
+	router := deleteUserRouter(app, &User{ID: 1, Role: RoleAdmin})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/users/invalid", nil)
 	rec := httptest.NewRecorder()
@@ -1217,12 +1058,8 @@ func TestAdminDeleteUserInvalidID(t *testing.T) {
 }
 
 func TestAdminDeleteUserNotFound(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-	router := deleteUserRouter(h, &User{ID: 1, Role: RoleAdmin})
+	app, _ := newTestApp(t)
+	router := deleteUserRouter(app, &User{ID: 1, Role: RoleAdmin})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/users/999", nil)
 	rec := httptest.NewRecorder()
@@ -1232,17 +1069,14 @@ func TestAdminDeleteUserNotFound(t *testing.T) {
 }
 
 func TestAdminDeleteUserSelf(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
+	app, repo := newTestApp(t)
 	ctx := context.Background()
 
 	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
 
-	r := &mockAdminRenderer{}
-	h := newAdminHandlers(repo, r, &Config{}, nil)
-	router := deleteUserRouter(h, adminUser)
+	router := deleteUserRouter(app, adminUser)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/admin/users/%d", adminUser.ID), nil)
 	rec := httptest.NewRecorder()

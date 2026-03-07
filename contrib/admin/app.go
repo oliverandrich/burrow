@@ -15,6 +15,9 @@ import (
 //go:embed templates/*.html
 var templateFS embed.FS
 
+//go:embed translations
+var translationFS embed.FS
+
 // DashboardRenderer renders the admin dashboard page.
 type DashboardRenderer interface {
 	DashboardPage(w http.ResponseWriter, r *http.Request) error
@@ -82,6 +85,9 @@ func (a *App) buildNavGroups() []NavGroup {
 	}
 	return groups
 }
+
+// TranslationFS returns the embedded translation files (modeladmin UI labels).
+func (a *App) TranslationFS() fs.FS { return translationFS }
 
 // TemplateFS returns the embedded HTML template files.
 func (a *App) TemplateFS() fs.FS {

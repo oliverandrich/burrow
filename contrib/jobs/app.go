@@ -8,13 +8,11 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
-	"net/http"
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
-	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"github.com/go-chi/chi/v5"
 	"github.com/urfave/cli/v3"
 )
@@ -84,11 +82,8 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		OrderBy:         "created_at DESC, id DESC",
 		PageSize:        25,
 		EmptyMessageKey: "admin-jobs-empty",
-		TranslateFunc: func(r *http.Request, key string) string {
-			return i18n.T(r.Context(), key)
-		},
 		Filters: []modeladmin.FilterDef{
-			{Field: "status", Label: "Status", Type: "select", AllLabelKey: "admin-jobs-filter-all", Choices: statusChoices()},
+			{Field: "status", Label: "Status", Type: "select", Choices: statusChoices()},
 		},
 		RowActions: []modeladmin.RowAction{
 			{

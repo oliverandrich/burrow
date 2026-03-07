@@ -108,7 +108,7 @@ func TestDefaultRenderer_List_WithRowActions(t *testing.T) {
 	err := r.List(w, req, items, page, cfg)
 	require.NoError(t, err)
 	body := w.Body.String()
-	assert.Contains(t, body, "Actions")
+	assert.Contains(t, body, "modeladmin-actions")
 	assert.Contains(t, body, "Retry")
 	assert.Contains(t, body, "btn-success")
 	assert.Contains(t, body, "hx-post")
@@ -188,7 +188,7 @@ func TestDefaultRenderer_Form_Create(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
 	body := w.Body.String()
-	assert.Contains(t, body, "New Items")
+	assert.Contains(t, body, "modeladmin-new Items")
 	assert.Contains(t, body, "name=\"name\"")
 }
 
@@ -210,7 +210,7 @@ func TestDefaultRenderer_Form_Edit(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
 	body := w.Body.String()
-	assert.Contains(t, body, "Edit Items")
+	assert.Contains(t, body, "modeladmin-edit Items")
 	assert.Contains(t, body, "Existing")
 }
 

@@ -1,0 +1,12 @@
+# ModelAdmin: Generic UI labels
+modeladmin-new = "New"
+modeladmin-edit = "Edit"
+modeladmin-save = "Save"
+modeladmin-save-continue = "Save & continue"
+modeladmin-delete = "Delete"
+modeladmin-delete-confirm = "Are you sure you want to delete this item?"
+modeladmin-previous = "Previous"
+modeladmin-next = "Next"
+modeladmin-actions = "Actions"
+modeladmin-admin = "Admin"
+modeladmin-all = "All"

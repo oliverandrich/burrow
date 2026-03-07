@@ -43,12 +43,6 @@ func DefaultRenderer() auth.Renderer {
 	return &defaultRenderer{}
 }
 
-// DefaultAdminRenderer returns an AdminRenderer that uses the built-in HTML
-// templates for admin pages (users, user detail, invites).
-func DefaultAdminRenderer() auth.AdminRenderer {
-	return &defaultAdminRenderer{}
-}
-
 // defaultRenderer implements auth.Renderer using built-in HTML templates.
 type defaultRenderer struct{}
 
@@ -96,32 +90,6 @@ func (d *defaultRenderer) VerifyEmailSuccess(w http.ResponseWriter, r *http.Requ
 func (d *defaultRenderer) VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error {
 	return renderCard(w, r, i18n.T(r.Context(), "verify-error-title"), i18n.T(r.Context(), "verify-error-title"), "auth/verify_error", map[string]any{
 		"ErrorCode": errorCode,
-	})
-}
-
-// defaultAdminRenderer implements auth.AdminRenderer using built-in HTML templates.
-type defaultAdminRenderer struct{}
-
-func (d *defaultAdminRenderer) AdminUsersPage(w http.ResponseWriter, r *http.Request, users []auth.User) error {
-	return burrow.RenderTemplate(w, r, http.StatusOK, "auth/admin_users", map[string]any{
-		"Title": i18n.T(r.Context(), "admin-users-title"),
-		"Users": users,
-	})
-}
-
-func (d *defaultAdminRenderer) AdminUserDetailPage(w http.ResponseWriter, r *http.Request, user *auth.User) error {
-	return burrow.RenderTemplate(w, r, http.StatusOK, "auth/admin_user_detail", map[string]any{
-		"Title": i18n.T(r.Context(), "admin-user-detail-title") + user.Username,
-		"User":  user,
-	})
-}
-
-func (d *defaultAdminRenderer) AdminInvitesPage(w http.ResponseWriter, r *http.Request, invites []auth.Invite, createdURL string, useEmail bool) error {
-	return burrow.RenderTemplate(w, r, http.StatusOK, "auth/admin_invites", map[string]any{
-		"Title":      i18n.T(r.Context(), "admin-invites-title"),
-		"Invites":    invites,
-		"CreatedURL": createdURL,
-		"UseEmail":   useEmail,
 	})
 }
 

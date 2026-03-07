@@ -24,7 +24,7 @@ type FormField struct { //nolint:govet // fieldalignment: readability over optim
 type Choice struct {
 	Value    string
 	Label    string
-	LabelKey string // i18n key; translated via TranslateFunc when set
+	LabelKey string // i18n key; translated via i18n.T at request time
 }
 
 // AutoFields extracts form fields from a struct using bun and form tags.
@@ -313,6 +313,33 @@ func pkFieldName[T any]() string {
 		}
 	}
 	return ""
+}
+
+// fieldLabelKeys extracts admin:"i18n:..." tags from struct fields,
+// returning a map of field name → i18n key.
+func fieldLabelKeys[T any]() map[string]string {
+	var zero T
+	t := reflect.TypeOf(zero)
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	keys := make(map[string]string)
+	for i := range t.NumField() {
+		sf := t.Field(i)
+		if !sf.IsExported() || sf.Anonymous {
+			continue
+		}
+		tag := sf.Tag.Get("admin")
+		if tag == "" {
+			continue
+		}
+		for part := range strings.SplitSeq(tag, ",") {
+			if k, v, ok := strings.Cut(strings.TrimSpace(part), ":"); ok && k == "i18n" {
+				keys[sf.Name] = v
+			}
+		}
+	}
+	return keys
 }
 
 // FieldValue extracts a field value from a struct by field name.

@@ -10,6 +10,7 @@ import (
 	"github.com/uptrace/bun"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 )
 
 const defaultPageSize = 25
@@ -51,14 +52,14 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	SortFields []string
 	// RowActions defines custom per-row actions for the list/detail views.
 	RowActions []RowAction
+	// DisplayKey is the i18n key for the Display name.
+	// Translated via i18n.T at request time, overriding Display.
+	DisplayKey string
 	// EmptyMessage is shown when the list has no items. Default: "No items found."
 	EmptyMessage string
 	// EmptyMessageKey is the i18n key for the empty-list message.
-	// Translated via TranslateFunc when set.
+	// Translated via i18n.T at request time.
 	EmptyMessageKey string
-	// TranslateFunc translates i18n keys at request time. Used for filter labels,
-	// choice labels, and other UI strings with LabelKey fields set.
-	TranslateFunc func(r *http.Request, key string) string
 }
 
 // idFromRequest returns the ID from the URL, using IDFunc if set.
@@ -142,6 +143,32 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 		RowActions:    renderActions,
 		HasRowActions: len(renderActions) > 0,
 		EmptyMessage:  emptyMsg,
+	}
+}
+
+// translateRenderConfig applies request-time i18n translations to the render config.
+func (ma *ModelAdmin[T]) translateRenderConfig(cfg *RenderConfig, r *http.Request) {
+	ctx := r.Context()
+
+	// Translate struct field label keys (admin:"i18n:...") via i18n context.
+	labelKeys := fieldLabelKeys[T]()
+	if len(labelKeys) > 0 {
+		translated := make([]string, len(cfg.ListFields))
+		for i, f := range cfg.ListFields {
+			if key, ok := labelKeys[f]; ok {
+				translated[i] = i18n.T(ctx, key)
+			} else {
+				translated[i] = f
+			}
+		}
+		cfg.ListFields = translated
+	}
+
+	if ma.DisplayKey != "" {
+		cfg.Display = i18n.T(ctx, ma.DisplayKey)
+	}
+	if ma.EmptyMessageKey != "" {
+		cfg.EmptyMessage = i18n.T(ctx, ma.EmptyMessageKey)
 	}
 }
 

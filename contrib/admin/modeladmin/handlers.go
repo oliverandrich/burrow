@@ -9,8 +9,9 @@ import (
 	"codeberg.org/oliverandrich/burrow"
 )
 
-// handleList renders the paginated list view.
-func (ma *ModelAdmin[T]) handleList(w http.ResponseWriter, r *http.Request) error {
+// HandleList renders the paginated list view.
+// Exported so apps can mount ModelAdmin list views alongside custom handlers.
+func (ma *ModelAdmin[T]) HandleList(w http.ResponseWriter, r *http.Request) error {
 	pr := burrow.ParsePageRequest(r)
 	if pr.Limit == 0 || pr.Limit > ma.pageSize() {
 		pr.Limit = ma.pageSize()
@@ -34,10 +35,8 @@ func (ma *ModelAdmin[T]) handleList(w http.ResponseWriter, r *http.Request) erro
 	}
 
 	cfg := ma.renderConfig()
-	cfg.Filters = buildActiveFilters(ma.Filters, r, ma.TranslateFunc)
-	if ma.TranslateFunc != nil && ma.EmptyMessageKey != "" {
-		cfg.EmptyMessage = ma.TranslateFunc(r, ma.EmptyMessageKey)
-	}
+	ma.translateRenderConfig(&cfg, r)
+	cfg.Filters = buildActiveFilters(ma.Filters, r)
 	if cfg.HasRowActions {
 		cfg.ItemActionSets = make([][]RenderAction, len(items))
 		for i, item := range items {
@@ -47,8 +46,9 @@ func (ma *ModelAdmin[T]) handleList(w http.ResponseWriter, r *http.Request) erro
 	return ma.Renderer.List(w, r, items, page, cfg)
 }
 
-// handleDetail renders the detail/edit form for an existing item.
-func (ma *ModelAdmin[T]) handleDetail(w http.ResponseWriter, r *http.Request) error {
+// HandleDetail renders the detail/edit form for an existing item.
+// Exported so apps can mount ModelAdmin detail views alongside custom handlers.
+func (ma *ModelAdmin[T]) HandleDetail(w http.ResponseWriter, r *http.Request) error {
 	id := ma.idFromRequest(r)
 	if id == "" {
 		return burrow.NewHTTPError(http.StatusBadRequest, "missing id")
@@ -63,6 +63,7 @@ func (ma *ModelAdmin[T]) handleDetail(w http.ResponseWriter, r *http.Request) er
 	}
 
 	cfg := ma.renderConfig()
+	ma.translateRenderConfig(&cfg, r)
 	if cfg.HasRowActions {
 		cfg.ItemActionSets = [][]RenderAction{
 			buildItemActions(ma.RowActions, *item).Actions,
@@ -77,18 +78,22 @@ func (ma *ModelAdmin[T]) handleDetail(w http.ResponseWriter, r *http.Request) er
 	return ma.Renderer.Detail(w, r, item, cfg)
 }
 
-// handleNew renders the create form.
-func (ma *ModelAdmin[T]) handleNew(w http.ResponseWriter, r *http.Request) error {
+// HandleNew renders the create form.
+// Exported so apps can mount ModelAdmin form views alongside custom handlers.
+func (ma *ModelAdmin[T]) HandleNew(w http.ResponseWriter, r *http.Request) error {
 	if !ma.CanCreate {
 		return burrow.NewHTTPError(http.StatusForbidden, "create not allowed")
 	}
 
+	cfg := ma.renderConfig()
+	ma.translateRenderConfig(&cfg, r)
 	fields := AutoFields[T](nil)
-	return ma.Renderer.Form(w, r, nil, fields, nil, ma.renderConfig())
+	return ma.Renderer.Form(w, r, nil, fields, nil, cfg)
 }
 
-// handleCreate processes the create form submission.
-func (ma *ModelAdmin[T]) handleCreate(w http.ResponseWriter, r *http.Request) error {
+// HandleCreate processes the create form submission.
+// Exported so apps can mount ModelAdmin create alongside custom handlers.
+func (ma *ModelAdmin[T]) HandleCreate(w http.ResponseWriter, r *http.Request) error {
 	if !ma.CanCreate {
 		return burrow.NewHTTPError(http.StatusForbidden, "create not allowed")
 	}
@@ -101,8 +106,10 @@ func (ma *ModelAdmin[T]) handleCreate(w http.ResponseWriter, r *http.Request) er
 	if err := burrow.Validate(item); err != nil {
 		var ve *burrow.ValidationError
 		if errors.As(err, &ve) {
+			vCfg := ma.renderConfig()
+			ma.translateRenderConfig(&vCfg, r)
 			fields := AutoFields[T](item)
-			return ma.Renderer.Form(w, r, item, fields, ve, ma.renderConfig())
+			return ma.Renderer.Form(w, r, item, fields, ve, vCfg)
 		}
 		return burrow.NewHTTPError(http.StatusBadRequest, "validation failed")
 	}
@@ -116,8 +123,9 @@ func (ma *ModelAdmin[T]) handleCreate(w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
-// handleUpdate processes the edit form submission.
-func (ma *ModelAdmin[T]) handleUpdate(w http.ResponseWriter, r *http.Request) error {
+// HandleUpdate processes the edit form submission.
+// Exported so apps can mount ModelAdmin update alongside custom handlers.
+func (ma *ModelAdmin[T]) HandleUpdate(w http.ResponseWriter, r *http.Request) error {
 	if !ma.CanEdit {
 		return burrow.NewHTTPError(http.StatusForbidden, "edit not allowed")
 	}
@@ -143,8 +151,10 @@ func (ma *ModelAdmin[T]) handleUpdate(w http.ResponseWriter, r *http.Request) er
 	if err := burrow.Validate(item); err != nil {
 		var ve *burrow.ValidationError
 		if errors.As(err, &ve) {
+			vCfg := ma.renderConfig()
+			ma.translateRenderConfig(&vCfg, r)
 			fields := AutoFields[T](item)
-			return ma.Renderer.Form(w, r, item, fields, ve, ma.renderConfig())
+			return ma.Renderer.Form(w, r, item, fields, ve, vCfg)
 		}
 		return burrow.NewHTTPError(http.StatusBadRequest, "validation failed")
 	}
@@ -163,8 +173,9 @@ func (ma *ModelAdmin[T]) handleUpdate(w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
-// handleDelete deletes an item by ID.
-func (ma *ModelAdmin[T]) handleDelete(w http.ResponseWriter, r *http.Request) error {
+// HandleDelete deletes an item by ID.
+// Exported so apps can mount ModelAdmin delete alongside custom handlers.
+func (ma *ModelAdmin[T]) HandleDelete(w http.ResponseWriter, r *http.Request) error {
 	if !ma.CanDelete {
 		return burrow.NewHTTPError(http.StatusForbidden, "delete not allowed")
 	}

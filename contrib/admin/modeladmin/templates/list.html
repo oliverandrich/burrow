@@ -6,13 +6,13 @@
     </h2>
     {{- if .Cfg.CanCreate }}
     <a href="/admin/{{ .Cfg.Slug }}/new" class="btn btn-primary btn-sm">
-        New
+        {{ T "modeladmin-new" }}
     </a>
     {{- end }}
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">{{ T "modeladmin-admin" }}</a></li>
         <li class="breadcrumb-item active" aria-current="page">{{ .Cfg.Display }}</li>
     </ol>
 </nav>
@@ -43,7 +43,7 @@
                 <th scope="col">{{ . }}</th>
                 {{- end }}
                 {{- if .Cfg.HasRowActions }}
-                <th scope="col" class="text-end">Actions</th>
+                <th scope="col" class="text-end">{{ T "modeladmin-actions" }}</th>
                 {{- end }}
             </tr>
         </thead>
@@ -91,7 +91,7 @@
     <ul class="pagination pagination-sm justify-content-center">
         <li class="page-item{{ if le .Page.Page 1 }} disabled{{ end }}">
             <a class="page-link" href="/admin/{{ .Cfg.Slug }}?page={{ sub .Page.Page 1 }}">
-                Previous
+                {{ T "modeladmin-previous" }}
             </a>
         </li>
         {{- range pageRange .Page.TotalPages }}
@@ -103,7 +103,7 @@
         {{- end }}
         <li class="page-item{{ if not .Page.HasMore }} disabled{{ end }}">
             <a class="page-link" href="/admin/{{ .Cfg.Slug }}?page={{ add .Page.Page 1 }}">
-                Next
+                {{ T "modeladmin-next" }}
             </a>
         </li>
     </ul>

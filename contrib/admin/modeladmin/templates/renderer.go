@@ -11,6 +11,7 @@ import (
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 )
 
 //go:embed *.html
@@ -42,6 +43,7 @@ func funcMap() template.FuncMap {
 		"pageRange":       pageRange,
 		"dict":            dict,
 		"printf":          fmt.Sprintf,
+		"T":               func(key string) string { return key }, // stub, overridden per-request
 	}
 }
 
@@ -65,9 +67,14 @@ func dict(pairs ...any) map[string]any {
 	return m
 }
 
-func executeTemplate(name string, data map[string]any) (template.HTML, error) {
+func executeTemplate(name string, t func(string) string, data map[string]any) (template.HTML, error) {
+	tmpl, err := getTemplates().Clone()
+	if err != nil {
+		return "", fmt.Errorf("clone templates: %w", err)
+	}
+	tmpl = tmpl.Funcs(template.FuncMap{"T": t})
 	var buf bytes.Buffer
-	if err := getTemplates().ExecuteTemplate(&buf, name, data); err != nil {
+	if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 		return "", fmt.Errorf("execute template %s: %w", name, err)
 	}
 	return template.HTML(buf.String()), nil //nolint:gosec // template output is trusted
@@ -86,13 +93,15 @@ func (d *defaultRenderer[T]) List(w http.ResponseWriter, r *http.Request, items 
 	for i, item := range items {
 		anyItems[i] = item
 	}
+	ctx := r.Context()
+	t := func(key string) string { return i18n.T(ctx, key) }
 	data := map[string]any{
 		"Items":     anyItems,
 		"Page":      page,
 		"Cfg":       cfg,
-		"CSRFToken": csrf.Token(r.Context()),
+		"CSRFToken": csrf.Token(ctx),
 	}
-	content, err := executeTemplate("modeladmin/list", data)
+	content, err := executeTemplate("modeladmin/list", t, data)
 	if err != nil {
 		return err
 	}
@@ -101,13 +110,15 @@ func (d *defaultRenderer[T]) List(w http.ResponseWriter, r *http.Request, items 
 
 func (d *defaultRenderer[T]) Detail(w http.ResponseWriter, r *http.Request, item *T, cfg modeladmin.RenderConfig) error {
 	itemAny := any(*item)
+	ctx := r.Context()
+	t := func(key string) string { return i18n.T(ctx, key) }
 	data := map[string]any{
 		"Item":      itemAny,
 		"IDValue":   fmt.Sprintf("%v", modeladmin.FieldValue(itemAny, cfg.IDField)),
 		"Cfg":       cfg,
-		"CSRFToken": csrf.Token(r.Context()),
+		"CSRFToken": csrf.Token(ctx),
 	}
-	content, err := executeTemplate("modeladmin/detail", data)
+	content, err := executeTemplate("modeladmin/detail", t, data)
 	if err != nil {
 		return err
 	}
@@ -130,14 +141,16 @@ func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *
 		tplFields[i] = fieldData{FormField: f, FormName: f.FormName()}
 	}
 
+	ctx := r.Context()
+	t := func(key string) string { return i18n.T(ctx, key) }
 	data := map[string]any{
 		"Item":             itemAny,
 		"Fields":           tplFields,
 		"ValidationErrors": errors,
 		"Cfg":              cfg,
-		"CSRFToken":        csrf.Token(r.Context()),
+		"CSRFToken":        csrf.Token(ctx),
 	}
-	content, err := executeTemplate("modeladmin/form", data)
+	content, err := executeTemplate("modeladmin/form", t, data)
 	if err != nil {
 		return err
 	}

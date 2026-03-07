@@ -197,6 +197,31 @@ func TestPopulateFromForm_PointerField(t *testing.T) {
 	assert.Equal(t, "test@example.com", *item.Email)
 }
 
+func TestFieldLabelKeys(t *testing.T) {
+	type tagged struct { //nolint:govet // fieldalignment: test struct
+		ID    int64  `admin:"i18n:my-id"`
+		Name  string `admin:"i18n:my-name"`
+		Plain string
+		Skip  string `admin:"-"`
+	}
+
+	keys := fieldLabelKeys[tagged]()
+	assert.Equal(t, map[string]string{
+		"ID":   "my-id",
+		"Name": "my-name",
+	}, keys)
+}
+
+func TestFieldLabelKeys_Empty(t *testing.T) {
+	type noTags struct { //nolint:govet // fieldalignment: test struct
+		ID   int64
+		Name string
+	}
+
+	keys := fieldLabelKeys[noTags]()
+	assert.Empty(t, keys)
+}
+
 func TestPopulateFromForm_EmptyPointerField(t *testing.T) {
 	type withPtr struct {
 		Email *string
