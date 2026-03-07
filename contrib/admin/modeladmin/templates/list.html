@@ -36,7 +36,7 @@
 {{- end }}
 {{ if .Items -}}
 <div class="table-responsive">
-    <table class="table table-striped table-hover">
+    <table class="table table-striped table-hover align-middle">
         <thead>
             <tr>
                 {{- range .Cfg.ListFieldLabels }}
@@ -50,16 +50,11 @@
         <tbody>
             {{- range $idx, $item := .Items }}
             <tr>
+                {{- $detailURL := printf "/admin/%s/%v" $.Cfg.Slug (fieldValue $item $.Cfg.IDField) }}
                 {{- range $i, $field := $.Cfg.ListFields }}
-                {{- if eq $i 0 }}
-                <td>
-                    <a href="/admin/{{ $.Cfg.Slug }}/{{ fieldValue $item $.Cfg.IDField }}">
-                        {{ columnValue $item $field }}
-                    </a>
+                <td class="p-0">
+                    <a href="{{ $detailURL }}" class="text-decoration-none text-reset d-block p-2">{{ columnValue $item $field }}</a>
                 </td>
-                {{- else }}
-                <td>{{ columnValue $item $field }}</td>
-                {{- end }}
                 {{- end }}
                 {{- if $.Cfg.HasRowActions }}
                 <td class="text-end">
