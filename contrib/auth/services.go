@@ -149,11 +149,11 @@ func formatRecoveryCode(code string) string {
 
 const webauthnSessionTTL = 2 * time.Minute
 
-type webauthnService struct { //nolint:govet // fieldalignment: readability over optimization
+type webauthnService struct {
 	wa    *gowebauthn.WebAuthn
-	mu    sync.Mutex
 	store map[string]*webauthnSessionEntry
-	done  chan struct{} // closed when cleanup goroutine exits
+	done  chan struct{}
+	mu    sync.Mutex
 }
 
 type webauthnSessionEntry struct {

@@ -96,7 +96,7 @@ func TestStaticFileServing(t *testing.T) {
 	hash := contentHash([]byte("body{}"))
 	hashedPath := "/static/dist/styles." + hash + ".css"
 
-	req := httptest.NewRequest(http.MethodGet, hashedPath, nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, hashedPath, nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -111,7 +111,7 @@ func TestStaticFileServingFallback(t *testing.T) {
 	r := chi.NewRouter()
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/static/dist/bootstrap-icons-CVBWLLHT.woff2", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/static/dist/bootstrap-icons-CVBWLLHT.woff2", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -132,7 +132,7 @@ func TestCacheHeadersHashedAsset(t *testing.T) {
 	})
 
 	hash := contentHash([]byte("body{}"))
-	req := httptest.NewRequest(http.MethodGet, "/static/dist/styles."+hash+".css", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/static/dist/styles."+hash+".css", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -152,7 +152,7 @@ func TestCacheHeadersUnhashedAsset(t *testing.T) {
 		w.Write([]byte("ok"))
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/static/dist/styles.css", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/static/dist/styles.css", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -172,7 +172,7 @@ func TestCacheHeadersNonStaticPath(t *testing.T) {
 		w.Write([]byte("ok"))
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -192,7 +192,7 @@ func TestCustomPrefix(t *testing.T) {
 	hash := contentHash([]byte("body{}"))
 
 	// File should be served at the custom prefix.
-	req := httptest.NewRequest(http.MethodGet, "/assets/dist/styles."+hash+".css", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/assets/dist/styles."+hash+".css", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -201,7 +201,7 @@ func TestCustomPrefix(t *testing.T) {
 	assert.Equal(t, "public, max-age=31536000, immutable", rec.Header().Get("Cache-Control"))
 
 	// Old prefix should not serve files.
-	req = httptest.NewRequest(http.MethodGet, "/static/dist/styles."+hash+".css", nil)
+	req = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/static/dist/styles."+hash+".css", nil)
 	rec = httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -241,7 +241,7 @@ func TestContribFileServing(t *testing.T) {
 	app.Routes(r)
 
 	hash := contentHash([]byte(".admin{}"))
-	req := httptest.NewRequest(http.MethodGet, "/static/admin/admin."+hash+".css", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/static/admin/admin."+hash+".css", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -284,7 +284,7 @@ func TestContribAndUserFilesCoexist(t *testing.T) {
 
 	// User file still works.
 	userHash := contentHash([]byte("body{}"))
-	req := httptest.NewRequest(http.MethodGet, "/static/dist/styles."+userHash+".css", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/static/dist/styles."+userHash+".css", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -293,7 +293,7 @@ func TestContribAndUserFilesCoexist(t *testing.T) {
 
 	// Contrib file works.
 	adminHash := contentHash([]byte(".admin{}"))
-	req = httptest.NewRequest(http.MethodGet, "/static/admin/admin."+adminHash+".css", nil)
+	req = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/static/admin/admin."+adminHash+".css", nil)
 	rec = httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -320,7 +320,7 @@ func TestContribFileCacheHeaders(t *testing.T) {
 	app.Routes(r)
 
 	hash := contentHash([]byte(".admin{}"))
-	req := httptest.NewRequest(http.MethodGet, "/static/admin/admin."+hash+".css", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/static/admin/admin."+hash+".css", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -340,7 +340,7 @@ func TestNoContribsStillWorks(t *testing.T) {
 	app.Routes(r)
 
 	hash := contentHash([]byte("body{}"))
-	req := httptest.NewRequest(http.MethodGet, "/static/dist/styles."+hash+".css", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/static/dist/styles."+hash+".css", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 

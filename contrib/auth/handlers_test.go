@@ -160,7 +160,7 @@ func TestNewHandlersInviteOnly(t *testing.T) {
 
 func TestRegisterPage(t *testing.T) {
 	h, _, r := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodGet, "/auth/register", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -173,7 +173,7 @@ func TestRegisterPage(t *testing.T) {
 
 func TestRegisterPageInviteOnlyNoToken(t *testing.T) {
 	h, _, r := newTestHandlersInviteOnly(t)
-	req := httptest.NewRequest(http.MethodGet, "/auth/register", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -194,7 +194,7 @@ func TestRegisterPageInviteOnlyWithValidToken(t *testing.T) {
 	}
 	require.NoError(t, repo.CreateInvite(context.Background(), invite))
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/register?invite=validtoken", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register?invite=validtoken", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -209,7 +209,7 @@ func TestRegisterPageInviteOnlyWithValidToken(t *testing.T) {
 func TestRegisterBeginUsernameMode(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
 	body := strings.NewReader(`{"username":"newuser"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -225,7 +225,7 @@ func TestRegisterBeginUsernameMode(t *testing.T) {
 func TestRegisterBeginMissingUsername(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
 	body := strings.NewReader(`{"username":""}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -244,7 +244,7 @@ func TestRegisterBeginUsernameExists(t *testing.T) {
 	require.NoError(t, err)
 
 	body := strings.NewReader(`{"username":"taken"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -259,7 +259,7 @@ func TestRegisterBeginUsernameExists(t *testing.T) {
 func TestRegisterBeginInvalidJSON(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
 	body := strings.NewReader(`{invalid}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -273,7 +273,7 @@ func TestRegisterBeginInvalidJSON(t *testing.T) {
 func TestRegisterBeginEmailMode(t *testing.T) {
 	h, _, _ := newTestHandlersEmailMode(t)
 	body := strings.NewReader(`{"email":"test@example.com"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -288,7 +288,7 @@ func TestRegisterBeginEmailMode(t *testing.T) {
 func TestRegisterBeginEmailModeMissingEmail(t *testing.T) {
 	h, _, _ := newTestHandlersEmailMode(t)
 	body := strings.NewReader(`{"email":""}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -307,7 +307,7 @@ func TestRegisterBeginEmailModeEmailExists(t *testing.T) {
 	require.NoError(t, err)
 
 	body := strings.NewReader(`{"email":"taken@example.com"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -326,7 +326,7 @@ func TestRegisterBeginInviteOnlyNoToken(t *testing.T) {
 	require.NoError(t, err)
 
 	body := strings.NewReader(`{"username":"newuser"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -342,7 +342,7 @@ func TestRegisterBeginInviteOnlyFirstUserBypass(t *testing.T) {
 
 	// No users exist - first user bypasses invite requirement.
 	body := strings.NewReader(`{"username":"firstuser"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -369,7 +369,7 @@ func TestRegisterBeginInviteOnlyValidToken(t *testing.T) {
 	require.NoError(t, repo.CreateInvite(context.Background(), invite))
 
 	body := strings.NewReader(`{"username":"newuser","invite":"invitetoken"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -395,7 +395,7 @@ func TestRegisterBeginInviteOnlyExpiredToken(t *testing.T) {
 	require.NoError(t, repo.CreateInvite(context.Background(), invite))
 
 	body := strings.NewReader(`{"username":"newuser","invite":"expiredtoken"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/begin", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -410,7 +410,7 @@ func TestRegisterBeginInviteOnlyExpiredToken(t *testing.T) {
 
 func TestRegisterFinishInvalidUserID(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/finish?user_id=invalid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/finish?user_id=invalid", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -423,7 +423,7 @@ func TestRegisterFinishInvalidUserID(t *testing.T) {
 
 func TestRegisterFinishSessionExpired(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodPost, "/auth/register/finish?user_id=99999", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/finish?user_id=99999", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -437,7 +437,7 @@ func TestRegisterFinishSessionExpired(t *testing.T) {
 
 func TestLoginPage(t *testing.T) {
 	h, _, r := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -452,7 +452,7 @@ func TestLoginPage(t *testing.T) {
 
 func TestLoginBegin(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodPost, "/auth/login/begin", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/login/begin", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -468,7 +468,7 @@ func TestLoginBegin(t *testing.T) {
 
 func TestLoginFinishMissingSessionID(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodPost, "/auth/login/finish", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/login/finish", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -481,7 +481,7 @@ func TestLoginFinishMissingSessionID(t *testing.T) {
 
 func TestLoginFinishSessionExpired(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodPost, "/auth/login/finish?session_id=nonexistent", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/login/finish?session_id=nonexistent", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -496,7 +496,7 @@ func TestLoginFinishSessionExpired(t *testing.T) {
 
 func TestLogout(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/logout", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -523,7 +523,7 @@ func TestLogoutCustomRedirect(t *testing.T) {
 		LogoutRedirect: "/goodbye",
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/logout", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -541,7 +541,7 @@ func TestCredentialsPage(t *testing.T) {
 	user, err := repo.CreateUser(context.Background(), "alice", "")
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/credentials", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/credentials", nil)
 	req = requestWithSession(req, user)
 	rec := httptest.NewRecorder()
 
@@ -564,7 +564,7 @@ func TestDeleteCredentialInvalidID(t *testing.T) {
 		_ = h.DeleteCredential(w, r)
 	})
 
-	req := httptest.NewRequest(http.MethodDelete, "/auth/credentials/invalid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/auth/credentials/invalid", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -588,7 +588,7 @@ func TestDeleteCredentialLastCredential(t *testing.T) {
 		_ = h.DeleteCredential(w, r)
 	})
 
-	req := httptest.NewRequest(http.MethodDelete, "/auth/credentials/"+strconv.FormatInt(cred.ID, 10), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/auth/credentials/"+strconv.FormatInt(cred.ID, 10), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -610,7 +610,7 @@ func TestDeleteCredentialSuccess(t *testing.T) {
 		_ = h.DeleteCredential(w, r)
 	})
 
-	req := httptest.NewRequest(http.MethodDelete, "/auth/credentials/"+strconv.FormatInt(cred1.ID, 10), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/auth/credentials/"+strconv.FormatInt(cred1.ID, 10), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -621,7 +621,7 @@ func TestDeleteCredentialSuccess(t *testing.T) {
 
 func TestRecoveryPage(t *testing.T) {
 	h, _, r := newTestHandlers(t)
-	req := httptest.NewRequest(http.MethodGet, "/auth/recovery", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -647,7 +647,7 @@ func TestRecoveryLoginMissingFields(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body := strings.NewReader(tt.body)
-			req := httptest.NewRequest(http.MethodPost, "/auth/recovery", body)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
 			req.Header.Set("Content-Type", "application/json")
 			req = requestWithSession(req, nil)
 			rec := httptest.NewRecorder()
@@ -662,7 +662,7 @@ func TestRecoveryLoginMissingFields(t *testing.T) {
 func TestRecoveryLoginUserNotFound(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
 	body := strings.NewReader(`{"username":"nonexistent","code":"abcd-efgh-ijkl"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/recovery", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -684,7 +684,7 @@ func TestRecoveryLoginInvalidCode(t *testing.T) {
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))
 
 	body := strings.NewReader(`{"username":"alice","code":"wrong-code-here"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/recovery", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -705,7 +705,7 @@ func TestRecoveryLoginSuccess(t *testing.T) {
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))
 
 	body := strings.NewReader(`{"username":"alice","code":"` + codes[0] + `"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/recovery", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -729,7 +729,7 @@ func TestRegenerateRecoveryCodes(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/recovery-codes/regenerate", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/regenerate", nil)
 	req = requestWithSession(req, user)
 	rec := httptest.NewRecorder()
 
@@ -746,7 +746,7 @@ func TestRegenerateRecoveryCodes(t *testing.T) {
 func TestRecoveryCodesPageWithCodes(t *testing.T) {
 	h, _, r := newTestHandlers(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/recovery-codes", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
 	req = session.Inject(req, map[string]any{
 		"user_id":        int64(1),
 		"recovery_codes": []string{"code1", "code2"},
@@ -765,7 +765,7 @@ func TestRecoveryCodesPageWithCodes(t *testing.T) {
 func TestRecoveryCodesPageWithoutCodes(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/recovery-codes", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
 	req = requestWithSession(req, &User{ID: 1})
 	rec := httptest.NewRecorder()
 
@@ -781,7 +781,7 @@ func TestRecoveryCodesPageWithoutCodes(t *testing.T) {
 func TestAcknowledgeRecoveryCodes(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/recovery-codes/ack", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
 	req = session.Inject(req, map[string]any{
 		"user_id":        int64(1),
 		"recovery_codes": []string{"code1"},
@@ -800,7 +800,7 @@ func TestAcknowledgeRecoveryCodes(t *testing.T) {
 func TestAcknowledgeRecoveryCodesWithRedirect(t *testing.T) {
 	h, _, _ := newTestHandlers(t)
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/recovery-codes/ack", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
 	req = session.Inject(req, map[string]any{
 		"user_id":              int64(1),
 		"recovery_codes":       []string{"code1"},
@@ -821,7 +821,7 @@ func TestAcknowledgeRecoveryCodesWithRedirect(t *testing.T) {
 
 func TestVerifyPendingPage(t *testing.T) {
 	h, _, r := newTestHandlersEmailMode(t)
-	req := httptest.NewRequest(http.MethodGet, "/auth/verify-pending", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-pending", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -833,7 +833,7 @@ func TestVerifyPendingPage(t *testing.T) {
 
 func TestVerifyEmailMissingToken(t *testing.T) {
 	h, _, r := newTestHandlersEmailMode(t)
-	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -845,7 +845,7 @@ func TestVerifyEmailMissingToken(t *testing.T) {
 
 func TestVerifyEmailInvalidToken(t *testing.T) {
 	h, _, r := newTestHandlersEmailMode(t)
-	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token=invalid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email?token=invalid", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -861,7 +861,7 @@ func TestVerifyEmailExpiredToken(t *testing.T) {
 	tokenHash := HashToken("expiredtoken")
 	require.NoError(t, repo.CreateEmailVerificationToken(context.Background(), user.ID, tokenHash, time.Now().Add(-time.Hour)))
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token=expiredtoken", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email?token=expiredtoken", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -877,7 +877,7 @@ func TestVerifyEmailSuccess(t *testing.T) {
 	tokenHash := HashToken("validtoken")
 	require.NoError(t, repo.CreateEmailVerificationToken(context.Background(), user.ID, tokenHash, time.Now().Add(24*time.Hour)))
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token=validtoken", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email?token=validtoken", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
 
@@ -896,7 +896,7 @@ func TestVerifyEmailSuccess(t *testing.T) {
 func TestResendVerificationMissingEmail(t *testing.T) {
 	h, _, _ := newTestHandlersEmailMode(t)
 	body := strings.NewReader(`{"email":""}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/resend-verification", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -910,7 +910,7 @@ func TestResendVerificationMissingEmail(t *testing.T) {
 func TestResendVerificationNonexistentEmail(t *testing.T) {
 	h, _, _ := newTestHandlersEmailMode(t)
 	body := strings.NewReader(`{"email":"nobody@example.com"}`)
-	req := httptest.NewRequest(http.MethodPost, "/auth/resend-verification", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
 	req.Header.Set("Content-Type", "application/json")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()

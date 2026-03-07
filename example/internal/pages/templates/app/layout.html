@@ -1,0 +1,111 @@
+{{ define "app/layout" -}}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }}</title>
+    <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
+    {{ template "bootstrap/theme_script" . }}
+    <script defer src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
+    <script defer src="{{ staticURL "bootstrap/htmx.min.js" }}"></script>
+</head>
+<body>
+    {{ template "app/navbar" . }}
+    <main class="container py-4">
+        {{ template "app/alerts" . }}
+        {{ .Content }}
+    </main>
+</body>
+</html>
+{{- end }}
+
+{{ define "app/navbar" -}}
+<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
+    <div class="container">
+        <a class="navbar-brand" href="/">{{ t "layout-brand" }}</a>
+        <button class="navbar-toggler" type="button"
+            data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false"
+            aria-label="{{ t "layout-toggle-nav" }}">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                {{ range .NavItems -}}
+                <li class="nav-item">
+                    <a class="{{ .LinkClass }}" href="{{ .URL }}">
+                        {{ if .Icon }}<span class="me-1">{{ .Icon }}</span>{{ end }}
+                        {{ .Label }}
+                    </a>
+                </li>
+                {{- end }}
+            </ul>
+            <div class="me-3">
+                {{ template "bootstrap/theme_switcher" . }}
+            </div>
+            {{ template "app/user_menu" . }}
+        </div>
+    </div>
+</nav>
+{{- end }}
+
+{{ define "app/user_menu" -}}
+<ul class="navbar-nav">
+    {{ if .User -}}
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" role="button"
+            data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="me-1">{{ iconPersonCircle }}</span>
+            {{ .User.Username }}
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end">
+            {{ if .User.IsAdmin -}}
+            <li>
+                <a class="dropdown-item" href="/admin">
+                    <span class="me-2">{{ iconGear }}</span>{{ t "layout-admin" }}
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            {{- end }}
+            <li>
+                <form method="post" action="/auth/logout">
+                    <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+                    <button type="submit" class="dropdown-item">
+                        <span class="me-2">{{ iconBoxArrowRight }}</span>{{ t "layout-sign-out" }}
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </li>
+    {{- else -}}
+    <li class="nav-item">
+        <a class="nav-link" href="/auth/login">
+            <span class="me-1">{{ iconBoxArrowInRight }}</span>{{ t "layout-sign-in" }}
+        </a>
+    </li>
+    {{- end }}
+</ul>
+{{- end }}
+
+{{ define "app/alerts" -}}
+<div id="alerts">
+    {{ range .Messages -}}
+    <div class="alert alert-{{ alertClass .Level }} alert-dismissible fade show" role="alert">
+        {{ .Text }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {{- end }}
+</div>
+{{- end }}
+
+{{ define "app/alerts_oob" -}}
+<div id="alerts" hx-swap-oob="innerHTML">
+    {{ range .Messages -}}
+    <div class="alert alert-{{ alertClass .Level }} alert-dismissible fade show" role="alert">
+        {{ .Text }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {{- end }}
+</div>
+{{- end }}

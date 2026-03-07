@@ -63,7 +63,7 @@ func (h *adminHandlers) CreateInvite(w http.ResponseWriter, r *http.Request) err
 
 	if h.email != nil && req.Email != "" {
 		inviteURL := createdURL
-		go func() {
+		go func() { //nolint:gosec // G118: intentionally detached from request — email must send after response
 			sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			if sendErr := h.email.SendInvite(sendCtx, req.Email, inviteURL); sendErr != nil {

@@ -107,7 +107,7 @@ func TestHandleList(t *testing.T) {
 	seedItems(t, db, 5)
 
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodGet, "/items", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -124,7 +124,7 @@ func TestHandleList_Pagination(t *testing.T) {
 	seedItems(t, db, 10)
 
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodGet, "/items?page=2", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?page=2", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -144,7 +144,7 @@ func TestHandleDetail_ReadOnly(t *testing.T) {
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -160,7 +160,7 @@ func TestHandleDetail_EditMode(t *testing.T) {
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -173,7 +173,7 @@ func TestHandleDetail_NotFound(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
 
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodGet, "/items/999", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/999", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -184,7 +184,7 @@ func TestHandleNew(t *testing.T) {
 	_, renderer, ma := setupHandlerTest(t)
 
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodGet, "/items/new", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/new", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -199,7 +199,7 @@ func TestHandleNew_Forbidden(t *testing.T) {
 
 	// When CanCreate is false, the route is not registered at all.
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodGet, "/items/new", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/new", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -215,7 +215,7 @@ func TestHandleCreate(t *testing.T) {
 		"name":   {"Created Item"},
 		"status": {"active"},
 	}
-	req := httptest.NewRequest(http.MethodPost, "/items", strings.NewReader(form.Encode()))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -243,7 +243,7 @@ func TestHandleUpdate(t *testing.T) {
 		"name":   {"Updated"},
 		"status": {"inactive"},
 	}
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/items/%d", item.ID), strings.NewReader(form.Encode()))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%d", item.ID), strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -272,7 +272,7 @@ func TestHandleUpdate_Continue(t *testing.T) {
 		"status":    {"active"},
 		"_continue": {"1"},
 	}
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/items/%d", item.ID), strings.NewReader(form.Encode()))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%d", item.ID), strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -292,7 +292,7 @@ func TestHandleUpdate_Forbidden(t *testing.T) {
 	// When CanEdit is false, the POST route is not registered.
 	r := newRouter(ma)
 	form := url.Values{"name": {"Updated"}}
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/items/%d", item.ID), strings.NewReader(form.Encode()))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%d", item.ID), strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -308,7 +308,7 @@ func TestHandleDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/items/%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/items/%d", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -325,7 +325,7 @@ func TestHandleDelete_NotFound(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
 
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodDelete, "/items/999", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/items/999", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -342,7 +342,7 @@ func TestHandleDelete_Forbidden(t *testing.T) {
 
 	// When CanDelete is false, the DELETE route is not registered.
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/items/%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/items/%d", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -353,7 +353,7 @@ func TestRenderConfig(t *testing.T) {
 	_, renderer, ma := setupHandlerTest(t)
 
 	r := newRouter(ma)
-	req := httptest.NewRequest(http.MethodGet, "/items", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

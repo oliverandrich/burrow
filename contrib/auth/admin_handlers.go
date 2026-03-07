@@ -107,7 +107,7 @@ func (h *adminHandlers) UpdateUser(w http.ResponseWriter, r *http.Request) error
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid user id")
 	}
 
-	role := r.FormValue("role")
+	role := r.FormValue("role") //nolint:gosec // G120: body size limited by server-level RequestSize middleware
 	if role != RoleAdmin && role != RoleUser {
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid role")
 	}
@@ -131,11 +131,11 @@ func (h *adminHandlers) UpdateUser(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 
-	user.Name = r.FormValue("name")
-	user.Bio = r.FormValue("bio")
+	user.Name = r.FormValue("name") //nolint:gosec // G120: body size limited by server-level RequestSize middleware
+	user.Bio = r.FormValue("bio")   //nolint:gosec // G120: body size limited by server-level RequestSize middleware
 	user.Role = role
 
-	email := r.FormValue("email")
+	email := r.FormValue("email") //nolint:gosec // G120: body size limited by server-level RequestSize middleware
 	if email != "" {
 		user.Email = &email
 	} else {
@@ -147,7 +147,7 @@ func (h *adminHandlers) UpdateUser(w http.ResponseWriter, r *http.Request) error
 	}
 
 	redirectURL := "/admin/users"
-	if r.FormValue("_continue") != "" {
+	if r.FormValue("_continue") != "" { //nolint:gosec // G120: body size limited by server-level RequestSize middleware
 		redirectURL = "/admin/users/" + strconv.FormatInt(id, 10)
 	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)

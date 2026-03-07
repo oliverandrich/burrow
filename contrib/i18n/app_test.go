@@ -92,7 +92,7 @@ func TestMiddlewareSetsLocale(t *testing.T) {
 		w.Write([]byte("ok"))
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	req.Header.Set("Accept-Language", "de-DE,de;q=0.9,en;q=0.8")
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -192,7 +192,7 @@ func TestRequestFuncMap(t *testing.T) {
 	require.NoError(t, app.AddTranslations(testTranslationsFS))
 
 	ctx := app.WithLocale(context.Background(), "de")
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = req.WithContext(ctx)
 
 	fm := app.RequestFuncMap(req)
@@ -225,7 +225,7 @@ func TestMiddlewareDefaultsToEnglish(t *testing.T) {
 		w.Write([]byte("ok"))
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 

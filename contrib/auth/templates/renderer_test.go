@@ -81,7 +81,7 @@ func withTestExecutor(req *http.Request) *http.Request {
 
 func TestDefaultRendererLoginPage(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/login", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.LoginPage(rec, req, "/dashboard")
@@ -95,7 +95,7 @@ func TestDefaultRendererLoginPage(t *testing.T) {
 
 func TestDefaultRendererRegisterPage(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/register", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.RegisterPage(rec, req, false, false, "", "")
@@ -109,7 +109,7 @@ func TestDefaultRendererRegisterPage(t *testing.T) {
 
 func TestDefaultRendererRegisterPageEmailMode(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/register", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.RegisterPage(rec, req, true, false, "", "")
@@ -125,7 +125,7 @@ func TestDefaultRendererCredentialsPage(t *testing.T) {
 	creds := []auth.Credential{
 		{ID: 1, Name: "My Passkey"},
 	}
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/credentials", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/credentials", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.CredentialsPage(rec, req, creds)
@@ -139,7 +139,7 @@ func TestDefaultRendererCredentialsPage(t *testing.T) {
 
 func TestDefaultRendererRecoveryPage(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/recovery", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.RecoveryPage(rec, req, "/dashboard")
@@ -155,7 +155,7 @@ func TestDefaultRendererRecoveryPage(t *testing.T) {
 func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
 	r := DefaultRenderer()
 	codes := []string{"aaaa-bbbb-cccc", "dddd-eeee-ffff"}
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/recovery-codes", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.RecoveryCodesPage(rec, req, codes)
@@ -172,7 +172,7 @@ func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
 
 func TestDefaultRendererVerifyPendingPage(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/verify-pending", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-pending", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.VerifyPendingPage(rec, req)
@@ -186,7 +186,7 @@ func TestDefaultRendererVerifyPendingPage(t *testing.T) {
 
 func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/verify-email", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.VerifyEmailSuccess(rec, req)
@@ -200,7 +200,7 @@ func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
 
 func TestDefaultRendererVerifyEmailError(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/verify-email", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.VerifyEmailError(rec, req, "invalid_token")
@@ -215,7 +215,7 @@ func TestDefaultRendererVerifyEmailError(t *testing.T) {
 
 func TestDefaultRendererLoginPageWithLogo(t *testing.T) {
 	r := DefaultRenderer()
-	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
 	// Create an executor that reads logo from context.
 	logoExec := testExecutorWithLogo(`<span class="test-logo">My Brand</span>`)
@@ -234,7 +234,7 @@ func TestDefaultRendererLoginPageWithLogo(t *testing.T) {
 
 func TestDefaultRendererLoginPageWithoutLogo(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/auth/login", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.LoginPage(rec, req, "/dashboard")
@@ -247,7 +247,7 @@ func TestDefaultRendererLoginPageWithoutLogo(t *testing.T) {
 
 func TestDefaultRendererWithLayout(t *testing.T) {
 	r := DefaultRenderer()
-	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 	// Set a layout in context.
 	ctx := burrow.WithLayout(req.Context(), func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
 		return burrow.HTML(w, code, "<layout-wrapper>"+string(content)+"</layout-wrapper>")
@@ -266,7 +266,7 @@ func TestDefaultRendererWithLayout(t *testing.T) {
 
 func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 	r := DefaultRenderer()
-	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
 	// Create executor with real CSRF token stub.
 	funcMap := template.FuncMap{
@@ -319,7 +319,7 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 func TestDefaultAdminRendererIncludesCSRFToken(t *testing.T) {
 	r := DefaultAdminRenderer()
 	user := &auth.User{ID: 1, Username: "alice", Role: auth.RoleAdmin}
-	req := httptest.NewRequest(http.MethodGet, "/admin/users/1", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users/1", nil)
 
 	// Create executor with real CSRF token.
 	funcMap := template.FuncMap{
@@ -380,7 +380,7 @@ func TestDefaultAdminRendererUsersPage(t *testing.T) {
 		{ID: 1, Username: "alice", Role: auth.RoleUser},
 		{ID: 2, Username: "bob", Role: auth.RoleAdmin},
 	}
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/admin/users", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.AdminUsersPage(rec, req, users)
@@ -394,7 +394,7 @@ func TestDefaultAdminRendererUsersPage(t *testing.T) {
 func TestDefaultAdminRendererUserDetailPage(t *testing.T) {
 	r := DefaultAdminRenderer()
 	user := &auth.User{ID: 1, Username: "alice", Role: auth.RoleAdmin, Name: "Alice"}
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/admin/users/1", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users/1", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.AdminUserDetailPage(rec, req, user)
@@ -410,7 +410,7 @@ func TestDefaultAdminRendererInvitesPage(t *testing.T) {
 	invites := []auth.Invite{
 		{ID: 1, Label: "John Doe", Email: "test@example.com", ExpiresAt: time.Now().Add(time.Hour)},
 	}
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/admin/invites", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/invites", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.AdminInvitesPage(rec, req, invites, "", false)
@@ -424,7 +424,7 @@ func TestDefaultAdminRendererInvitesPage(t *testing.T) {
 
 func TestDefaultAdminRendererInvitesPageWithCreatedURL(t *testing.T) {
 	r := DefaultAdminRenderer()
-	req := withTestExecutor(httptest.NewRequest(http.MethodGet, "/admin/invites", nil))
+	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/invites", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.AdminInvitesPage(rec, req, nil, "http://localhost/auth/register?invite=abc123", false)

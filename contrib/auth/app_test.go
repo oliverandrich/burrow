@@ -525,7 +525,7 @@ func TestAuthMiddlewareNoSession(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -689,7 +689,7 @@ func TestAdminRoutes(t *testing.T) {
 		app.AdminRoutes(r)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/users", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -731,7 +731,7 @@ func TestAdminRoutesWithLifecycleOrder(t *testing.T) {
 		app.AdminRoutes(r)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/users", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -760,7 +760,7 @@ func TestAdminUsersPageHandler(t *testing.T) {
 	r := &mockAdminRenderer{}
 	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/users", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users", nil)
 	rec := httptest.NewRecorder()
 
 	err = h.UsersPage(rec, req)
@@ -784,7 +784,7 @@ func TestAdminUserDetailHandler(t *testing.T) {
 	router := chi.NewRouter()
 	router.Get("/admin/users/{id}", burrow.Handle(h.UserDetail))
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/admin/users/%d", user.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/admin/users/%d", user.ID), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -802,7 +802,7 @@ func TestAdminUserDetailNotFound(t *testing.T) {
 	router := chi.NewRouter()
 	router.Get("/admin/users/{id}", burrow.Handle(h.UserDetail))
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/users/999", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users/999", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -824,7 +824,7 @@ func TestAdminUpdateUser(t *testing.T) {
 	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
 
 	body := strings.NewReader("name=Alice+Wonder&bio=Hello+World&email=alice%40example.com&role=admin")
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -856,7 +856,7 @@ func TestAdminUpdateUserContinueEditing(t *testing.T) {
 	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
 
 	body := strings.NewReader("name=Alice&role=user&_continue=1")
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -884,7 +884,7 @@ func TestAdminUpdateUserClearsOptionalFields(t *testing.T) {
 	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
 
 	body := strings.NewReader("name=&bio=&email=&role=user")
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -909,7 +909,7 @@ func TestAdminUpdateUserNotFound(t *testing.T) {
 	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
 
 	body := strings.NewReader("name=Test&role=user")
-	req := httptest.NewRequest(http.MethodPost, "/admin/users/999", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/999", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -933,7 +933,7 @@ func TestAdminUpdateUserLastAdminDemotion(t *testing.T) {
 	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
 
 	body := strings.NewReader("name=Admin&role=user")
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", admin.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", admin.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -965,7 +965,7 @@ func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
 	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
 
 	body := strings.NewReader("name=Admin2&role=user")
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", admin2.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", admin2.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -992,7 +992,7 @@ func TestAdminUpdateUserInvalidRole(t *testing.T) {
 	router.Post("/admin/users/{id}", burrow.Handle(h.UpdateUser))
 
 	body := strings.NewReader("name=Alice&role=superadmin")
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -1009,7 +1009,7 @@ func TestAdminInvitesPage(t *testing.T) {
 	r := &mockAdminRenderer{}
 	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/invites", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/invites", nil)
 	rec := httptest.NewRecorder()
 
 	err := h.InvitesPage(rec, req)
@@ -1028,7 +1028,7 @@ func TestAdminCreateInvite(t *testing.T) {
 	h := newAdminHandlers(repo, r, &Config{LoginRedirect: "/dashboard"}, nil)
 
 	body := strings.NewReader(`label=John+Doe&email=invitee@example.com`)
-	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = requestWithSession(req, user)
 	rec := httptest.NewRecorder()
@@ -1056,7 +1056,7 @@ func TestAdminCreateInviteNoAuth(t *testing.T) {
 	router.Post("/admin/invites", burrow.Handle(h.CreateInvite))
 
 	body := strings.NewReader(`email=test@example.com`)
-	req := httptest.NewRequest(http.MethodPost, "/admin/invites", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -1075,7 +1075,7 @@ func TestAdminDeleteInviteInvalidID(t *testing.T) {
 	router := chi.NewRouter()
 	router.Delete("/admin/invites/{id}", burrow.Handle(h.DeleteInvite))
 
-	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/invalid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/invalid", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1100,7 +1100,7 @@ func TestAdminDeleteInviteSuccess(t *testing.T) {
 	router := chi.NewRouter()
 	router.Delete("/admin/invites/{id}", burrow.Handle(h.DeleteInvite))
 
-	req := httptest.NewRequest(http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1187,7 +1187,7 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 	h := newAdminHandlers(repo, r, &Config{}, nil)
 	router := deleteUserRouter(h, adminUser)
 
-	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/admin/users/%d", target.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/admin/users/%d", target.ID), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1209,7 +1209,7 @@ func TestAdminDeleteUserInvalidID(t *testing.T) {
 	h := newAdminHandlers(repo, r, &Config{}, nil)
 	router := deleteUserRouter(h, &User{ID: 1, Role: RoleAdmin})
 
-	req := httptest.NewRequest(http.MethodDelete, "/admin/users/invalid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/users/invalid", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1224,7 +1224,7 @@ func TestAdminDeleteUserNotFound(t *testing.T) {
 	h := newAdminHandlers(repo, r, &Config{}, nil)
 	router := deleteUserRouter(h, &User{ID: 1, Role: RoleAdmin})
 
-	req := httptest.NewRequest(http.MethodDelete, "/admin/users/999", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/users/999", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1244,7 +1244,7 @@ func TestAdminDeleteUserSelf(t *testing.T) {
 	h := newAdminHandlers(repo, r, &Config{}, nil)
 	router := deleteUserRouter(h, adminUser)
 
-	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/admin/users/%d", adminUser.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/admin/users/%d", adminUser.ID), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1295,7 +1295,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 	})
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -1343,7 +1343,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	})
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/credentials/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/credentials/", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -1376,7 +1376,7 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 	})
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -1487,7 +1487,7 @@ func TestRequestFuncMap(t *testing.T) {
 	app := &App{}
 	user := &User{ID: 1, Username: "alice"}
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	ctx := WithUser(req.Context(), user)
 	req = req.WithContext(ctx)
 
@@ -1502,7 +1502,7 @@ func TestRequestFuncMap(t *testing.T) {
 
 func TestRequestFuncMapUnauthenticated(t *testing.T) {
 	app := &App{}
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
 	fm := app.RequestFuncMap(req)
 

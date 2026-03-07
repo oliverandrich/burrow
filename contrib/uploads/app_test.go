@@ -169,7 +169,7 @@ func TestMiddlewareInjectsStorage(t *testing.T) {
 		gotStorage = StorageFromContext(r.Context())
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 
 	assert.NotNil(t, gotStorage)
@@ -190,7 +190,7 @@ func TestServingRoute(t *testing.T) {
 	r := chi.NewRouter()
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/media/"+key, nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/media/"+key, nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -227,7 +227,7 @@ func TestDefaultAllowedTypesApplied(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, writer.Close())
 
-	req := httptest.NewRequest(http.MethodPost, "/upload", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/upload", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -267,7 +267,7 @@ func TestPerCallAllowedTypesOverrideDefault(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, writer.Close())
 
-	req := httptest.NewRequest(http.MethodPost, "/upload", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/upload", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -305,7 +305,7 @@ func TestFullUploadFlow(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, writer.Close())
 
-	uploadReq := httptest.NewRequest(http.MethodPost, "/upload", body)
+	uploadReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/upload", body)
 	uploadReq.Header.Set("Content-Type", writer.FormDataContentType())
 	uploadRec := httptest.NewRecorder()
 	r.ServeHTTP(uploadRec, uploadReq)
@@ -315,7 +315,7 @@ func TestFullUploadFlow(t *testing.T) {
 	assert.Contains(t, key, "uploads/")
 
 	// Fetch the uploaded file
-	getReq := httptest.NewRequest(http.MethodGet, "/media/"+key, nil)
+	getReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/media/"+key, nil)
 	getRec := httptest.NewRecorder()
 	r.ServeHTTP(getRec, getReq)
 

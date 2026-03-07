@@ -18,7 +18,7 @@ func TestSessionSaveAndParse(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cookie)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.AddCookie(cookie)
 
 	got, err := mgr.Parse(req)
@@ -36,7 +36,7 @@ func TestSessionSaveNilValues(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cookie)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.AddCookie(cookie)
 
 	got, err := mgr.Parse(req)
@@ -49,7 +49,7 @@ func TestSessionParseNoCookie(t *testing.T) {
 	app := configuredApp(t)
 	mgr := app.Manager()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	got, err := mgr.Parse(req)
 	require.NoError(t, err)
 	assert.Nil(t, got)
@@ -59,7 +59,7 @@ func TestSessionParseInvalidCookie(t *testing.T) {
 	app := configuredApp(t)
 	mgr := app.Manager()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.AddCookie(&http.Cookie{Name: "_session", Value: "garbage"})
 
 	got, err := mgr.Parse(req)

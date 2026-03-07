@@ -138,7 +138,7 @@ func TestEscapeLike(t *testing.T) {
 func TestFilter_Select(t *testing.T) {
 	db := setupSearchDB(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/items?status=active", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?status=active", nil)
 	opts := listOpts{
 		filters: []FilterDef{
 			{Field: "status", Type: "select", Choices: []Choice{{Value: "active"}, {Value: "inactive"}}},
@@ -155,7 +155,7 @@ func TestFilter_Select(t *testing.T) {
 func TestFilter_SelectInvalidChoice(t *testing.T) {
 	db := setupSearchDB(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/items?status=invalid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?status=invalid", nil)
 	opts := listOpts{
 		filters: []FilterDef{
 			{Field: "status", Type: "select", Choices: []Choice{{Value: "active"}, {Value: "inactive"}}},
@@ -172,7 +172,7 @@ func TestFilter_SelectInvalidChoice(t *testing.T) {
 func TestSort_Ascending(t *testing.T) {
 	db := setupSearchDB(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/items?sort=name", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?sort=name", nil)
 	opts := listOpts{
 		sortFields: []string{"name"},
 		r:          req,
@@ -189,7 +189,7 @@ func TestSort_Ascending(t *testing.T) {
 func TestSort_Descending(t *testing.T) {
 	db := setupSearchDB(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/items?sort=-name", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?sort=-name", nil)
 	opts := listOpts{
 		sortFields: []string{"name"},
 		r:          req,
@@ -205,7 +205,7 @@ func TestSort_Descending(t *testing.T) {
 func TestSort_DisallowedField(t *testing.T) {
 	db := setupSearchDB(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/items?sort=status", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?sort=status", nil)
 	opts := listOpts{
 		sortFields: []string{"name"}, // "status" not in allowed list
 		r:          req,

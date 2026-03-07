@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -31,6 +32,8 @@ var (
 	_ burrow.HasDependencies = (*App)(nil)
 	_ burrow.HasAdmin        = (*App)(nil)
 	_ burrow.HasTranslations = (*App)(nil)
+	_ burrow.HasTemplates    = (*App)(nil)
+	_ burrow.HasFuncMap      = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -155,6 +158,61 @@ func requestWithUser(req *http.Request, user *auth.User) *http.Request {
 	return req
 }
 
+// testTemplateExecutor builds a real template executor from the notes templates
+// plus a minimal app/alerts_oob stub for handler tests.
+func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
+	t.Helper()
+
+	app := New()
+	fm := app.FuncMap()
+	// Add stubs for request-scoped functions and functions provided by other apps.
+	fm["t"] = func(key string) string { return key }
+	fm["csrfToken"] = func() string { return "test-token" }
+	fm["staticURL"] = func(name string) string { return "/static/" + name }
+	fm["itoa"] = func(id int64) string { return fmt.Sprintf("%d", id) }
+	fm["iconTrash"] = func(class ...string) template.HTML { return "<svg>trash</svg>" }
+	fm["alertClass"] = func(level string) string { return level }
+
+	tmpl := template.New("").Funcs(fm)
+
+	// Parse notes templates.
+	fsys := app.TemplateFS()
+	entries, err := fs.ReadDir(fsys, "notes")
+	require.NoError(t, err)
+	for _, e := range entries {
+		data, readErr := fs.ReadFile(fsys, "notes/"+e.Name())
+		require.NoError(t, readErr)
+		_, parseErr := tmpl.Parse(string(data))
+		require.NoError(t, parseErr)
+	}
+
+	// Add a minimal app/alerts_oob template for create/delete responses.
+	_, err = tmpl.Parse(`{{ define "app/alerts_oob" -}}
+<div id="alerts" hx-swap-oob="true">
+{{ range .Messages -}}
+<div class="alert alert-{{ .Level }}">{{ .Text }}</div>
+{{- end }}
+</div>
+{{- end }}`)
+	require.NoError(t, err)
+
+	return func(r *http.Request, name string, data map[string]any) (template.HTML, error) {
+		var buf strings.Builder
+		if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
+			return "", err
+		}
+		return template.HTML(buf.String()), nil //nolint:gosec // test helper
+	}
+}
+
+// injectTemplateExecutor adds a test template executor to the request context.
+func injectTemplateExecutor(t *testing.T, req *http.Request) *http.Request {
+	t.Helper()
+	exec := testTemplateExecutor(t)
+	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
+	return req.WithContext(ctx)
+}
+
 func TestListNotesHandler(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
@@ -163,8 +221,9 @@ func TestListNotesHandler(t *testing.T) {
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Test", Content: "Content", UserID: 42}))
 
 	h := NewHandlers(repo)
-	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	req = requestWithUser(req, &auth.User{ID: 42})
+	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 
 	err := h.List(rec, req)
@@ -179,7 +238,7 @@ func TestListNotesUnauthenticated(t *testing.T) {
 	repo := NewRepository(db)
 
 	h := NewHandlers(repo)
-	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	rec := httptest.NewRecorder()
 
 	err := h.List(rec, req)
@@ -197,9 +256,16 @@ func TestCreateNoteHandler(t *testing.T) {
 	h := NewHandlers(repo)
 
 	// Use chi router + messages middleware so flash messages work.
+	exec := testTemplateExecutor(t)
 	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
 	r.Use(msgMW)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.WithTemplateExecutor(r.Context(), exec)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 	r.Post("/notes", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Create(w, r)
 		if err != nil {
@@ -208,7 +274,7 @@ func TestCreateNoteHandler(t *testing.T) {
 	})
 
 	form := strings.NewReader("title=My+Note&content=Some+content")
-	req := httptest.NewRequest(http.MethodPost, "/notes", form)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	req = requestWithUser(req, &auth.User{ID: 42})
@@ -234,7 +300,7 @@ func TestCreateNoteHandlerNonHTMX(t *testing.T) {
 
 	h := NewHandlers(repo)
 	form := strings.NewReader("title=My+Note&content=Some+content")
-	req := httptest.NewRequest(http.MethodPost, "/notes", form)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = requestWithUser(req, &auth.User{ID: 42})
 	req = session.Inject(req, map[string]any{})
@@ -257,7 +323,7 @@ func TestCreateNoteEmptyTitle(t *testing.T) {
 
 	h := NewHandlers(repo)
 	form := strings.NewReader("title=&content=Some+content")
-	req := httptest.NewRequest(http.MethodPost, "/notes", form)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = requestWithUser(req, &auth.User{ID: 42})
 	rec := httptest.NewRecorder()
@@ -281,9 +347,16 @@ func TestDeleteNoteHandler(t *testing.T) {
 	h := NewHandlers(repo)
 
 	// Use chi router to inject URL params; include messages middleware for store.
+	exec := testTemplateExecutor(t)
 	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
 	r.Use(msgMW)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.WithTemplateExecutor(r.Context(), exec)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Delete(w, r)
 		if err != nil {
@@ -291,7 +364,7 @@ func TestDeleteNoteHandler(t *testing.T) {
 		}
 	})
 
-	req := httptest.NewRequest(http.MethodDelete, "/notes/1", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/1", nil)
 	req = requestWithUser(req, &auth.User{ID: 42})
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
@@ -317,7 +390,7 @@ func TestModelAdminRoutes_List(t *testing.T) {
 	r := chi.NewRouter()
 	app.AdminRoutes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -339,7 +412,7 @@ func TestModelAdminRoutes_Delete(t *testing.T) {
 	r := chi.NewRouter()
 	app.AdminRoutes(r)
 
-	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/notes/%d", note.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/notes/%d", note.ID), nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 

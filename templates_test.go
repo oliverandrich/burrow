@@ -18,6 +18,15 @@ func TestBaseFuncMap(t *testing.T) {
 	assert.Contains(t, fm, "safeHTML")
 	assert.Contains(t, fm, "safeURL")
 	assert.Contains(t, fm, "safeAttr")
+	assert.Contains(t, fm, "itoa")
+}
+
+func TestBaseFuncMapItoa(t *testing.T) {
+	fm := baseFuncMap()
+	fn := fm["itoa"].(func(int64) string)
+	assert.Equal(t, "42", fn(42))
+	assert.Equal(t, "0", fn(0))
+	assert.Equal(t, "-1", fn(-1))
 }
 
 func TestBaseFuncMapSafeHTML(t *testing.T) {
@@ -163,7 +172,7 @@ func TestExecuteTemplate(t *testing.T) {
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	html, err := s.executeTemplate(r, "myapp/hello", map[string]any{"Name": "World"})
 	require.NoError(t, err)
 	assert.Equal(t, template.HTML("Hello, World!"), html)
@@ -192,7 +201,7 @@ func TestExecuteTemplateWithRequestFuncMap(t *testing.T) {
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	html, err := s.executeTemplate(r, "myapp/page", nil)
 	require.NoError(t, err)
 	assert.Equal(t, template.HTML("Token: abc123"), html)
@@ -211,7 +220,7 @@ func TestExecuteTemplateNotFound(t *testing.T) {
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	_, err = s.executeTemplate(r, "myapp/nonexistent", nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nonexistent")
@@ -236,7 +245,7 @@ func TestTemplateMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 

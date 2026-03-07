@@ -52,7 +52,7 @@ func TestHealthEndpoint(t *testing.T) {
 	r := chi.NewRouter()
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -68,7 +68,7 @@ func TestHealthEndpointDBCheck(t *testing.T) {
 	r := chi.NewRouter()
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 

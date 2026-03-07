@@ -1,0 +1,35 @@
+{{ define "pages/home" -}}
+<div class="py-4">
+    <h1 class="mb-3">{{ t "home-title" }}</h1>
+    <p class="lead text-body-secondary">
+        {{ t "home-subtitle" }}
+    </p>
+    <hr class="my-4">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><span class="me-2">{{ iconKey }}</span>{{ t "home-card-passkey-title" }}</h5>
+                    <p class="card-text">{{ t "home-card-passkey-text" }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><span class="me-2">{{ iconPuzzle }}</span>{{ t "home-card-contrib-title" }}</h5>
+                    <p class="card-text">{{ t "home-card-contrib-text" }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><span class="me-2">{{ iconLightning }}</span>{{ t "home-card-htmx-title" }}</h5>
+                    <p class="card-text">{{ t "home-card-htmx-text" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{- end }}

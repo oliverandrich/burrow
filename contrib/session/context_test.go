@@ -24,7 +24,7 @@ func TestMiddlewareSetsSessionValues(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -43,7 +43,7 @@ func TestMiddlewareNoCookie(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -64,7 +64,7 @@ func TestGetString(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -80,7 +80,7 @@ func TestGetStringMissing(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -98,7 +98,7 @@ func TestGetStringWrongType(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -116,7 +116,7 @@ func TestGetInt64(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -134,7 +134,7 @@ func TestGetInt64WrongType(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -142,7 +142,7 @@ func TestGetInt64WrongType(t *testing.T) {
 }
 
 func TestGetValuesNoSession(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	assert.Nil(t, GetValues(req))
 	assert.Empty(t, GetString(req, "anything"))
 	assert.Equal(t, int64(0), GetInt64(req, "anything"))
@@ -159,7 +159,7 @@ func TestSet(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -185,7 +185,7 @@ func TestSetAddsToExistingSession(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -196,7 +196,7 @@ func TestSetAddsToExistingSession(t *testing.T) {
 }
 
 func TestSetWithoutMiddleware(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	err := Set(rec, req, "key", "value")
@@ -217,7 +217,7 @@ func TestDeleteKey(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -229,7 +229,7 @@ func TestDeleteKey(t *testing.T) {
 }
 
 func TestDeleteWithoutMiddleware(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	err := Delete(rec, req, "key")
@@ -244,7 +244,7 @@ func TestSaveContext(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -268,7 +268,7 @@ func TestSaveContextReplacesValues(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -280,7 +280,7 @@ func TestSaveContextReplacesValues(t *testing.T) {
 }
 
 func TestSaveContextWithoutMiddleware(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	err := Save(rec, req, map[string]any{"key": "value"})
@@ -301,7 +301,7 @@ func TestClearContext(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -315,7 +315,7 @@ func TestClearContext(t *testing.T) {
 }
 
 func TestClearContextWithoutMiddleware(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	// Should not panic.
@@ -335,7 +335,7 @@ func TestSetRoundtrip(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	responseCookies = rec.Result().Cookies()
@@ -344,7 +344,7 @@ func TestSetRoundtrip(t *testing.T) {
 	require.NotEmpty(t, responseCookies)
 	lastCookie := responseCookies[len(responseCookies)-1]
 
-	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	req2 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req2.AddCookie(lastCookie)
 
 	values, err := mgr.Parse(req2)
@@ -357,7 +357,7 @@ func TestSetRoundtrip(t *testing.T) {
 // --- Inject test helper ---
 
 func TestInject(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	req = Inject(req, map[string]any{"user_id": int64(42)})
@@ -374,7 +374,7 @@ func TestInject(t *testing.T) {
 }
 
 func TestInjectNilValues(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	req = Inject(req, nil)

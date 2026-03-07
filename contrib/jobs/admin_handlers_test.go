@@ -45,7 +45,7 @@ func setupAdminTest(t *testing.T) (*adminHandlers, *Repository, *stubRenderer) {
 
 // chiRequest builds an http.Request with chi URL params set.
 func chiRequest(method, path string, params map[string]string) *http.Request {
-	r := httptest.NewRequest(method, path, nil)
+	r := httptest.NewRequestWithContext(context.Background(), method, path, nil)
 	rctx := chi.NewRouteContext()
 	for k, v := range params {
 		rctx.URLParams.Add(k, v)
@@ -63,7 +63,7 @@ func TestAdminHandlers_ListPage(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/admin/jobs?page=1&limit=10", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs?page=1&limit=10", nil)
 
 	err := h.ListPage(w, r)
 	require.NoError(t, err)
@@ -82,7 +82,7 @@ func TestAdminHandlers_ListPage_StatusFilter(t *testing.T) {
 	require.NoError(t, err)
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/admin/jobs?status=pending", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs?status=pending", nil)
 
 	err = h.ListPage(w, r)
 	require.NoError(t, err)

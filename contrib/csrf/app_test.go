@@ -52,7 +52,7 @@ func TestCSRFTokenSetInContext(t *testing.T) {
 
 	handler := mws[0](inner)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -69,7 +69,7 @@ func TestCSRFRejectsPostWithoutToken(t *testing.T) {
 
 	handler := a.Middleware()[0](inner)
 
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("data=value"))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", strings.NewReader("data=value"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
@@ -89,7 +89,7 @@ func TestCSRFAcceptsPostWithToken(t *testing.T) {
 
 	handler := a.Middleware()[0](inner)
 
-	getReq := httptest.NewRequest(http.MethodGet, "/", nil)
+	getReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	getRR := httptest.NewRecorder()
 	handler.ServeHTTP(getRR, getReq)
 
@@ -99,7 +99,7 @@ func TestCSRFAcceptsPostWithToken(t *testing.T) {
 	cookies := getRR.Result().Cookies()
 
 	// Now POST with the token in the header and the cookie.
-	postReq := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("data=value"))
+	postReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", strings.NewReader("data=value"))
 	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	postReq.Header.Set("X-CSRF-Token", token)
 	for _, c := range cookies {
@@ -123,7 +123,7 @@ func TestCSRFAcceptsGet(t *testing.T) {
 
 	handler := a.Middleware()[0](inner)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -183,7 +183,7 @@ func TestRequestFuncMap(t *testing.T) {
 
 	handler := a.Middleware()[0](inner)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 

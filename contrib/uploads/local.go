@@ -44,7 +44,7 @@ func (s *LocalStorage) Store(_ context.Context, file io.Reader, opts StoreOption
 	dst := filepath.Join(s.root, key)
 
 	// Deduplication: skip write if file already exists.
-	if _, statErr := os.Stat(dst); statErr == nil {
+	if _, statErr := os.Stat(dst); statErr == nil { //nolint:gosec // G703: dst is built from root + content-hash + sanitized filename
 		return key, nil
 	}
 
@@ -58,7 +58,7 @@ func (s *LocalStorage) Store(_ context.Context, file io.Reader, opts StoreOption
 // atomicWrite creates parent directories and writes content to dst via
 // a temp file + rename for crash safety.
 func atomicWrite(dst string, content []byte) error {
-	if mkdirErr := os.MkdirAll(filepath.Dir(dst), 0o750); mkdirErr != nil {
+	if mkdirErr := os.MkdirAll(filepath.Dir(dst), 0o750); mkdirErr != nil { //nolint:gosec // G703: dst is built from root + content-hash + sanitized filename
 		return fmt.Errorf("uploads: create dir: %w", mkdirErr)
 	}
 

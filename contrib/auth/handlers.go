@@ -232,7 +232,7 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 		}
 
 		verifyURL := h.config.BaseURL + "/auth/verify-email?token=" + plainToken
-		go func() {
+		go func() { //nolint:gosec // G118: intentionally detached from request — email must send after response
 			sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			if sendErr := h.email.SendVerification(sendCtx, *user.Email, verifyURL); sendErr != nil {
@@ -621,7 +621,7 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 	}
 
 	verifyURL := h.config.BaseURL + "/auth/verify-email?token=" + plainToken
-	go func() {
+	go func() { //nolint:gosec // G118: intentionally detached from request — email must send after response
 		sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		if sendErr := h.email.SendVerification(sendCtx, *user.Email, verifyURL); sendErr != nil {

@@ -30,7 +30,7 @@ func TestLayout(t *testing.T) {
 		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users", URL: "/admin/users"}}},
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 	ctx := burrow.WithTemplateExecutor(req.Context(), stubExecutor)
 	ctx = admin.WithNavGroups(ctx, groups)
 	ctx = admin.WithRequestPath(ctx, "/admin/users")
@@ -49,7 +49,7 @@ func TestLayout(t *testing.T) {
 func TestLayoutWithoutExecutor(t *testing.T) {
 	lay := Layout()
 
-	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 	rec := httptest.NewRecorder()
 
 	err := lay(rec, req, http.StatusOK, "<p>fallback</p>", nil)
@@ -68,7 +68,7 @@ func TestLayoutPreservesTitleFromData(t *testing.T) {
 		return "ok", nil
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
 	req = req.WithContext(ctx)
 
@@ -91,7 +91,7 @@ func TestDefaultDashboardRendererDashboardPage(t *testing.T) {
 		return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
 	ctx = burrow.WithLayout(ctx, lay)
 	req = req.WithContext(ctx)
@@ -119,7 +119,7 @@ func TestDefaultDashboardRendererWithNavGroups(t *testing.T) {
 		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users", URL: "/admin/users"}}},
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
 	ctx = admin.WithNavGroups(ctx, groups)
 	req = req.WithContext(ctx)

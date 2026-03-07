@@ -9,7 +9,6 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
-	"strconv"
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
@@ -38,22 +37,22 @@ type App struct {
 	adminHandlers *adminHandlers
 	renderer      Renderer
 	adminRenderer AdminRenderer
-	authLayout    burrow.LayoutFunc
-	logo          template.HTML
 	emailService  EmailService
+	authLayout    burrow.LayoutFunc
+	cancelCleanup context.CancelFunc
 	config        *Config
 	globalConfig  *burrow.Config
-	cancelCleanup context.CancelFunc
+	logo          template.HTML
 }
 
 // Config holds auth-specific configuration.
-type Config struct { //nolint:govet // fieldalignment: readability over optimization
+type Config struct {
 	LoginRedirect       string
 	LogoutRedirect      string
+	BaseURL             string
 	UseEmail            bool
 	RequireVerification bool
 	InviteOnly          bool
-	BaseURL             string // Populated from global config at Configure time.
 }
 
 // Option configures the auth app.
@@ -231,7 +230,6 @@ func (a *App) TemplateFS() fs.FS {
 // FuncMap returns static template functions for auth templates.
 func (a *App) FuncMap() template.FuncMap {
 	return template.FuncMap{
-		"itoa":     func(id int64) string { return strconv.FormatInt(id, 10) },
 		"credName": credName,
 		"emailValue": func(user *User) string {
 			if user.Email != nil {

@@ -11,7 +11,7 @@ import (
 )
 
 func TestRender(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	err := Render(rec, req, http.StatusOK, template.HTML("<p>hello</p>"))
@@ -22,7 +22,7 @@ func TestRender(t *testing.T) {
 }
 
 func TestRenderWithStatus(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	err := Render(rec, req, http.StatusNotFound, template.HTML("<p>not found</p>"))
@@ -31,7 +31,7 @@ func TestRenderWithStatus(t *testing.T) {
 }
 
 func TestRenderTemplateNoExecutor(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	err := RenderTemplate(rec, req, http.StatusOK, "test", nil)
@@ -44,7 +44,7 @@ func TestRenderTemplateFragment(t *testing.T) {
 		return template.HTML("<p>" + name + "</p>"), nil
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	ctx := WithTemplateExecutor(req.Context(), exec)
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
@@ -62,7 +62,7 @@ func TestRenderTemplateWithLayout(t *testing.T) {
 		return HTML(w, code, "<html><body>"+string(content)+"</body></html>")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	ctx := WithTemplateExecutor(req.Context(), exec)
 	ctx = WithLayout(ctx, layout)
 	req = req.WithContext(ctx)
@@ -83,7 +83,7 @@ func TestRenderTemplateHTMXSkipsLayout(t *testing.T) {
 		return HTML(w, code, "<html>"+string(content)+"</html>")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set("HX-Request", "true")
 	ctx := WithTemplateExecutor(req.Context(), exec)
 	ctx = WithLayout(ctx, layout)
@@ -101,7 +101,7 @@ func TestRenderTemplateWithoutLayout(t *testing.T) {
 		return template.HTML("<p>bare</p>"), nil
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	ctx := WithTemplateExecutor(req.Context(), exec)
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()

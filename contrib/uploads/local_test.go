@@ -259,7 +259,7 @@ func TestStoreFile(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, writer.Close())
 
-	req := httptest.NewRequest(http.MethodPost, "/upload", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/upload", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	key, err := StoreFile(req, "avatar", s, StoreOptions{Prefix: "avatars"})
@@ -283,7 +283,7 @@ func TestStoreFile_MissingField(t *testing.T) {
 	writer := multipart.NewWriter(body)
 	require.NoError(t, writer.Close())
 
-	req := httptest.NewRequest(http.MethodPost, "/upload", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/upload", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	_, err := StoreFile(req, "avatar", s, StoreOptions{})

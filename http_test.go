@@ -27,7 +27,7 @@ func TestHandleSuccess(t *testing.T) {
 		return Text(w, http.StatusOK, "hello")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -40,7 +40,7 @@ func TestHandleHTTPError(t *testing.T) {
 		return NewHTTPError(http.StatusForbidden, "forbidden")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -53,7 +53,7 @@ func TestHandleGenericError(t *testing.T) {
 		return errors.New("something broke")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -99,7 +99,7 @@ func TestBindJSON(t *testing.T) {
 		Name string `json:"name"`
 	}
 	body := strings.NewReader(`{"name":"alice"}`)
-	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", "application/json")
 
 	var p payload
@@ -114,7 +114,7 @@ func TestBindForm(t *testing.T) {
 		Name string `form:"name"`
 	}
 	body := strings.NewReader("name=alice")
-	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	var p payload
@@ -126,7 +126,7 @@ func TestBindForm(t *testing.T) {
 
 func TestBindInvalidJSON(t *testing.T) {
 	body := strings.NewReader(`{invalid}`)
-	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", "application/json")
 
 	var p struct{ Name string }
@@ -145,7 +145,7 @@ func TestHandle5xxErrorIsLogged(t *testing.T) {
 		return NewHTTPError(http.StatusInternalServerError, "db down")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test-path", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test-path", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -165,7 +165,7 @@ func TestHandle4xxErrorNotLogged(t *testing.T) {
 		return NewHTTPError(http.StatusNotFound, "not found")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/missing", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/missing", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -181,7 +181,7 @@ func TestBindFormWithNonStringFields(t *testing.T) {
 		Score  float64 `form:"score"`
 	}
 	body := strings.NewReader("name=alice&age=30&active=true&score=9.5")
-	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	var p payload
@@ -207,7 +207,7 @@ func TestBindMultipartForm(t *testing.T) {
 		"Content-Disposition: form-data; name=\"email\"\r\n\r\nalice@example.com\r\n" +
 		"--" + boundary + "--\r\n"
 
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
 
 	var p payload
@@ -224,7 +224,7 @@ func TestBindWithValidationFailure(t *testing.T) {
 		Name  string `form:"name" validate:"required"`
 	}
 	body := strings.NewReader("email=notanemail")
-	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	var p payload
@@ -242,7 +242,7 @@ func TestBindJSONWithValidation(t *testing.T) {
 		Email string `json:"email" validate:"required,email"`
 	}
 	body := strings.NewReader(`{"email":""}`)
-	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", "application/json")
 
 	var p payload
@@ -263,7 +263,7 @@ func TestHandleValidationErrorIsUnhandled(t *testing.T) {
 		}
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -281,7 +281,7 @@ func TestHandleUnhandledErrorIsLogged(t *testing.T) {
 		return errors.New("unexpected failure")
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/submit", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/submit", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 

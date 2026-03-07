@@ -5,6 +5,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"net/http"
 	"strconv"
@@ -14,10 +15,8 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
 	matpl "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
-	bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
-	notestpl "codeberg.org/oliverandrich/burrow/example/internal/notes/templates"
 	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
 )
@@ -27,6 +26,9 @@ var migrationFS embed.FS
 
 //go:embed translations
 var translationFS embed.FS
+
+//go:embed templates
+var noteTemplateFS embed.FS
 
 // Note represents a user's note.
 type Note struct { //nolint:govet // fieldalignment: readability over optimization
@@ -141,6 +143,20 @@ func (a *App) MigrationFS() fs.FS {
 	return sub
 }
 
+// TemplateFS returns the embedded HTML template files.
+func (a *App) TemplateFS() fs.FS {
+	sub, _ := fs.Sub(noteTemplateFS, "templates")
+	return sub
+}
+
+// FuncMap returns template functions used by notes templates.
+func (a *App) FuncMap() template.FuncMap {
+	return template.FuncMap{
+		"iconPlusLg":      func(class ...string) template.HTML { return bsicons.PlusLg(class...) },
+		"iconJournalText": func(class ...string) template.HTML { return bsicons.JournalText(class...) },
+	}
+}
+
 func (a *App) NavItems() []burrow.NavItem {
 	return []burrow.NavItem{
 		{
@@ -212,20 +228,33 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
 	}
 
-	tplNotes := make([]notestpl.Note, len(notes))
-	for i, n := range notes {
-		tplNotes[i] = notestpl.Note{ID: n.ID, Title: n.Title, Content: n.Content}
+	exec := burrow.TemplateExecutorFromContext(r.Context())
+	if exec == nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
+	}
+
+	data := map[string]any{
+		"Notes": notes,
+		"Page":  page,
 	}
 
 	// HTMX infinite scroll: return only the notes fragment.
 	if r.Header.Get("HX-Request") == "true" && pr.Cursor != "" {
-		return burrow.Render(w, r, http.StatusOK, notestpl.NotesPage(tplNotes, page))
+		content, execErr := exec(r, "notes/notes_page", data)
+		if execErr != nil {
+			return execErr
+		}
+		return burrow.Render(w, r, http.StatusOK, content)
 	}
 
-	content := notestpl.ListPage(tplNotes, page)
+	content, execErr := exec(r, "notes/list_page", data)
+	if execErr != nil {
+		return execErr
+	}
+
 	layout := burrow.Layout(r.Context())
 	if layout != nil {
-		return burrow.Render(w, r, http.StatusOK, layout("Notes", content))
+		return layout(w, r, http.StatusOK, content, map[string]any{"Title": "Notes"})
 	}
 	return burrow.Render(w, r, http.StatusOK, content)
 }
@@ -237,7 +266,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}
 
-	title := r.FormValue("title")
+	title := r.FormValue("title") //nolint:gosec // G120: body size limited by server-level RequestSize middleware
 	if title == "" {
 		return burrow.NewHTTPError(http.StatusBadRequest, "title is required")
 	}
@@ -245,7 +274,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 	note := &Note{
 		UserID:  user.ID,
 		Title:   title,
-		Content: r.FormValue("content"),
+		Content: r.FormValue("content"), //nolint:gosec // G120: body size limited by server-level RequestSize middleware
 	}
 
 	if err := h.repo.Create(r.Context(), note); err != nil {
@@ -258,8 +287,21 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 	// HTMX: return only the new card (prepended via hx-swap="afterbegin") with OOB alerts.
 	if r.Header.Get("HX-Request") == "true" {
-		tplNote := notestpl.Note{ID: note.ID, Title: note.Title, Content: note.Content}
-		return burrow.Render(w, r, http.StatusOK, notestpl.CreateResponse(tplNote))
+		exec := burrow.TemplateExecutorFromContext(r.Context())
+		if exec == nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
+		}
+
+		data := map[string]any{
+			"Note":     note,
+			"Messages": messages.Get(r.Context()),
+		}
+
+		content, err := exec(r, "notes/create_response", data)
+		if err != nil {
+			return err
+		}
+		return burrow.Render(w, r, http.StatusOK, content)
 	}
 
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
@@ -286,5 +328,18 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	return burrow.Render(w, r, http.StatusOK, bstpl.AlertsOOB())
+	exec := burrow.TemplateExecutorFromContext(r.Context())
+	if exec == nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
+	}
+
+	data := map[string]any{
+		"Messages": messages.Get(r.Context()),
+	}
+
+	content, execErr := exec(r, "app/alerts_oob", data)
+	if execErr != nil {
+		return execErr
+	}
+	return burrow.Render(w, r, http.StatusOK, content)
 }

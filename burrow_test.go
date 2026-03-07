@@ -405,7 +405,7 @@ func TestRegistryRegisterMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -502,7 +502,7 @@ func TestRegistryRegisterRoutes(t *testing.T) {
 	r := chi.NewRouter()
 	reg.RegisterRoutes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/from-app", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/from-app", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 

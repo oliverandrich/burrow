@@ -138,7 +138,7 @@ func (ma *ModelAdmin[T]) handleUpdate(w http.ResponseWriter, r *http.Request) er
 	slog.Info("item updated", "slug", ma.Slug, "id", id) //nolint:gosec // slug is developer-set, id is from URL param
 
 	redirectURL := "/admin/" + ma.Slug
-	if r.FormValue("_continue") != "" {
+	if r.FormValue("_continue") != "" { //nolint:gosec // G120: body size limited by server-level RequestSize middleware
 		redirectURL = "/admin/" + ma.Slug + "/" + id
 	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)

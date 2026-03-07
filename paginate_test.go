@@ -10,7 +10,7 @@ import (
 )
 
 func TestParsePageRequest_Defaults(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "/items", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items", nil)
 	pr := ParsePageRequest(r)
 
 	assert.Equal(t, 20, pr.Limit)
@@ -19,7 +19,7 @@ func TestParsePageRequest_Defaults(t *testing.T) {
 }
 
 func TestParsePageRequest_CustomLimit(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "/items?limit=50", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?limit=50", nil)
 	pr := ParsePageRequest(r)
 
 	assert.Equal(t, 50, pr.Limit)
@@ -40,7 +40,7 @@ func TestParsePageRequest_LimitClamping(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodGet, "/items?"+tt.query, nil)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?"+tt.query, nil)
 			pr := ParsePageRequest(r)
 			assert.Equal(t, tt.expected, pr.Limit)
 		})
@@ -48,7 +48,7 @@ func TestParsePageRequest_LimitClamping(t *testing.T) {
 }
 
 func TestParsePageRequest_Cursor(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "/items?cursor=abc123&limit=10", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?cursor=abc123&limit=10", nil)
 	pr := ParsePageRequest(r)
 
 	assert.Equal(t, "abc123", pr.Cursor)
@@ -57,7 +57,7 @@ func TestParsePageRequest_Cursor(t *testing.T) {
 }
 
 func TestParsePageRequest_Page(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "/items?page=3&limit=25", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?page=3&limit=25", nil)
 	pr := ParsePageRequest(r)
 
 	assert.Equal(t, 3, pr.Page)
@@ -66,7 +66,7 @@ func TestParsePageRequest_Page(t *testing.T) {
 }
 
 func TestParsePageRequest_CursorTakesPrecedence(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "/items?cursor=xyz&page=5", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?cursor=xyz&page=5", nil)
 	pr := ParsePageRequest(r)
 
 	assert.Equal(t, "xyz", pr.Cursor)
@@ -86,7 +86,7 @@ func TestParsePageRequest_InvalidPage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodGet, "/items?"+tt.query, nil)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?"+tt.query, nil)
 			pr := ParsePageRequest(r)
 			assert.Equal(t, tt.expected, pr.Page)
 		})

@@ -79,7 +79,7 @@ func TestTemplateExecutorContext(t *testing.T) {
 	got := TemplateExecutorFromContext(ctx)
 	require.NotNil(t, got)
 
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	html, err := got(r, "test", nil)
 	require.NoError(t, err)
 	assert.Equal(t, template.HTML("<p>test</p>"), html)

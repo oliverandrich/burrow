@@ -106,7 +106,7 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 
 	assert.True(t, provider.routesCalled, "AdminRoutes should be called on HasAdmin apps")
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/test-resource", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/test-resource", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -133,7 +133,7 @@ func TestRoutesRequiresAuth(t *testing.T) {
 	app.Routes(r)
 
 	// Unauthenticated request should redirect to login.
-	req := httptest.NewRequest(http.MethodGet, "/admin/test-resource", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/test-resource", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -166,7 +166,7 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 	})
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/test-resource", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/test-resource", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -210,7 +210,7 @@ func TestIndexPageWithDashboardRenderer(t *testing.T) {
 	mock := &mockDashboardRenderer{}
 	app := New(WithDashboardRenderer(mock))
 
-	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 	rec := httptest.NewRecorder()
 
 	err := app.indexPage(rec, req)
@@ -223,7 +223,7 @@ func TestIndexPageWithDashboardRenderer(t *testing.T) {
 func TestIndexPageWithoutDashboardRenderer(t *testing.T) {
 	app := New()
 
-	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 	rec := httptest.NewRecorder()
 
 	err := app.indexPage(rec, req)
@@ -275,7 +275,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 	})
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/layout-check", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/layout-check", nil)
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 
@@ -351,7 +351,7 @@ func TestRoutesInjectNavGroups(t *testing.T) {
 	})
 	app.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/nav-groups-check", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/nav-groups-check", nil)
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 

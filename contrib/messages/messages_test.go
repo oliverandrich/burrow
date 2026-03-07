@@ -21,7 +21,7 @@ var (
 
 func TestAdd(t *testing.T) {
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = session.Inject(req, map[string]any{})
 
 	err := Add(rec, req, Success, "Note created")
@@ -40,7 +40,7 @@ func TestAdd(t *testing.T) {
 
 func TestAddMultiple(t *testing.T) {
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = session.Inject(req, map[string]any{})
 
 	require.NoError(t, Add(rec, req, Success, "First"))
@@ -71,7 +71,7 @@ func TestMiddleware(t *testing.T) {
 	}))
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = session.Inject(req, map[string]any{sessionKey: stored})
 
 	handler.ServeHTTP(rec, req)
@@ -101,7 +101,7 @@ func TestMiddlewareNoMessages(t *testing.T) {
 	}))
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = session.Inject(req, map[string]any{})
 
 	handler.ServeHTTP(rec, req)
@@ -137,7 +137,7 @@ func TestAddAndGetSameRequest(t *testing.T) {
 	}))
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = session.Inject(req, map[string]any{})
 	handler.ServeHTTP(rec, req)
 
@@ -157,7 +157,7 @@ func TestAddWithoutSession(t *testing.T) {
 	}))
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	// No session.Inject — no session middleware.
 	handler.ServeHTTP(rec, req)
 
@@ -175,7 +175,7 @@ func TestGetClearsSession(t *testing.T) {
 	}))
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = session.Inject(req, map[string]any{})
 	handler.ServeHTTP(rec, req)
 
@@ -200,7 +200,7 @@ func TestGetConsumeIsIdempotent(t *testing.T) {
 	}))
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = session.Inject(req, map[string]any{})
 	handler.ServeHTTP(rec, req)
 
@@ -222,7 +222,7 @@ func TestMiddlewareSeededPlusAdd(t *testing.T) {
 	}))
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	// Seed session with an existing message from a previous request.
 	req = session.Inject(req, map[string]any{
 		sessionKey: []Message{{Level: Success, Text: "From previous request"}},
@@ -252,7 +252,7 @@ func TestConvenienceHelpers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 			req = session.Inject(req, map[string]any{})
 
 			require.NoError(t, tt.fn(rec, req, "test message"))

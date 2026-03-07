@@ -17,7 +17,7 @@ func TestRequireAuthRedirects(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/protected?foo=bar", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/protected?foo=bar", nil)
 	req = session.Inject(req, nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -34,7 +34,7 @@ func TestRequireAuthStoresRedirectInSession(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/protected?foo=bar", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/protected?foo=bar", nil)
 	req = session.Inject(req, nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -58,7 +58,7 @@ func TestRequireAuthAllowsAuthenticated(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/protected", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -89,7 +89,7 @@ func TestRequireAdmin(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			})
 
-			req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 			rec := httptest.NewRecorder()
 			r.ServeHTTP(rec, req)
 

@@ -17,22 +17,20 @@ const (
 )
 
 // User represents an authenticated user with WebAuthn credentials.
-type User struct { //nolint:govet // fieldalignment: readability over optimization
-	bun.BaseModel `bun:"table:users,alias:u"`
-
-	ID              int64      `bun:",pk,autoincrement" json:"id"`
-	Username        string     `bun:",unique,notnull" json:"username"`
-	Role            string     `bun:",notnull,default:'user'" json:"role"`
-	Email           *string    `bun:",unique" json:"email,omitempty"`
-	EmailVerified   bool       `bun:",notnull,default:false" json:"email_verified"`
-	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
-	Name            string     `bun:",nullzero" json:"name,omitempty"`
-	Bio             string     `bun:",nullzero" json:"bio,omitempty"`
-	CreatedAt       time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	UpdatedAt       time.Time  `bun:",nullzero" json:"updated_at"`
-	DeletedAt       time.Time  `bun:",soft_delete,nullzero" json:"-"`
-
-	Credentials []Credential `bun:"rel:has-many,join:id=user_id" json:"credentials,omitempty"`
+type User struct {
+	bun.BaseModel   `bun:"table:users,alias:u"`
+	DeletedAt       time.Time    `bun:",soft_delete,nullzero" json:"-"`
+	UpdatedAt       time.Time    `bun:",nullzero" json:"updated_at"`
+	CreatedAt       time.Time    `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
+	EmailVerifiedAt *time.Time   `json:"email_verified_at,omitempty"`
+	Email           *string      `bun:",unique" json:"email,omitempty"`
+	Name            string       `bun:",nullzero" json:"name,omitempty"`
+	Bio             string       `bun:",nullzero" json:"bio,omitempty"`
+	Role            string       `bun:",notnull,default:'user'" json:"role"`
+	Username        string       `bun:",unique,notnull" json:"username"`
+	Credentials     []Credential `bun:"rel:has-many,join:id=user_id" json:"credentials,omitempty"`
+	ID              int64        `bun:",pk,autoincrement" json:"id"`
+	EmailVerified   bool         `bun:",notnull,default:false" json:"email_verified"`
 }
 
 // IsAdmin returns true if the user has the admin role.
@@ -69,22 +67,21 @@ func (u *User) WebAuthnCredentials() []webauthn.Credential {
 func (u *User) WebAuthnIcon() string { return "" }
 
 // Credential stores a WebAuthn credential for a user.
-type Credential struct { //nolint:govet // fieldalignment: readability over optimization
-	bun.BaseModel `bun:"table:credentials,alias:c"`
-
-	ID              int64     `bun:",pk,autoincrement" json:"id"`
-	UserID          int64     `bun:",notnull" json:"user_id"`
+type Credential struct {
+	bun.BaseModel   `bun:"table:credentials,alias:c"`
+	DeletedAt       time.Time `bun:",soft_delete,nullzero" json:"-"`
+	CreatedAt       time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
+	AttestationType string    `json:"-"`
+	Transports      string    `json:"-"`
+	Name            string    `bun:",notnull" json:"name"`
 	CredentialID    []byte    `bun:",unique,notnull" json:"-"`
 	PublicKey       []byte    `bun:",notnull" json:"-"`
 	AAGUID          []byte    `json:"-"`
+	ID              int64     `bun:",pk,autoincrement" json:"id"`
+	UserID          int64     `bun:",notnull" json:"user_id"`
 	SignCount       uint32    `bun:",default:0" json:"-"`
-	Transports      string    `json:"-"`
-	Name            string    `bun:",notnull" json:"name"`
-	BackupEligible  bool      `bun:",default:false" json:"-"`
 	BackupState     bool      `bun:",default:false" json:"-"`
-	AttestationType string    `json:"-"`
-	CreatedAt       time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	DeletedAt       time.Time `bun:",soft_delete,nullzero" json:"-"`
+	BackupEligible  bool      `bun:",default:false" json:"-"`
 }
 
 // ToWebAuthn converts the stored credential to the WebAuthn library type.
@@ -138,44 +135,41 @@ func TransportsFromWebAuthn(transports []protocol.AuthenticatorTransport) string
 }
 
 // RecoveryCode stores a hashed recovery code for account recovery.
-type RecoveryCode struct { //nolint:govet // fieldalignment: readability over optimization
+type RecoveryCode struct {
 	bun.BaseModel `bun:"table:recovery_codes,alias:rc"`
-
-	ID        int64      `bun:",pk,autoincrement" json:"id"`
-	UserID    int64      `bun:",notnull" json:"user_id"`
-	CodeHash  string     `bun:",notnull" json:"-"`
-	Used      bool       `bun:",notnull,default:false" json:"used"`
-	CreatedAt time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	UsedAt    *time.Time `json:"used_at,omitempty"`
-	DeletedAt time.Time  `bun:",soft_delete,nullzero" json:"-"`
+	CreatedAt     time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
+	DeletedAt     time.Time  `bun:",soft_delete,nullzero" json:"-"`
+	UsedAt        *time.Time `json:"used_at,omitempty"`
+	CodeHash      string     `bun:",notnull" json:"-"`
+	ID            int64      `bun:",pk,autoincrement" json:"id"`
+	UserID        int64      `bun:",notnull" json:"user_id"`
+	Used          bool       `bun:",notnull,default:false" json:"used"`
 }
 
 // EmailVerificationToken stores a hashed token for email verification.
-type EmailVerificationToken struct { //nolint:govet // fieldalignment: readability over optimization
+type EmailVerificationToken struct {
 	bun.BaseModel `bun:"table:email_verification_tokens,alias:evt"`
-
-	ID        int64     `bun:",pk,autoincrement" json:"id"`
-	UserID    int64     `bun:",notnull" json:"user_id"`
-	TokenHash string    `bun:",unique,notnull" json:"-"`
-	ExpiresAt time.Time `bun:",notnull" json:"expires_at"`
-	CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	DeletedAt time.Time `bun:",soft_delete,nullzero" json:"-"`
+	ExpiresAt     time.Time `bun:",notnull" json:"expires_at"`
+	CreatedAt     time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
+	DeletedAt     time.Time `bun:",soft_delete,nullzero" json:"-"`
+	TokenHash     string    `bun:",unique,notnull" json:"-"`
+	ID            int64     `bun:",pk,autoincrement" json:"id"`
+	UserID        int64     `bun:",notnull" json:"user_id"`
 }
 
 // Invite represents an invitation to register.
-type Invite struct { //nolint:govet // fieldalignment: readability over optimization
+type Invite struct {
 	bun.BaseModel `bun:"table:invites,alias:inv"`
-
-	ID        int64      `bun:",pk,autoincrement" json:"id"`
-	Email     string     `bun:",notnull" json:"email"`
-	Label     string     `bun:",notnull,default:''" json:"label"`
-	TokenHash string     `bun:",unique,notnull" json:"-"`
-	ExpiresAt time.Time  `bun:",notnull" json:"expires_at"`
-	UsedAt    *time.Time `json:"used_at,omitempty"`
-	UsedBy    *int64     `json:"used_by,omitempty"`
-	CreatedBy *int64     `json:"created_by,omitempty"`
-	CreatedAt time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	DeletedAt time.Time  `bun:",soft_delete,nullzero" json:"-"`
+	ExpiresAt     time.Time  `bun:",notnull" json:"expires_at"`
+	CreatedAt     time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
+	DeletedAt     time.Time  `bun:",soft_delete,nullzero" json:"-"`
+	UsedAt        *time.Time `json:"used_at,omitempty"`
+	UsedBy        *int64     `json:"used_by,omitempty"`
+	CreatedBy     *int64     `json:"created_by,omitempty"`
+	Email         string     `bun:",notnull" json:"email"`
+	Label         string     `bun:",notnull,default:''" json:"label"`
+	TokenHash     string     `bun:",unique,notnull" json:"-"`
+	ID            int64      `bun:",pk,autoincrement" json:"id"`
 }
 
 // IsUsed returns true if the invite has been used.

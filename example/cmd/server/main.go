@@ -23,7 +23,6 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
-	"codeberg.org/oliverandrich/burrow/example/internal/layout"
 	"codeberg.org/oliverandrich/burrow/example/internal/notes"
 	"codeberg.org/oliverandrich/burrow/example/internal/pages"
 	"github.com/urfave/cli/v3"
@@ -52,15 +51,17 @@ func main() {
 
 	// Create the server with apps in dependency order.
 	// Session must come before auth (auth depends on session).
+	// Staticfiles must come before bootstrap (bootstrap depends on staticfiles).
 	srv := burrow.NewServer(
 		session.New(),
 		csrf.New(),
 		i18n.New(),
 		messages.New(),
+		staticApp,
 		auth.New(
 			auth.WithRenderer(authtpl.DefaultRenderer()),
 			auth.WithAuthLayout(authtpl.AuthLayout()),
-			auth.WithLogoComponent(layout.Logo()),
+			auth.WithLogoComponent(pages.Logo()),
 			auth.WithAdminRenderer(authtpl.DefaultAdminRenderer()),
 		),
 		bootstrap.New(),
@@ -74,11 +75,10 @@ func main() {
 			admin.WithLayout(admintpl.Layout()),
 			admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
 		),
-		staticApp,
 	)
 
 	// Use the app layout with navbar (overrides bare bootstrap layout).
-	srv.SetLayout(layout.Layout())
+	srv.SetLayout(pages.Layout())
 
 	cmd := &cli.Command{
 		Name:     "example",

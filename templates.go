@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"strconv"
 )
 
 // baseFuncMap returns the default template functions available in all templates.
@@ -14,6 +15,7 @@ func baseFuncMap() template.FuncMap {
 		"safeHTML": func(s string) template.HTML { return template.HTML(s) },         //nolint:gosec // intentional
 		"safeURL":  func(s string) template.URL { return template.URL(s) },           //nolint:gosec // intentional
 		"safeAttr": func(s string) template.HTMLAttr { return template.HTMLAttr(s) }, //nolint:gosec // intentional
+		"itoa":     func(id int64) string { return strconv.FormatInt(id, 10) },
 	}
 }
 

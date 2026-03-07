@@ -198,7 +198,6 @@ func (a *App) TemplateFS() fs.FS {
 // FuncMap returns static template functions for jobs templates.
 func (a *App) FuncMap() template.FuncMap {
 	return template.FuncMap{
-		"itoa":       func(id int64) string { return fmt.Sprintf("%d", id) },
 		"prettyJSON": prettyJSON,
 		"jobStatus":  func(j Job) string { return string(j.Status) },
 		"string":     func(v any) string { return fmt.Sprint(v) },
@@ -214,7 +213,6 @@ func (a *App) FuncMap() template.FuncMap {
 			}
 			return (page.TotalCount + page.TotalPages - 1) / page.TotalPages
 		},
-		"pageNumbers":               pageNumbers,
 		"iconEye":                   func(class ...string) template.HTML { return bsicons.Eye(class...) },
 		"iconArrowCounterclockwise": func(class ...string) template.HTML { return bsicons.ArrowCounterclockwise(class...) },
 		"iconXCircle":               func(class ...string) template.HTML { return bsicons.XCircle(class...) },
@@ -230,35 +228,6 @@ func prettyJSON(s string) string {
 		return s
 	}
 	return buf.String()
-}
-
-// pageNumbers returns page numbers to display, using -1 for ellipsis gaps.
-func pageNumbers(current, total int) []int {
-	if total <= 7 {
-		pages := make([]int, total)
-		for i := range total {
-			pages[i] = i + 1
-		}
-		return pages
-	}
-
-	pages := make([]int, 0, 7)
-	pages = append(pages, 1)
-
-	if current > 3 {
-		pages = append(pages, -1)
-	}
-
-	for p := max(2, current-1); p <= min(total-1, current+1); p++ {
-		pages = append(pages, p)
-	}
-
-	if current < total-2 {
-		pages = append(pages, -1)
-	}
-
-	pages = append(pages, total)
-	return pages
 }
 
 // TranslationFS returns the embedded translation files.
