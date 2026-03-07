@@ -148,7 +148,11 @@ func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Reques
 }
 
 // renderWithLayout wraps content in the layout from context, or renders bare content.
+// For HTMX requests, it skips the layout and returns the content fragment directly.
 func renderWithLayout(w http.ResponseWriter, r *http.Request, title string, content template.HTML) error {
+	if r.Header.Get("HX-Request") == "true" {
+		return burrow.HTML(w, http.StatusOK, string(content))
+	}
 	lay := burrow.Layout(r.Context())
 	if lay != nil {
 		return lay(w, r, http.StatusOK, content, map[string]any{"Title": title})

@@ -2,6 +2,7 @@ package templates
 
 import (
 	"context"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +17,43 @@ import (
 type testItem struct { //nolint:govet // fieldalignment: test struct
 	ID   int64 `bun:",pk,autoincrement"`
 	Name string
+}
+
+func TestRenderWithLayout_SkipsLayoutForHTMX(t *testing.T) {
+	// Set up a layout that wraps content in a marker.
+	layoutCalled := false
+	layout := func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
+		layoutCalled = true
+		return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
+	}
+
+	content := template.HTML("<p>fragment</p>")
+
+	t.Run("normal request uses layout", func(t *testing.T) {
+		layoutCalled = false
+		ctx := burrow.WithLayout(context.Background(), layout)
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/admin/items", nil)
+		w := httptest.NewRecorder()
+
+		err := renderWithLayout(w, req, "Items", content)
+		require.NoError(t, err)
+		assert.True(t, layoutCalled)
+		assert.Contains(t, w.Body.String(), "<layout>")
+	})
+
+	t.Run("HTMX request skips layout", func(t *testing.T) {
+		layoutCalled = false
+		ctx := burrow.WithLayout(context.Background(), layout)
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/admin/items", nil)
+		req.Header.Set("HX-Request", "true")
+		w := httptest.NewRecorder()
+
+		err := renderWithLayout(w, req, "Items", content)
+		require.NoError(t, err)
+		assert.False(t, layoutCalled)
+		assert.Contains(t, w.Body.String(), "<p>fragment</p>")
+		assert.NotContains(t, w.Body.String(), "<layout>")
+	})
 }
 
 func TestDefaultRenderer_List(t *testing.T) {

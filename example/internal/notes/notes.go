@@ -236,6 +236,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	data := map[string]any{
 		"Notes": notes,
 		"Page":  page,
+		"Title": "Notes",
 	}
 
 	// HTMX infinite scroll: return only the notes fragment.
@@ -247,16 +248,8 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 		return burrow.Render(w, r, http.StatusOK, content)
 	}
 
-	content, execErr := exec(r, "notes/list_page", data)
-	if execErr != nil {
-		return execErr
-	}
-
-	layout := burrow.Layout(r.Context())
-	if layout != nil {
-		return layout(w, r, http.StatusOK, content, map[string]any{"Title": "Notes"})
-	}
-	return burrow.Render(w, r, http.StatusOK, content)
+	// Normal + HTMX nav: RenderTemplate handles layout/fragment automatically.
+	return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list_page", data)
 }
 
 // Create adds a new note for the authenticated user.

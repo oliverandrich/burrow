@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"html/template"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -134,6 +136,50 @@ func TestNavLinkClass_EmptyCurrentPath(t *testing.T) {
 	assert.Equal(t, "nav-link", navLinkClass("", "/notes"))
 }
 
+func TestHome_UsesRenderTemplate(t *testing.T) {
+	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		return template.HTML("<p>" + name + "</p>"), nil
+	})
+
+	t.Run("normal request wraps in layout", func(t *testing.T) {
+		layoutCalled := false
+		layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, data map[string]any) error {
+			layoutCalled = true
+			assert.Equal(t, "Home", data["Title"])
+			return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
+		})
+
+		ctx := burrow.WithTemplateExecutor(t.Context(), exec)
+		ctx = burrow.WithLayout(ctx, layout)
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		w := httptest.NewRecorder()
+
+		err := home(w, req)
+		require.NoError(t, err)
+		assert.True(t, layoutCalled)
+		assert.Contains(t, w.Body.String(), "<layout>")
+	})
+
+	t.Run("HTMX request returns fragment only", func(t *testing.T) {
+		layoutCalled := false
+		layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
+			layoutCalled = true
+			return burrow.HTML(w, code, string(content))
+		})
+
+		ctx := burrow.WithTemplateExecutor(t.Context(), exec)
+		ctx = burrow.WithLayout(ctx, layout)
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		req.Header.Set("HX-Request", "true")
+		w := httptest.NewRecorder()
+
+		err := home(w, req)
+		require.NoError(t, err)
+		assert.False(t, layoutCalled)
+		assert.Contains(t, w.Body.String(), "pages/home")
+	})
+}
+
 func TestLayout_ReturnsNonNil(t *testing.T) {
 	fn := Layout()
 	assert.NotNil(t, fn)
@@ -162,12 +208,12 @@ func TestFuncMap_ContainsExpectedEntries(t *testing.T) {
 func TestAlertClass(t *testing.T) {
 	app := New()
 	fm := app.FuncMap()
-	alertClassFn := fm["alertClass"].(func(string) string)
+	alertClassFn := fm["alertClass"].(func(messages.Level) string)
 
-	assert.Equal(t, "danger", alertClassFn("error"))
-	assert.Equal(t, "info", alertClassFn("info"))
-	assert.Equal(t, "success", alertClassFn("success"))
-	assert.Equal(t, "warning", alertClassFn("warning"))
+	assert.Equal(t, "danger", alertClassFn(messages.Error))
+	assert.Equal(t, "info", alertClassFn(messages.Info))
+	assert.Equal(t, "success", alertClassFn(messages.Success))
+	assert.Equal(t, "warning", alertClassFn(messages.Warning))
 }
 
 func TestTemplateFS_ReturnsNonNil(t *testing.T) {

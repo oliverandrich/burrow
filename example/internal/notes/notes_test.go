@@ -171,7 +171,7 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 	fm["staticURL"] = func(name string) string { return "/static/" + name }
 	fm["itoa"] = func(id int64) string { return fmt.Sprintf("%d", id) }
 	fm["iconTrash"] = func(class ...string) template.HTML { return "<svg>trash</svg>" }
-	fm["alertClass"] = func(level string) string { return level }
+	fm["alertClass"] = func(level messages.Level) string { return string(level) }
 
 	tmpl := template.New("").Funcs(fm)
 
@@ -231,6 +231,66 @@ func TestListNotesHandler(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "Test")
+}
+
+func TestListNotesHTMXNavReturnsFragment(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", Content: "Content", UserID: 42}))
+
+	h := NewHandlers(repo)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
+	req = requestWithUser(req, &auth.User{ID: 42})
+	req = injectTemplateExecutor(t, req)
+	// HTMX nav request (no cursor) → should use RenderTemplate → fragment only.
+	req.Header.Set("HX-Request", "true")
+
+	layoutCalled := false
+	layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
+		layoutCalled = true
+		return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
+	})
+	ctx := burrow.WithLayout(req.Context(), layout)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+	err := h.List(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.False(t, layoutCalled, "layout should not be called for HTMX nav request")
+	assert.Contains(t, rec.Body.String(), "Test")
+	assert.NotContains(t, rec.Body.String(), "<layout>")
+}
+
+func TestListNotesNormalRequestUsesLayout(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", Content: "Content", UserID: 42}))
+
+	h := NewHandlers(repo)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
+	req = requestWithUser(req, &auth.User{ID: 42})
+	req = injectTemplateExecutor(t, req)
+
+	layoutCalled := false
+	layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, data map[string]any) error {
+		layoutCalled = true
+		assert.Equal(t, "Notes", data["Title"])
+		return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
+	})
+	ctx := burrow.WithLayout(req.Context(), layout)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+	err := h.List(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.True(t, layoutCalled, "layout should be called for normal request")
+	assert.Contains(t, rec.Body.String(), "<layout>")
 }
 
 func TestListNotesUnauthenticated(t *testing.T) {

@@ -53,11 +53,11 @@ func (a *App) FuncMap() template.FuncMap {
 		"iconGear":            func(class ...string) template.HTML { return bsicons.Gear(class...) },
 		"iconBoxArrowRight":   func(class ...string) template.HTML { return bsicons.BoxArrowRight(class...) },
 		"iconBoxArrowInRight": func(class ...string) template.HTML { return bsicons.BoxArrowInRight(class...) },
-		"alertClass": func(level string) string {
-			if level == string(messages.Error) {
+		"alertClass": func(level messages.Level) string {
+			if level == messages.Error {
 				return "danger"
 			}
-			return level
+			return string(level)
 		},
 	}
 }
@@ -173,19 +173,5 @@ func navLinkClass(currentPath, itemURL string) string {
 }
 
 func home(w http.ResponseWriter, r *http.Request) error {
-	exec := burrow.TemplateExecutorFromContext(r.Context())
-	if exec == nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
-	}
-
-	content, err := exec(r, "pages/home", nil)
-	if err != nil {
-		return err
-	}
-
-	layout := burrow.Layout(r.Context())
-	if layout != nil {
-		return layout(w, r, http.StatusOK, content, map[string]any{"Title": "Home"})
-	}
-	return burrow.Render(w, r, http.StatusOK, content)
+	return burrow.RenderTemplate(w, r, http.StatusOK, "pages/home", map[string]any{"Title": "Home"})
 }

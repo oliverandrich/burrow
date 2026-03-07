@@ -12,10 +12,28 @@
 </head>
 <body>
     {{ template "app/navbar" . }}
-    <main class="container py-4">
+    <div class="container py-4">
         {{ template "app/alerts" . }}
-        {{ .Content }}
-    </main>
+        <main>
+            {{ .Content }}
+        </main>
+    </div>
+    <script>
+    document.body.addEventListener("htmx:pushedIntoHistory", function() {
+        var path = window.location.pathname;
+        document.querySelectorAll(".navbar-nav .nav-link[hx-get]").forEach(function(link) {
+            var url = link.getAttribute("href");
+            var isActive = url === "/"
+                ? path === "/"
+                : path.indexOf(url) === 0;
+            if (isActive) {
+                link.classList.add("active");
+            } else {
+                link.classList.remove("active");
+            }
+        });
+    });
+    </script>
 </body>
 </html>
 {{- end }}
@@ -34,7 +52,8 @@
             <ul class="navbar-nav me-auto">
                 {{ range .NavItems -}}
                 <li class="nav-item">
-                    <a class="{{ .LinkClass }}" href="{{ .URL }}">
+                    <a class="{{ .LinkClass }}" href="{{ .URL }}"
+                        hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
                         {{ if .Icon }}<span class="me-1">{{ .Icon }}</span>{{ end }}
                         {{ .Label }}
                     </a>

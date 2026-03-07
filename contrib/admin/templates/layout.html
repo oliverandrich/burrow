@@ -14,7 +14,7 @@
         [aria-expanded="true"] > .sidebar-chevron { transform: rotate(90deg); }
     </style>
 </head>
-<body hx-boost="true">
+<body>
     <!-- Mobile navbar with offcanvas toggle -->
     <nav class="navbar d-md-none bg-body-tertiary border-bottom">
         <div class="container-fluid">
@@ -66,7 +66,8 @@
                                 <ul class="nav nav-pills flex-column ms-3 small">
                                     {{- range .Items }}
                                     <li class="nav-item">
-                                        <a href="{{ .URL }}" class="{{ .LinkClass }}">
+                                        <a href="{{ .URL }}" class="{{ .LinkClass }}"
+                                            hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
                                             {{- if .Icon }}
                                             <span class="me-2">{{ .Icon }}</span>
                                             {{- end }}
@@ -111,6 +112,24 @@
             {{ .Content }}
         </main>
     </div>
+    <script>
+    document.body.addEventListener("htmx:pushedIntoHistory", function() {
+        var path = window.location.pathname;
+        document.querySelectorAll("#admin-sidebar .nav-link").forEach(function(link) {
+            var url = link.getAttribute("href");
+            var isActive = (url === "/admin" || url === "/admin/")
+                ? (path === "/admin" || path === "/admin/")
+                : path.indexOf(url) === 0;
+            if (isActive) {
+                link.classList.add("active");
+                link.classList.remove("text-body-emphasis");
+            } else {
+                link.classList.remove("active");
+                link.classList.add("text-body-emphasis");
+            }
+        });
+    });
+    </script>
 </body>
 </html>
 {{- end }}
