@@ -36,7 +36,8 @@ var (
 	_ burrow.HasDependencies = (*App)(nil)
 	_ burrow.HasStaticFiles  = (*App)(nil)
 	_ burrow.HasTranslations = (*App)(nil)
-	_ burrow.HasShutdown     = (*App)(nil)
+	_ burrow.HasShutdown       = (*App)(nil)
+	_ burrow.HasRequestFuncMap = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -1478,4 +1479,34 @@ func TestInviteIsValid(t *testing.T) {
 	now := time.Now()
 	used := &Invite{ExpiresAt: time.Now().Add(time.Hour), UsedAt: &now}
 	assert.False(t, used.IsValid())
+}
+
+func TestRequestFuncMap(t *testing.T) {
+	app := &App{}
+	user := &User{ID: 1, Username: "alice"}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := WithUser(req.Context(), user)
+	req = req.WithContext(ctx)
+
+	fm := app.RequestFuncMap(req)
+
+	currentUserFunc := fm["currentUser"].(func() *User)
+	assert.Equal(t, user, currentUserFunc())
+
+	isAuthFunc := fm["isAuthenticated"].(func() bool)
+	assert.True(t, isAuthFunc())
+}
+
+func TestRequestFuncMapUnauthenticated(t *testing.T) {
+	app := &App{}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	fm := app.RequestFuncMap(req)
+
+	currentUserFunc := fm["currentUser"].(func() *User)
+	assert.Nil(t, currentUserFunc())
+
+	isAuthFunc := fm["isAuthenticated"].(func() bool)
+	assert.False(t, isAuthFunc())
 }

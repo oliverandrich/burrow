@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,7 +9,6 @@ import (
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
-	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,6 +19,8 @@ var (
 	_ burrow.App             = (*App)(nil)
 	_ burrow.HasRoutes       = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
+	_ burrow.HasTemplates    = (*App)(nil)
+	_ burrow.HasFuncMap      = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -179,8 +181,8 @@ func TestRoutesNoRegistryNoPanic(t *testing.T) {
 }
 
 func TestNewWithLayout(t *testing.T) {
-	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
+	layout := burrow.LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, content template.HTML, _ map[string]any) error {
+		return nil
 	})
 
 	app := New(WithLayout(layout))
@@ -246,8 +248,8 @@ func (a *layoutCheckApp) AdminRoutes(r chi.Router) {
 func (a *layoutCheckApp) AdminNavItems() []burrow.NavItem { return nil }
 
 func TestRoutesInjectLayoutInGroup(t *testing.T) {
-	layout := burrow.LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
+	layout := burrow.LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, content template.HTML, _ map[string]any) error {
+		return nil
 	})
 
 	registry := burrow.NewRegistry()

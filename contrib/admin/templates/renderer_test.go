@@ -1,17 +1,13 @@
 package templates
 
 import (
-	"context"
-	"io"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin"
-	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
-	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,36 +15,86 @@ import (
 // Compile-time interface assertion.
 var _ admin.DashboardRenderer = (*defaultDashboardRenderer)(nil)
 
+// stubExecutor returns a TemplateExecutor that echoes the template name
+// wrapped in a tag, ignoring the actual template content.
+func stubExecutor(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	content, _ := data["Content"].(template.HTML)
+	return template.HTML("<rendered:" + name + ">" + string(content) + "</rendered:" + name + ">"), nil //nolint:gosec // test
+}
+
 func TestLayout(t *testing.T) {
 	lay := Layout()
 	require.NotNil(t, lay)
 
-	content := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		_, err := io.WriteString(w, "<p>test content</p>")
-		return err
-	})
+	groups := []admin.NavGroup{
+		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users", URL: "/admin/users"}}},
+	}
 
-	component := lay("Test Page", content)
-	require.NotNil(t, component)
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	ctx := burrow.WithTemplateExecutor(req.Context(), stubExecutor)
+	ctx = admin.WithNavGroups(ctx, groups)
+	ctx = admin.WithRequestPath(ctx, "/admin/users")
+	req = req.WithContext(ctx)
 
-	var buf strings.Builder
-	err := component.Render(context.Background(), &buf)
+	rec := httptest.NewRecorder()
+	err := lay(rec, req, http.StatusOK, "<p>content</p>", nil)
+
 	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "<rendered:admin/layout>")
+	assert.Contains(t, body, "<p>content</p>")
+}
 
-	html := buf.String()
-	assert.Contains(t, html, "<!doctype html>")
-	assert.Contains(t, html, "<title>Test Page – admin-sidebar-title</title>")
-	assert.Contains(t, html, "bootstrap.min.css")
-	assert.NotContains(t, html, "bootstrap-icons.min.css")
-	assert.Contains(t, html, "bootstrap.bundle.min.js")
-	assert.Contains(t, html, "htmx.min.js")
-	assert.Contains(t, html, "localStorage")
-	assert.Contains(t, html, "<p>test content</p>")
+func TestLayoutWithoutExecutor(t *testing.T) {
+	lay := Layout()
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+
+	err := lay(rec, req, http.StatusOK, "<p>fallback</p>", nil)
+
+	require.NoError(t, err)
+	body := rec.Body.String()
+	assert.Contains(t, body, "<p>fallback</p>")
+}
+
+func TestLayoutPreservesTitleFromData(t *testing.T) {
+	lay := Layout()
+
+	var capturedData map[string]any
+	exec := func(_ *http.Request, _ string, data map[string]any) (template.HTML, error) {
+		capturedData = data
+		return "ok", nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+	err := lay(rec, req, http.StatusOK, "", map[string]any{"Title": "Custom Title"})
+
+	require.NoError(t, err)
+	assert.Equal(t, "Custom Title", capturedData["Title"])
 }
 
 func TestDefaultDashboardRendererDashboardPage(t *testing.T) {
 	r := DefaultDashboardRenderer()
+
+	exec := func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+		return template.HTML("<dashboard:" + name + ">"), nil //nolint:gosec // test
+	}
+
+	// Set up a layout that wraps content.
+	lay := func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
+		return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
+	}
+
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
+	ctx = burrow.WithLayout(ctx, lay)
+	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
 	err := r.DashboardPage(rec, req)
@@ -56,48 +102,34 @@ func TestDefaultDashboardRendererDashboardPage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Contains(t, body, "admin-dashboard-title")
-}
-
-func TestDefaultDashboardRendererWithLayout(t *testing.T) {
-	r := DefaultDashboardRenderer()
-	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
-	ctx := burrow.WithLayout(req.Context(), func(title string, content templ.Component) templ.Component {
-		return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-			_, _ = io.WriteString(w, "<layout-wrapper>")
-			if err := content.Render(ctx, w); err != nil {
-				return err
-			}
-			_, _ = io.WriteString(w, "</layout-wrapper>")
-			return nil
-		})
-	})
-	req = req.WithContext(ctx)
-	rec := httptest.NewRecorder()
-
-	err := r.DashboardPage(rec, req)
-
-	require.NoError(t, err)
-	body := rec.Body.String()
-	assert.Contains(t, body, "<layout-wrapper>")
-	assert.Contains(t, body, "admin-dashboard-title")
-	assert.Contains(t, body, "</layout-wrapper>")
+	assert.Contains(t, body, "<layout>")
+	assert.Contains(t, body, "<dashboard:admin/index>")
 }
 
 func TestDefaultDashboardRendererWithNavGroups(t *testing.T) {
 	r := DefaultDashboardRenderer()
-	groups := []admin.NavGroup{
-		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users", URL: "/admin/users", Icon: bsicons.People()}}},
+
+	var capturedData map[string]any
+	exec := func(_ *http.Request, _ string, data map[string]any) (template.HTML, error) {
+		capturedData = data
+		return "ok", nil
 	}
+
+	groups := []admin.NavGroup{
+		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users", URL: "/admin/users"}}},
+	}
+
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
-	ctx := admin.WithNavGroups(req.Context(), groups)
+	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
+	ctx = admin.WithNavGroups(ctx, groups)
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
 	err := r.DashboardPage(rec, req)
 
 	require.NoError(t, err)
-	body := rec.Body.String()
-	assert.Contains(t, body, "Users")
-	assert.Contains(t, body, `href="/admin/users"`)
+	sidebar, ok := capturedData["SidebarGroups"].([]admin.SidebarGroup)
+	require.True(t, ok)
+	require.Len(t, sidebar, 1)
+	assert.Equal(t, "Auth", sidebar[0].Label)
 }

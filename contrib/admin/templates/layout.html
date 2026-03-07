@@ -1,0 +1,116 @@
+{{ define "admin/layout" -}}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }} – {{ t "admin-sidebar-title" }}</title>
+    <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
+    {{ template "bootstrap/theme_script" . }}
+    <script defer src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
+    <script defer src="{{ staticURL "bootstrap/htmx.min.js" }}"></script>
+    <style>
+        .sidebar-chevron { transition: transform .2s; }
+        [aria-expanded="true"] > .sidebar-chevron { transform: rotate(90deg); }
+    </style>
+</head>
+<body hx-boost="true">
+    <!-- Mobile navbar with offcanvas toggle -->
+    <nav class="navbar d-md-none bg-body-tertiary border-bottom">
+        <div class="container-fluid">
+            <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#admin-sidebar"
+                aria-controls="admin-sidebar"
+                aria-label="Toggle sidebar"
+            >
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <span class="navbar-brand mb-0 fw-semibold">{{ t "admin-sidebar-title" }}</span>
+        </div>
+    </nav>
+    <div class="d-flex">
+        <!-- Sidebar: static on desktop, offcanvas overlay on mobile -->
+        <div
+            class="offcanvas-md offcanvas-start bg-body-tertiary border-end"
+            tabindex="-1"
+            id="admin-sidebar"
+            aria-labelledby="admin-sidebar-label"
+        >
+            <div class="offcanvas-header border-bottom d-md-none">
+                <h5 class="offcanvas-title" id="admin-sidebar-label">{{ t "admin-sidebar-title" }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#admin-sidebar" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-3 d-flex flex-column" style="width: 280px; min-height: 100vh;">
+                <a href="/admin" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom d-none d-md-flex">
+                    <span class="me-2 fs-5">{{ iconGearFill }}</span>
+                    <span class="fs-5 fw-semibold">{{ t "admin-sidebar-title" }}</span>
+                </a>
+                <div class="flex-grow-1">
+                    {{- if .SidebarGroups }}
+                    <nav>
+                        {{- range .SidebarGroups }}
+                        <div class="mb-1">
+                            <button
+                                class="btn btn-sm d-inline-flex align-items-center fw-semibold text-body-emphasis bg-transparent border-0 rounded px-2 py-1"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapse-{{ .AppName }}"
+                                aria-expanded="true"
+                            >
+                                <span class="sidebar-chevron me-1">{{ iconChevronRight }}</span>
+                                {{ .Label }}
+                            </button>
+                            <div class="collapse show" id="collapse-{{ .AppName }}">
+                                <ul class="nav nav-pills flex-column ms-3 small">
+                                    {{- range .Items }}
+                                    <li class="nav-item">
+                                        <a href="{{ .URL }}" class="{{ .LinkClass }}">
+                                            {{- if .Icon }}
+                                            <span class="me-2">{{ .Icon }}</span>
+                                            {{- end }}
+                                            {{ .Label }}
+                                        </a>
+                                    </li>
+                                    {{- end }}
+                                </ul>
+                            </div>
+                        </div>
+                        {{- end }}
+                    </nav>
+                    {{- end }}
+                </div>
+                {{- /* User menu */ -}}
+                <div class="border-top pt-3 mt-3 d-flex align-items-center justify-content-between">
+                    {{ with currentUser }}
+                    <div class="dropup">
+                        <button
+                            class="btn btn-link d-flex align-items-center link-body-emphasis text-decoration-none dropdown-toggle p-0"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                        >
+                            <span class="me-2">{{ iconPersonCircle }}</span>
+                            {{ .Username }}
+                        </button>
+                        <ul class="dropdown-menu text-small shadow">
+                            <li>
+                                <form method="post" action="/auth/logout">
+                                    <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+                                    <button type="submit" class="dropdown-item">{{ t "admin-logout" }}</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                    {{ end }}
+                    {{ template "bootstrap/theme_switcher" .ThemeSwitcherData }}
+                </div>
+            </div>
+        </div>
+        <main class="flex-grow-1 p-4">
+            {{ .Content }}
+        </main>
+    </div>
+</body>
+</html>
+{{- end }}

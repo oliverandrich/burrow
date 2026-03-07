@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -117,6 +118,16 @@ func (a *App) WithLocale(ctx context.Context, lang string) context.Context {
 
 func (a *App) Middleware() []func(http.Handler) http.Handler {
 	return []func(http.Handler) http.Handler{a.localeMiddleware}
+}
+
+// RequestFuncMap returns request-scoped template functions for translations.
+func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
+	ctx := r.Context()
+	return template.FuncMap{
+		"t":       func(key string) string { return T(ctx, key) },
+		"tData":   func(key string, data map[string]any) string { return TData(ctx, key, data) },
+		"tPlural": func(key string, count int) string { return TPlural(ctx, key, count) },
+	}
 }
 
 func (a *App) localeMiddleware(next http.Handler) http.Handler {

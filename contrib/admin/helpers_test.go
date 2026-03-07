@@ -1,12 +1,13 @@
-package templates
+package admin
 
 import (
 	"context"
+	"html/template"
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGroupLabelFallback(t *testing.T) {
@@ -33,7 +34,7 @@ func TestGroupLabelFallback(t *testing.T) {
 func TestSortNavGroups(t *testing.T) {
 	ctx := context.Background()
 
-	groups := []admin.NavGroup{
+	groups := []NavGroup{
 		{AppName: "session", Items: []burrow.NavItem{{Label: "S"}}},
 		{AppName: "auth", Items: []burrow.NavItem{{Label: "A"}}},
 		{AppName: "i18n", Items: []burrow.NavItem{{Label: "I"}}},
@@ -50,7 +51,7 @@ func TestSortNavGroups(t *testing.T) {
 func TestSortNavGroupsDoesNotMutateOriginal(t *testing.T) {
 	ctx := context.Background()
 
-	groups := []admin.NavGroup{
+	groups := []NavGroup{
 		{AppName: "zebra", Items: []burrow.NavItem{{Label: "Z"}}},
 		{AppName: "alpha", Items: []burrow.NavItem{{Label: "A"}}},
 	}
@@ -99,18 +100,49 @@ func TestIsActivePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := admin.WithRequestPath(context.Background(), tt.path)
+			ctx := WithRequestPath(context.Background(), tt.path)
 			assert.Equal(t, tt.want, isActivePath(ctx, tt.itemURL))
 		})
 	}
 }
 
 func TestSidebarLinkClass(t *testing.T) {
-	ctx := admin.WithRequestPath(context.Background(), "/admin/users")
+	ctx := WithRequestPath(context.Background(), "/admin/users")
 
 	active := sidebarLinkClass(ctx, "/admin/users")
 	assert.Equal(t, "nav-link active", active)
 
 	inactive := sidebarLinkClass(ctx, "/admin/invites")
 	assert.Equal(t, "nav-link text-body-emphasis", inactive)
+}
+
+func TestPrepareSidebar(t *testing.T) {
+	ctx := WithRequestPath(context.Background(), "/admin/users")
+
+	groups := []NavGroup{
+		{AppName: "auth", Items: []burrow.NavItem{
+			{Label: "Users", URL: "/admin/users", Icon: template.HTML("<svg>users</svg>")},
+			{Label: "Invites", URL: "/admin/invites", Icon: template.HTML("<svg>invites</svg>")},
+		}},
+	}
+
+	sidebar := PrepareSidebar(ctx, groups)
+
+	require.Len(t, sidebar, 1)
+	assert.Equal(t, "Auth", sidebar[0].Label)
+	assert.Equal(t, "auth", sidebar[0].AppName)
+
+	require.Len(t, sidebar[0].Items, 2)
+	assert.Equal(t, "Users", sidebar[0].Items[0].Label)
+	assert.Equal(t, "nav-link active", sidebar[0].Items[0].LinkClass)
+	assert.Equal(t, template.HTML("<svg>users</svg>"), sidebar[0].Items[0].Icon)
+
+	assert.Equal(t, "Invites", sidebar[0].Items[1].Label)
+	assert.Equal(t, "nav-link text-body-emphasis", sidebar[0].Items[1].LinkClass)
+}
+
+func TestPrepareSidebarEmpty(t *testing.T) {
+	ctx := context.Background()
+	sidebar := PrepareSidebar(ctx, nil)
+	assert.Nil(t, sidebar)
 }

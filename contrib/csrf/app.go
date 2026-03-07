@@ -1,6 +1,7 @@
 package csrf
 
 import (
+	"html/template"
 	"net/http"
 	"strings"
 
@@ -59,6 +60,13 @@ func (a *App) configure(keyHex string, secure bool) error {
 		gorillacsrf.Path("/"),
 	)
 	return nil
+}
+
+// RequestFuncMap returns request-scoped template functions for CSRF tokens.
+func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
+	return template.FuncMap{
+		"csrfToken": func() string { return Token(r.Context()) },
+	}
 }
 
 func (a *App) Middleware() []func(http.Handler) http.Handler {

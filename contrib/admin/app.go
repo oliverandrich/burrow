@@ -1,12 +1,19 @@
 package admin
 
 import (
+	"embed"
+	"html/template"
+	"io/fs"
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
+	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"github.com/go-chi/chi/v5"
 )
+
+//go:embed templates/*.html
+var templateFS embed.FS
 
 // DashboardRenderer renders the admin dashboard page.
 type DashboardRenderer interface {
@@ -74,6 +81,21 @@ func (a *App) buildNavGroups() []NavGroup {
 		}
 	}
 	return groups
+}
+
+// TemplateFS returns the embedded HTML template files.
+func (a *App) TemplateFS() fs.FS {
+	sub, _ := fs.Sub(templateFS, "templates")
+	return sub
+}
+
+// FuncMap returns static template functions for admin icons.
+func (a *App) FuncMap() template.FuncMap {
+	return template.FuncMap{
+		"iconGearFill":     func(class ...string) template.HTML { return bsicons.GearFill(class...) },
+		"iconChevronRight": func(class ...string) template.HTML { return bsicons.ChevronRight(class...) },
+		"iconPersonCircle": func(class ...string) template.HTML { return bsicons.PersonCircle(class...) },
+	}
 }
 
 // Routes creates the /admin group with auth middleware and delegates

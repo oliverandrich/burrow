@@ -1,22 +1,65 @@
-package templates
+package admin
 
 import (
 	"context"
+	"html/template"
 	"sort"
 	"strings"
 
 	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 )
 
+// SidebarGroup holds pre-computed sidebar data for template rendering.
+type SidebarGroup struct {
+	AppName string
+	Label   string
+	Items   []SidebarItem
+}
+
+// SidebarItem holds pre-computed data for a single sidebar nav link.
+type SidebarItem struct {
+	Label     string
+	URL       string
+	Icon      template.HTML
+	LinkClass string
+}
+
+// PrepareSidebar pre-computes sidebar groups with translated labels and
+// active-state CSS classes, ready for template rendering.
+func PrepareSidebar(ctx context.Context, groups []NavGroup) []SidebarGroup {
+	sorted := sortNavGroups(ctx, groups)
+	if len(sorted) == 0 {
+		return nil
+	}
+
+	result := make([]SidebarGroup, len(sorted))
+	for i, g := range sorted {
+		items := make([]SidebarItem, len(g.Items))
+		for j, item := range g.Items {
+			items[j] = SidebarItem{
+				Label:     itemLabel(ctx, item),
+				URL:       item.URL,
+				Icon:      item.Icon,
+				LinkClass: sidebarLinkClass(ctx, item.URL),
+			}
+		}
+		result[i] = SidebarGroup{
+			AppName: g.AppName,
+			Label:   groupLabel(ctx, g.AppName),
+			Items:   items,
+		}
+	}
+	return result
+}
+
 // sortNavGroups returns a copy of groups sorted alphabetically
 // by their translated display name.
-func sortNavGroups(ctx context.Context, groups []admin.NavGroup) []admin.NavGroup {
+func sortNavGroups(ctx context.Context, groups []NavGroup) []NavGroup {
 	if len(groups) == 0 {
 		return nil
 	}
-	sorted := make([]admin.NavGroup, len(groups))
+	sorted := make([]NavGroup, len(groups))
 	copy(sorted, groups)
 	sort.SliceStable(sorted, func(i, j int) bool {
 		return groupLabel(ctx, sorted[i].AppName) < groupLabel(ctx, sorted[j].AppName)
@@ -62,7 +105,7 @@ func sidebarLinkClass(ctx context.Context, itemURL string) string {
 // It uses prefix matching so that sub-pages (e.g. /admin/users/1) highlight
 // the parent nav item (/admin/users). The admin root (/admin) only matches exactly.
 func isActivePath(ctx context.Context, itemURL string) bool {
-	current := admin.RequestPathFromContext(ctx)
+	current := RequestPathFromContext(ctx)
 	if current == "" || itemURL == "" {
 		return false
 	}

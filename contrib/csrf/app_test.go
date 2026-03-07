@@ -14,9 +14,10 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ burrow.App           = (*App)(nil)
-	_ burrow.Configurable  = (*App)(nil)
-	_ burrow.HasMiddleware = (*App)(nil)
+	_ burrow.App               = (*App)(nil)
+	_ burrow.Configurable      = (*App)(nil)
+	_ burrow.HasMiddleware     = (*App)(nil)
+	_ burrow.HasRequestFuncMap = (*App)(nil)
 )
 
 func TestName(t *testing.T) {
@@ -167,6 +168,27 @@ func TestInvalidKeyReturnsError(t *testing.T) {
 
 	err := a.configure("not-hex", false)
 	assert.Error(t, err)
+}
+
+func TestRequestFuncMap(t *testing.T) {
+	a := newTestApp(t)
+
+	var gotToken string
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fm := a.RequestFuncMap(r)
+		csrfTokenFunc := fm["csrfToken"].(func() string)
+		gotToken = csrfTokenFunc()
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := a.Middleware()[0](inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.NotEmpty(t, gotToken)
 }
 
 func TestSecureDerivedFromBaseURL(t *testing.T) {

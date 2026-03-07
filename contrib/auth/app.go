@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/hex"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"net/http"
 	"time"
@@ -216,6 +217,15 @@ func (a *App) Shutdown(_ context.Context) error {
 		a.cancelCleanup()
 	}
 	return nil
+}
+
+// RequestFuncMap returns request-scoped template functions for auth state.
+func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
+	ctx := r.Context()
+	return template.FuncMap{
+		"currentUser":     func() *User { return UserFromContext(ctx) },
+		"isAuthenticated": func() bool { return IsAuthenticated(ctx) },
+	}
 }
 
 func (a *App) Middleware() []func(http.Handler) http.Handler {

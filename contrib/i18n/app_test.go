@@ -17,9 +17,10 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ burrow.App           = (*App)(nil)
-	_ burrow.Configurable  = (*App)(nil)
-	_ burrow.HasMiddleware = (*App)(nil)
+	_ burrow.App               = (*App)(nil)
+	_ burrow.Configurable      = (*App)(nil)
+	_ burrow.HasMiddleware     = (*App)(nil)
+	_ burrow.HasRequestFuncMap = (*App)(nil)
 )
 
 var testTranslationsFS = fstest.MapFS{
@@ -184,6 +185,27 @@ func TestBuiltinValidationTranslationsGerman(t *testing.T) {
 	ctx := app.WithLocale(context.Background(), "de")
 	got := TData(ctx, "validation-min", map[string]any{"Field": "Name", "Param": "3"})
 	assert.Equal(t, "Name muss mindestens 3 sein", got)
+}
+
+func TestRequestFuncMap(t *testing.T) {
+	app := configuredApp(t)
+	require.NoError(t, app.AddTranslations(testTranslationsFS))
+
+	ctx := app.WithLocale(context.Background(), "de")
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req = req.WithContext(ctx)
+
+	fm := app.RequestFuncMap(req)
+
+	tFunc := fm["t"].(func(string) string)
+	assert.Equal(t, "Hallo", tFunc("hello"))
+
+	tDataFunc := fm["tData"].(func(string, map[string]any) string)
+	assert.Equal(t, "Hallo, World!", tDataFunc("greeting", map[string]any{"Name": "World"}))
+
+	tPluralFunc := fm["tPlural"].(func(string, int) string)
+	assert.Equal(t, "1 Artikel", tPluralFunc("items_count", 1))
+	assert.Equal(t, "5 Artikel", tPluralFunc("items_count", 5))
 }
 
 func TestMiddlewareDefaultsToEnglish(t *testing.T) {
