@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"sort"
 	"testing"
 
-	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,18 +29,21 @@ type fullApp struct {
 	registered bool
 }
 
-func (a *fullApp) Name() string                                  { return "full" }
-func (a *fullApp) Register(_ *AppConfig) error                   { a.registered = true; return nil }
-func (a *fullApp) MigrationFS() fs.FS                            { return nil }
-func (a *fullApp) Middleware() []func(http.Handler) http.Handler { return nil }
-func (a *fullApp) NavItems() []NavItem                           { return nil }
-func (a *fullApp) Flags() []cli.Flag                             { return nil }
-func (a *fullApp) Configure(_ *cli.Command) error                { return nil }
-func (a *fullApp) CLICommands() []*cli.Command                   { return nil }
-func (a *fullApp) Seed(_ context.Context) error                  { return nil }
-func (a *fullApp) Routes(_ chi.Router)                           {}
-func (a *fullApp) AdminRoutes(_ chi.Router)                      {}
-func (a *fullApp) AdminNavItems() []NavItem                      { return nil }
+func (a *fullApp) Name() string                                    { return "full" }
+func (a *fullApp) Register(_ *AppConfig) error                     { a.registered = true; return nil }
+func (a *fullApp) MigrationFS() fs.FS                              { return nil }
+func (a *fullApp) Middleware() []func(http.Handler) http.Handler   { return nil }
+func (a *fullApp) NavItems() []NavItem                             { return nil }
+func (a *fullApp) Flags() []cli.Flag                               { return nil }
+func (a *fullApp) Configure(_ *cli.Command) error                  { return nil }
+func (a *fullApp) CLICommands() []*cli.Command                     { return nil }
+func (a *fullApp) Seed(_ context.Context) error                    { return nil }
+func (a *fullApp) Routes(_ chi.Router)                             {}
+func (a *fullApp) AdminRoutes(_ chi.Router)                        {}
+func (a *fullApp) AdminNavItems() []NavItem                        { return nil }
+func (a *fullApp) TemplateFS() fs.FS                               { return nil }
+func (a *fullApp) FuncMap() template.FuncMap                       { return nil }
+func (a *fullApp) RequestFuncMap(_ *http.Request) template.FuncMap { return nil }
 
 // trackingApp records calls and provides test data for lifecycle methods.
 type trackingApp struct {
@@ -105,17 +108,20 @@ func (a *failingApp) Seed(_ context.Context) error {
 
 // Compile-time interface assertions.
 var (
-	_ App             = (*minimalApp)(nil)
-	_ App             = (*fullApp)(nil)
-	_ Migratable      = (*fullApp)(nil)
-	_ HasMiddleware   = (*fullApp)(nil)
-	_ HasNavItems     = (*fullApp)(nil)
-	_ Configurable    = (*fullApp)(nil)
-	_ HasCLICommands  = (*fullApp)(nil)
-	_ Seedable        = (*fullApp)(nil)
-	_ HasRoutes       = (*fullApp)(nil)
-	_ HasAdmin        = (*fullApp)(nil)
-	_ HasDependencies = (*dependentApp)(nil)
+	_ App               = (*minimalApp)(nil)
+	_ App               = (*fullApp)(nil)
+	_ Migratable        = (*fullApp)(nil)
+	_ HasMiddleware     = (*fullApp)(nil)
+	_ HasNavItems       = (*fullApp)(nil)
+	_ Configurable      = (*fullApp)(nil)
+	_ HasCLICommands    = (*fullApp)(nil)
+	_ Seedable          = (*fullApp)(nil)
+	_ HasRoutes         = (*fullApp)(nil)
+	_ HasAdmin          = (*fullApp)(nil)
+	_ HasDependencies   = (*dependentApp)(nil)
+	_ HasTemplates      = (*fullApp)(nil)
+	_ HasFuncMap        = (*fullApp)(nil)
+	_ HasRequestFuncMap = (*fullApp)(nil)
 )
 
 func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
@@ -152,6 +158,9 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	_, isSeedable := app.(Seedable)
 	_, hasRoutes := app.(HasRoutes)
 	_, hasAdmin := app.(HasAdmin)
+	_, hasTemplates := app.(HasTemplates)
+	_, hasFuncMap := app.(HasFuncMap)
+	_, hasRequestFuncMap := app.(HasRequestFuncMap)
 
 	assert.True(t, isMigratable)
 	assert.True(t, hasMiddleware)
@@ -161,20 +170,23 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	assert.True(t, isSeedable)
 	assert.True(t, hasRoutes)
 	assert.True(t, hasAdmin)
+	assert.True(t, hasTemplates)
+	assert.True(t, hasFuncMap)
+	assert.True(t, hasRequestFuncMap)
 }
 
 func TestNavItemFields(t *testing.T) {
 	item := NavItem{
 		Label:    "Dashboard",
 		URL:      "/dashboard",
-		Icon:     bsicons.Speedometer2(),
+		Icon:     template.HTML(`<svg>icon</svg>`),
 		Position: 10,
 		AuthOnly: true,
 	}
 
 	assert.Equal(t, "Dashboard", item.Label)
 	assert.Equal(t, "/dashboard", item.URL)
-	assert.NotNil(t, item.Icon)
+	assert.Equal(t, template.HTML(`<svg>icon</svg>`), item.Icon)
 	assert.Equal(t, 10, item.Position)
 	assert.True(t, item.AuthOnly)
 }

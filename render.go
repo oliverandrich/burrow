@@ -1,24 +1,44 @@
 package burrow
 
 import (
+	"fmt"
+	"html/template"
 	"net/http"
-
-	"github.com/a-h/templ"
 )
 
-// Render renders a templ.Component into the HTTP response with the given status code.
-func Render(w http.ResponseWriter, r *http.Request, statusCode int, component templ.Component) error {
-	buf := templ.GetBuffer()
-	defer templ.ReleaseBuffer(buf)
-
-	if err := component.Render(r.Context(), buf); err != nil {
-		return err
-	}
-
-	return HTML(w, statusCode, buf.String())
+// Render writes pre-rendered HTML content to the response.
+// Used for raw HTML output, HTMX fragments, or special cases
+// where content is already rendered.
+func Render(w http.ResponseWriter, r *http.Request, statusCode int, content template.HTML) error {
+	return HTML(w, statusCode, string(content))
 }
 
-// LayoutFunc wraps page content in a layout template.
-// The layout reads framework values (nav items, user, locale, CSRF)
-// from the context via helper functions.
-type LayoutFunc func(title string, content templ.Component) templ.Component
+// RenderTemplate executes a named template and writes the result.
+// It applies automatic layout/HTMX logic:
+//   - HTMX request (HX-Request header) → fragment only, no layout
+//   - Normal request + LayoutFunc in context → fragment wrapped in layout
+//   - Normal request + no layout → fragment only
+func RenderTemplate(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error {
+	exec := TemplateExecutorFromContext(r.Context())
+	if exec == nil {
+		return fmt.Errorf("burrow: no template executor in context")
+	}
+
+	content, err := exec(r, name, data)
+	if err != nil {
+		return fmt.Errorf("burrow: execute template %q: %w", name, err)
+	}
+
+	// HTMX requests get the fragment only, no layout wrapping.
+	if r.Header.Get("HX-Request") == "true" {
+		return HTML(w, statusCode, string(content))
+	}
+
+	// Normal request: wrap in layout if available.
+	layout := Layout(r.Context())
+	if layout != nil {
+		return layout(w, r, statusCode, content, data)
+	}
+
+	return HTML(w, statusCode, string(content))
+}

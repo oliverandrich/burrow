@@ -1,7 +1,8 @@
 package burrow
 
 import (
-	"github.com/a-h/templ"
+	"html/template"
+
 	"github.com/uptrace/bun"
 )
 
@@ -26,7 +27,7 @@ type NavItem struct { //nolint:govet // fieldalignment: readability over optimiz
 	Label     string
 	LabelKey  string // i18n message ID; translated at render time, falls back to Label
 	URL       string
-	Icon      templ.Component
+	Icon      template.HTML
 	Position  int
 	AuthOnly  bool
 	AdminOnly bool

@@ -83,6 +83,15 @@ func (r *Registry) Add(app App) {
 	if _, ok := app.(HasShutdown); ok {
 		caps = append(caps, "shutdown")
 	}
+	if _, ok := app.(HasTemplates); ok {
+		caps = append(caps, "templates")
+	}
+	if _, ok := app.(HasFuncMap); ok {
+		caps = append(caps, "funcmap")
+	}
+	if _, ok := app.(HasRequestFuncMap); ok {
+		caps = append(caps, "requestfuncmap")
+	}
 	slog.Debug("app registered", "name", name, "capabilities", caps)
 }
 

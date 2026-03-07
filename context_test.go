@@ -2,9 +2,11 @@ package burrow
 
 import (
 	"context"
+	"html/template"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
-	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,8 +52,8 @@ func TestNavItemsMissing(t *testing.T) {
 }
 
 func TestLayoutContext(t *testing.T) {
-	layout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
+	layout := LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, content template.HTML, _ map[string]any) error {
+		return nil
 	})
 
 	ctx := context.Background()
@@ -64,4 +66,26 @@ func TestLayoutContext(t *testing.T) {
 func TestLayoutMissing(t *testing.T) {
 	ctx := context.Background()
 	assert.Nil(t, Layout(ctx))
+}
+
+func TestTemplateExecutorContext(t *testing.T) {
+	exec := TemplateExecutor(func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+		return template.HTML("<p>" + name + "</p>"), nil
+	})
+
+	ctx := context.Background()
+	ctx = WithTemplateExecutor(ctx, exec)
+
+	got := TemplateExecutorFromContext(ctx)
+	require.NotNil(t, got)
+
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	html, err := got(r, "test", nil)
+	require.NoError(t, err)
+	assert.Equal(t, template.HTML("<p>test</p>"), html)
+}
+
+func TestTemplateExecutorMissing(t *testing.T) {
+	ctx := context.Background()
+	assert.Nil(t, TemplateExecutorFromContext(ctx))
 }

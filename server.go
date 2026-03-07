@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"time"
@@ -20,8 +21,10 @@ import (
 // Server is the main framework entry point. It holds the Registry
 // of apps and orchestrates the boot sequence.
 type Server struct {
-	registry *Registry
-	layout   LayoutFunc
+	registry                *Registry
+	layout                  LayoutFunc
+	templates               *template.Template
+	requestFuncMapProviders []func(r *http.Request) template.FuncMap
 }
 
 // NewServer creates a Server and registers the given apps.
@@ -90,12 +93,19 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	if err := s.buildTemplates(); err != nil {
+		return fmt.Errorf("build templates: %w", err)
+	}
+
 	r := chi.NewRouter()
 	setupCoreMiddleware(r, cfg)
 	navItems := s.registry.AllNavItems()
 	r.Use(navItemsMiddleware(navItems))
 	if s.layout != nil {
 		r.Use(layoutMiddleware(s.layout))
+	}
+	if s.templates != nil {
+		r.Use(s.templateMiddleware())
 	}
 	s.registry.RegisterMiddleware(r)
 	s.registry.RegisterRoutes(r)

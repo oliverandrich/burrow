@@ -3,12 +3,12 @@ package burrow
 import (
 	"context"
 	"errors"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"testing/fstest"
 
-	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -126,8 +126,8 @@ func TestServerBootstrapSeedError(t *testing.T) {
 func TestSetLayout(t *testing.T) {
 	s := NewServer(&minimalApp{})
 
-	layout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
+	layout := LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, content template.HTML, _ map[string]any) error {
+		return nil
 	})
 
 	s.SetLayout(layout)
@@ -135,8 +135,8 @@ func TestSetLayout(t *testing.T) {
 }
 
 func TestLayoutMiddleware(t *testing.T) {
-	layout := LayoutFunc(func(_ string, content templ.Component) templ.Component {
-		return content
+	layout := LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, _ template.HTML, _ map[string]any) error {
+		return nil
 	})
 
 	r := chi.NewRouter()

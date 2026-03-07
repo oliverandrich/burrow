@@ -2,6 +2,7 @@ package burrow
 
 import (
 	"context"
+	"html/template"
 	"io/fs"
 	"net/http"
 
@@ -82,4 +83,24 @@ type HasDependencies interface {
 // the HTTP server stops.
 type HasShutdown interface {
 	Shutdown(ctx context.Context) error
+}
+
+// HasTemplates is implemented by apps that provide HTML template files.
+// The returned fs.FS should contain .html files with {{ define "appname/..." }}
+// blocks. Templates are parsed once at boot time into the global template set.
+type HasTemplates interface {
+	TemplateFS() fs.FS
+}
+
+// HasFuncMap is implemented by apps that provide static template functions.
+// These are added once at boot time and available in all templates.
+type HasFuncMap interface {
+	FuncMap() template.FuncMap
+}
+
+// HasRequestFuncMap is implemented by apps that provide request-scoped
+// template functions (e.g., CSRF tokens, current user, translations).
+// These are added per request via middleware using template.Clone().
+type HasRequestFuncMap interface {
+	RequestFuncMap(r *http.Request) template.FuncMap
 }

@@ -1,13 +1,11 @@
 package burrow
 
 import (
-	"context"
-	"io"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,12 +14,7 @@ func TestRender(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
-	component := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		_, err := w.Write([]byte("<p>hello</p>"))
-		return err
-	})
-
-	err := Render(rec, req, http.StatusOK, component)
+	err := Render(rec, req, http.StatusOK, template.HTML("<p>hello</p>"))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "text/html; charset=utf-8", rec.Header().Get("Content-Type"))
@@ -32,63 +25,88 @@ func TestRenderWithStatus(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
-	component := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		_, err := w.Write([]byte("<p>not found</p>"))
-		return err
-	})
-
-	err := Render(rec, req, http.StatusNotFound, component)
+	err := Render(rec, req, http.StatusNotFound, template.HTML("<p>not found</p>"))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
-func TestLayoutFuncWrapsContent(t *testing.T) {
-	layout := LayoutFunc(func(title string, content templ.Component) templ.Component {
-		return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-			_, _ = w.Write([]byte("<html><head><title>" + title + "</title></head><body>"))
-			if err := content.Render(ctx, w); err != nil {
-				return err
-			}
-			_, err := w.Write([]byte("</body></html>"))
-			return err
-		})
-	})
-
-	content := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		_, err := w.Write([]byte("<p>hello</p>"))
-		return err
-	})
-
+func TestRenderTemplateNoExecutor(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
-	wrapped := layout("Test Page", content)
-	err := Render(rec, req, http.StatusOK, wrapped)
-	require.NoError(t, err)
-	assert.Equal(t, "<html><head><title>Test Page</title></head><body><p>hello</p></body></html>", rec.Body.String())
+	err := RenderTemplate(rec, req, http.StatusOK, "test", nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no template executor")
 }
 
-func TestLayoutFuncNilPassthrough(t *testing.T) {
-	content := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		_, err := w.Write([]byte("<p>bare</p>"))
-		return err
+func TestRenderTemplateFragment(t *testing.T) {
+	exec := TemplateExecutor(func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+		return template.HTML("<p>" + name + "</p>"), nil
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := WithTemplateExecutor(req.Context(), exec)
+	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
-	// When no layout is set, content renders directly.
-	ctx := req.Context()
-	layout := Layout(ctx)
+	err := RenderTemplate(rec, req, http.StatusOK, "greeting", nil)
+	require.NoError(t, err)
+	assert.Equal(t, "<p>greeting</p>", rec.Body.String())
+}
 
-	var component templ.Component
-	if layout != nil {
-		component = layout("Page", content)
-	} else {
-		component = content
-	}
+func TestRenderTemplateWithLayout(t *testing.T) {
+	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+		return template.HTML("<p>content</p>"), nil
+	})
+	layout := LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
+		return HTML(w, code, "<html><body>"+string(content)+"</body></html>")
+	})
 
-	err := Render(rec, req, http.StatusOK, component)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := WithTemplateExecutor(req.Context(), exec)
+	ctx = WithLayout(ctx, layout)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := RenderTemplate(rec, req, http.StatusOK, "page", nil)
+	require.NoError(t, err)
+	assert.Equal(t, "<html><body><p>content</p></body></html>", rec.Body.String())
+}
+
+func TestRenderTemplateHTMXSkipsLayout(t *testing.T) {
+	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+		return template.HTML("<p>fragment</p>"), nil
+	})
+	layoutCalled := false
+	layout := LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
+		layoutCalled = true
+		return HTML(w, code, "<html>"+string(content)+"</html>")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("HX-Request", "true")
+	ctx := WithTemplateExecutor(req.Context(), exec)
+	ctx = WithLayout(ctx, layout)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := RenderTemplate(rec, req, http.StatusOK, "partial", nil)
+	require.NoError(t, err)
+	assert.Equal(t, "<p>fragment</p>", rec.Body.String())
+	assert.False(t, layoutCalled, "layout should not be called for HTMX requests")
+}
+
+func TestRenderTemplateWithoutLayout(t *testing.T) {
+	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+		return template.HTML("<p>bare</p>"), nil
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := WithTemplateExecutor(req.Context(), exec)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := RenderTemplate(rec, req, http.StatusOK, "bare", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "<p>bare</p>", rec.Body.String())
 }
