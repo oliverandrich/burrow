@@ -2,6 +2,7 @@ package modeladmin
 
 import (
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -80,4 +81,59 @@ func isValidChoice(val string, choices []Choice) bool {
 		}
 	}
 	return false
+}
+
+// buildActiveFilters builds ActiveFilter data for template rendering.
+func buildActiveFilters(filters []FilterDef, r *http.Request) []ActiveFilter {
+	if len(filters) == 0 {
+		return nil
+	}
+	result := make([]ActiveFilter, len(filters))
+	for i, f := range filters {
+		activeVal := r.URL.Query().Get(f.Field)
+		choices := make([]ActiveChoice, 0, len(f.Choices)+1)
+
+		// "All" choice removes this filter.
+		choices = append(choices, ActiveChoice{
+			Label:    "All",
+			URL:      filterURL(r, f.Field, ""),
+			IsActive: activeVal == "",
+		})
+
+		for _, c := range f.Choices {
+			choices = append(choices, ActiveChoice{
+				Value:    c.Value,
+				Label:    c.Label,
+				URL:      filterURL(r, f.Field, c.Value),
+				IsActive: activeVal == c.Value,
+			})
+		}
+
+		result[i] = ActiveFilter{
+			Field:     f.Field,
+			Label:     f.Label,
+			Choices:   choices,
+			HasActive: activeVal != "",
+		}
+	}
+	return result
+}
+
+// filterURL builds a URL that sets one filter param while preserving others.
+// The page param is always dropped to reset pagination.
+func filterURL(r *http.Request, field, value string) string {
+	q := make(url.Values)
+	for k, vs := range r.URL.Query() {
+		if k == field || k == "page" {
+			continue
+		}
+		q[k] = vs
+	}
+	if value != "" {
+		q.Set(field, value)
+	}
+	if len(q) == 0 {
+		return r.URL.Path
+	}
+	return r.URL.Path + "?" + q.Encode()
 }

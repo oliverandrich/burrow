@@ -16,6 +16,24 @@
         <li class="breadcrumb-item active" aria-current="page">{{ .Cfg.Display }}</li>
     </ol>
 </nav>
+{{- if .Cfg.Filters }}
+<div class="mb-3">
+    {{- range .Cfg.Filters }}
+    <div class="d-flex align-items-center mb-2">
+        <span class="fw-semibold me-2 small text-body-secondary">{{ .Label }}:</span>
+        <ul class="nav nav-pills nav-pills-sm">
+            {{- range .Choices }}
+            <li class="nav-item">
+                <a class="nav-link py-1 px-2{{ if .IsActive }} active{{ end }}" href="{{ .URL }}">
+                    {{ .Label }}
+                </a>
+            </li>
+            {{- end }}
+        </ul>
+    </div>
+    {{- end }}
+</div>
+{{- end }}
 {{ if .Items -}}
 <div class="table-responsive">
     <table class="table table-striped table-hover table-sm">

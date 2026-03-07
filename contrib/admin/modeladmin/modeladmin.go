@@ -75,6 +75,22 @@ type Renderer[T any] interface {
 	ConfirmDelete(w http.ResponseWriter, r *http.Request, item *T, cfg RenderConfig) error
 }
 
+// ActiveFilter holds filter state for rendering in the list template.
+type ActiveFilter struct {
+	Field     string
+	Label     string
+	Choices   []ActiveChoice
+	HasActive bool // true if any choice is selected
+}
+
+// ActiveChoice represents a single filter option with its computed URL.
+type ActiveChoice struct {
+	Value    string
+	Label    string
+	URL      string // pre-built URL with this filter applied
+	IsActive bool
+}
+
 // RenderConfig holds display metadata passed to the renderer.
 type RenderConfig struct { //nolint:govet // fieldalignment: readability over optimization
 	Slug       string
@@ -84,6 +100,7 @@ type RenderConfig struct { //nolint:govet // fieldalignment: readability over op
 	CanDelete  bool
 	ListFields []string
 	IDField    string // struct field name for the primary key (default: "ID")
+	Filters    []ActiveFilter
 }
 
 // renderConfig returns the RenderConfig for this ModelAdmin.

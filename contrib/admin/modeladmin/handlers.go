@@ -33,7 +33,9 @@ func (ma *ModelAdmin[T]) handleList(w http.ResponseWriter, r *http.Request) erro
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list items")
 	}
 
-	return ma.Renderer.List(w, r, items, page, ma.renderConfig())
+	cfg := ma.renderConfig()
+	cfg.Filters = buildActiveFilters(ma.Filters, r)
+	return ma.Renderer.List(w, r, items, page, cfg)
 }
 
 // handleDetail renders the detail/edit form for an existing item.

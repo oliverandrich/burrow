@@ -82,6 +82,42 @@ func TestDefaultRenderer_List(t *testing.T) {
 	assert.Contains(t, body, "Items")
 }
 
+func TestDefaultRenderer_List_WithFilters(t *testing.T) {
+	r := DefaultRenderer[testItem]()
+	items := []testItem{{ID: 1, Name: "Alpha"}}
+	page := burrow.PageResult{Page: 1, TotalCount: 1, TotalPages: 1}
+	cfg := modeladmin.RenderConfig{
+		Slug:       "items",
+		Display:    "Items",
+		ListFields: []string{"ID", "Name"},
+		IDField:    "ID",
+		Filters: []modeladmin.ActiveFilter{
+			{
+				Field: "status",
+				Label: "Status",
+				Choices: []modeladmin.ActiveChoice{
+					{Label: "All", URL: "/admin/items", IsActive: false},
+					{Value: "active", Label: "Active", URL: "/admin/items?status=active", IsActive: true},
+					{Value: "archived", Label: "Archived", URL: "/admin/items?status=archived", IsActive: false},
+				},
+				HasActive: true,
+			},
+		},
+	}
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items?status=active", nil)
+	w := httptest.NewRecorder()
+
+	err := r.List(w, req, items, page, cfg)
+	require.NoError(t, err)
+	body := w.Body.String()
+	assert.Contains(t, body, "Status:")
+	assert.Contains(t, body, "Active")
+	assert.Contains(t, body, "Archived")
+	assert.Contains(t, body, "nav-pills")
+	assert.Contains(t, body, "active")
+}
+
 func TestDefaultRenderer_Detail(t *testing.T) {
 	r := DefaultRenderer[testItem]()
 	item := &testItem{ID: 1, Name: "Alpha"}
