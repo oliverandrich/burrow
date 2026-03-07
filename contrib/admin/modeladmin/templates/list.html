@@ -72,10 +72,10 @@
                             {{ if eq .Method "DELETE" }}hx-delete{{ else }}hx-post{{ end }}="/admin/{{ $.Cfg.Slug }}/{{ $itemID }}/{{ .Slug }}"
                             hx-headers='{"X-CSRF-Token":"{{ $.CSRFToken }}"}'
                             {{- if .Confirm }}
-                            hx-confirm="{{ .Confirm }}"
+                            hx-confirm="{{ T .Confirm }}"
                             {{- end }}
                         >
-                            {{- if .Icon }}{{ .Icon }} {{ end }}{{ .Label }}
+                            {{- if .Icon }}{{ .Icon }} {{ end }}{{ T .Label }}
                         </button>
                         {{- end }}
                     </div>

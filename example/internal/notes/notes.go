@@ -133,6 +133,17 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		ListFields: []string{"ID", "Title", "Content", "UserID", "CreatedAt"},
 		OrderBy:    "created_at DESC, id DESC",
 	}
+	a.notesAdmin.RowActions = []modeladmin.RowAction{
+		{
+			Slug:    "delete",
+			Label:   "modeladmin-delete",
+			Icon:    bsicons.Trash(),
+			Method:  "DELETE",
+			Class:   "btn-outline-danger",
+			Confirm: "modeladmin-delete-confirm",
+			Handler: a.notesAdmin.HandleDelete,
+		},
+	}
 	return nil
 }
 

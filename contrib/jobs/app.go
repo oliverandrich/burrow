@@ -88,7 +88,7 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		RowActions: []modeladmin.RowAction{
 			{
 				Slug:     "retry",
-				Label:    "Retry",
+				Label:    "admin-jobs-action-retry",
 				Icon:     bsicons.ArrowCounterclockwise(),
 				Class:    "btn-outline-success",
 				Handler:  retryHandler(a.repo),
@@ -96,10 +96,10 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 			},
 			{
 				Slug:     "cancel",
-				Label:    "Cancel",
+				Label:    "admin-jobs-action-cancel",
 				Icon:     bsicons.XCircle(),
 				Class:    "btn-outline-warning",
-				Confirm:  "Are you sure?",
+				Confirm:  "admin-jobs-cancel-confirm",
 				Handler:  cancelHandler(a.repo),
 				ShowWhen: isCancellable,
 			},
