@@ -3,22 +3,27 @@ package templates
 import (
 	"bytes"
 	"context"
+	"embed"
 	"fmt"
+	"html/template"
 
 	"codeberg.org/oliverandrich/burrow/contrib/authmail"
-
-	"github.com/a-h/templ"
 )
+
+//go:embed emails.html
+var templateFS embed.FS
+
+var emailTemplates = template.Must(template.ParseFS(templateFS, "emails.html"))
 
 type defaultRenderer struct{}
 
-// DefaultRenderer returns a Renderer that uses the built-in Templ email templates.
+// DefaultRenderer returns a Renderer that uses the built-in HTML email templates.
 func DefaultRenderer() authmail.Renderer {
 	return &defaultRenderer{}
 }
 
-func (d *defaultRenderer) RenderVerificationHTML(ctx context.Context, verifyURL string) (string, string, error) {
-	html, err := renderComponent(ctx, verificationEmail(verifyURL))
+func (d *defaultRenderer) RenderVerificationHTML(_ context.Context, verifyURL string) (string, string, error) {
+	html, err := renderTemplate("authmail/verification", verifyURL)
 	if err != nil {
 		return "", "", fmt.Errorf("render verification html: %w", err)
 	}
@@ -30,8 +35,8 @@ func (d *defaultRenderer) RenderVerificationText(_ context.Context, verifyURL st
 	return "Verify your email", text, nil
 }
 
-func (d *defaultRenderer) RenderInviteHTML(ctx context.Context, inviteURL string) (string, string, error) {
-	html, err := renderComponent(ctx, inviteEmail(inviteURL))
+func (d *defaultRenderer) RenderInviteHTML(_ context.Context, inviteURL string) (string, string, error) {
+	html, err := renderTemplate("authmail/invite", inviteURL)
 	if err != nil {
 		return "", "", fmt.Errorf("render invite html: %w", err)
 	}
@@ -43,9 +48,9 @@ func (d *defaultRenderer) RenderInviteText(_ context.Context, inviteURL string) 
 	return "You've been invited", text, nil
 }
 
-func renderComponent(ctx context.Context, c templ.Component) (string, error) {
+func renderTemplate(name, url string) (string, error) {
 	var buf bytes.Buffer
-	if err := c.Render(ctx, &buf); err != nil {
+	if err := emailTemplates.ExecuteTemplate(&buf, name, map[string]any{"URL": url}); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
