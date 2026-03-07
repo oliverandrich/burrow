@@ -49,6 +49,8 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	Filters []FilterDef
 	// SortFields lists database column names that support column sorting.
 	SortFields []string
+	// RowActions defines custom per-row actions for the list/detail views.
+	RowActions []RowAction
 }
 
 // idFromRequest returns the ID from the URL, using IDFunc if set.
@@ -93,14 +95,17 @@ type ActiveChoice struct {
 
 // RenderConfig holds display metadata passed to the renderer.
 type RenderConfig struct { //nolint:govet // fieldalignment: readability over optimization
-	Slug       string
-	Display    string
-	CanCreate  bool
-	CanEdit    bool
-	CanDelete  bool
-	ListFields []string
-	IDField    string // struct field name for the primary key (default: "ID")
-	Filters    []ActiveFilter
+	Slug           string
+	Display        string
+	CanCreate      bool
+	CanEdit        bool
+	CanDelete      bool
+	ListFields     []string
+	IDField        string // struct field name for the primary key (default: "ID")
+	Filters        []ActiveFilter
+	RowActions     []RenderAction
+	HasRowActions  bool
+	ItemActionSets [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
 }
 
 // renderConfig returns the RenderConfig for this ModelAdmin.
@@ -109,14 +114,20 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 	if f := pkFieldName[T](); f != "" {
 		idField = f
 	}
+	renderActions := make([]RenderAction, 0, len(ma.RowActions))
+	for _, a := range ma.RowActions {
+		renderActions = append(renderActions, a.toRenderAction())
+	}
 	return RenderConfig{
-		Slug:       ma.Slug,
-		Display:    ma.Display,
-		CanCreate:  ma.CanCreate,
-		CanEdit:    ma.CanEdit,
-		CanDelete:  ma.CanDelete,
-		ListFields: ma.ListFields,
-		IDField:    idField,
+		Slug:          ma.Slug,
+		Display:       ma.Display,
+		CanCreate:     ma.CanCreate,
+		CanEdit:       ma.CanEdit,
+		CanDelete:     ma.CanDelete,
+		ListFields:    ma.ListFields,
+		IDField:       idField,
+		RowActions:    renderActions,
+		HasRowActions: len(renderActions) > 0,
 	}
 }
 

@@ -82,6 +82,39 @@ func TestDefaultRenderer_List(t *testing.T) {
 	assert.Contains(t, body, "Items")
 }
 
+func TestDefaultRenderer_List_WithRowActions(t *testing.T) {
+	r := DefaultRenderer[testItem]()
+	items := []testItem{{ID: 1, Name: "Alpha"}}
+	page := burrow.PageResult{Page: 1, TotalCount: 1, TotalPages: 1}
+	cfg := modeladmin.RenderConfig{
+		Slug:          "items",
+		Display:       "Items",
+		ListFields:    []string{"ID", "Name"},
+		IDField:       "ID",
+		HasRowActions: true,
+		RowActions: []modeladmin.RenderAction{
+			{Slug: "retry", Label: "Retry", Method: "POST", Class: "btn-success"},
+		},
+		ItemActionSets: [][]modeladmin.RenderAction{
+			{
+				{Slug: "retry", Label: "Retry", Method: "POST", Class: "btn-success"},
+			},
+		},
+	}
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items", nil)
+	w := httptest.NewRecorder()
+
+	err := r.List(w, req, items, page, cfg)
+	require.NoError(t, err)
+	body := w.Body.String()
+	assert.Contains(t, body, "Actions")
+	assert.Contains(t, body, "Retry")
+	assert.Contains(t, body, "btn-success")
+	assert.Contains(t, body, "hx-post")
+	assert.Contains(t, body, "/retry")
+}
+
 func TestDefaultRenderer_List_WithFilters(t *testing.T) {
 	r := DefaultRenderer[testItem]()
 	items := []testItem{{ID: 1, Name: "Alpha"}}

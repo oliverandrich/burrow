@@ -42,10 +42,13 @@
                 {{- range .Cfg.ListFields }}
                 <th scope="col">{{ . }}</th>
                 {{- end }}
+                {{- if .Cfg.HasRowActions }}
+                <th scope="col" class="text-end">Actions</th>
+                {{- end }}
             </tr>
         </thead>
         <tbody>
-            {{- range $item := .Items }}
+            {{- range $idx, $item := .Items }}
             <tr>
                 {{- range $i, $field := $.Cfg.ListFields }}
                 {{- if eq $i 0 }}
@@ -57,6 +60,26 @@
                 {{- else }}
                 <td>{{ columnValue $item $field }}</td>
                 {{- end }}
+                {{- end }}
+                {{- if $.Cfg.HasRowActions }}
+                <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                        {{- $itemID := fieldValue $item $.Cfg.IDField }}
+                        {{- range index $.Cfg.ItemActionSets $idx }}
+                        <button
+                            type="button"
+                            class="btn {{ .Class }}"
+                            {{ if eq .Method "DELETE" }}hx-delete{{ else }}hx-post{{ end }}="/admin/{{ $.Cfg.Slug }}/{{ $itemID }}/{{ .Slug }}"
+                            hx-headers='{"X-CSRF-Token":"{{ $.CSRFToken }}"}'
+                            {{- if .Confirm }}
+                            hx-confirm="{{ .Confirm }}"
+                            {{- end }}
+                        >
+                            {{- if .Icon }}{{ .Icon }} {{ end }}{{ .Label }}
+                        </button>
+                        {{- end }}
+                    </div>
+                </td>
                 {{- end }}
             </tr>
             {{- end }}

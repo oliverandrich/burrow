@@ -87,9 +87,10 @@ func (d *defaultRenderer[T]) List(w http.ResponseWriter, r *http.Request, items 
 		anyItems[i] = item
 	}
 	data := map[string]any{
-		"Items": anyItems,
-		"Page":  page,
-		"Cfg":   cfg,
+		"Items":     anyItems,
+		"Page":      page,
+		"Cfg":       cfg,
+		"CSRFToken": csrf.Token(r.Context()),
 	}
 	content, err := executeTemplate("modeladmin/list", data)
 	if err != nil {

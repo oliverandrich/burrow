@@ -22,8 +22,25 @@
         </dl>
     </div>
 </div>
-{{- if .Cfg.CanDelete }}
-<div class="d-flex">
+{{- if or .Cfg.HasRowActions .Cfg.CanDelete }}
+<div class="d-flex gap-2">
+    {{- if .Cfg.HasRowActions }}
+    {{- $actions := index .Cfg.ItemActionSets 0 }}
+    {{- range $actions }}
+    <button
+        type="button"
+        class="btn {{ .Class }}"
+        {{ if eq .Method "DELETE" }}hx-delete{{ else }}hx-post{{ end }}="/admin/{{ $.Cfg.Slug }}/{{ $.IDValue }}/{{ .Slug }}"
+        hx-headers='{"X-CSRF-Token":"{{ $.CSRFToken }}"}'
+        {{- if .Confirm }}
+        hx-confirm="{{ .Confirm }}"
+        {{- end }}
+    >
+        {{- if .Icon }}{{ .Icon }} {{ end }}{{ .Label }}
+    </button>
+    {{- end }}
+    {{- end }}
+    {{- if .Cfg.CanDelete }}
     <button
         type="button"
         class="btn btn-outline-danger ms-auto"
@@ -33,6 +50,7 @@
     >
         Delete
     </button>
+    {{- end }}
 </div>
 {{- end }}
 {{- end }}

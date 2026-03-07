@@ -26,5 +26,14 @@ func (ma *ModelAdmin[T]) Routes(r chi.Router) {
 		if ma.CanDelete {
 			r.Delete("/{id}", burrow.Handle(ma.handleDelete))
 		}
+
+		for _, action := range ma.RowActions {
+			switch action.method() {
+			case "DELETE":
+				r.Delete("/{id}/"+action.Slug, burrow.Handle(action.Handler))
+			default:
+				r.Post("/{id}/"+action.Slug, burrow.Handle(action.Handler))
+			}
+		}
 	})
 }

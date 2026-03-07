@@ -35,6 +35,12 @@ func (ma *ModelAdmin[T]) handleList(w http.ResponseWriter, r *http.Request) erro
 
 	cfg := ma.renderConfig()
 	cfg.Filters = buildActiveFilters(ma.Filters, r)
+	if cfg.HasRowActions {
+		cfg.ItemActionSets = make([][]RenderAction, len(items))
+		for i, item := range items {
+			cfg.ItemActionSets[i] = buildItemActions(ma.RowActions, item).Actions
+		}
+	}
 	return ma.Renderer.List(w, r, items, page, cfg)
 }
 
@@ -53,12 +59,19 @@ func (ma *ModelAdmin[T]) handleDetail(w http.ResponseWriter, r *http.Request) er
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get item")
 	}
 
-	if ma.CanEdit {
-		fields := AutoFields[T](item)
-		return ma.Renderer.Form(w, r, item, fields, nil, ma.renderConfig())
+	cfg := ma.renderConfig()
+	if cfg.HasRowActions {
+		cfg.ItemActionSets = [][]RenderAction{
+			buildItemActions(ma.RowActions, *item).Actions,
+		}
 	}
 
-	return ma.Renderer.Detail(w, r, item, ma.renderConfig())
+	if ma.CanEdit {
+		fields := AutoFields[T](item)
+		return ma.Renderer.Form(w, r, item, fields, nil, cfg)
+	}
+
+	return ma.Renderer.Detail(w, r, item, cfg)
 }
 
 // handleNew renders the create form.
