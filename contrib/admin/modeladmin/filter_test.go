@@ -12,7 +12,7 @@ import (
 
 func TestBuildActiveFilters_NoFilters(t *testing.T) {
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items", nil)
-	result := buildActiveFilters(nil, r)
+	result := buildActiveFilters(nil, r, nil)
 	assert.Nil(t, result)
 }
 
@@ -29,7 +29,7 @@ func TestBuildActiveFilters_SelectFilter(t *testing.T) {
 		},
 	}
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items", nil)
-	result := buildActiveFilters(filters, r)
+	result := buildActiveFilters(filters, r, nil)
 
 	require.Len(t, result, 1)
 	af := result[0]
@@ -60,7 +60,7 @@ func TestBuildActiveFilters_ActiveFilter(t *testing.T) {
 		},
 	}
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items?status=done", nil)
-	result := buildActiveFilters(filters, r)
+	result := buildActiveFilters(filters, r, nil)
 
 	require.Len(t, result, 1)
 	af := result[0]
@@ -68,6 +68,44 @@ func TestBuildActiveFilters_ActiveFilter(t *testing.T) {
 	assert.False(t, af.Choices[0].IsActive, "All should not be active")
 	assert.False(t, af.Choices[1].IsActive, "Pending should not be active")
 	assert.True(t, af.Choices[2].IsActive, "Done should be active")
+}
+
+func TestBuildActiveFilters_WithTranslateFunc(t *testing.T) {
+	translations := map[string]string{
+		"filter-status":  "Status",
+		"filter-all":     "Alle",
+		"filter-pending": "Ausstehend",
+		"filter-done":    "Erledigt",
+	}
+	tf := func(_ *http.Request, key string) string {
+		if v, ok := translations[key]; ok {
+			return v
+		}
+		return key
+	}
+
+	filters := []FilterDef{
+		{
+			Field:       "status",
+			Label:       "Status",
+			LabelKey:    "filter-status",
+			Type:        "select",
+			AllLabelKey: "filter-all",
+			Choices: []Choice{
+				{Value: "pending", Label: "Pending", LabelKey: "filter-pending"},
+				{Value: "done", Label: "Done", LabelKey: "filter-done"},
+			},
+		},
+	}
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items", nil)
+	result := buildActiveFilters(filters, r, tf)
+
+	require.Len(t, result, 1)
+	af := result[0]
+	assert.Equal(t, "Status", af.Label)
+	assert.Equal(t, "Alle", af.Choices[0].Label)
+	assert.Equal(t, "Ausstehend", af.Choices[1].Label)
+	assert.Equal(t, "Erledigt", af.Choices[2].Label)
 }
 
 func TestFilterURL_SetsParam(t *testing.T) {

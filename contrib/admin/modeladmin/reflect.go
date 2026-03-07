@@ -22,8 +22,9 @@ type FormField struct { //nolint:govet // fieldalignment: readability over optim
 
 // Choice represents a single option in a select field.
 type Choice struct {
-	Value string
-	Label string
+	Value    string
+	Label    string
+	LabelKey string // i18n key; translated via TranslateFunc when set
 }
 
 // AutoFields extracts form fields from a struct using bun and form tags.

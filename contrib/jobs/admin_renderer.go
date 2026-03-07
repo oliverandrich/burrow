@@ -1,0 +1,42 @@
+package jobs
+
+import (
+	"fmt"
+	"net/http"
+
+	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+	matpl "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin/templates"
+)
+
+// newJobsRenderer returns a ModelAdmin renderer for Jobs that delegates
+// list/form to the default ModelAdmin renderer but uses
+// a custom detail template with Payload and LastError cards.
+func newJobsRenderer() modeladmin.Renderer[Job] {
+	return &jobsRenderer{
+		base: matpl.DefaultRenderer[Job](),
+	}
+}
+
+type jobsRenderer struct {
+	base modeladmin.Renderer[Job]
+}
+
+func (r *jobsRenderer) List(w http.ResponseWriter, req *http.Request, items []Job, page burrow.PageResult, cfg modeladmin.RenderConfig) error {
+	return r.base.List(w, req, items, page, cfg)
+}
+
+func (r *jobsRenderer) Detail(w http.ResponseWriter, req *http.Request, item *Job, cfg modeladmin.RenderConfig) error {
+	return burrow.RenderTemplate(w, req, http.StatusOK, "jobs/admin_detail", map[string]any{
+		"Job": item,
+		"Cfg": cfg,
+	})
+}
+
+func (r *jobsRenderer) Form(w http.ResponseWriter, req *http.Request, item *Job, fields []modeladmin.FormField, errors *burrow.ValidationError, cfg modeladmin.RenderConfig) error {
+	return r.base.Form(w, req, item, fields, errors, cfg)
+}
+
+func (r *jobsRenderer) ConfirmDelete(_ http.ResponseWriter, _ *http.Request, _ *Job, _ modeladmin.RenderConfig) error {
+	return fmt.Errorf("confirm delete not supported for jobs")
+}

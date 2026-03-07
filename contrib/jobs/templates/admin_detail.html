@@ -101,3 +101,19 @@
     </button>
 </div>
 {{- end }}
+
+{{ define "jobs/status_badge" -}}
+{{ if eq (string .) "pending" -}}
+<span class="badge text-bg-warning">{{ . }}</span>
+{{- else if eq (string .) "running" -}}
+<span class="badge text-bg-info">{{ . }}</span>
+{{- else if eq (string .) "completed" -}}
+<span class="badge text-bg-success">{{ . }}</span>
+{{- else if eq (string .) "failed" -}}
+<span class="badge text-bg-danger">{{ . }}</span>
+{{- else if eq (string .) "dead" -}}
+<span class="badge text-bg-secondary">{{ . }}</span>
+{{- else -}}
+<span class="badge text-bg-light">{{ . }}</span>
+{{- end }}
+{{- end }}

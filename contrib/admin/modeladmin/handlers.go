@@ -34,7 +34,10 @@ func (ma *ModelAdmin[T]) handleList(w http.ResponseWriter, r *http.Request) erro
 	}
 
 	cfg := ma.renderConfig()
-	cfg.Filters = buildActiveFilters(ma.Filters, r)
+	cfg.Filters = buildActiveFilters(ma.Filters, r, ma.TranslateFunc)
+	if ma.TranslateFunc != nil && ma.EmptyMessageKey != "" {
+		cfg.EmptyMessage = ma.TranslateFunc(r, ma.EmptyMessageKey)
+	}
 	if cfg.HasRowActions {
 		cfg.ItemActionSets = make([][]RenderAction, len(items))
 		for i, item := range items {

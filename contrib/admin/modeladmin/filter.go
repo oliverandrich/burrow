@@ -10,11 +10,13 @@ import (
 )
 
 // FilterDef describes a filter available in the admin list view.
-type FilterDef struct {
-	Field   string   // database column name
-	Label   string   // human-readable label
-	Type    string   // "select", "bool", "date_range"
-	Choices []Choice // for select filters
+type FilterDef struct { //nolint:govet // fieldalignment: readability over optimization
+	Field       string   // database column name
+	Label       string   // human-readable label
+	LabelKey    string   // i18n key for the label; translated via TranslateFunc when set
+	Type        string   // "select", "bool", "date_range"
+	Choices     []Choice // for select filters
+	AllLabelKey string   // i18n key for the "All" choice; translated via TranslateFunc when set
 }
 
 // applyFilters applies filter query parameters to the Bun query.
@@ -83,8 +85,11 @@ func isValidChoice(val string, choices []Choice) bool {
 	return false
 }
 
+// translateFunc is the signature for optional i18n translation.
+type translateFunc func(r *http.Request, key string) string
+
 // buildActiveFilters builds ActiveFilter data for template rendering.
-func buildActiveFilters(filters []FilterDef, r *http.Request) []ActiveFilter {
+func buildActiveFilters(filters []FilterDef, r *http.Request, tf translateFunc) []ActiveFilter {
 	if len(filters) == 0 {
 		return nil
 	}
@@ -94,24 +99,36 @@ func buildActiveFilters(filters []FilterDef, r *http.Request) []ActiveFilter {
 		choices := make([]ActiveChoice, 0, len(f.Choices)+1)
 
 		// "All" choice removes this filter.
+		allLabel := "All"
+		if tf != nil && f.AllLabelKey != "" {
+			allLabel = tf(r, f.AllLabelKey)
+		}
 		choices = append(choices, ActiveChoice{
-			Label:    "All",
+			Label:    allLabel,
 			URL:      filterURL(r, f.Field, ""),
 			IsActive: activeVal == "",
 		})
 
 		for _, c := range f.Choices {
+			label := c.Label
+			if tf != nil && c.LabelKey != "" {
+				label = tf(r, c.LabelKey)
+			}
 			choices = append(choices, ActiveChoice{
 				Value:    c.Value,
-				Label:    c.Label,
+				Label:    label,
 				URL:      filterURL(r, f.Field, c.Value),
 				IsActive: activeVal == c.Value,
 			})
 		}
 
+		filterLabel := f.Label
+		if tf != nil && f.LabelKey != "" {
+			filterLabel = tf(r, f.LabelKey)
+		}
 		result[i] = ActiveFilter{
 			Field:     f.Field,
-			Label:     f.Label,
+			Label:     filterLabel,
 			Choices:   choices,
 			HasActive: activeVal != "",
 		}

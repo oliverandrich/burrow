@@ -8,10 +8,13 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"net/http"
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"github.com/go-chi/chi/v5"
 	"github.com/urfave/cli/v3"
 )
@@ -42,20 +45,14 @@ func WithMaxRetries(n int) JobOption {
 // Option configures the jobs app.
 type Option func(*App)
 
-// WithAdminRenderer sets the admin page renderer for job management.
-func WithAdminRenderer(r AdminRenderer) Option {
-	return func(a *App) { a.adminRenderer = r }
-}
-
 // App implements the jobs contrib app.
 type App struct {
-	repo          *Repository
-	handlers      map[string]HandlerFunc
-	retries       map[string]int
-	worker        *Worker
-	cancelFunc    context.CancelFunc
-	adminRenderer AdminRenderer
-	adminHdl      *adminHandlers
+	repo       *Repository
+	handlers   map[string]HandlerFunc
+	retries    map[string]int
+	worker     *Worker
+	cancelFunc context.CancelFunc
+	jobsAdmin  *modeladmin.ModelAdmin[Job]
 }
 
 // New creates a new jobs app with the given options.
@@ -75,9 +72,43 @@ func (a *App) Name() string { return "jobs" }
 func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 
-	// Create admin handlers if WithAdminRenderer was provided.
-	if a.adminRenderer != nil {
-		a.adminHdl = newAdminHandlers(a.repo, a.adminRenderer)
+	a.jobsAdmin = &modeladmin.ModelAdmin[Job]{
+		Slug:            "jobs",
+		Display:         "Jobs",
+		DB:              cfg.DB,
+		Renderer:        newJobsRenderer(),
+		CanCreate:       false,
+		CanEdit:         false,
+		CanDelete:       true,
+		ListFields:      []string{"ID", "Type", "Status", "Attempts", "CreatedAt"},
+		OrderBy:         "created_at DESC, id DESC",
+		PageSize:        25,
+		EmptyMessageKey: "admin-jobs-empty",
+		TranslateFunc: func(r *http.Request, key string) string {
+			return i18n.T(r.Context(), key)
+		},
+		Filters: []modeladmin.FilterDef{
+			{Field: "status", Label: "Status", Type: "select", AllLabelKey: "admin-jobs-filter-all", Choices: statusChoices()},
+		},
+		RowActions: []modeladmin.RowAction{
+			{
+				Slug:     "retry",
+				Label:    "Retry",
+				Icon:     bsicons.ArrowCounterclockwise(),
+				Class:    "btn-outline-success",
+				Handler:  retryHandler(a.repo),
+				ShowWhen: isRetryable,
+			},
+			{
+				Slug:     "cancel",
+				Label:    "Cancel",
+				Icon:     bsicons.XCircle(),
+				Class:    "btn-outline-warning",
+				Confirm:  "Are you sure?",
+				Handler:  cancelHandler(a.repo),
+				ShowWhen: isCancellable,
+			},
+		},
 	}
 	return nil
 }
@@ -163,16 +194,9 @@ func (a *App) EnqueueAt(ctx context.Context, typeName string, payload any, runAt
 
 // AdminRoutes registers admin routes for job management.
 func (a *App) AdminRoutes(r chi.Router) {
-	if a.adminHdl == nil {
-		return
+	if a.jobsAdmin != nil {
+		a.jobsAdmin.Routes(r)
 	}
-	h := a.adminHdl
-
-	r.Get("/jobs", burrow.Handle(h.ListPage))
-	r.Get("/jobs/{id}", burrow.Handle(h.DetailPage))
-	r.Delete("/jobs/{id}", burrow.Handle(h.DeleteJob))
-	r.Post("/jobs/{id}/retry", burrow.Handle(h.RetryJob))
-	r.Post("/jobs/{id}/cancel", burrow.Handle(h.CancelJob))
 }
 
 // AdminNavItems returns navigation items for the admin panel.
@@ -198,26 +222,12 @@ func (a *App) TemplateFS() fs.FS {
 // FuncMap returns static template functions for jobs templates.
 func (a *App) FuncMap() template.FuncMap {
 	return template.FuncMap{
-		"prettyJSON": prettyJSON,
-		"jobStatus":  func(j Job) string { return string(j.Status) },
-		"string":     func(v any) string { return fmt.Sprint(v) },
-		"jobsPageURL": func(status string, page, limit int) string {
-			if status != "" {
-				return fmt.Sprintf("/admin/jobs?status=%s&page=%d&limit=%d", status, page, limit)
-			}
-			return fmt.Sprintf("/admin/jobs?page=%d&limit=%d", page, limit)
-		},
-		"jobsPageLimit": func(page burrow.PageResult) int {
-			if page.TotalPages == 0 {
-				return 20
-			}
-			return (page.TotalCount + page.TotalPages - 1) / page.TotalPages
-		},
-		"iconEye":                   func(class ...string) template.HTML { return bsicons.Eye(class...) },
+		"prettyJSON":                prettyJSON,
+		"jobStatus":                 func(j Job) string { return string(j.Status) },
+		"string":                    func(v any) string { return fmt.Sprint(v) },
 		"iconArrowCounterclockwise": func(class ...string) template.HTML { return bsicons.ArrowCounterclockwise(class...) },
 		"iconXCircle":               func(class ...string) template.HTML { return bsicons.XCircle(class...) },
 		"iconTrash":                 func(class ...string) template.HTML { return bsicons.Trash(class...) },
-		"iconListTask":              func(class ...string) template.HTML { return bsicons.ListTask(class...) },
 	}
 }
 

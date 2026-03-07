@@ -19,7 +19,6 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"codeberg.org/oliverandrich/burrow/contrib/jobs"
-	jobstpl "codeberg.org/oliverandrich/burrow/contrib/jobs/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
@@ -66,9 +65,7 @@ func main() {
 		),
 		bootstrap.New(),
 		healthcheck.New(),
-		jobs.New(
-			jobs.WithAdminRenderer(jobstpl.DefaultAdminRenderer()),
-		),
+		jobs.New(),
 		pages.New(),
 		notes.New(),
 		admin.New(

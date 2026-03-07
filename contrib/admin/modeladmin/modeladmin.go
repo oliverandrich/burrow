@@ -51,6 +51,14 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	SortFields []string
 	// RowActions defines custom per-row actions for the list/detail views.
 	RowActions []RowAction
+	// EmptyMessage is shown when the list has no items. Default: "No items found."
+	EmptyMessage string
+	// EmptyMessageKey is the i18n key for the empty-list message.
+	// Translated via TranslateFunc when set.
+	EmptyMessageKey string
+	// TranslateFunc translates i18n keys at request time. Used for filter labels,
+	// choice labels, and other UI strings with LabelKey fields set.
+	TranslateFunc func(r *http.Request, key string) string
 }
 
 // idFromRequest returns the ID from the URL, using IDFunc if set.
@@ -106,6 +114,7 @@ type RenderConfig struct { //nolint:govet // fieldalignment: readability over op
 	RowActions     []RenderAction
 	HasRowActions  bool
 	ItemActionSets [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
+	EmptyMessage   string
 }
 
 // renderConfig returns the RenderConfig for this ModelAdmin.
@@ -118,6 +127,10 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 	for _, a := range ma.RowActions {
 		renderActions = append(renderActions, a.toRenderAction())
 	}
+	emptyMsg := ma.EmptyMessage
+	if emptyMsg == "" {
+		emptyMsg = "No items found."
+	}
 	return RenderConfig{
 		Slug:          ma.Slug,
 		Display:       ma.Display,
@@ -128,6 +141,7 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 		IDField:       idField,
 		RowActions:    renderActions,
 		HasRowActions: len(renderActions) > 0,
+		EmptyMessage:  emptyMsg,
 	}
 }
 
