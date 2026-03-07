@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
-	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,18 +26,20 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ burrow.App             = (*App)(nil)
-	_ burrow.Migratable      = (*App)(nil)
-	_ burrow.Configurable    = (*App)(nil)
-	_ burrow.HasMiddleware   = (*App)(nil)
-	_ burrow.HasRoutes       = (*App)(nil)
-	_ burrow.HasAdmin        = (*App)(nil)
-	_ burrow.HasCLICommands  = (*App)(nil)
-	_ burrow.HasDependencies = (*App)(nil)
-	_ burrow.HasStaticFiles  = (*App)(nil)
-	_ burrow.HasTranslations = (*App)(nil)
+	_ burrow.App               = (*App)(nil)
+	_ burrow.Migratable        = (*App)(nil)
+	_ burrow.Configurable      = (*App)(nil)
+	_ burrow.HasMiddleware     = (*App)(nil)
+	_ burrow.HasRoutes         = (*App)(nil)
+	_ burrow.HasAdmin          = (*App)(nil)
+	_ burrow.HasCLICommands    = (*App)(nil)
+	_ burrow.HasDependencies   = (*App)(nil)
+	_ burrow.HasStaticFiles    = (*App)(nil)
+	_ burrow.HasTranslations   = (*App)(nil)
 	_ burrow.HasShutdown       = (*App)(nil)
 	_ burrow.HasRequestFuncMap = (*App)(nil)
+	_ burrow.HasTemplates      = (*App)(nil)
+	_ burrow.HasFuncMap        = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -1257,8 +1259,8 @@ func TestAdminDeleteUserSelf(t *testing.T) {
 // --- WithAuthLayout option tests ---
 
 func TestWithAuthLayoutOption(t *testing.T) {
-	testLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
-		return content
+	testLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+		return burrow.HTML(w, code, string(content))
 	})
 	app := New(WithAuthLayout(testLayout))
 	assert.NotNil(t, app.authLayout, "authLayout should be set via WithAuthLayout option")
@@ -1274,14 +1276,14 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}),
 	}
 
-	authLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
-		return content
+	authLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+		return burrow.HTML(w, code, string(content))
 	})
 	app.authLayout = authLayout
 
 	// Set up a global layout that should be overridden on public routes.
-	globalLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
-		return content
+	globalLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+		return burrow.HTML(w, code, string(content))
 	})
 
 	r := chi.NewRouter()
@@ -1316,14 +1318,14 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 		handlers: NewHandlers(repo, nil, nil, mockR, &Config{LoginRedirect: "/"}),
 	}
 
-	authLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
-		return content
+	authLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+		return burrow.HTML(w, code, string(content))
 	})
 	app.authLayout = authLayout
 
 	// Set up a global layout.
-	globalLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
-		return content
+	globalLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+		return burrow.HTML(w, code, string(content))
 	})
 
 	// Create a user so the credentials handler can look up credentials.
@@ -1361,8 +1363,8 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 	}
 	// No SetAuthLayout call.
 
-	globalLayout := burrow.LayoutFunc(func(title string, content templ.Component) templ.Component {
-		return content
+	globalLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+		return burrow.HTML(w, code, string(content))
 	})
 
 	r := chi.NewRouter()

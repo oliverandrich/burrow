@@ -1,0 +1,38 @@
+{{ define "auth/login" -}}
+{{ template "auth/csrf_input" . }}
+<div
+    id="i18n-strings"
+    data-login-waiting="{{ t "login-waiting" }}"
+    data-login-button="{{ t "login-button" }}"
+    class="d-none"
+></div>
+<div id="error-message" class="alert alert-danger d-none"></div>
+<button id="login-btn" type="button" class="btn btn-primary btn-lg w-100">{{ t "login-button" }}</button>
+<p class="text-center mt-4">
+    <a href="/auth/register">{{ t "login-create-account" }}</a>
+    &middot;
+    <a href="/auth/recovery">{{ t "login-lost-passkey" }}</a>
+</p>
+<script src="{{ staticURL "auth/webauthn.js" }}"></script>
+<script>
+    document.getElementById("login-btn").addEventListener("click", async function() {
+        var btn = this;
+        var errEl = document.getElementById("error-message");
+        var strings = document.getElementById("i18n-strings").dataset;
+        errEl.classList.add("d-none");
+        btn.disabled = true;
+        btn.textContent = strings.loginWaiting;
+        try {
+            var result = await webauthnLogin("/auth/login/begin", "/auth/login/finish");
+            if (result.redirect) {
+                window.location.href = result.redirect;
+            }
+        } catch(e) {
+            errEl.textContent = e.message;
+            errEl.classList.remove("d-none");
+            btn.disabled = false;
+            btn.textContent = strings.loginButton;
+        }
+    });
+</script>
+{{- end }}

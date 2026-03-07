@@ -1,0 +1,22 @@
+{{ define "auth/verify_pending" -}}
+<p>{{ t "verify-pending-text" }}</p>
+<p>{{ t "verify-pending-spam" }}</p>
+{{- end }}
+
+{{ define "auth/verify_success" -}}
+<p>{{ t "verify-success-text" }}</p>
+<p><a href="/">{{ t "verify-success-link" }}</a></p>
+{{- end }}
+
+{{ define "auth/verify_error" -}}
+{{ if eq .ErrorCode "missing_token" -}}
+<p>{{ t "verify-error-missing-token" }}</p>
+{{- else if eq .ErrorCode "invalid_token" -}}
+<p>{{ t "verify-error-invalid-token" }}</p>
+{{- else if eq .ErrorCode "token_expired" -}}
+<p>{{ t "verify-error-token-expired" }}</p>
+{{- else -}}
+<p>{{ t "verify-error-default" }}</p>
+{{- end }}
+<p><a href="/auth/login">{{ t "verify-error-back" }}</a></p>
+{{- end }}

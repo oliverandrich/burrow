@@ -9,12 +9,12 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"strconv"
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
-	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/urfave/cli/v3"
 )
@@ -28,6 +28,9 @@ var translationFS embed.FS
 //go:embed static
 var staticFS embed.FS
 
+//go:embed templates/*.html
+var htmlTemplateFS embed.FS
+
 // App implements the auth contrib app.
 type App struct {
 	repo          *Repository
@@ -36,7 +39,7 @@ type App struct {
 	renderer      Renderer
 	adminRenderer AdminRenderer
 	authLayout    burrow.LayoutFunc
-	logo          templ.Component
+	logo          template.HTML
 	emailService  EmailService
 	config        *Config
 	globalConfig  *burrow.Config
@@ -69,9 +72,9 @@ func WithAuthLayout(fn burrow.LayoutFunc) Option {
 	return func(a *App) { a.authLayout = fn }
 }
 
-// WithLogoComponent sets an optional logo component rendered above auth page content.
+// WithLogoComponent sets an optional logo HTML rendered above auth page content.
 // When set, the logo appears on login, register, and recovery pages.
-func WithLogoComponent(c templ.Component) Option {
+func WithLogoComponent(c template.HTML) Option {
 	return func(a *App) { a.logo = c }
 }
 
@@ -219,12 +222,46 @@ func (a *App) Shutdown(_ context.Context) error {
 	return nil
 }
 
+// TemplateFS returns the embedded HTML template files.
+func (a *App) TemplateFS() fs.FS {
+	sub, _ := fs.Sub(htmlTemplateFS, "templates")
+	return sub
+}
+
+// FuncMap returns static template functions for auth templates.
+func (a *App) FuncMap() template.FuncMap {
+	return template.FuncMap{
+		"itoa":     func(id int64) string { return strconv.FormatInt(id, 10) },
+		"credName": credName,
+		"emailValue": func(user *User) string {
+			if user.Email != nil {
+				return *user.Email
+			}
+			return ""
+		},
+		"deref": func(s *string) string {
+			if s != nil {
+				return *s
+			}
+			return ""
+		},
+		"iconCheckCircleFill": func(class ...string) template.HTML { return bsicons.CheckCircleFill(class...) },
+		"iconPeople":          func(class ...string) template.HTML { return bsicons.People(class...) },
+		"iconEnvelope":        func(class ...string) template.HTML { return bsicons.Envelope(class...) },
+		"iconClipboard":       func(class ...string) template.HTML { return bsicons.Clipboard(class...) },
+		"iconCheckLg":         func(class ...string) template.HTML { return bsicons.CheckLg(class...) },
+	}
+}
+
 // RequestFuncMap returns request-scoped template functions for auth state.
 func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
 	ctx := r.Context()
 	return template.FuncMap{
-		"currentUser":     func() *User { return UserFromContext(ctx) },
-		"isAuthenticated": func() bool { return IsAuthenticated(ctx) },
+		"currentUser":          func() *User { return UserFromContext(ctx) },
+		"isAuthenticated":      func() bool { return IsAuthenticated(ctx) },
+		"isAdminEditSelf":      func() bool { return IsAdminEditSelf(ctx) },
+		"isAdminEditLastAdmin": func() bool { return IsAdminEditLastAdmin(ctx) },
+		"authLogo":             func() template.HTML { return LogoFromContext(ctx) },
 	}
 }
 
@@ -262,7 +299,7 @@ func (a *App) Routes(r chi.Router) {
 			if a.authLayout != nil {
 				r.Use(authLayoutMiddleware(a.authLayout))
 			}
-			if a.logo != nil {
+			if a.logo != "" {
 				r.Use(authLogoMiddleware(a.logo))
 			}
 			r.Get("/register", burrow.Handle(h.RegisterPage))
@@ -310,8 +347,8 @@ func authLayoutMiddleware(fn burrow.LayoutFunc) func(http.Handler) http.Handler 
 	}
 }
 
-// authLogoMiddleware injects the logo component into the request context.
-func authLogoMiddleware(logo templ.Component) func(http.Handler) http.Handler {
+// authLogoMiddleware injects the logo HTML into the request context.
+func authLogoMiddleware(logo template.HTML) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := WithLogo(r.Context(), logo)
@@ -386,6 +423,14 @@ func (a *App) CLICommands() []*cli.Command {
 			Action:    a.createInviteAction,
 		},
 	}
+}
+
+// credName returns a display name for a credential.
+func credName(cred Credential) string {
+	if cred.Name != "" {
+		return cred.Name
+	}
+	return "Passkey"
 }
 
 // Repo returns the auth repository for external access.

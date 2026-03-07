@@ -1,0 +1,114 @@
+{{ define "auth/admin_invites" -}}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">{{ t "admin-invites-title" }}</h2>
+</div>
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ t "admin-invites-title" }}</li>
+    </ol>
+</nav>
+<template id="icon-check-lg">{{ iconCheckLg }}</template>
+{{ if .CreatedURL -}}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>{{ t "admin-invites-created" }}</strong>
+    <div class="d-flex align-items-center gap-2 mt-1">
+        <code class="flex-grow-1 text-break">{{ .CreatedURL }}</code>
+        <button
+            type="button"
+            class="btn btn-outline-success btn-sm flex-shrink-0"
+            onclick="copyToClipboard('{{ .CreatedURL }}', '{{ t "admin-invites-copy-done" }}')"
+            title="{{ t "admin-invites-copy" }}"
+        >
+            {{ iconClipboard }}
+            {{ t "admin-invites-copy" }}
+        </button>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{{- end }}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">{{ t "admin-invites-create-title" }}</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" action="/admin/invites">
+            <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}"/>
+            <div class="mb-3">
+                <label for="label" class="form-label">{{ t "admin-invites-label" }}</label>
+                <input type="text" class="form-control" id="label" name="label" placeholder="{{ t "admin-invites-label-placeholder" }}"/>
+            </div>
+            {{ if .UseEmail -}}
+            <div class="mb-3">
+                <label for="email" class="form-label">{{ t "admin-invites-email-label" }}</label>
+                <input type="email" class="form-control" id="email" name="email" placeholder="user@example.com" required/>
+            </div>
+            {{- end }}
+            <button type="submit" class="btn btn-primary">{{ t "admin-invites-create-button" }}</button>
+        </form>
+    </div>
+</div>
+<h4 class="mb-3">{{ t "admin-invites-existing-title" }}</h4>
+{{ if .Invites -}}
+<div class="table-responsive">
+    <table class="table table-striped table-hover table-sm align-middle">
+        <thead>
+            <tr>
+                <th scope="col">{{ t "admin-invites-label" }}</th>
+                {{ if .UseEmail -}}<th scope="col">{{ t "admin-invites-email" }}</th>{{ end }}
+                <th scope="col">{{ t "admin-invites-status" }}</th>
+                <th scope="col">{{ t "admin-invites-expires" }}</th>
+                <th scope="col"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {{ range .Invites -}}
+            <tr>
+                <td>{{ .Label }}</td>
+                {{ if $.UseEmail -}}<td>{{ .Email }}</td>{{ end }}
+                <td>
+                    {{ if .IsUsed -}}
+                    <span class="badge text-bg-secondary">{{ t "admin-invites-status-used" }}</span>
+                    {{- else if .IsExpired -}}
+                    <span class="badge text-bg-warning">{{ t "admin-invites-status-expired" }}</span>
+                    {{- else -}}
+                    <span class="badge text-bg-success">{{ t "admin-invites-status-active" }}</span>
+                    {{- end }}
+                </td>
+                <td>{{ .ExpiresAt.Format "2006-01-02" }}</td>
+                <td>
+                    {{ if not .IsUsed -}}
+                    <button
+                        type="button"
+                        class="btn btn-outline-danger btn-sm"
+                        hx-delete="/admin/invites/{{ itoa .ID }}"
+                        hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
+                        hx-confirm="{{ t "admin-invites-revoke-confirm" }}"
+                    >
+                        {{ t "admin-invites-revoke" }}
+                    </button>
+                    {{- end }}
+                </td>
+            </tr>
+            {{- end }}
+        </tbody>
+    </table>
+</div>
+{{- else -}}
+<div class="text-center py-4 text-body-secondary">
+    {{ iconEnvelope "fs-1 d-block mb-2" }}
+    <p>{{ t "admin-invites-none" }}</p>
+</div>
+{{- end }}
+<script>
+    function copyToClipboard(text, doneLabel) {
+        navigator.clipboard.writeText(text).then(function() {
+            var btn = event.currentTarget;
+            var original = btn.innerHTML;
+            var iconSvg = document.getElementById('icon-check-lg').innerHTML;
+            btn.innerHTML = iconSvg + ' ' + doneLabel;
+            setTimeout(function() { btn.innerHTML = original; }, 2000);
+        });
+    }
+</script>
+{{- end }}

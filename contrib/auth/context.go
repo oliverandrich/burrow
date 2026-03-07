@@ -7,8 +7,7 @@ package auth
 
 import (
 	"context"
-
-	"github.com/a-h/templ"
+	"html/template"
 )
 
 // ctxKeyUser is the context key for the authenticated user.
@@ -35,14 +34,14 @@ func WithUser(ctx context.Context, user *User) context.Context {
 // ctxKeyLogo is the context key for the optional auth page logo component.
 type ctxKeyLogo struct{}
 
-// WithLogo returns a new context with the logo component set.
-func WithLogo(ctx context.Context, logo templ.Component) context.Context {
+// WithLogo returns a new context with the logo HTML set.
+func WithLogo(ctx context.Context, logo template.HTML) context.Context {
 	return context.WithValue(ctx, ctxKeyLogo{}, logo)
 }
 
-// LogoFromContext retrieves the logo component from context, or nil if not set.
-func LogoFromContext(ctx context.Context) templ.Component {
-	logo, _ := ctx.Value(ctxKeyLogo{}).(templ.Component)
+// LogoFromContext retrieves the logo HTML from context, or empty if not set.
+func LogoFromContext(ctx context.Context) template.HTML {
+	logo, _ := ctx.Value(ctxKeyLogo{}).(template.HTML)
 	return logo
 }
 

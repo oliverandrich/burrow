@@ -1,0 +1,34 @@
+{{ define "auth/centered" -}}
+<div class="container min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="row justify-content-center w-100">
+        <div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
+            {{ template "auth/logo" . }}
+            {{ .Content }}
+        </div>
+    </div>
+</div>
+{{- end }}
+
+{{ define "auth/logo" -}}
+{{ with authLogo }}<div class="text-center mb-4">{{ . }}</div>{{ end }}
+{{- end }}
+
+{{ define "auth/card" -}}
+<div class="container min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="row justify-content-center w-100">
+        <div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
+            {{ template "auth/logo" . }}
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {{ if .CardTitle }}<h2 class="card-title text-center mb-4">{{ .CardTitle }}</h2>{{ end }}
+                    {{ .Content }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{- end }}
+
+{{ define "auth/csrf_input" -}}
+<input type="hidden" id="csrf-token" value="{{ csrfToken }}"/>
+{{- end }}

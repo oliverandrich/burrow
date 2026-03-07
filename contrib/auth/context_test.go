@@ -2,10 +2,9 @@ package auth
 
 import (
 	"context"
-	"io"
+	"html/template"
 	"testing"
 
-	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,18 +31,15 @@ func TestIsAuthenticated(t *testing.T) {
 }
 
 func TestLogoFromContextEmpty(t *testing.T) {
-	assert.Nil(t, LogoFromContext(context.Background()))
+	assert.Empty(t, LogoFromContext(context.Background()))
 }
 
 func TestWithLogo(t *testing.T) {
-	logo := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, err := io.WriteString(w, "<img src=\"logo.png\"/>")
-		return err
-	})
+	logo := template.HTML(`<img src="logo.png"/>`)
 	ctx := WithLogo(context.Background(), logo)
 
 	got := LogoFromContext(ctx)
-	require.NotNil(t, got)
+	assert.Equal(t, logo, got)
 }
 
 func TestAdminEditFlags(t *testing.T) {
