@@ -96,10 +96,19 @@ func TestFuncMapIconsReturnSVG(t *testing.T) {
 	fm := app.FuncMap()
 
 	for _, key := range []string{"iconSunFill", "iconMoonStarsFill", "iconCircleHalf"} {
-		fn := fm[key].(func() template.HTML)
+		fn := fm[key].(func(...string) template.HTML)
 		svg := fn()
 		assert.Contains(t, string(svg), "<svg", "expected %s to return SVG", key)
 	}
+}
+
+func TestFuncMapIconsAcceptClasses(t *testing.T) {
+	app := New()
+	fm := app.FuncMap()
+
+	fn := fm["iconSunFill"].(func(...string) template.HTML)
+	svg := fn("fs-1", "d-block")
+	assert.Contains(t, string(svg), `class="fs-1 d-block"`)
 }
 
 func TestFuncMapArithmetic(t *testing.T) {

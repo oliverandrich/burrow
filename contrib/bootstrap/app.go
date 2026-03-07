@@ -47,9 +47,9 @@ func (a *App) TemplateFS() fs.FS {
 // FuncMap returns template functions provided by the bootstrap app.
 func (a *App) FuncMap() template.FuncMap {
 	return template.FuncMap{
-		"iconSunFill":       func() template.HTML { return bsicons.SunFill() },
-		"iconMoonStarsFill": func() template.HTML { return bsicons.MoonStarsFill() },
-		"iconCircleHalf":    func() template.HTML { return bsicons.CircleHalf() },
+		"iconSunFill":       func(class ...string) template.HTML { return bsicons.SunFill(class...) },
+		"iconMoonStarsFill": func(class ...string) template.HTML { return bsicons.MoonStarsFill(class...) },
+		"iconCircleHalf":    func(class ...string) template.HTML { return bsicons.CircleHalf(class...) },
 		"pageURL":           pageURL,
 		"pageLimit":         pageLimit,
 		"pageNumbers":       pageNumbers,
