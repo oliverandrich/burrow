@@ -39,7 +39,7 @@ func TestAppRegister(t *testing.T) {
 
 func TestDependencies(t *testing.T) {
 	app := New()
-	assert.Equal(t, []string{"staticfiles"}, app.Dependencies())
+	assert.Equal(t, []string{"staticfiles", "htmx"}, app.Dependencies())
 }
 
 func TestStaticFS(t *testing.T) {
@@ -52,7 +52,6 @@ func TestStaticFS(t *testing.T) {
 	for _, name := range []string{
 		"bootstrap.min.css",
 		"bootstrap.bundle.min.js",
-		"htmx.min.js",
 	} {
 		f, err := fsys.Open(name)
 		require.NoError(t, err, "expected %s to exist in static FS", name)

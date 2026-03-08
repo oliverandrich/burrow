@@ -16,6 +16,7 @@ import (
 	matpl "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
+	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
@@ -253,7 +254,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// HTMX infinite scroll: return only the notes fragment.
-	if r.Header.Get("HX-Request") == "true" && pr.Cursor != "" {
+	if htmx.Request(r).IsHTMX() && pr.Cursor != "" {
 		content, execErr := exec(r, "notes/notes_page", data)
 		if execErr != nil {
 			return execErr
@@ -292,7 +293,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// HTMX: return only the new card (prepended via hx-swap="afterbegin") with OOB alerts.
-	if r.Header.Get("HX-Request") == "true" {
+	if htmx.Request(r).IsHTMX() {
 		exec := burrow.TemplateExecutorFromContext(r.Context())
 		if exec == nil {
 			return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")

@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 )
 
 // HandleList renders the paginated list view.
@@ -202,7 +203,7 @@ func (ma *ModelAdmin[T]) HandleDelete(w http.ResponseWriter, r *http.Request) er
 	}
 
 	slog.Info("item deleted", "slug", ma.Slug, "id", id) //nolint:gosec // slug is developer-set, id is from URL param
-	w.Header().Set("HX-Redirect", "/admin/"+ma.Slug)
+	htmx.Redirect(w, "/admin/"+ma.Slug)
 	w.WriteHeader(http.StatusOK)
 	return nil
 }

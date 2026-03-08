@@ -17,6 +17,7 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/bootstrap"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
+	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"codeberg.org/oliverandrich/burrow/contrib/jobs"
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
@@ -63,6 +64,7 @@ func main() {
 			auth.WithAuthLayout(authtpl.AuthLayout()),
 			auth.WithLogoComponent(pages.Logo()),
 		),
+		htmx.New(),
 		bootstrap.New(),
 		notes.New(),
 		admin.New(

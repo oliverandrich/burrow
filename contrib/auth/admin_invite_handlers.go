@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"github.com/go-chi/chi/v5"
@@ -94,7 +95,7 @@ func revokeInviteHandler(repo *Repository) burrow.HandlerFunc {
 			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete invite")
 		}
 
-		w.Header().Set("HX-Redirect", "/admin/invites")
+		htmx.Redirect(w, "/admin/invites")
 		w.WriteHeader(http.StatusOK)
 		return nil
 	}

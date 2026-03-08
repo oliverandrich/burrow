@@ -12,6 +12,7 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
 )
@@ -179,7 +180,7 @@ func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Reques
 // renderWithLayout wraps content in the layout from context, or renders bare content.
 // For HTMX requests, it skips the layout and returns the content fragment directly.
 func renderWithLayout(w http.ResponseWriter, r *http.Request, title string, content template.HTML) error {
-	if r.Header.Get("HX-Request") == "true" {
+	if htmx.Request(r).IsHTMX() {
 		return burrow.HTML(w, http.StatusOK, string(content))
 	}
 	lay := burrow.Layout(r.Context())

@@ -30,7 +30,7 @@ func New() *App { return &App{} }
 
 func (a *App) Name() string                       { return "bootstrap" }
 func (a *App) Register(_ *burrow.AppConfig) error { return nil }
-func (a *App) Dependencies() []string             { return []string{"staticfiles"} } //nolint:goconst
+func (a *App) Dependencies() []string             { return []string{"staticfiles", "htmx"} } //nolint:goconst
 
 // StaticFS returns the embedded static assets under the "bootstrap" prefix.
 func (a *App) StaticFS() (string, fs.FS) {

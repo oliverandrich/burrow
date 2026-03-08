@@ -7,6 +7,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -31,7 +32,7 @@ func retryHandler(repo *Repository) burrow.HandlerFunc {
 		if err := repo.Retry(r.Context(), id); err != nil {
 			return mapRepoError(err)
 		}
-		w.Header().Set("HX-Redirect", "/admin/jobs/"+strconv.FormatInt(id, 10))
+		htmx.Redirect(w, "/admin/jobs/"+strconv.FormatInt(id, 10))
 		w.WriteHeader(http.StatusOK)
 		return nil
 	}
@@ -47,7 +48,7 @@ func cancelHandler(repo *Repository) burrow.HandlerFunc {
 		if err := repo.Cancel(r.Context(), id); err != nil {
 			return mapRepoError(err)
 		}
-		w.Header().Set("HX-Redirect", "/admin/jobs/"+strconv.FormatInt(id, 10))
+		htmx.Redirect(w, "/admin/jobs/"+strconv.FormatInt(id, 10))
 		w.WriteHeader(http.StatusOK)
 		return nil
 	}

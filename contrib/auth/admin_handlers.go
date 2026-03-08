@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -113,7 +114,7 @@ func deactivateUserHandler(repo *Repository) burrow.HandlerFunc {
 		}
 
 		slog.Info("user deactivated", "user_id", id, "deactivated_by", currentUser.ID) //nolint:gosec // G706: IDs are int64
-		w.Header().Set("HX-Redirect", "/admin/users")
+		htmx.Redirect(w, "/admin/users")
 		w.WriteHeader(http.StatusOK)
 		return nil
 	}
@@ -133,7 +134,7 @@ func activateUserHandler(repo *Repository) burrow.HandlerFunc {
 
 		currentUser := UserFromContext(r.Context())
 		slog.Info("user activated", "user_id", id, "activated_by", currentUser.ID) //nolint:gosec // G706: IDs are int64
-		w.Header().Set("HX-Redirect", "/admin/users")
+		htmx.Redirect(w, "/admin/users")
 		w.WriteHeader(http.StatusOK)
 		return nil
 	}
@@ -185,7 +186,7 @@ func (a *App) handleDeleteUser(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	slog.Info("user deleted", "user_id", id, "deleted_by", currentUser.ID) //nolint:gosec // G706: IDs are int64, not user-controlled strings
-	w.Header().Set("HX-Redirect", "/admin/users")
+	htmx.Redirect(w, "/admin/users")
 	w.WriteHeader(http.StatusOK)
 	return nil
 }
