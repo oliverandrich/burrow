@@ -117,8 +117,6 @@ kill $(cat ./server.pid)
 
 For production use, a process manager like systemd is recommended to handle automatic restarts on failure and log management.
 
-## TLS Modes
+## TLS
 
-See [Configuration — TLS Modes](configuration.md#tls-modes) for details on ACME, self-signed, manual, and auto TLS modes.
-
-When using ACME mode, the server binds to ports 443 and 80 (for HTTP challenge/redirect). Both listeners are passed to the child process during a graceful restart, so certificate renewal continues without interruption.
+See the [TLS guide](tls.md) for full details on ACME, self-signed, manual, and auto TLS modes.

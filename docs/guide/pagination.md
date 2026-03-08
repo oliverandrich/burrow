@@ -137,7 +137,7 @@ func (h *Handlers) AdminList(w http.ResponseWriter, r *http.Request) error {
 
 ## Bootstrap Pagination Component
 
-The `contrib/bootstrap/templates` package provides a ready-made Bootstrap 5 pagination nav. See [Bootstrap — Pagination](../contrib/bootstrap.md#pagination-component).
+The `contrib/bootstrap/templates` package provides a ready-made Bootstrap 5 pagination nav. See [Bootstrap — Pagination](../contrib/bootstrap.md#pagination).
 
 Use the `bootstrap/pagination` template in your own templates:
 

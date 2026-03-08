@@ -54,6 +54,6 @@ myapp/
 
 **Migrations are embedded** — each app embeds its own SQL files with `//go:embed migrations`. The framework runs them automatically at startup.
 
-**Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Set them via `srv.SetLayout()` in `main.go`, or use the `bootstrap` contrib app which provides a ready-made layout.
+**Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Set them via `srv.SetLayout()` in `main.go`, or use the [`bootstrap` contrib app](../contrib/bootstrap.md) which provides a ready-made layout.
 
 **Static files are optional** — use the [staticfiles contrib app](../contrib/staticfiles.md) if you need content-hashed URLs and cache headers.

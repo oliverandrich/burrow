@@ -78,16 +78,4 @@ func (a *App) Configure(cmd *cli.Command) error {
 
 Custom flags are automatically merged into the CLI when you call `srv.Flags()`.
 
-## TLS Modes
-
-The `--tls-mode` flag controls HTTPS behavior:
-
-| Mode | Behavior |
-|------|----------|
-| `auto` (default) | HTTPS for non-localhost hosts, HTTP for localhost |
-| `acme` | Automatic certificates via Let's Encrypt |
-| `selfsigned` | Generate self-signed certificates |
-| `manual` | Use provided cert/key files |
-| `off` | Always use plain HTTP |
-
-See [Configuration Reference](../reference/configuration.md) for the complete flag table.
+See the [TLS guide](tls.md) for HTTPS configuration and the [Configuration Reference](../reference/configuration.md) for the complete flag table.

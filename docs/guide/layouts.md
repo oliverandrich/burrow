@@ -202,17 +202,4 @@ The app layout, auth layout, and admin layout all use the same context key (`bur
 
 ## Available Context Values
 
-These values are available in templates via FuncMap functions or in layout code via context helpers:
-
-| Helper / FuncMap | Type | Set By |
-|------------------|------|--------|
-| `burrow.NavItems(ctx)` | `[]NavItem` | Framework (from all `HasNavItems` apps) |
-| `burrow.Layout(ctx)` | `LayoutFunc` | Framework middleware / auth / admin |
-| `{{ csrfToken }}` | `string` | CSRF app (`HasRequestFuncMap`) |
-| `{{ lang }}` | `string` | i18n app (`HasRequestFuncMap`) |
-| `{{ t "key" }}` | `string` | i18n app (`HasRequestFuncMap`) |
-| `{{ staticURL "path" }}` | `string` | staticfiles app (`HasFuncMap`) |
-| `{{ currentUser }}` | `*auth.User` | auth app (`HasRequestFuncMap`) |
-| `{{ isAuthenticated }}` | `bool` | auth app (`HasRequestFuncMap`) |
-
-See [Template Functions](../reference/template-functions.md) for the complete list of functions available in templates, and [Context Helpers](../reference/context-helpers.md) for Go-level context access.
+See [Template Functions](../reference/template-functions.md) for the complete list of functions available in templates (e.g. `csrfToken`, `lang`, `t`, `staticURL`, `currentUser`), and [Context Helpers](../reference/context-helpers.md) for Go-level context access (e.g. `burrow.NavItems(ctx)`, `burrow.Layout(ctx)`).

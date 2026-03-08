@@ -4,7 +4,7 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/auth`
 
-**Depends on:** `session`
+**Depends on:** `session`, `csrf`, `staticfiles`, `bootstrap` (for the default templates)
 
 ## Setup
 
@@ -39,17 +39,48 @@ The auth app ships HTML templates via `HasTemplates`. These templates use the gl
 
 ## Auth Layout
 
-By default, `auth.New()` uses a built-in minimal auth layout (`DefaultAuthLayout()`) for public auth pages (login, register, recovery, email verification). This avoids showing the full app navbar to unauthenticated users. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+Public auth pages (login, register, recovery, email verification) use a separate layout — typically a minimal page without the full app navigation. This avoids showing the navbar to unauthenticated users. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
-Use `auth.WithAuthLayout()` to override the default auth layout with a custom one:
+By default, `auth.New()` uses a built-in layout (`DefaultAuthLayout()`) that renders the `auth/layout` template with Bootstrap CSS. Override it with `auth.WithAuthLayout()`:
 
 ```go
 auth.New(
-    auth.WithAuthLayout(myCustomAuthLayout),
+    auth.WithAuthLayout(myAuthLayout()),
 )
 ```
 
-This follows the same pattern as the admin app, which overrides the layout inside its `/admin` route group.
+An auth layout is a regular `burrow.LayoutFunc`. It receives the rendered page content and wraps it in your HTML shell:
+
+```go
+func myAuthLayout() burrow.LayoutFunc {
+    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+        data["Content"] = content
+        return burrow.RenderTemplate(w, r, code, "myapp/auth-layout", data)
+    }
+}
+```
+
+With a corresponding template:
+
+```html
+{{ define "myapp/auth-layout" -}}
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="utf-8">
+    <title>{{ .Title }}</title>
+    <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
+</head>
+<body class="d-flex align-items-center min-vh-100">
+    <div class="container" style="max-width: 480px;">
+        {{ .Content }}
+    </div>
+</body>
+</html>
+{{- end }}
+```
+
+See [Layouts & Rendering](../guide/layouts.md) for more details on the `LayoutFunc` signature and how layouts work.
 
 ## Models
 
@@ -185,7 +216,23 @@ In templates (via `HasRequestFuncMap`):
 
 ## Renderer
 
-The auth app accepts a `Renderer` interface for user-facing HTML pages:
+The auth app uses a `Renderer` interface to render all user-facing HTML pages. Each method corresponds to one page in the authentication flow.
+
+### Default Renderer
+
+By default, `auth.New()` uses a built-in renderer that calls `burrow.RenderTemplate()` with the shipped `auth/*` templates. These templates use Bootstrap CSS and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.).
+
+For most applications, the default renderer works out of the box — you only need to override it if you want to fundamentally change how auth pages are rendered.
+
+### Custom Renderer
+
+To fully control the auth page markup, implement the `Renderer` interface and pass it via `auth.WithRenderer()`:
+
+```go
+auth.New(
+    auth.WithRenderer(myRenderer),
+)
+```
 
 ```go
 type Renderer interface {
@@ -199,6 +246,25 @@ type Renderer interface {
     VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error
 }
 ```
+
+Each method writes a complete HTTP response. You can use `burrow.RenderTemplate()` with your own template names, or write HTML directly — whatever fits your application.
+
+A minimal custom renderer might look like this:
+
+```go
+type myRenderer struct{}
+
+func (r *myRenderer) LoginPage(w http.ResponseWriter, req *http.Request, loginRedirect string) error {
+    return burrow.RenderTemplate(w, req, http.StatusOK, "myapp/login", map[string]any{
+        "LoginRedirect": loginRedirect,
+    })
+}
+
+// ... implement the remaining methods
+```
+
+!!! tip
+    You don't need a custom renderer just to change styles. The default templates use Bootstrap classes and are wrapped in the [auth layout](#auth-layout), which you can override separately via `auth.WithAuthLayout()`.
 
 ## Admin Integration
 

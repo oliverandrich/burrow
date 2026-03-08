@@ -52,16 +52,22 @@ nav:
       - Quick Start: getting-started/quickstart.md
       - Project Structure: getting-started/project-structure.md
   - Guide:
-      - Creating an App: guide/creating-an-app.md
-      - Validation: guide/validation.md
-      - Database: guide/database.md
-      - Configuration: guide/configuration.md
-      - Layouts & Rendering: guide/layouts.md
-      - Migrations: guide/migrations.md
-      - Navigation: guide/navigation.md
-      - Pagination: guide/pagination.md
-      - Inter-App Communication: guide/inter-app-communication.md
-      - Deployment: guide/deployment.md
+      - Core:
+          - Creating an App: guide/creating-an-app.md
+          - Routing: guide/routing.md
+          - Database: guide/database.md
+          - Migrations: guide/migrations.md
+          - Configuration: guide/configuration.md
+      - Templates & UI:
+          - Layouts & Rendering: guide/layouts.md
+          - Navigation: guide/navigation.md
+          - Validation: guide/validation.md
+      - Advanced:
+          - Pagination: guide/pagination.md
+          - Inter-App Communication: guide/inter-app-communication.md
+      - Deployment:
+          - TLS: guide/tls.md
+          - Deployment: guide/deployment.md
   - Tutorial:
       - Overview: tutorial/index.md
       - "Part 1: Setup & First View": tutorial/part1.md

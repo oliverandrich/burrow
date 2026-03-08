@@ -70,7 +70,7 @@ for _, item := range burrow.NavItems(r.Context()) {
 }
 ```
 
-In templates, the Bootstrap layout handles this automatically.
+In templates, the [Bootstrap layout](../contrib/bootstrap.md#layout) handles this automatically.
 
 ## Ordering
 
