@@ -151,7 +151,7 @@ func Layout() burrow.LayoutFunc {
 }
 ```
 
-The corresponding template file:
+The corresponding template file (`bootstrap/layout`):
 
 ```html
 {{ define "bootstrap/layout" -}}
@@ -159,38 +159,44 @@ The corresponding template file:
 <html lang="{{ lang }}">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ .Title }}</title>
     <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
+    {{ template "bootstrap/theme_script" . }}
+    <script defer src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
+    <script defer src="{{ staticURL "htmx/htmx.min.js" }}"></script>
 </head>
 <body>
-    <nav>
-        {{ range .NavItems }}
-            <a href="{{ .URL }}">{{ .Icon }} {{ .Label }}</a>
-        {{ end }}
-    </nav>
     <main class="container py-4">
         {{ .Content }}
     </main>
-    <script src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
 </body>
 </html>
 {{- end }}
 ```
 
+!!! note "No navigation in the base layout"
+    The built-in `bootstrap/layout` is intentionally minimal — it provides the HTML shell, CSS/JS assets, and theme switching. If you need a navbar with navigation items, write a custom layout that wraps this one or replaces it entirely. The [tutorial](../tutorial/part3.md) shows how to build a layout with navigation.
+
 ## Data Flow in Layout Templates
 
 Layout templates receive data from two sources:
 
-- **Data map entries** (accessed with `.` prefix): `.Content`, `.Title`, `.NavItems` — these are values your layout function puts into the `layoutData` map before calling `exec()`
+- **Data map entries** (accessed with `.` prefix): `.Content`, `.Title` — these are values your layout function puts into the `layoutData` map before calling `exec()`. Custom layouts can add more (e.g., `.NavItems`, `.Messages`).
 - **FuncMap functions** (no `.` prefix): `{{ lang }}`, `{{ staticURL "..." }}`, `{{ csrfToken }}` — these are template functions registered by contrib apps
 
-The layout function is responsible for populating the data map. The Bootstrap layout copies all handler data and adds `Content` and `NavItems`:
+The layout function is responsible for populating the data map. The Bootstrap layout copies all handler data and adds `Content`:
 
 ```go
 layoutData := make(map[string]any, len(data)+2)
-maps.Copy(layoutData, data)                          // copies Title and any other handler data
-layoutData["Content"] = content                       // the rendered page fragment
-layoutData["NavItems"] = burrow.NavItems(r.Context()) // collected from all HasNavItems apps
+maps.Copy(layoutData, data)       // copies Title and any other handler data
+layoutData["Content"] = content   // the rendered page fragment
+```
+
+If your custom layout needs navigation, add it yourself:
+
+```go
+layoutData["NavItems"] = burrow.NavItems(r.Context())
 ```
 
 ## Layout Unification

@@ -50,29 +50,14 @@ Available helpers:
 
 For full control, use `messages.Add(w, r, level, text)` with any `messages.Level`.
 
-## Reading Messages in Templates
-
-Messages are available in templates via the bootstrap alert templates. The `bootstrap/layout` template automatically renders flash messages using the `bootstrap/alerts` template.
+## Reading Messages
 
 Each `Message` has two fields:
 
 - `Level` — one of `messages.Info`, `messages.Success`, `messages.Warning`, `messages.Error`
 - `Text` — the message string
 
-### Bootstrap Alert Template
-
-The bootstrap app ships a ready-made `bootstrap/alerts` template that renders messages as Bootstrap 5 dismissible alerts. It is included automatically in the `bootstrap/layout` template.
-
-Level mapping:
-
-| Level | Bootstrap class |
-|-------|----------------|
-| `info` | `alert-info` |
-| `success` | `alert-success` |
-| `warning` | `alert-warning` |
-| `error` | `alert-danger` |
-
-## Reading Messages in Go Code
+### In Go Code
 
 ```go
 msgs := messages.Get(r.Context())
@@ -81,26 +66,35 @@ for _, msg := range msgs {
 }
 ```
 
-## HTMX Out-of-Band Alerts
+### In Layout Templates
 
-For HTMX partial responses (e.g. a delete button), use the same `Add*` API. The bootstrap app provides a `bootstrap/alerts-oob` template for out-of-band swaps:
+Messages are not injected into templates automatically — your layout function must pass them into the template data. Call `messages.Get(r.Context())` in your `LayoutFunc` and add the result to the data map:
 
 ```go
-func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
-    // ... delete resource ...
-
-    if err := messages.AddSuccess(w, r, "Note deleted."); err != nil {
-        return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
-    }
-    return burrow.RenderTemplate(w, r, http.StatusOK, "bootstrap/alerts-oob", nil)
-}
+layoutData["Messages"] = messages.Get(r.Context())
 ```
 
-This works because:
+Then render them in your layout template:
 
-1. `AddSuccess()` writes to both the request-scoped store and the session cookie
-2. The alerts-oob template calls `messages.Get(ctx)` which reads from the store and clears the session cookie
-3. HTMX extracts the `<div id="alerts" hx-swap-oob="true">` and swaps it into the page's `#alerts` container
+```html
+{{ if .Messages -}}
+{{ range .Messages -}}
+<div class="alert alert-{{ .Level }} alert-dismissible fade show" role="alert">
+    {{ .Text }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{{ end -}}
+{{ end -}}
+```
+
+Level mapping for Bootstrap:
+
+| Level | Bootstrap class |
+|-------|----------------|
+| `info` | `alert-info` |
+| `success` | `alert-success` |
+| `warning` | `alert-warning` |
+| `error` | `alert-danger` |
 
 ## Custom Rendering
 

@@ -67,12 +67,14 @@ When `Run()` is called, the following happens in order:
 2. **Open database** — connects to SQLite with WAL mode, foreign keys, and connection pool
 3. **Run migrations** — calls `RunAppMigrations` for every `Migratable` app
 4. **Register apps** — calls `Register()` on each app with the shared `AppConfig`
-5. **Configure apps** — calls `Configure()` on each `Configurable` app
-6. **Create router** — sets up Chi with core middleware (request logger, request ID, gzip, body limit)
-7. **Inject nav items and layout** — collects nav items from all `HasNavItems` apps and the layout function into request context
-8. **Register middleware** — applies middleware from all `HasMiddleware` apps
-9. **Register routes** — calls `Routes()` on all `HasRoutes` apps
-10. **Start HTTP server** — listens on the configured address with graceful shutdown and zero-downtime restart via SIGHUP (see [Deployment Guide](../guide/deployment.md))
+5. **Seed database** — calls `Seed()` on each `Seedable` app
+6. **Configure apps** — calls `Configure()` on each `Configurable` app
+7. **Build templates** — collects `.html` files from all `HasTemplates` apps and template functions from all `HasFuncMap` apps, parses them into a single global `*template.Template`
+8. **Create router** — sets up Chi with core middleware (request logger, request ID, gzip, body limit)
+9. **Inject context** — injects nav items (from `HasNavItems`), layout, and template executor into the request context via middleware
+10. **Register middleware** — applies middleware from all `HasMiddleware` apps (including request-scoped `HasRequestFuncMap` injection)
+11. **Register routes** — calls `Routes()` on all `HasRoutes` apps
+12. **Start HTTP server** — listens on the configured address with graceful shutdown and zero-downtime restart via SIGHUP (see [Deployment Guide](../guide/deployment.md))
 
 !!! note "Logging"
     The framework uses `slog.Default()` for all logging. Configure your preferred logger (text, JSON, [tint](https://github.com/lmittmann/tint), etc.) by calling `slog.SetDefault()` before starting the server.

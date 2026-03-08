@@ -51,10 +51,10 @@ The bootstrap app implements `HasTemplates` and contributes these templates:
 
 | Template | Description |
 |----------|-------------|
-| `bootstrap/layout` | Full HTML page shell with nav, theme switcher, CSS/JS |
+| `bootstrap/layout` | Base HTML page shell with theme switcher, CSS/JS |
 | `bootstrap/pagination` | Offset-based pagination nav component |
-| `bootstrap/alerts` | Flash message alerts (for use with the messages app) |
-| `bootstrap/alerts-oob` | HTMX out-of-band alerts swap |
+| `bootstrap/theme_script` | Inline script for dark mode persistence |
+| `bootstrap/theme_switcher` | Theme toggle button component |
 
 ### Pagination
 
@@ -119,4 +119,4 @@ The `bootstrap` package is intentionally self-contained. To use a different CSS 
 | `HasMiddleware` | Injects bootstrap layout when no layout is set in context |
 | `HasTemplates` | Contributes layout, pagination, and alert templates |
 | `HasFuncMap` | Contributes icon and utility template functions |
-| `HasDependencies` | Requires `staticfiles` |
+| `HasDependencies` | Requires `staticfiles` and `htmx` |

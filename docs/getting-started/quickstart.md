@@ -17,6 +17,7 @@ package main
 
 import (
     "context"
+    "fmt"
     "html/template"
     "log"
     "net/http"
@@ -30,28 +31,11 @@ import (
 
 // appLayout wraps page content in a minimal HTML shell.
 func appLayout() burrow.LayoutFunc {
-    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-        title, _ := data["Title"].(string)
-
+    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, _ map[string]any) error {
         w.Header().Set("Content-Type", "text/html; charset=utf-8")
         w.WriteHeader(code)
-
-        _, _ = w.Write([]byte("<!DOCTYPE html><html><head><title>"))
-        _, _ = w.Write([]byte(title))
-        _, _ = w.Write([]byte("</title></head><body>"))
-
-        // Render navigation from context.
-        for _, item := range burrow.NavItems(r.Context()) {
-            _, _ = w.Write([]byte(`<a href="`))
-            _, _ = w.Write([]byte(item.URL))
-            _, _ = w.Write([]byte(`">`))
-            _, _ = w.Write([]byte(item.Label))
-            _, _ = w.Write([]byte(`</a> `))
-        }
-
-        _, _ = w.Write([]byte(content))
-        _, _ = w.Write([]byte("</body></html>"))
-        return nil
+        _, err := fmt.Fprintf(w, "<!DOCTYPE html><html><body>%s</body></html>", content)
+        return err
     }
 }
 
@@ -77,8 +61,8 @@ func main() {
 }
 ```
 
-!!! tip "Use Bootstrap for a proper layout"
-    The manual layout above is for illustration only. In practice, use the `bootstrap` contrib app which provides a full layout with CSS, icons, dark mode, and htmx — see [Bootstrap](../contrib/bootstrap.md).
+!!! tip "Use Bootstrap for a real layout"
+    The manual layout above is for illustration. In practice, use the `bootstrap` contrib app which provides a full HTML layout with CSS, dark mode, and htmx — see [Bootstrap](../contrib/bootstrap.md). The [Tutorial](../tutorial/index.md) walks through setting this up step by step.
 
 ## 3. Run It
 

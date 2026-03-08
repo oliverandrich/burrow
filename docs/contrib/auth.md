@@ -140,7 +140,7 @@ Registered automatically — loads the user from the session on every request:
 
 ```go
 // In any handler, after auth middleware runs:
-user := auth.GetUser(r)  // *auth.User or nil
+user := auth.UserFromContext(r.Context())  // *auth.User or nil
 ```
 
 ### RequireAuth
@@ -172,8 +172,8 @@ r.Route("/admin", func(r chi.Router) {
 In Go code:
 
 ```go
-user := auth.GetUser(r)    // *auth.User or nil
-if auth.IsAuthenticated(r) { ... }
+user := auth.UserFromContext(r.Context())    // *auth.User or nil
+if auth.IsAuthenticated(r.Context()) { ... }
 ```
 
 In templates (via `HasRequestFuncMap`):
