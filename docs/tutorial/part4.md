@@ -11,14 +11,24 @@ This step introduces two new contrib apps:
 - **`csrf`** — CSRF protection via gorilla/csrf. Injects a `csrfToken` template function.
 - **`messages`** — Flash messages that survive redirects. Stored in the session.
 
-Update `main.go`:
+Update `main.go` — add the new imports and apps:
+
+```go
+import (
+    "codeberg.org/oliverandrich/burrow/contrib/csrf"
+    "codeberg.org/oliverandrich/burrow/contrib/messages"
+    "codeberg.org/oliverandrich/burrow/contrib/session"
+)
+```
+
+Then update the `NewServer` call:
 
 ```go
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),          // new
     staticApp,
-    healthcheck.New(),
+    htmx.New(),
     messages.New(),      // new
     bootstrap.New(),
     pages.New(),
@@ -60,7 +70,26 @@ Key points:
 
 ## Handle the Vote
 
-Add a `Vote` handler to the polls app:
+First, add the `messages` import to `internal/polls/polls.go`:
+
+```go
+"codeberg.org/oliverandrich/burrow/contrib/messages"
+```
+
+Add the `IncrementVotes` method to the repository:
+
+```go
+func (r *Repository) IncrementVotes(ctx context.Context, choiceID int64) error {
+    _, err := r.db.NewUpdate().
+        Model((*Choice)(nil)).
+        Set("votes = votes + 1").
+        Where("id = ?", choiceID).
+        Exec(ctx)
+    return err
+}
+```
+
+Then add a `Vote` handler:
 
 ```go
 func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
@@ -128,7 +157,13 @@ Update the layout to show messages above the content:
 </main>
 ```
 
-And in the layout function, pass messages to the template:
+In `internal/pages/pages.go`, add the `messages` import:
+
+```go
+"codeberg.org/oliverandrich/burrow/contrib/messages"
+```
+
+Then update the layout function to pass messages to the template:
 
 ```go
 layoutData := map[string]any{

@@ -9,8 +9,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/bootstrap"
-	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
-	"codeberg.org/oliverandrich/burrow/contrib/session"
+	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 	"github.com/urfave/cli/v3"
 
@@ -29,9 +28,8 @@ func main() {
 	}
 
 	srv := burrow.NewServer(
-		session.New(),
 		staticApp,
-		healthcheck.New(),
+		htmx.New(),
 		bootstrap.New(),
 		pages.New(),
 		polls.New(),

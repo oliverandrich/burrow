@@ -6,17 +6,28 @@ In this part you'll define the data models for your polls app, write a SQL migra
 
 ## The Polls App
 
-Create `internal/polls/polls.go`. This single file will contain models, repository, and app setup — we'll split it into separate files as it grows.
+The polls app lives in its own package. Create the directories first:
+
+```bash
+mkdir -p internal/polls/migrations
+```
+
+All the code in this section — models, repository, and app setup — goes into `internal/polls/polls.go`. We'll split it into separate files as it grows.
 
 ### Models
 
-Define two models: `Question` and `Choice`.
+Start `internal/polls/polls.go` with the package declaration and two models:
 
 ```go
 package polls
 
 import (
+    "context"
+    "embed"
+    "io/fs"
     "time"
+
+    "codeberg.org/oliverandrich/burrow"
     "github.com/uptrace/bun"
 )
 
@@ -73,7 +84,7 @@ Burrow runs migrations automatically at startup for apps that implement `Migrata
 
 ### Repository
 
-The repository encapsulates all database queries:
+Still in `internal/polls/polls.go`, add the repository below the models:
 
 ```go
 type Repository struct {
@@ -111,7 +122,7 @@ Note how `Relation("Choices")` eagerly loads all choices for a question in a sin
 
 ### App Setup
 
-Wire everything together with the `App` struct:
+Still in `internal/polls/polls.go`, add the app struct and the embedded migration filesystem:
 
 ```go
 //go:embed migrations
@@ -130,7 +141,10 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
     return nil
 }
 
-func (a *App) MigrationFS() fs.FS { return migrationFS }
+func (a *App) MigrationFS() fs.FS {
+    sub, _ := fs.Sub(migrationFS, "migrations")
+    return sub
+}
 ```
 
 The app implements two interfaces:
@@ -145,11 +159,11 @@ The app implements two interfaces:
 Add the polls app to the server:
 
 ```go
+import "polls/internal/polls"
+
 srv := burrow.NewServer(
-    session.New(),
-    healthcheck.New(),
-    polls.New(),
     &homepageApp{},
+    polls.New(),          // new
 )
 ```
 

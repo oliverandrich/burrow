@@ -10,9 +10,26 @@ Burrow builds a **global template set** at startup by collecting templates from 
 
 ## Add Templates to the Polls App
 
+Create the template directory for the polls app:
+
+```bash
+mkdir -p internal/polls/templates/polls
+```
+
 ### Implement the Interfaces
 
-Add `HasTemplates`, `HasFuncMap`, `HasRoutes`, and `HasNavItems` to the polls app:
+Add the following imports to `internal/polls/polls.go` (alongside the existing ones from Part 2):
+
+```go
+"fmt"
+"html/template"
+"net/http"
+"strconv"
+
+"github.com/go-chi/chi/v5"
+```
+
+Then add the interface implementations. The polls app now implements `HasTemplates`, `HasFuncMap`, `HasRoutes`, and `HasNavItems`:
 
 ```go
 //go:embed templates
@@ -106,7 +123,26 @@ And `internal/polls/templates/polls/results.html`:
 {{- end }}
 ```
 
+### Update the App Struct
+
+The app needs a `handlers` field and must initialise it during `Register()`. Update the `App` struct and `Register()` method in `internal/polls/polls.go`:
+
+```go
+type App struct {
+    repo     *Repository
+    handlers *Handlers
+}
+
+func (a *App) Register(cfg *burrow.AppConfig) error {
+    a.repo = NewRepository(cfg.DB)
+    a.handlers = &Handlers{repo: a.repo}
+    return nil
+}
+```
+
 ### Add Handlers and Routes
+
+Still in `internal/polls/polls.go`, add the `Handlers` struct and route registration:
 
 ```go
 type Handlers struct {
@@ -138,11 +174,22 @@ func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
         "Question": question,
     })
 }
-```
 
-Register routes in the app:
+func (h *Handlers) Results(w http.ResponseWriter, r *http.Request) error {
+    id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+    if err != nil {
+        return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
+    }
+    question, err := h.repo.GetQuestion(r.Context(), id)
+    if err != nil {
+        return burrow.NewHTTPError(http.StatusNotFound, "question not found")
+    }
+    return burrow.RenderTemplate(w, r, http.StatusOK, "polls/results", map[string]any{
+        "Title":    fmt.Sprintf("Results: %s", question.Text),
+        "Question": question,
+    })
+}
 
-```go
 func (a *App) Routes(r chi.Router) {
     r.Route("/polls", func(r chi.Router) {
         r.Get("/", burrow.Handle(a.handlers.List))
@@ -154,7 +201,14 @@ func (a *App) Routes(r chi.Router) {
 
 ## Create a Pages App with Layout
 
-The **pages app** provides the site layout and homepage. Create `internal/pages/pages.go`:
+The **pages app** provides the site layout and homepage. Create the directories first:
+
+```bash
+mkdir -p internal/pages/templates/app
+mkdir -p internal/pages/templates/pages
+```
+
+Create `internal/pages/pages.go`:
 
 ```go
 package pages
@@ -254,7 +308,7 @@ Create `internal/pages/templates/app/layout.html`:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ if .Title }}{{ .Title }} — {{ end }}Polls</title>
-    <link rel="stylesheet" href="{{ staticURL "bootstrap.min.css" }}">
+    <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg bg-body-tertiary mb-4">
@@ -274,7 +328,7 @@ Create `internal/pages/templates/app/layout.html`:
     <main class="container">
         {{ .Content }}
     </main>
-    <script src="{{ staticURL "bootstrap.bundle.min.js" }}"></script>
+    <script src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
 </body>
 </html>
 {{- end }}
@@ -302,6 +356,8 @@ Create `internal/pages/templates/pages/home.html`:
 
 ## Update main.go
 
+Replace your `main.go` with:
+
 ```go
 package main
 
@@ -313,8 +369,7 @@ import (
 
     "codeberg.org/oliverandrich/burrow"
     "codeberg.org/oliverandrich/burrow/contrib/bootstrap"
-    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
-    "codeberg.org/oliverandrich/burrow/contrib/session"
+    "codeberg.org/oliverandrich/burrow/contrib/htmx"
     "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
     "github.com/urfave/cli/v3"
 
@@ -331,9 +386,8 @@ func main() {
     }
 
     srv := burrow.NewServer(
-        session.New(),
         staticApp,
-        healthcheck.New(),
+        htmx.New(),
         bootstrap.New(),
         pages.New(),
         polls.New(),
@@ -355,9 +409,10 @@ func main() {
 }
 ```
 
-New apps added:
+This replaces the `homepageApp` from Part 1 with proper apps:
 
 - **`staticfiles`** — serves static files with content-hashed URLs
+- **`htmx`** — provides the htmx JavaScript library (required by Bootstrap app)
 - **`bootstrap`** — provides Bootstrap 5 CSS/JS as static assets
 - **`pages`** — homepage and layout
 - **`polls`** — now with templates and routes
@@ -373,8 +428,8 @@ Open `http://localhost:8080` — you'll see the Bootstrap-styled homepage. Click
 !!! tip "Seeding test data"
     You can use the SQLite CLI to insert test data:
     ```bash
-    sqlite3 burrow.db "INSERT INTO questions (text) VALUES ('What is your favourite colour?')"
-    sqlite3 burrow.db "INSERT INTO choices (question_id, text) VALUES (1, 'Red'), (1, 'Blue'), (1, 'Green')"
+    sqlite3 app.db "INSERT INTO questions (text) VALUES ('What is your favourite colour?')"
+    sqlite3 app.db "INSERT INTO choices (question_id, text) VALUES (1, 'Red'), (1, 'Blue'), (1, 'Green')"
     ```
     Refresh the page to see them appear.
 

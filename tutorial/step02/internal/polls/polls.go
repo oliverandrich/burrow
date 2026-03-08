@@ -119,4 +119,7 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	return nil
 }
 
-func (a *App) MigrationFS() fs.FS { return migrationFS }
+func (a *App) MigrationFS() fs.FS {
+	sub, _ := fs.Sub(migrationFS, "migrations")
+	return sub
+}

@@ -117,7 +117,7 @@ go run .
 Register a user, then promote them to admin via the database:
 
 ```bash
-sqlite3 burrow.db "UPDATE users SET is_admin = 1 WHERE id = 1"
+sqlite3 app.db "UPDATE users SET is_admin = 1 WHERE id = 1"
 ```
 
 Visit `/admin/` to see the dashboard. Click "Questions" in the sidebar to list, create, edit, and delete questions — all without writing any template code.
