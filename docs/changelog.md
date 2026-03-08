@@ -41,12 +41,29 @@ All notable changes to Burrow are documented here. This project uses [Convention
 - Options pattern adopted for `auth.New()`, `admin.New()`, `jobs.New()`, `uploads.New()`, and `ratelimit.New()`.
 - Unified auth context helpers to `context.Context` pattern.
 
+### Changed
+
+- SQLite connection defaults aligned with [dj-lite](https://github.com/adamghill/dj-lite/) recommendations: added `busy_timeout=5000`, `temp_store=MEMORY`, `mmap_size=128MB`, `journal_size_limit=26MB`, `cache_size=2000`, and `IMMEDIATE` transaction mode for better production concurrency.
+
 ### Fixed
 
 - Auth pages now render with a minimal layout instead of full app chrome.
 - WebAuthn cleanup goroutine uses context-based cancellation.
 - `buildManifest` errors are propagated instead of silently discarded.
 - `Seed` is called on `Seedable` apps during server bootstrap.
+
+### Documentation
+
+- Rewritten project description (README and docs index) with clear positioning, target audience, and API-only disclaimer.
+- Simplified Quick Start to a minimal app without layout, session, or healthcheck.
+- New guides: [Database](guide/database.md), [TLS](guide/tls.md), [Routing](guide/routing.md), [Contributing](contributing.md).
+- New reference page: [Core Functions](reference/core-functions.md) documenting all exported functions and types.
+- Added code examples to every interface in the [Core Interfaces](reference/interfaces.md) reference.
+- Added dependency declarations (`Depends on:`) to all contrib app docs.
+- Reorganized guide sidebar into Core, Templates & UI, Advanced, and Deployment groups.
+- Added copyright footer to documentation site.
+- Fixed broken cross-links and removed redundant content across docs.
+- Expanded auth [Renderer](contrib/auth.md#renderer) and [Auth Layout](contrib/auth.md#auth-layout) documentation with usage examples.
 
 ## 2026-02-19 — Initial Release
 
