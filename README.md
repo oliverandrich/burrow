@@ -35,18 +35,28 @@ package main
 import (
     "context"
     "log"
+    "net/http"
     "os"
 
     "codeberg.org/oliverandrich/burrow"
-    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
-    "codeberg.org/oliverandrich/burrow/contrib/session"
+    "github.com/go-chi/chi/v5"
     "github.com/urfave/cli/v3"
 )
 
+// homeApp is a minimal app with a single route.
+type homeApp struct{}
+
+func (a *homeApp) Name() string                      { return "home" }
+func (a *homeApp) Register(_ *burrow.AppConfig) error { return nil }
+func (a *homeApp) Routes(r chi.Router) {
+    r.Method("GET", "/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
+        return burrow.Text(w, http.StatusOK, "Hello from Burrow!")
+    }))
+}
+
 func main() {
     srv := burrow.NewServer(
-        session.New(),
-        healthcheck.New(),
+        &homeApp{},
     )
 
     cmd := &cli.Command{

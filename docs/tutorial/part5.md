@@ -13,6 +13,7 @@ Update `main.go`:
 ```go
 import (
     "codeberg.org/oliverandrich/burrow/contrib/auth"
+    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
 )
 
 srv := burrow.NewServer(
