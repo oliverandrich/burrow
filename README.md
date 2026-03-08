@@ -4,6 +4,14 @@
   <img src="docs/assets/cover.png" alt="Burrow — Go gophers building a modular burrow">
 </p>
 
+<p align="center">
+  <a href="https://github.com/oliverandrich/burrow/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/oliverandrich/burrow/ci.yml?branch=main&label=CI&style=for-the-badge" alt="CI"></a>
+  <a href="https://github.com/oliverandrich/burrow/releases"><img src="https://img.shields.io/github/v/release/oliverandrich/burrow?style=for-the-badge" alt="Release"></a>
+  <a href="https://go.dev/"><img src="https://img.shields.io/github/go-mod/go-version/oliverandrich/burrow?style=for-the-badge" alt="Go Version"></a>
+  <a href="https://goreportcard.com/report/github.com/oliverandrich/burrow"><img src="https://goreportcard.com/badge/github.com/oliverandrich/burrow?style=for-the-badge" alt="Go Report Card"></a>
+  <a href="/LICENSE"><img src="https://img.shields.io/github/license/oliverandrich/burrow?style=for-the-badge" alt="License"></a>
+</p>
+
 A web framework for Go developers who want something like Django, Rails, or Flask — but with the deployment simplicity of a single static binary.
 
 Most Go web development follows the "API backend + SPA frontend" pattern. Burrow takes a different approach: server-rendered HTML with templates, modular apps with their own routes, migrations, and middleware, and an embedded SQLite database. The result is an application you can deploy as a single file — `./myapp` and you're done.
