@@ -158,6 +158,17 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 		return errorJSON(w, http.StatusInternalServerError, "failed to create user")
 	}
 
+	// Clean up the user if any subsequent step fails, so abandoned
+	// registrations don't permanently block the username/email.
+	registered := false
+	defer func() {
+		if !registered {
+			if delErr := h.repo.forceDeleteUser(ctx, user.ID); delErr != nil {
+				slog.Error("failed to clean up orphaned user", "user_id", user.ID, "error", delErr) //nolint:gosec // G706: user_id is int64
+			}
+		}
+	}()
+
 	// Promote the first registered user to admin.
 	count, countErr := h.repo.CountUsers(ctx)
 	if countErr == nil && count == 1 {
@@ -180,6 +191,7 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	}
 	h.webauthn.StoreRegistrationSession(user.ID, sessionData)
 
+	registered = true
 	return burrow.JSON(w, http.StatusOK, map[string]any{
 		"publicKey": options.Response,
 		"user_id":   user.ID,

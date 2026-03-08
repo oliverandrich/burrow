@@ -207,7 +207,7 @@ func TestRegisterPageInviteOnlyWithValidToken(t *testing.T) {
 // --- RegisterBegin tests ---
 
 func TestRegisterBeginUsernameMode(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, repo, _ := newTestHandlers(t)
 	body := strings.NewReader(`{"username":"newuser"}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -220,6 +220,12 @@ func TestRegisterBeginUsernameMode(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "publicKey")
 	assert.Contains(t, rec.Body.String(), "user_id")
+
+	// User should exist in the DB after successful RegisterBegin.
+	users, err := repo.ListUsers(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, users, 1)
+	assert.Equal(t, "newuser", users[0].Username)
 }
 
 func TestRegisterBeginMissingUsername(t *testing.T) {

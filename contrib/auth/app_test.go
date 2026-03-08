@@ -1129,6 +1129,68 @@ func TestAdminDeleteUserLastAdmin(t *testing.T) {
 	assert.Len(t, users, 2, "both users should still exist")
 }
 
+// --- PurgeOrphanedUsers tests ---
+
+func TestPurgeOrphanedUsersDeletesUsersWithoutCredentials(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Create a user with no credentials (simulates abandoned registration).
+	orphan, err := repo.CreateUser(ctx, "orphan", "")
+	require.NoError(t, err)
+
+	// Backdate the user's created_at so it qualifies for cleanup.
+	_, err = db.NewUpdate().Model((*User)(nil)).
+		Set("created_at = datetime('now', '-10 minutes')").
+		Where("id = ?", orphan.ID).
+		Exec(ctx)
+	require.NoError(t, err)
+
+	// Create a user WITH credentials (should be kept).
+	legit, err := repo.CreateUser(ctx, "legit", "")
+	require.NoError(t, err)
+	_, err = db.NewUpdate().Model((*User)(nil)).
+		Set("created_at = datetime('now', '-10 minutes')").
+		Where("id = ?", legit.ID).
+		Exec(ctx)
+	require.NoError(t, err)
+	require.NoError(t, repo.CreateCredential(ctx, &Credential{
+		UserID:       legit.ID,
+		CredentialID: []byte("cred1"),
+		PublicKey:    []byte("key1"),
+		Name:         "Passkey",
+	}))
+
+	// Purge users with 0 credentials older than 5 minutes.
+	purged, err := repo.PurgeOrphanedUsers(ctx, 5*time.Minute)
+	require.NoError(t, err)
+	assert.Equal(t, 1, purged)
+
+	// Orphan should be gone (hard-deleted).
+	_, err = repo.GetUserByID(ctx, orphan.ID)
+	require.ErrorIs(t, err, ErrNotFound)
+
+	// Legit user should still exist.
+	_, err = repo.GetUserByID(ctx, legit.ID)
+	require.NoError(t, err)
+}
+
+func TestPurgeOrphanedUsersSkipsRecentUsers(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Create a user with no credentials (just created — not yet orphaned).
+	_, err := repo.CreateUser(ctx, "newuser", "")
+	require.NoError(t, err)
+
+	// Purge with 5-minute threshold — should not delete the recent user.
+	purged, err := repo.PurgeOrphanedUsers(ctx, 5*time.Minute)
+	require.NoError(t, err)
+	assert.Equal(t, 0, purged)
+}
+
 // --- SetUserActive / Deactivate / Activate tests ---
 
 func TestSetUserActive(t *testing.T) {

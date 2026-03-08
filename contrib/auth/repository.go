@@ -183,6 +183,35 @@ func (r *Repository) DeleteUser(ctx context.Context, id int64) error {
 	return nil
 }
 
+// forceDeleteUser permanently deletes a user by ID, bypassing soft-delete.
+// Used to clean up users from abandoned registration flows.
+func (r *Repository) forceDeleteUser(ctx context.Context, id int64) error {
+	if _, err := r.db.NewDelete().Model((*User)(nil)).
+		Where("id = ?", id).
+		ForceDelete().
+		Exec(ctx); err != nil {
+		return fmt.Errorf("force delete user %d: %w", id, err)
+	}
+	return nil
+}
+
+// PurgeOrphanedUsers hard-deletes users with zero credentials that were
+// created more than the given duration ago. These are leftover from abandoned
+// WebAuthn registration flows where the client never called RegisterFinish.
+func (r *Repository) PurgeOrphanedUsers(ctx context.Context, olderThan time.Duration) (int, error) {
+	cutoff := time.Now().Add(-olderThan)
+	res, err := r.db.NewDelete().Model((*User)(nil)).
+		Where("created_at < ?", cutoff).
+		Where("id NOT IN (?)", r.db.NewSelect().Model((*Credential)(nil)).ColumnExpr("DISTINCT user_id")).
+		ForceDelete().
+		Exec(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("purge orphaned users: %w", err)
+	}
+	rows, _ := res.RowsAffected()
+	return int(rows), nil
+}
+
 // --- Credential methods ---
 
 // CreateCredential creates a new WebAuthn credential.

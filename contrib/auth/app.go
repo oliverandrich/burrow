@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -288,7 +289,36 @@ func (a *App) Configure(cmd *cli.Command) error {
 	// Create handlers with the stored email service (if any).
 	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config)
 
+	// Start background cleanup of orphaned users from abandoned registrations.
+	go a.cleanupOrphanedUsers(ctx)
+
 	return nil
+}
+
+// cleanupOrphanedUsers periodically purges users with zero credentials that
+// were created more than 5 minutes ago. These are leftover from abandoned
+// WebAuthn registration flows.
+func (a *App) cleanupOrphanedUsers(ctx context.Context) {
+	const (
+		interval = 5 * time.Minute
+		maxAge   = 5 * time.Minute
+	)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			purged, err := a.repo.PurgeOrphanedUsers(ctx, maxAge)
+			if err != nil {
+				slog.Error("failed to purge orphaned users", "error", err)
+			} else if purged > 0 {
+				slog.Info("purged orphaned users", "count", purged)
+			}
+		}
+	}
 }
 
 // Shutdown stops the background cleanup goroutine. Safe to call multiple
