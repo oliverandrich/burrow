@@ -13,12 +13,12 @@ import (
 )
 
 type testArticle struct { //nolint:govet // fieldalignment: test struct
-	ID        int64     `bun:",pk,autoincrement"`
-	Title     string    `form:"label=Title,required"`
-	Body      string    `form:"label=Body,widget=textarea"`
-	Status    string    `form:"label=Status,choices=draft|published|archived"`
-	Views     int       `form:"label=Views"`
-	Active    bool      `form:"label=Active"`
+	ID        int64     `bun:",pk,autoincrement" verbose:"ID"`
+	Title     string    `verbose:"Title" form:"required"`
+	Body      string    `verbose:"Body" form:"widget=textarea"`
+	Status    string    `verbose:"Status" form:"choices=draft|published|archived"`
+	Views     int       `verbose:"Views"`
+	Active    bool      `verbose:"Active"`
 	CreatedAt time.Time `bun:",nullzero,default:current_timestamp" form:"-"`
 }
 
@@ -169,7 +169,7 @@ func TestInferType(t *testing.T) {
 func TestAutoFields_PointerField(t *testing.T) {
 	type withPtr struct { //nolint:govet // fieldalignment: test struct
 		Name  string
-		Email *string `form:"label=Email"`
+		Email *string `verbose:"Email"`
 	}
 	email := "test@example.com"
 	item := &withPtr{Name: "Test", Email: &email}
@@ -197,29 +197,28 @@ func TestPopulateFromForm_PointerField(t *testing.T) {
 	assert.Equal(t, "test@example.com", *item.Email)
 }
 
-func TestFieldLabelKeys(t *testing.T) {
+func TestVerboseNames(t *testing.T) {
 	type tagged struct { //nolint:govet // fieldalignment: test struct
-		ID    int64  `admin:"i18n:my-id"`
-		Name  string `admin:"i18n:my-name"`
+		ID    int64  `verbose:"ID"`
+		Name  string `verbose:"Full Name"`
 		Plain string
-		Skip  string `admin:"-"`
 	}
 
-	keys := fieldLabelKeys[tagged]()
+	names := verboseNames[tagged]()
 	assert.Equal(t, map[string]string{
-		"ID":   "my-id",
-		"Name": "my-name",
-	}, keys)
+		"ID":   "ID",
+		"Name": "Full Name",
+	}, names)
 }
 
-func TestFieldLabelKeys_Empty(t *testing.T) {
+func TestVerboseNames_Empty(t *testing.T) {
 	type noTags struct { //nolint:govet // fieldalignment: test struct
 		ID   int64
 		Name string
 	}
 
-	keys := fieldLabelKeys[noTags]()
-	assert.Empty(t, keys)
+	names := verboseNames[noTags]()
+	assert.Empty(t, names)
 }
 
 func TestPopulateFromForm_EmptyPointerField(t *testing.T) {

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -56,6 +58,7 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 	}
 	createdURL := baseURL + "/auth/register?invite=" + plainToken
 
+	var flashMsg string
 	if a.emailService != nil && req.Email != "" {
 		inviteURL := createdURL
 		go func() { //nolint:gosec // G118: intentionally detached from request — email must send after response
@@ -65,6 +68,13 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 				slog.Error("failed to send invite email", "error", sendErr, "email", req.Email)
 			}
 		}()
+		flashMsg = i18n.T(r.Context(), "admin-invites-sent")
+	} else {
+		flashMsg = i18n.T(r.Context(), "admin-invites-copy-url") + " " + createdURL
+	}
+
+	if err := messages.AddSuccess(w, r, flashMsg); err != nil {
+		slog.Warn("failed to add invite flash message", "error", err)
 	}
 
 	slog.Info("invite created", "invite_id", invite.ID, "created_by", user.ID) //nolint:gosec // G706: IDs are int64, not user-controlled strings

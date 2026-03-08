@@ -129,7 +129,7 @@ func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRende
 
 // requestWithSession creates a request with session state injected, optionally with a user.
 func requestWithSession(req *http.Request, user *User) *http.Request {
-	req = session.Inject(req, nil)
+	req = session.Inject(req, map[string]any{})
 	if user != nil {
 		ctx := WithUser(req.Context(), user)
 		req = req.WithContext(ctx)

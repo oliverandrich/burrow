@@ -13,6 +13,7 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+	"codeberg.org/oliverandrich/burrow/contrib/messages"
 )
 
 //go:embed *.html
@@ -46,6 +47,12 @@ func funcMap() template.FuncMap {
 		"printf":          fmt.Sprintf,
 		"iconPlus":        func() template.HTML { return bsicons.PlusLg() },
 		"T":               func(key string) string { return key }, // stub, overridden per-request
+		"alertClass": func(level messages.Level) string {
+			if level == messages.Error {
+				return "danger"
+			}
+			return string(level)
+		},
 	}
 }
 
@@ -105,12 +112,13 @@ func (d *defaultRenderer[T]) List(w http.ResponseWriter, r *http.Request, items 
 		"Page":      page,
 		"Cfg":       cfg,
 		"CSRFToken": csrf.Token(ctx),
+		"Messages":  messages.Get(ctx),
 	}
 	content, err := executeTemplate("modeladmin/list", t, data)
 	if err != nil {
 		return err
 	}
-	return renderWithLayout(w, r, cfg.Display, content)
+	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
 }
 
 func (d *defaultRenderer[T]) Detail(w http.ResponseWriter, r *http.Request, item *T, cfg modeladmin.RenderConfig) error {
@@ -122,12 +130,13 @@ func (d *defaultRenderer[T]) Detail(w http.ResponseWriter, r *http.Request, item
 		"IDValue":   fmt.Sprintf("%v", modeladmin.FieldValue(itemAny, cfg.IDField)),
 		"Cfg":       cfg,
 		"CSRFToken": csrf.Token(ctx),
+		"Messages":  messages.Get(ctx),
 	}
 	content, err := executeTemplate("modeladmin/detail", t, data)
 	if err != nil {
 		return err
 	}
-	return renderWithLayout(w, r, cfg.Display, content)
+	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
 }
 
 func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *T, fields []modeladmin.FormField, errors *burrow.ValidationError, cfg modeladmin.RenderConfig) error {
@@ -154,12 +163,13 @@ func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *
 		"ValidationErrors": errors,
 		"Cfg":              cfg,
 		"CSRFToken":        csrf.Token(ctx),
+		"Messages":         messages.Get(ctx),
 	}
 	content, err := executeTemplate("modeladmin/form", t, data)
 	if err != nil {
 		return err
 	}
-	return renderWithLayout(w, r, cfg.Display, content)
+	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
 }
 
 func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Request, item *T, cfg modeladmin.RenderConfig) error {

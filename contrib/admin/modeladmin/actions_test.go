@@ -110,8 +110,8 @@ func TestRowAction_RouteMounting(t *testing.T) {
 	var actionID string
 
 	ma := &ModelAdmin[testItem]{
-		Slug:     "items",
-		Display:  "Items",
+		Slug:        "items",
+		DisplayName: "Item", DisplayPluralName: "Items",
 		DB:       db,
 		Renderer: &mockRenderer{},
 		RowActions: []RowAction{
@@ -155,8 +155,8 @@ func TestRowAction_DeleteMethod(t *testing.T) {
 	actionCalled := false
 
 	ma := &ModelAdmin[testItem]{
-		Slug:     "items",
-		Display:  "Items",
+		Slug:        "items",
+		DisplayName: "Item", DisplayPluralName: "Items",
 		DB:       db,
 		Renderer: &mockRenderer{},
 		RowActions: []RowAction{

@@ -13,14 +13,8 @@ notes-loading = "Loading…"
 admin-app-notes = "Notes"
 admin-nav-notes = "Notes"
 
-# Admin notes list page
-admin-notes-title = "Notes"
-admin-notes-breadcrumb-admin = "Admin"
-admin-notes-breadcrumb-notes = "Notes"
-admin-notes-col-id = "ID"
-admin-notes-col-title = "Title"
-admin-notes-col-content = "Content"
-admin-notes-col-user-id = "User ID"
-admin-notes-col-created = "Created"
+# Admin notes
 admin-notes-delete-confirm = "Delete this note?"
 admin-notes-empty = "No notes found."
+Note = "Note"
+Notes = "Notes"

@@ -76,6 +76,11 @@ func AutoFields[T any](item *T) []FormField {
 			Value: v.Field(i).Interface(),
 		}
 
+		// Use verbose tag as label if present.
+		if vn := sf.Tag.Get("verbose"); vn != "" {
+			ff.Label = vn
+		}
+
 		if isPK && isAutoIncrement {
 			ff.Type = "hidden"
 			fields = append(fields, ff)
@@ -149,9 +154,6 @@ func (f FormField) FormName() string {
 func parseFormTag(ff *FormField, tag string) {
 	opts := parseFormTagOptions(tag)
 
-	if label, ok := opts["label"]; ok {
-		ff.Label = label
-	}
 	if widget, ok := opts["widget"]; ok {
 		ff.Type = widget
 	}
@@ -315,31 +317,25 @@ func pkFieldName[T any]() string {
 	return ""
 }
 
-// fieldLabelKeys extracts admin:"i18n:..." tags from struct fields,
-// returning a map of field name → i18n key.
-func fieldLabelKeys[T any]() map[string]string {
+// verboseNames extracts verbose:"..." tags from struct fields,
+// returning a map of field name → verbose name.
+func verboseNames[T any]() map[string]string {
 	var zero T
 	t := reflect.TypeOf(zero)
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
-	keys := make(map[string]string)
+	names := make(map[string]string)
 	for i := range t.NumField() {
 		sf := t.Field(i)
 		if !sf.IsExported() || sf.Anonymous {
 			continue
 		}
-		tag := sf.Tag.Get("admin")
-		if tag == "" {
-			continue
-		}
-		for part := range strings.SplitSeq(tag, ",") {
-			if k, v, ok := strings.Cut(strings.TrimSpace(part), ":"); ok && k == "i18n" {
-				keys[sf.Name] = v
-			}
+		if vn := sf.Tag.Get("verbose"); vn != "" {
+			names[sf.Name] = vn
 		}
 	}
-	return keys
+	return names
 }
 
 // FieldValue extracts a field value from a struct by field name.

@@ -1,0 +1,8 @@
+{{ define "modeladmin/alerts" -}}
+{{- range .Messages }}
+<div class="alert alert-{{ alertClass .Level }} alert-dismissible fade show" role="alert">
+    {{ .Text }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{{- end }}
+{{- end }}

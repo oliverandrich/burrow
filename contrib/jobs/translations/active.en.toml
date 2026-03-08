@@ -2,16 +2,9 @@
 admin-nav-jobs = "Jobs"
 
 # Admin: Jobs list
-admin-jobs-title = "Jobs"
-admin-jobs-breadcrumb-admin = "Admin"
-admin-jobs-breadcrumb-jobs = "Jobs"
 admin-jobs-empty = "No jobs found."
-admin-jobs-col-id = "ID"
-admin-jobs-col-type = "Type"
-admin-jobs-col-status = "Status"
-admin-jobs-col-attempts = "Attempts"
-admin-jobs-col-created = "Created"
-admin-jobs-col-actions = "Actions"
+Job = "Job"
+Jobs = "Jobs"
 admin-jobs-filter-pending = "Pending"
 admin-jobs-filter-running = "Running"
 admin-jobs-filter-failed = "Failed"

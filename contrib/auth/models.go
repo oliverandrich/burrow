@@ -21,17 +21,17 @@ type User struct {
 	bun.BaseModel   `bun:"table:users,alias:u"`
 	DeletedAt       time.Time    `bun:",soft_delete,nullzero" json:"-" form:"-"`
 	UpdatedAt       time.Time    `bun:",nullzero" json:"updated_at" form:"-"`
-	CreatedAt       time.Time    `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" admin:"i18n:admin-users-created"`
+	CreatedAt       time.Time    `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" verbose:"Created at"`
 	EmailVerifiedAt *time.Time   `json:"email_verified_at,omitempty" form:"-"`
-	Email           *string      `bun:",unique" json:"email,omitempty" form:"-" admin:"i18n:admin-users-email"`
-	Name            string       `bun:",nullzero" json:"name,omitempty" admin:"i18n:admin-users-name"`
+	Email           *string      `bun:",unique" json:"email,omitempty" form:"-" verbose:"Email"`
+	Name            string       `bun:",nullzero" json:"name,omitempty" verbose:"Name"`
 	Bio             string       `bun:",nullzero" json:"bio,omitempty"`
-	Role            string       `bun:",notnull,default:'user'" json:"role" admin:"i18n:admin-users-role"`
-	Username        string       `bun:",unique,notnull" json:"username" form:"-" admin:"i18n:admin-users-username"`
+	Role            string       `bun:",notnull,default:'user'" json:"role" verbose:"Role"`
+	Username        string       `bun:",unique,notnull" json:"username" form:"-" verbose:"Username"`
 	Credentials     []Credential `bun:"rel:has-many,join:id=user_id" json:"credentials,omitempty" form:"-"`
-	ID              int64        `bun:",pk,autoincrement" json:"id" admin:"i18n:admin-users-id"`
+	ID              int64        `bun:",pk,autoincrement" json:"id" verbose:"ID"`
 	EmailVerified   bool         `bun:",notnull,default:false" json:"email_verified" form:"-"`
-	IsActive        bool         `bun:",notnull,default:true" json:"is_active" form:"-" admin:"i18n:admin-users-active"`
+	IsActive        bool         `bun:",notnull,default:true" json:"is_active" form:"-" verbose:"Active"`
 }
 
 // IsAdmin returns true if the user has the admin role.
@@ -161,16 +161,16 @@ type EmailVerificationToken struct {
 // Invite represents an invitation to register.
 type Invite struct {
 	bun.BaseModel `bun:"table:invites,alias:inv"`
-	ExpiresAt     time.Time  `bun:",notnull" json:"expires_at" form:"-" admin:"i18n:admin-invites-expires"`
-	CreatedAt     time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" admin:"i18n:admin-users-created"`
+	ExpiresAt     time.Time  `bun:",notnull" json:"expires_at" form:"-" verbose:"Expires at"`
+	CreatedAt     time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" verbose:"Created at"`
 	DeletedAt     time.Time  `bun:",soft_delete,nullzero" json:"-" form:"-"`
 	UsedAt        *time.Time `json:"used_at,omitempty" form:"-"`
 	UsedBy        *int64     `json:"used_by,omitempty" form:"-"`
 	CreatedBy     *int64     `json:"created_by,omitempty" form:"-"`
-	Email         string     `bun:",notnull" json:"email" admin:"i18n:admin-invites-email"`
-	Label         string     `bun:",notnull,default:''" json:"label" admin:"i18n:admin-invites-label"`
+	Email         string     `bun:",notnull" json:"email" verbose:"Email"`
+	Label         string     `bun:",notnull,default:''" json:"label" verbose:"Label"`
 	TokenHash     string     `bun:",unique,notnull" json:"-" form:"-"`
-	ID            int64      `bun:",pk,autoincrement" json:"id" admin:"i18n:admin-users-id"`
+	ID            int64      `bun:",pk,autoincrement" json:"id" verbose:"ID"`
 }
 
 // IsUsed returns true if the invite has been used.

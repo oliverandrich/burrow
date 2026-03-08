@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"codeberg.org/oliverandrich/burrow"
+	"codeberg.org/oliverandrich/burrow/contrib/messages"
+	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -910,6 +912,16 @@ func TestAdminCreateInvite(t *testing.T) {
 	assert.Len(t, invites, 1)
 	assert.Equal(t, "invitee@example.com", invites[0].Email)
 	assert.Equal(t, "John Doe", invites[0].Label)
+
+	// Verify flash message contains the prefix and the registration URL.
+	sessionValues := session.GetValues(req)
+	require.NotNil(t, sessionValues)
+	storedMsgs, ok := sessionValues["_messages"].([]messages.Message)
+	require.True(t, ok, "expected messages in session")
+	require.Len(t, storedMsgs, 1)
+	assert.Contains(t, storedMsgs[0].Text, "admin-invites-copy-url")
+	assert.Contains(t, storedMsgs[0].Text, "/auth/register?invite=")
+	assert.Equal(t, messages.Success, storedMsgs[0].Level)
 }
 
 func TestAdminCreateInviteNoAuth(t *testing.T) {

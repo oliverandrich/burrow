@@ -1,11 +1,12 @@
 {{ define "modeladmin/detail" -}}
+{{ template "modeladmin/alerts" . }}
 <div class="d-flex justify-content-between align-items-center mb-2">
     <h2 class="mb-0">{{ .IDValue }}</h2>
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">Admin</a></li>
-        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}" hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">{{ .Cfg.Display }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}" hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">{{ .Cfg.DisplayPluralName }}</a></li>
         <li class="breadcrumb-item active" aria-current="page">{{ .IDValue }}</li>
     </ol>
 </nav>

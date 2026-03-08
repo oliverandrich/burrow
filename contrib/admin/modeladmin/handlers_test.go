@@ -83,8 +83,8 @@ func setupHandlerTest(t *testing.T) (*bun.DB, *mockRenderer, *ModelAdmin[testIte
 
 	renderer := &mockRenderer{}
 	ma := &ModelAdmin[testItem]{
-		Slug:      "items",
-		Display:   "Items",
+		Slug:        "items",
+		DisplayName: "Item", DisplayPluralName: "Items",
 		DB:        db,
 		Renderer:  renderer,
 		CanCreate: true,
@@ -359,7 +359,7 @@ func TestRenderConfig(t *testing.T) {
 
 	assert.True(t, renderer.listCalled)
 	assert.Equal(t, "items", renderer.lastConfig.Slug)
-	assert.Equal(t, "Items", renderer.lastConfig.Display)
+	assert.Equal(t, "Items", renderer.lastConfig.DisplayPluralName)
 	assert.True(t, renderer.lastConfig.CanCreate)
 	assert.True(t, renderer.lastConfig.CanEdit)
 	assert.True(t, renderer.lastConfig.CanDelete)

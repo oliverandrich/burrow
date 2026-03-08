@@ -72,6 +72,7 @@ func (ma *ModelAdmin[T]) HandleDetail(w http.ResponseWriter, r *http.Request) er
 
 	if ma.CanEdit {
 		fields := AutoFields[T](item)
+		translateFormFields(fields, r)
 		return ma.Renderer.Form(w, r, item, fields, nil, cfg)
 	}
 
@@ -88,6 +89,7 @@ func (ma *ModelAdmin[T]) HandleNew(w http.ResponseWriter, r *http.Request) error
 	cfg := ma.renderConfig()
 	ma.translateRenderConfig(&cfg, r)
 	fields := AutoFields[T](nil)
+	translateFormFields(fields, r)
 	return ma.Renderer.Form(w, r, nil, fields, nil, cfg)
 }
 
@@ -109,6 +111,7 @@ func (ma *ModelAdmin[T]) HandleCreate(w http.ResponseWriter, r *http.Request) er
 			vCfg := ma.renderConfig()
 			ma.translateRenderConfig(&vCfg, r)
 			fields := AutoFields[T](item)
+			translateFormFields(fields, r)
 			return ma.Renderer.Form(w, r, item, fields, ve, vCfg)
 		}
 		return burrow.NewHTTPError(http.StatusBadRequest, "validation failed")
@@ -154,6 +157,7 @@ func (ma *ModelAdmin[T]) HandleUpdate(w http.ResponseWriter, r *http.Request) er
 			vCfg := ma.renderConfig()
 			ma.translateRenderConfig(&vCfg, r)
 			fields := AutoFields[T](item)
+			translateFormFields(fields, r)
 			return ma.Renderer.Form(w, r, item, fields, ve, vCfg)
 		}
 		return burrow.NewHTTPError(http.StatusBadRequest, "validation failed")

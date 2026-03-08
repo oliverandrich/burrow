@@ -21,8 +21,10 @@ const defaultPageSize = 25
 type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability over optimization
 	// Slug is the URL path segment, e.g. "articles".
 	Slug string
-	// Display is the human-readable plural name, e.g. "Articles".
-	Display string
+	// DisplayName is the singular human-readable name, also used as i18n key, e.g. "Article".
+	DisplayName string
+	// DisplayPluralName is the plural human-readable name, also used as i18n key, e.g. "Articles".
+	DisplayPluralName string
 	// DB is the Bun database connection.
 	DB *bun.DB
 	// Renderer renders list, detail, and form views.
@@ -52,9 +54,6 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	SortFields []string
 	// RowActions defines custom per-row actions for the list/detail views.
 	RowActions []RowAction
-	// DisplayKey is the i18n key for the Display name.
-	// Translated via i18n.T at request time, overriding Display.
-	DisplayKey string
 	// EmptyMessage is shown when the list has no items. Default: "No items found."
 	EmptyMessage string
 	// EmptyMessageKey is the i18n key for the empty-list message.
@@ -104,19 +103,20 @@ type ActiveChoice struct {
 
 // RenderConfig holds display metadata passed to the renderer.
 type RenderConfig struct { //nolint:govet // fieldalignment: readability over optimization
-	Slug            string
-	Display         string
-	CanCreate       bool
-	CanEdit         bool
-	CanDelete       bool
-	ListFields      []string // Go struct field names (for columnValue/fieldValue lookups)
-	ListFieldLabels []string // translated column headers (parallel to ListFields)
-	IDField         string   // struct field name for the primary key (default: "ID")
-	Filters         []ActiveFilter
-	RowActions      []RenderAction
-	HasRowActions   bool
-	ItemActionSets  [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
-	EmptyMessage    string
+	Slug              string
+	DisplayName       string
+	DisplayPluralName string
+	CanCreate         bool
+	CanEdit           bool
+	CanDelete         bool
+	ListFields        []string // Go struct field names (for columnValue/fieldValue lookups)
+	ListFieldLabels   []string // translated column headers (parallel to ListFields)
+	IDField           string   // struct field name for the primary key (default: "ID")
+	Filters           []ActiveFilter
+	RowActions        []RenderAction
+	HasRowActions     bool
+	ItemActionSets    [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
+	EmptyMessage      string
 }
 
 // renderConfig returns the RenderConfig for this ModelAdmin.
@@ -134,16 +134,17 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 		emptyMsg = "No items found."
 	}
 	return RenderConfig{
-		Slug:          ma.Slug,
-		Display:       ma.Display,
-		CanCreate:     ma.CanCreate,
-		CanEdit:       ma.CanEdit,
-		CanDelete:     ma.CanDelete,
-		ListFields:    ma.ListFields,
-		IDField:       idField,
-		RowActions:    renderActions,
-		HasRowActions: len(renderActions) > 0,
-		EmptyMessage:  emptyMsg,
+		Slug:              ma.Slug,
+		DisplayName:       ma.DisplayName,
+		DisplayPluralName: ma.DisplayPluralName,
+		CanCreate:         ma.CanCreate,
+		CanEdit:           ma.CanEdit,
+		CanDelete:         ma.CanDelete,
+		ListFields:        ma.ListFields,
+		IDField:           idField,
+		RowActions:        renderActions,
+		HasRowActions:     len(renderActions) > 0,
+		EmptyMessage:      emptyMsg,
 	}
 }
 
@@ -151,23 +152,35 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 func (ma *ModelAdmin[T]) translateRenderConfig(cfg *RenderConfig, r *http.Request) {
 	ctx := r.Context()
 
-	// Translate struct field label keys (admin:"i18n:...") via i18n context.
-	labelKeys := fieldLabelKeys[T]()
+	// Translate verbose names as column labels.
+	vnames := verboseNames[T]()
 	labels := make([]string, len(cfg.ListFields))
 	for i, f := range cfg.ListFields {
-		if key, ok := labelKeys[f]; ok {
-			labels[i] = i18n.T(ctx, key)
+		if vn, ok := vnames[f]; ok {
+			labels[i] = i18n.T(ctx, vn)
 		} else {
 			labels[i] = f
 		}
 	}
 	cfg.ListFieldLabels = labels
 
-	if ma.DisplayKey != "" {
-		cfg.Display = i18n.T(ctx, ma.DisplayKey)
+	// Translate display names.
+	if ma.DisplayName != "" {
+		cfg.DisplayName = i18n.T(ctx, ma.DisplayName)
+	}
+	if ma.DisplayPluralName != "" {
+		cfg.DisplayPluralName = i18n.T(ctx, ma.DisplayPluralName)
 	}
 	if ma.EmptyMessageKey != "" {
 		cfg.EmptyMessage = i18n.T(ctx, ma.EmptyMessageKey)
+	}
+}
+
+// translateFormFields translates form field labels via i18n.
+func translateFormFields(fields []FormField, r *http.Request) {
+	ctx := r.Context()
+	for i := range fields {
+		fields[i].Label = i18n.T(ctx, fields[i].Label)
 	}
 }
 

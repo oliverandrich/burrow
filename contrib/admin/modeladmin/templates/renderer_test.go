@@ -12,6 +12,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+	"codeberg.org/oliverandrich/burrow/contrib/messages"
 )
 
 type testItem struct { //nolint:govet // fieldalignment: test struct
@@ -64,8 +65,8 @@ func TestDefaultRenderer_List(t *testing.T) {
 	}
 	page := burrow.PageResult{Page: 1, TotalCount: 2, TotalPages: 1}
 	cfg := modeladmin.RenderConfig{
-		Slug:            "items",
-		Display:         "Items",
+		Slug:        "items",
+		DisplayName: "Item", DisplayPluralName: "Items",
 		ListFields:      []string{"ID", "Name"},
 		ListFieldLabels: []string{"ID", "Name"},
 		IDField:         "ID",
@@ -88,11 +89,12 @@ func TestDefaultRenderer_List_WithRowActions(t *testing.T) {
 	items := []testItem{{ID: 1, Name: "Alpha"}}
 	page := burrow.PageResult{Page: 1, TotalCount: 1, TotalPages: 1}
 	cfg := modeladmin.RenderConfig{
-		Slug:          "items",
-		Display:       "Items",
-		ListFields:    []string{"ID", "Name"},
-		IDField:       "ID",
-		HasRowActions: true,
+		Slug:              "items",
+		DisplayName:       "Item",
+		DisplayPluralName: "Items",
+		ListFields:        []string{"ID", "Name"},
+		IDField:           "ID",
+		HasRowActions:     true,
 		RowActions: []modeladmin.RenderAction{
 			{Slug: "retry", Label: "Retry", Method: "POST", Class: "btn-success"},
 		},
@@ -121,10 +123,11 @@ func TestDefaultRenderer_List_WithFilters(t *testing.T) {
 	items := []testItem{{ID: 1, Name: "Alpha"}}
 	page := burrow.PageResult{Page: 1, TotalCount: 1, TotalPages: 1}
 	cfg := modeladmin.RenderConfig{
-		Slug:       "items",
-		Display:    "Items",
-		ListFields: []string{"ID", "Name"},
-		IDField:    "ID",
+		Slug:              "items",
+		DisplayName:       "Item",
+		DisplayPluralName: "Items",
+		ListFields:        []string{"ID", "Name"},
+		IDField:           "ID",
 		Filters: []modeladmin.ActiveFilter{
 			{
 				Field: "status",
@@ -152,12 +155,42 @@ func TestDefaultRenderer_List_WithFilters(t *testing.T) {
 	assert.Contains(t, body, "active")
 }
 
+func TestDefaultRenderer_List_WithMessages(t *testing.T) {
+	r := DefaultRenderer[testItem]()
+	items := []testItem{{ID: 1, Name: "Alpha"}}
+	page := burrow.PageResult{Page: 1, TotalCount: 1, TotalPages: 1}
+	cfg := modeladmin.RenderConfig{
+		Slug:              "items",
+		DisplayName:       "Item",
+		DisplayPluralName: "Items",
+		ListFields:        []string{"ID", "Name"},
+		ListFieldLabels:   []string{"ID", "Name"},
+		IDField:           "ID",
+	}
+
+	msgs := []messages.Message{
+		{Level: messages.Success, Text: "https://example.com/auth/register?invite=abc123"},
+		{Level: messages.Error, Text: "Something went wrong"},
+	}
+	ctx := messages.Inject(context.Background(), msgs)
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/admin/items", nil)
+	w := httptest.NewRecorder()
+
+	err := r.List(w, req, items, page, cfg)
+	require.NoError(t, err)
+	body := w.Body.String()
+	assert.Contains(t, body, "alert-success")
+	assert.Contains(t, body, "https://example.com/auth/register?invite=abc123")
+	assert.Contains(t, body, "alert-danger")
+	assert.Contains(t, body, "Something went wrong")
+}
+
 func TestDefaultRenderer_Detail(t *testing.T) {
 	r := DefaultRenderer[testItem]()
 	item := &testItem{ID: 1, Name: "Alpha"}
 	cfg := modeladmin.RenderConfig{
-		Slug:            "items",
-		Display:         "Items",
+		Slug:        "items",
+		DisplayName: "Item", DisplayPluralName: "Items",
 		ListFields:      []string{"ID", "Name"},
 		ListFieldLabels: []string{"ID", "Name"},
 		IDField:         "ID",
@@ -177,10 +210,11 @@ func TestDefaultRenderer_Form_Create(t *testing.T) {
 	r := DefaultRenderer[testItem]()
 	fields := modeladmin.AutoFields[testItem](nil)
 	cfg := modeladmin.RenderConfig{
-		Slug:      "items",
-		Display:   "Items",
-		CanCreate: true,
-		IDField:   "ID",
+		Slug:              "items",
+		DisplayName:       "Item",
+		DisplayPluralName: "Items",
+		CanCreate:         true,
+		IDField:           "ID",
 	}
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/new", nil)
@@ -190,7 +224,7 @@ func TestDefaultRenderer_Form_Create(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
 	body := w.Body.String()
-	assert.Contains(t, body, "modeladmin-new Items")
+	assert.Contains(t, body, "modeladmin-new Item")
 	assert.Contains(t, body, "name=\"name\"")
 }
 
@@ -199,10 +233,11 @@ func TestDefaultRenderer_Form_Edit(t *testing.T) {
 	item := &testItem{ID: 42, Name: "Existing"}
 	fields := modeladmin.AutoFields(item)
 	cfg := modeladmin.RenderConfig{
-		Slug:    "items",
-		Display: "Items",
-		CanEdit: true,
-		IDField: "ID",
+		Slug:              "items",
+		DisplayName:       "Item",
+		DisplayPluralName: "Items",
+		CanEdit:           true,
+		IDField:           "ID",
 	}
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/42", nil)
@@ -212,7 +247,7 @@ func TestDefaultRenderer_Form_Edit(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
 	body := w.Body.String()
-	assert.Contains(t, body, "modeladmin-edit Items")
+	assert.Contains(t, body, "modeladmin-edit Item")
 	assert.Contains(t, body, "Existing")
 }
 
@@ -225,9 +260,10 @@ func TestDefaultRenderer_Form_WithValidationErrors(t *testing.T) {
 		},
 	}
 	cfg := modeladmin.RenderConfig{
-		Slug:    "items",
-		Display: "Items",
-		IDField: "ID",
+		Slug:              "items",
+		DisplayName:       "Item",
+		DisplayPluralName: "Items",
+		IDField:           "ID",
 	}
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/new", nil)

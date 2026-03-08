@@ -1,7 +1,8 @@
 {{ define "modeladmin/list" -}}
+{{ template "modeladmin/alerts" . }}
 <div class="d-flex justify-content-between align-items-center mb-2">
     <h2 class="mb-0">
-        {{ .Cfg.Display }}
+        {{ .Cfg.DisplayPluralName }}
         <span class="badge text-bg-secondary fs-6 align-middle ms-2">{{ .Page.TotalCount }}</span>
     </h2>
     {{- if .Cfg.CanCreate }}
@@ -13,7 +14,7 @@
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">{{ T "modeladmin-admin" }}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{{ .Cfg.Display }}</li>
+        <li class="breadcrumb-item active" aria-current="page">{{ .Cfg.DisplayPluralName }}</li>
     </ol>
 </nav>
 {{- if .Cfg.Filters }}

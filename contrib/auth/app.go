@@ -102,16 +102,16 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.globalConfig = cfg.Config
 
 	a.usersAdmin = &modeladmin.ModelAdmin[User]{
-		Slug:       "users",
-		Display:    "Users",
-		DisplayKey: "admin-users-title",
-		DB:         cfg.DB,
-		Renderer:   matpl.DefaultRenderer[User](),
-		CanCreate:  false,
-		CanEdit:    false,
-		CanDelete:  false,
-		ListFields: []string{"ID", "Username", "Name", "Email", "Role", "IsActive", "CreatedAt"},
-		OrderBy:    "id DESC",
+		Slug:              "users",
+		DisplayName:       "User",
+		DisplayPluralName: "Users",
+		DB:                cfg.DB,
+		Renderer:          matpl.DefaultRenderer[User](),
+		CanCreate:         false,
+		CanEdit:           false,
+		CanDelete:         false,
+		ListFields:        []string{"ID", "Username", "Name", "Email", "Role", "IsActive", "CreatedAt"},
+		OrderBy:           "id DESC",
 		Filters: []modeladmin.FilterDef{
 			{Field: "role", Label: "Role", LabelKey: "admin-users-role", Type: "select", Choices: roleChoices()},
 		},
@@ -149,16 +149,16 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	}
 
 	a.invitesAdmin = &modeladmin.ModelAdmin[Invite]{
-		Slug:       "invites",
-		Display:    "Invites",
-		DisplayKey: "admin-invites-title",
-		DB:         cfg.DB,
-		Renderer:   matpl.DefaultRenderer[Invite](),
-		CanCreate:  true,
-		CanEdit:    false,
-		CanDelete:  false,
-		ListFields: []string{"ID", "Label", "Email", "ExpiresAt", "CreatedAt"},
-		OrderBy:    "created_at DESC",
+		Slug:              "invites",
+		DisplayName:       "Invite",
+		DisplayPluralName: "Invites",
+		DB:                cfg.DB,
+		Renderer:          matpl.DefaultRenderer[Invite](),
+		CanCreate:         true,
+		CanEdit:           false,
+		CanDelete:         false,
+		ListFields:        []string{"ID", "Label", "Email", "ExpiresAt", "CreatedAt"},
+		OrderBy:           "created_at DESC",
 		RowActions: []modeladmin.RowAction{
 			{
 				Slug:     "revoke",
@@ -439,6 +439,7 @@ func (a *App) AdminRoutes(r chi.Router) {
 		r.Get("/", burrow.Handle(a.invitesAdmin.HandleList))
 		r.Get("/new", burrow.Handle(a.invitesAdmin.HandleNew))
 		r.Post("/", burrow.Handle(a.handleCreateInvite))
+		r.Get("/{id}", burrow.Handle(a.invitesAdmin.HandleDetail))
 		r.Delete("/{id}/revoke", burrow.Handle(revokeInviteHandler(a.repo)))
 	})
 }

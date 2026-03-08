@@ -34,11 +34,11 @@ var noteTemplateFS embed.FS
 type Note struct { //nolint:govet // fieldalignment: readability over optimization
 	bun.BaseModel `bun:"table:notes,alias:n"`
 
-	ID        int64     `bun:",pk,autoincrement" json:"id" admin:"i18n:admin-notes-col-id"`
-	UserID    int64     `bun:",notnull" json:"user_id" form:"-" admin:"i18n:admin-notes-col-user-id"`
-	Title     string    `bun:",notnull" json:"title" form:"label=Title" admin:"i18n:admin-notes-col-title"`
-	Content   string    `bun:",notnull,default:''" json:"content" form:"label=Content,widget=textarea" admin:"i18n:admin-notes-col-content"`
-	CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" admin:"i18n:admin-notes-col-created"`
+	ID        int64     `bun:",pk,autoincrement" json:"id" verbose:"ID"`
+	UserID    int64     `bun:",notnull" json:"user_id" form:"-" verbose:"User ID"`
+	Title     string    `bun:",notnull" json:"title" verbose:"Title"`
+	Content   string    `bun:",notnull,default:''" json:"content" verbose:"Content" form:"widget=textarea"`
+	CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" verbose:"Created at"`
 	DeletedAt time.Time `bun:",soft_delete,nullzero" json:"-" form:"-"`
 }
 
@@ -123,17 +123,17 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 	a.handlers = NewHandlers(a.repo)
 	a.notesAdmin = &modeladmin.ModelAdmin[Note]{
-		Slug:            "notes",
-		Display:         "Notes",
-		DisplayKey:      "admin-notes-title",
-		EmptyMessageKey: "admin-notes-empty",
-		DB:              cfg.DB,
-		Renderer:        matpl.DefaultRenderer[Note](),
-		CanCreate:       true,
-		CanEdit:         true,
-		CanDelete:       true,
-		ListFields:      []string{"ID", "Title", "Content", "UserID", "CreatedAt"},
-		OrderBy:         "created_at DESC, id DESC",
+		Slug:              "notes",
+		DisplayName:       "Note",
+		DisplayPluralName: "Notes",
+		EmptyMessageKey:   "admin-notes-empty",
+		DB:                cfg.DB,
+		Renderer:          matpl.DefaultRenderer[Note](),
+		CanCreate:         true,
+		CanEdit:           true,
+		CanDelete:         true,
+		ListFields:        []string{"ID", "Title", "Content", "UserID", "CreatedAt"},
+		OrderBy:           "created_at DESC, id DESC",
 	}
 	a.notesAdmin.RowActions = []modeladmin.RowAction{
 		{
