@@ -126,14 +126,30 @@ func NormalizeCode(code string) string {
 }
 
 func generateRecoveryCode(length int) (string, error) {
-	b := make([]byte, length)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
+	alphabetLen := len(recoveryAlphabet)
+	// maxValid is the largest multiple of alphabetLen that fits in a byte.
+	// Bytes >= maxValid are rejected to avoid modulo bias.
+	maxValid := 256 - (256 % alphabetLen) // 256 - (256 % 30) = 240
+
+	result := make([]byte, length)
+	buf := make([]byte, length)
+	filled := 0
+	for filled < length {
+		if _, err := rand.Read(buf); err != nil {
+			return "", err
+		}
+		for _, b := range buf {
+			if int(b) >= maxValid {
+				continue
+			}
+			result[filled] = recoveryAlphabet[int(b)%alphabetLen]
+			filled++
+			if filled == length {
+				break
+			}
+		}
 	}
-	for i := range b {
-		b[i] = recoveryAlphabet[int(b[i])%len(recoveryAlphabet)]
-	}
-	return string(b), nil
+	return string(result), nil
 }
 
 func formatRecoveryCode(code string) string {
