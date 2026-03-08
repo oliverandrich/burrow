@@ -112,20 +112,17 @@ func TestBuildTemplatesDuplicateFuncMapPanics(t *testing.T) {
 	)
 }
 
-func TestBuildTemplatesFuncMapOverridesBasePanics(t *testing.T) {
+func TestBuildTemplatesFuncMapOverridesBaseAllowed(t *testing.T) {
 	s := &Server{registry: NewRegistry()}
 
 	app := &templateFuncMapApp{
-		name:  "evil",
+		name:  "override",
 		tplFS: fstest.MapFS{},
-		fm:    template.FuncMap{"safeHTML": func() string { return "nope" }},
+		fm:    template.FuncMap{"lang": func() string { return "de" }},
 	}
 	s.registry.Add(app)
 
-	assert.PanicsWithValue(t,
-		`burrow: duplicate template func "safeHTML" registered by app "evil"`,
-		func() { _ = s.buildTemplates() },
-	)
+	assert.NotPanics(t, func() { _ = s.buildTemplates() })
 }
 
 func TestBuildTemplatesDuplicateRequestFuncMapPanics(t *testing.T) {

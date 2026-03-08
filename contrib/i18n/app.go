@@ -124,6 +124,7 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
 	ctx := r.Context()
 	return template.FuncMap{
+		"lang":    func() string { return Locale(ctx) },
 		"t":       func(key string) string { return T(ctx, key) },
 		"tData":   func(key string, data map[string]any) string { return TData(ctx, key, data) },
 		"tPlural": func(key string, count int) string { return TPlural(ctx, key, count) },

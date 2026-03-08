@@ -16,6 +16,7 @@ func baseFuncMap() template.FuncMap {
 		"safeURL":  func(s string) template.URL { return template.URL(s) },           //nolint:gosec // intentional
 		"safeAttr": func(s string) template.HTMLAttr { return template.HTMLAttr(s) }, //nolint:gosec // intentional
 		"itoa":     func(id int64) string { return strconv.FormatInt(id, 10) },
+		"lang":     func() string { return "en" },
 	}
 }
 
@@ -26,11 +27,15 @@ func baseFuncMap() template.FuncMap {
 func (s *Server) buildTemplates() error {
 	var templateFSes []fs.FS
 	funcMap := baseFuncMap()
+	baseKeys := make(map[string]bool, len(funcMap))
+	for k := range funcMap {
+		baseKeys[k] = true
+	}
 
 	for _, app := range s.registry.Apps() {
 		if provider, ok := app.(HasFuncMap); ok {
 			for k, v := range provider.FuncMap() {
-				if _, exists := funcMap[k]; exists {
+				if _, exists := funcMap[k]; exists && !baseKeys[k] {
 					panic(fmt.Sprintf("burrow: duplicate template func %q registered by app %q", k, app.Name()))
 				}
 				funcMap[k] = v
@@ -42,7 +47,7 @@ func (s *Server) buildTemplates() error {
 			// The real implementations are injected per request via Clone()+Funcs().
 			stubReq := &http.Request{}
 			for k := range provider.RequestFuncMap(stubReq) {
-				if _, exists := funcMap[k]; exists {
+				if _, exists := funcMap[k]; exists && !baseKeys[k] {
 					panic(fmt.Sprintf("burrow: duplicate template func %q registered by app %q", k, app.Name()))
 				}
 				funcMap[k] = func() string { return "" }
