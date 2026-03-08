@@ -227,7 +227,7 @@ func (a *App) NavItems() []burrow.NavItem { // (4)!
         {
             Label:    "Notes",
             URL:      "/notes",
-            Icon:     bsicons.JournalText(),
+            Icon:     bsicons.JournalText(), // "codeberg.org/oliverandrich/burrow/contrib/bsicons"
             Position: 20,
             AuthOnly: true,
         },
@@ -294,7 +294,7 @@ Your app can implement any combination of these interfaces:
 | `HasTemplates` | `TemplateFS() fs.FS` | Contribute HTML template files |
 | `HasFuncMap` | `FuncMap() template.FuncMap` | Contribute static template functions |
 | `HasRequestFuncMap` | `RequestFuncMap(r *http.Request) template.FuncMap` | Contribute request-scoped template functions |
-| `Configurable` | `Flags() []cli.Flag` + `Configure(cmd *cli.Command) error` | Add CLI flags |
+| `Configurable` | `Flags(configSource func(key string) cli.ValueSource) []cli.Flag` + `Configure(cmd *cli.Command) error` | Add CLI flags |
 | `HasCLICommands` | `CLICommands() []*cli.Command` | Add CLI subcommands |
 | `Seedable` | `Seed(ctx context.Context) error` | Seed initial data |
 | `HasDependencies` | `Dependencies() []string` | Declare required apps |

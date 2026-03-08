@@ -5,7 +5,6 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"html/template"
 	"io/fs"
 	"net/http"
 	"strconv"
@@ -189,12 +188,6 @@ func (a *App) MigrationFS() fs.FS {
 func (a *App) TemplateFS() fs.FS {
 	sub, _ := fs.Sub(templateFS, "templates")
 	return sub
-}
-
-func (a *App) FuncMap() template.FuncMap {
-	return template.FuncMap{
-		"itoa": strconv.Itoa,
-	}
 }
 
 func (a *App) NavItems() []burrow.NavItem {

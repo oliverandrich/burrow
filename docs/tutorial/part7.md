@@ -4,27 +4,14 @@ In this final part you'll add the `htmx` contrib app for SPA-like navigation, HT
 
 **Source code:** [`tutorial/step07/`](https://codeberg.org/oliverandrich/burrow/src/branch/main/tutorial/step07)
 
-## Add the HTMX App
+## Using HTMX Helpers
 
-The `htmx` contrib app provides the htmx JavaScript library as a static asset and Go helpers for detecting HTMX requests and setting response headers.
+The `htmx` contrib app (registered since Part 3) provides Go helpers for detecting HTMX requests and setting response headers. The htmx script is already in the layout.
 
-Update `main.go`:
-
-```go
-import "codeberg.org/oliverandrich/burrow/contrib/htmx"
-
-srv := burrow.NewServer(
-    // ... existing apps ...
-    htmx.New(),
-    bootstrap.New(),
-    // ...
-)
-```
-
-Add the htmx script to the layout:
+Verify your layout includes the htmx script:
 
 ```html
-<script src="{{ staticURL "htmx.min.js" }}"></script>
+<script src="{{ staticURL "htmx/htmx.min.js" }}"></script>
 ```
 
 ## Enable hx-boost
@@ -203,7 +190,36 @@ The scroll trigger in the template:
 {{ end -}}
 ```
 
-When the user scrolls to the bottom, htmx fetches the next page and appends the items. The `polls/list_page` template returns only the question items and a new scroll trigger (if more pages exist).
+Create `internal/polls/templates/polls/list_page.html` — it returns only the question items and a new scroll trigger (no layout wrapping):
+
+```html
+{{ define "polls/list_page" -}}
+{{ range .Questions -}}
+<a href="/polls/{{ .ID }}" class="list-group-item list-group-item-action">
+    <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">{{ .Text }}</h5>
+        <small class="text-body-secondary">
+            {{ .PublishedAt.Format "2 Jan 2006" }}
+        </small>
+    </div>
+</a>
+{{ end -}}
+{{ if .Page.HasMore -}}
+<div hx-get="/polls?cursor={{ .Page.NextCursor }}&limit=20"
+     hx-trigger="revealed"
+     hx-target="#polls-list"
+     hx-swap="beforeend">
+    <div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+</div>
+{{ end -}}
+{{- end }}
+```
+
+When the user scrolls to the bottom, htmx fetches the next page and appends the items.
 
 ## Run It
 

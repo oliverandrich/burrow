@@ -22,14 +22,13 @@ Add the following imports to `internal/polls/polls.go` (alongside the existing o
 
 ```go
 "fmt"
-"html/template"
 "net/http"
 "strconv"
 
 "github.com/go-chi/chi/v5"
 ```
 
-Then add the interface implementations. The polls app now implements `HasTemplates`, `HasFuncMap`, `HasRoutes`, and `HasNavItems`:
+Then add the interface implementations. The polls app now implements `HasTemplates`, `HasRoutes`, and `HasNavItems`:
 
 ```go
 //go:embed templates
@@ -40,12 +39,6 @@ func (a *App) TemplateFS() fs.FS {
     return sub
 }
 
-func (a *App) FuncMap() template.FuncMap {
-    return template.FuncMap{
-        "itoa": strconv.Itoa,
-    }
-}
-
 func (a *App) NavItems() []burrow.NavItem {
     return []burrow.NavItem{
         {Label: "Polls", URL: "/polls", Position: 10},
@@ -54,8 +47,6 @@ func (a *App) NavItems() []burrow.NavItem {
 ```
 
 `TemplateFS()` returns the embedded `templates/` directory. Burrow walks this filesystem and parses all `.html` files into the global template set.
-
-`FuncMap()` contributes template functions available in all templates. Here we add `itoa` for converting integers to strings in templates.
 
 ### Write the Templates
 
@@ -238,8 +229,6 @@ func (a *App) TemplateFS() fs.FS {
     return sub
 }
 
-func (a *App) FuncMap() template.FuncMap { return nil }
-
 func (a *App) NavItems() []burrow.NavItem {
     return []burrow.NavItem{
         {Label: "Home", URL: "/", Position: 0},
@@ -266,9 +255,7 @@ func Layout() burrow.LayoutFunc {
 
         exec := burrow.TemplateExecutorFromContext(r.Context())
         if exec == nil {
-            w.WriteHeader(code)
-            _, err := w.Write([]byte(content))
-            return err
+            return burrow.HTML(w, code, string(content))
         }
 
         layoutData := map[string]any{
@@ -283,9 +270,7 @@ func Layout() burrow.LayoutFunc {
         if err != nil {
             return err
         }
-        w.WriteHeader(code)
-        _, err = w.Write([]byte(rendered))
-        return err
+        return burrow.HTML(w, code, string(rendered))
     }
 }
 ```
@@ -436,7 +421,6 @@ Open `http://localhost:8080` — you'll see the Bootstrap-styled homepage. Click
 ## What You've Learnt
 
 - **`HasTemplates`** — apps contribute `.html` template files to the global template set
-- **`HasFuncMap`** — apps contribute template functions available everywhere
 - **`RenderTemplate()`** — renders a named template, automatically wrapping in a layout for normal requests and returning fragments for HTMX requests
 - **`LayoutFunc`** — wraps page content in a full HTML document with navigation, scripts, and styles
 - **`staticfiles`** and **`bootstrap`** — contrib apps handle CSS/JS assets with cache busting

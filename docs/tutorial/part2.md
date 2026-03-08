@@ -169,7 +169,10 @@ srv := burrow.NewServer(
 
 ## Run It
 
+After adding new imports, always run `go mod tidy` to fetch dependencies:
+
 ```bash
+go mod tidy
 go run .
 ```
 

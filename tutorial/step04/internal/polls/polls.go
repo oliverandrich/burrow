@@ -6,7 +6,6 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"html/template"
 	"io/fs"
 	"net/http"
 	"strconv"
@@ -136,7 +135,9 @@ func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
 
 	choiceIDStr := r.FormValue("choice")
 	if choiceIDStr == "" {
-		_ = messages.AddError(w, r, "You didn't select a choice.")
+		if addErr := messages.AddError(w, r, "You didn't select a choice."); addErr != nil {
+			return addErr
+		}
 		http.Redirect(w, r, fmt.Sprintf("/polls/%d", questionID), http.StatusSeeOther)
 		return nil
 	}
@@ -150,7 +151,9 @@ func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to record vote")
 	}
 
-	_ = messages.AddSuccess(w, r, "Your vote has been recorded!")
+	if err := messages.AddSuccess(w, r, "Your vote has been recorded!"); err != nil {
+		return err
+	}
 	http.Redirect(w, r, fmt.Sprintf("/polls/%d/results", questionID), http.StatusSeeOther)
 	return nil
 }
@@ -203,12 +206,6 @@ func (a *App) MigrationFS() fs.FS {
 func (a *App) TemplateFS() fs.FS {
 	sub, _ := fs.Sub(templateFS, "templates")
 	return sub
-}
-
-func (a *App) FuncMap() template.FuncMap {
-	return template.FuncMap{
-		"itoa": strconv.Itoa,
-	}
 }
 
 func (a *App) NavItems() []burrow.NavItem {

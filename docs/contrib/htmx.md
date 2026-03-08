@@ -11,7 +11,7 @@ Serves the [htmx](https://htmx.org/) JavaScript library as a static asset and pr
 ```go
 srv := burrow.NewServer(
     htmx.New(),
-    staticfiles.New(myStaticFS),
+    staticApp, // staticfiles.New(myStaticFS) — returns (*App, error)
     // ... other apps
 )
 ```

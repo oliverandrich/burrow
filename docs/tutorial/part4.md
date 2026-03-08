@@ -100,7 +100,9 @@ func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
 
     choiceIDStr := r.FormValue("choice")
     if choiceIDStr == "" {
-        _ = messages.AddError(w, r, "You didn't select a choice.")
+        if addErr := messages.AddError(w, r, "You didn't select a choice."); addErr != nil {
+            return addErr
+        }
         http.Redirect(w, r, fmt.Sprintf("/polls/%d", questionID), http.StatusSeeOther)
         return nil
     }
@@ -114,7 +116,9 @@ func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to record vote")
     }
 
-    _ = messages.AddSuccess(w, r, "Your vote has been recorded!")
+    if err := messages.AddSuccess(w, r, "Your vote has been recorded!"); err != nil {
+        return err
+    }
     http.Redirect(w, r, fmt.Sprintf("/polls/%d/results", questionID), http.StatusSeeOther)
     return nil
 }

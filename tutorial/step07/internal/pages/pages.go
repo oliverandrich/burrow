@@ -28,8 +28,6 @@ func (a *App) TemplateFS() fs.FS {
 	return sub
 }
 
-func (a *App) FuncMap() template.FuncMap { return nil }
-
 func (a *App) NavItems() []burrow.NavItem {
 	return []burrow.NavItem{
 		{Label: "Home", URL: "/", Position: 0},
@@ -49,9 +47,7 @@ func Layout() burrow.LayoutFunc {
 	return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
 		exec := burrow.TemplateExecutorFromContext(r.Context())
 		if exec == nil {
-			w.WriteHeader(code)
-			_, err := w.Write([]byte(content))
-			return err
+			return burrow.HTML(w, code, string(content))
 		}
 
 		layoutData := map[string]any{
@@ -68,8 +64,6 @@ func Layout() burrow.LayoutFunc {
 		if err != nil {
 			return err
 		}
-		w.WriteHeader(code)
-		_, err = w.Write([]byte(rendered))
-		return err
+		return burrow.HTML(w, code, string(rendered))
 	}
 }

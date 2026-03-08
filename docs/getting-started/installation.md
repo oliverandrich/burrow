@@ -35,11 +35,31 @@ The framework builds on these libraries — you'll interact with them when build
 
 ## Verify
 
-Create a `main.go` and run it:
+Create a minimal `main.go` to check that everything works:
+
+```go
+package main
+
+import (
+    "codeberg.org/oliverandrich/burrow"
+    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
+    "github.com/urfave/cli/v3"
+)
+
+func main() {
+    srv := burrow.NewServer(healthcheck.New())
+    cmd := &cli.Command{
+        Flags:  srv.Flags(nil),
+        Action: srv.Run,
+    }
+    cmd.Run(nil, nil)
+}
+```
 
 ```bash
 go run main.go
 # time=... level=INFO msg="starting server" host=localhost port=8080 ...
+# Visit http://localhost:8080/healthz → "ok"
 ```
 
-See [Quick Start](quickstart.md) for the full walkthrough.
+See [Quick Start](quickstart.md) for a more complete example.

@@ -54,7 +54,7 @@ Provided by the framework itself. Always available.
 | `add` | Static | `{{ add .Page 1 }}` | Integer addition. |
 | `sub` | Static | `{{ sub .Total 1 }}` | Integer subtraction. |
 | `pageURL` | Static | `{{ pageURL .BaseURL .Page .Limit }}` | Builds a pagination URL with `page` and `limit` query parameters. |
-| `pageLimit` | Static | `{{ pageLimit .Limit }}` | Returns the current page size. |
+| `pageLimit` | Static | `{{ pageLimit .Page }}` | Derives the per-page size from a `PageResult`. |
 | `pageNumbers` | Static | `{{ range pageNumbers .Current .Total }}` | Generates a slice of page numbers for pagination controls. |
 
 ## How It Works

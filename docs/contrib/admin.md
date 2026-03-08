@@ -13,7 +13,7 @@ srv := burrow.NewServer(
     session.New(),
     auth.New(),
     admin.New(),
-    staticfiles.New(myStaticFS), // serves admin + user static files
+    staticApp, // staticfiles.New(myStaticFS) — returns (*App, error)
     // ... other apps
 )
 ```
@@ -55,13 +55,28 @@ ma := &modeladmin.ModelAdmin[Note]{
 }
 ```
 
+### The `verbose` Struct Tag
+
+ModelAdmin uses the `verbose` struct tag to determine column headers and form labels:
+
+```go
+type Note struct {
+    ID        int64     `bun:",pk,autoincrement" verbose:"ID"`
+    Title     string    `verbose:"Title"`
+    Body      string    `verbose:"Body"`
+    CreatedAt time.Time `verbose:"Created"`
+}
+```
+
+If no `verbose` tag is set, the Go field name is used as-is.
+
 ### Features
 
 - **List view** with configurable columns, ordering, and offset pagination
 - **Search** across text fields
 - **Filters** with select dropdowns
 - **Row actions** (e.g., retry, cancel, delete) with optional confirmation dialogs
-- **Create/edit forms** auto-generated from model struct tags
+- **Create/edit forms** auto-generated from model struct tags (`verbose` for labels)
 - **i18n** — all labels are translatable via `LabelKey` fields and the i18n app
 - **HTMX** — list navigation uses `hx-get`/`hx-target` for partial updates
 
@@ -138,4 +153,5 @@ The admin app collects all `HasAdmin` implementations and mounts their routes un
 | `HasRoutes` | Creates `/admin` group and delegates to `HasAdmin` apps |
 | `HasTemplates` | Contributes admin layout and page templates |
 | `HasFuncMap` | Contributes admin icon template functions |
+| `HasTranslations` | Contributes English and German translations for admin UI |
 | `HasDependencies` | Requires `auth` |

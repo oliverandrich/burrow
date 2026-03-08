@@ -12,7 +12,10 @@ import "embed"
 //go:embed static
 var staticFS embed.FS
 
-sfApp := staticfiles.New(staticFS)
+sfApp, err := staticfiles.New(staticFS)
+if err != nil {
+    log.Fatal(err)
+}
 
 srv := burrow.NewServer(
     sfApp,
@@ -52,7 +55,7 @@ If the file is not found in the manifest, the original name is returned as-is (s
 By default, files are served at `/static/`. Change it with `WithPrefix`:
 
 ```go
-sfApp := staticfiles.New(staticFS, staticfiles.WithPrefix("/assets/"))
+sfApp, err := staticfiles.New(staticFS, staticfiles.WithPrefix("/assets/"))
 ```
 
 ## File Organization

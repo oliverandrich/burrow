@@ -15,7 +15,7 @@ srv := burrow.NewServer(
     htmx.New(),                         // serves htmx.min.js
     healthcheck.New(),
     admin.New(),
-    staticfiles.New(myStaticFS),
+    staticApp, // staticfiles.New(myStaticFS) — returns (*App, error)
 )
 ```
 

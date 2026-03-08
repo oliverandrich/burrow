@@ -143,10 +143,7 @@ func Layout() burrow.LayoutFunc {
             return err
         }
 
-        w.Header().Set("Content-Type", "text/html; charset=utf-8")
-        w.WriteHeader(code)
-        _, err = w.Write([]byte(html))
-        return err
+        return burrow.HTML(w, code, string(html))
     }
 }
 ```

@@ -16,19 +16,18 @@ srv := burrow.NewServer(
     bootstrap.New(),
     htmx.New(),
     admin.New(),
-    staticfiles.New(emptyFS), // serves auth + admin static files
+    staticApp, // staticfiles.New(emptyFS) — returns (*App, error)
     // ... other apps
 )
 ```
 
-`auth.New()` uses built-in defaults for the renderer, auth layout, and admin renderer. Use options to override with custom implementations:
+`auth.New()` uses built-in defaults for the renderer and auth layout. Use options to override with custom implementations:
 
 ```go
 // With custom renderer and layout.
 auth.New(
     auth.WithRenderer(myCustomRenderer),
     auth.WithAuthLayout(myCustomAuthLayout),
-    auth.WithAdminRenderer(myCustomAdminRenderer),
 )
 ```
 
@@ -201,17 +200,9 @@ type Renderer interface {
 }
 ```
 
-## Admin Renderer
+## Admin Integration
 
-The `AdminRenderer` interface covers admin-only pages (user management, invites):
-
-```go
-type AdminRenderer interface {
-    AdminUsersPage(w http.ResponseWriter, r *http.Request, users []User) error
-    AdminUserDetailPage(w http.ResponseWriter, r *http.Request, user *User) error
-    AdminInvitesPage(w http.ResponseWriter, r *http.Request, invites []Invite, createdURL string, useEmail bool) error
-}
-```
+The auth app implements `HasAdmin` to provide user and invite management in the admin panel. It uses `modeladmin.ModelAdmin` internally — there is no separate `AdminRenderer` interface to implement.
 
 ## Configuration
 
@@ -242,7 +233,7 @@ type EmailService interface {
 
 The auth app implements `HasTranslations` and ships English and German translations for all user-facing strings. When the `i18n` contrib app is registered, translations are auto-discovered and loaded.
 
-Without the i18n app, templates fall back to displaying translation keys (which match their English text). To add a custom language, create a TOML file (e.g., `active.fr.toml`) with the same keys as `active.en.toml` and load it via `i18n.AddTranslations()`.
+Without the i18n app, templates fall back to displaying translation keys (which match their English text). To add a custom language, create a TOML file (e.g., `active.fr.toml`) with the same keys as `active.en.toml` and contribute it via the `HasTranslations` interface in your app.
 
 ## Interfaces Implemented
 
@@ -257,5 +248,8 @@ Without the i18n app, templates fall back to displaying translation keys (which 
 | `HasTemplates` | Contributes auth HTML templates |
 | `HasRequestFuncMap` | Provides `currentUser`, `isAuthenticated` to templates |
 | `HasTranslations` | Contributes English and German translation files |
+| `HasFuncMap` | Provides `credName`, `emailValue`, `deref` to templates |
 | `Configurable` | Auth and WebAuthn flags |
 | `HasDependencies` | Requires `session` |
+| `HasCLICommands` | Provides `promote`, `demote`, `create-invite` subcommands |
+| `HasShutdown` | Stops the background WebAuthn challenge cleanup goroutine |
