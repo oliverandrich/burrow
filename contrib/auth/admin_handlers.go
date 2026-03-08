@@ -174,11 +174,23 @@ func (a *App) handleDeleteUser(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Verify user exists.
-	if _, err := a.repo.GetUserByID(r.Context(), id); err != nil {
+	user, err := a.repo.GetUserByID(r.Context(), id)
+	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return burrow.NewHTTPError(http.StatusNotFound, "user not found")
 		}
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get user")
+	}
+
+	// Prevent deletion of the last admin.
+	if user.Role == RoleAdmin {
+		adminCount, err := a.repo.CountAdminUsers(r.Context())
+		if err != nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to count admins")
+		}
+		if adminCount <= 1 {
+			return burrow.NewHTTPError(http.StatusBadRequest, "cannot delete the last admin")
+		}
 	}
 
 	if err := a.repo.DeleteUser(r.Context(), id); err != nil {

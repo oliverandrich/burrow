@@ -1103,6 +1103,32 @@ func TestAdminDeleteUserSelf(t *testing.T) {
 	assert.Len(t, users, 1)
 }
 
+func TestAdminDeleteUserLastAdmin(t *testing.T) {
+	app, repo := newTestApp(t)
+	ctx := context.Background()
+
+	// Create the only admin and a regular user.
+	onlyAdmin, err := repo.CreateUser(ctx, "onlyadmin", "Only Admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, onlyAdmin.ID, RoleAdmin))
+
+	otherUser, err := repo.CreateUser(ctx, "other", "Other")
+	require.NoError(t, err)
+
+	// Another user tries to delete the last admin — must be rejected.
+	router := deleteUserRouter(app, otherUser)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/admin/users/%d", onlyAdmin.ID), nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "deleting the last admin should be rejected")
+
+	// Verify the admin was NOT deleted.
+	users, err := repo.ListUsers(ctx)
+	require.NoError(t, err)
+	assert.Len(t, users, 2, "both users should still exist")
+}
+
 // --- SetUserActive / Deactivate / Activate tests ---
 
 func TestSetUserActive(t *testing.T) {
