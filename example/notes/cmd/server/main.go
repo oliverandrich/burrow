@@ -49,23 +49,21 @@ func main() {
 	}
 
 	// Create the server with apps in dependency order.
-	// Session must come before auth (auth depends on session).
-	// Staticfiles must come before bootstrap (bootstrap depends on staticfiles).
 	srv := burrow.NewServer(
 		session.New(),
 		csrf.New(),
 		i18n.New(),
-		messages.New(),
 		staticApp,
+		healthcheck.New(),
+		jobs.New(),
+		pages.New(),
+		messages.New(),
 		auth.New(
 			auth.WithRenderer(authtpl.DefaultRenderer()),
 			auth.WithAuthLayout(authtpl.AuthLayout()),
 			auth.WithLogoComponent(pages.Logo()),
 		),
 		bootstrap.New(),
-		healthcheck.New(),
-		jobs.New(),
-		pages.New(),
 		notes.New(),
 		admin.New(
 			admin.WithLayout(admintpl.Layout()),

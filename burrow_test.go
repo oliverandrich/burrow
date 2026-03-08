@@ -233,12 +233,13 @@ func TestRegistryAddDuplicatePanics(t *testing.T) {
 	)
 }
 
-// dependentApp implements App + HasDependencies.
+// dependentApp implements App + HasDependencies with a configurable name.
 type dependentApp struct {
+	name string
 	deps []string
 }
 
-func (a *dependentApp) Name() string                { return "dependent" }
+func (a *dependentApp) Name() string                { return a.name }
 func (a *dependentApp) Register(_ *AppConfig) error { return nil }
 func (a *dependentApp) Dependencies() []string      { return a.deps }
 
@@ -248,7 +249,7 @@ func TestRegistryAddPanicsOnMissingDependency(t *testing.T) {
 	assert.PanicsWithValue(t,
 		`burrow: app "dependent" requires "session" to be registered first`,
 		func() {
-			reg.Add(&dependentApp{deps: []string{"session"}})
+			reg.Add(&dependentApp{name: "dependent", deps: []string{"session"}})
 		},
 	)
 }
@@ -258,7 +259,7 @@ func TestRegistryAddSucceedsWhenDependencySatisfied(t *testing.T) {
 	reg.Add(&minimalApp{}) // name = "minimal"
 
 	assert.NotPanics(t, func() {
-		reg.Add(&dependentApp{deps: []string{"minimal"}})
+		reg.Add(&dependentApp{name: "dependent", deps: []string{"minimal"}})
 	})
 
 	_, ok := reg.Get("dependent")
@@ -570,4 +571,165 @@ func TestNavItemsSortStable(t *testing.T) {
 	// Same position: insertion order preserved by stable sort.
 	assert.Equal(t, "B", items[1].Label)
 	assert.Equal(t, "A", items[2].Label)
+}
+
+// --- sortApps tests ---
+
+func appNames(apps []App) []string {
+	names := make([]string, len(apps))
+	for i, app := range apps {
+		names[i] = app.Name()
+	}
+	return names
+}
+
+func TestSortApps_NoDependencies_PreservesOrder(t *testing.T) {
+	apps := []App{
+		&dependentApp{name: "a"},
+		&dependentApp{name: "b"},
+		&dependentApp{name: "c"},
+	}
+
+	sorted := sortApps(apps)
+
+	assert.Equal(t, []string{"a", "b", "c"}, appNames(sorted))
+}
+
+func TestSortApps_ReordersDependencies(t *testing.T) {
+	apps := []App{
+		&dependentApp{name: "admin", deps: []string{"auth"}},
+		&dependentApp{name: "auth", deps: []string{"session"}},
+		&dependentApp{name: "session"},
+	}
+
+	sorted := sortApps(apps)
+
+	names := appNames(sorted)
+	// session must come before auth, auth must come before admin.
+	assert.Equal(t, []string{"session", "auth", "admin"}, names)
+}
+
+func TestSortApps_PreservesRelativeOrderForIndependentApps(t *testing.T) {
+	apps := []App{
+		&dependentApp{name: "i18n"},
+		&dependentApp{name: "staticfiles"},
+		&dependentApp{name: "bootstrap", deps: []string{"staticfiles"}},
+		&dependentApp{name: "healthcheck"},
+	}
+
+	sorted := sortApps(apps)
+
+	names := appNames(sorted)
+	// bootstrap must come after staticfiles; i18n and healthcheck keep relative order.
+	assert.Less(t, indexOf(names, "staticfiles"), indexOf(names, "bootstrap"))
+	assert.Less(t, indexOf(names, "i18n"), indexOf(names, "healthcheck"))
+}
+
+func TestSortApps_PanicsOnMissingDependency(t *testing.T) {
+	apps := []App{
+		&dependentApp{name: "auth", deps: []string{"session"}},
+	}
+
+	assert.PanicsWithValue(t,
+		`burrow: app "auth" requires "session", but it was not provided`,
+		func() { sortApps(apps) },
+	)
+}
+
+func TestSortApps_PanicsOnCycle(t *testing.T) {
+	apps := []App{
+		&dependentApp{name: "a", deps: []string{"b"}},
+		&dependentApp{name: "b", deps: []string{"a"}},
+	}
+
+	assert.Panics(t, func() { sortApps(apps) })
+}
+
+func TestSortApps_TransitiveDependencies(t *testing.T) {
+	apps := []App{
+		&dependentApp{name: "d", deps: []string{"c"}},
+		&dependentApp{name: "c", deps: []string{"b"}},
+		&dependentApp{name: "b", deps: []string{"a"}},
+		&dependentApp{name: "a"},
+	}
+
+	sorted := sortApps(apps)
+
+	assert.Equal(t, []string{"a", "b", "c", "d"}, appNames(sorted))
+}
+
+func TestSortApps_MultipleDependencies(t *testing.T) {
+	apps := []App{
+		&dependentApp{name: "admin", deps: []string{"auth", "bootstrap"}},
+		&dependentApp{name: "auth", deps: []string{"session"}},
+		&dependentApp{name: "bootstrap", deps: []string{"staticfiles"}},
+		&dependentApp{name: "session"},
+		&dependentApp{name: "staticfiles"},
+	}
+
+	sorted := sortApps(apps)
+
+	names := appNames(sorted)
+	assert.Less(t, indexOf(names, "session"), indexOf(names, "auth"))
+	assert.Less(t, indexOf(names, "staticfiles"), indexOf(names, "bootstrap"))
+	assert.Less(t, indexOf(names, "auth"), indexOf(names, "admin"))
+	assert.Less(t, indexOf(names, "bootstrap"), indexOf(names, "admin"))
+}
+
+func TestNewServer_SortsAppsAutomatically(t *testing.T) {
+	// Pass apps in wrong order — NewServer should sort them.
+	srv := NewServer(
+		&dependentApp{name: "admin", deps: []string{"auth"}},
+		&dependentApp{name: "auth", deps: []string{"session"}},
+		&dependentApp{name: "session"},
+	)
+
+	names := appNames(srv.Registry().Apps())
+	assert.Equal(t, []string{"session", "auth", "admin"}, names)
+}
+
+func TestSortApps_LogsWarningWhenReordered(t *testing.T) {
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(handler))
+	t.Cleanup(func() { slog.SetDefault(oldLogger) })
+
+	apps := []App{
+		&dependentApp{name: "auth", deps: []string{"session"}},
+		&dependentApp{name: "session"},
+	}
+
+	sortApps(apps)
+
+	output := buf.String()
+	assert.Contains(t, output, "app registration order was adjusted")
+	assert.Contains(t, output, "original")
+	assert.Contains(t, output, "resolved")
+}
+
+func TestSortApps_NoWarningWhenOrderCorrect(t *testing.T) {
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(handler))
+	t.Cleanup(func() { slog.SetDefault(oldLogger) })
+
+	apps := []App{
+		&dependentApp{name: "session"},
+		&dependentApp{name: "auth", deps: []string{"session"}},
+	}
+
+	sortApps(apps)
+
+	assert.NotContains(t, buf.String(), "app registration order was adjusted")
+}
+
+func indexOf(s []string, val string) int {
+	for i, v := range s {
+		if v == val {
+			return i
+		}
+	}
+	return -1
 }

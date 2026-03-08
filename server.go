@@ -28,12 +28,103 @@ type Server struct {
 }
 
 // NewServer creates a Server and registers the given apps.
+// Apps are automatically sorted so that dependencies are registered
+// before the apps that need them. The relative order of independent
+// apps is preserved. NewServer panics if a dependency is missing
+// from the input or if there is a dependency cycle.
 func NewServer(apps ...App) *Server {
+	sorted := sortApps(apps)
 	reg := NewRegistry()
-	for _, app := range apps {
+	for _, app := range sorted {
 		reg.Add(app)
 	}
 	return &Server{registry: reg}
+}
+
+// sortApps performs a stable topological sort of apps based on their
+// declared dependencies (HasDependencies interface). Apps without
+// dependencies keep their original relative order. Panics if a
+// required dependency is not in the input or if a cycle is detected.
+func sortApps(apps []App) []App {
+	// Build index and in-degree map.
+	byName := make(map[string]int, len(apps)) // name → original index
+	for i, app := range apps {
+		byName[app.Name()] = i
+	}
+
+	inDegree := make([]int, len(apps))
+	dependents := make([][]int, len(apps)) // dependents[i] = apps that depend on apps[i]
+
+	for i, app := range apps {
+		dep, ok := app.(HasDependencies)
+		if !ok {
+			continue
+		}
+		for _, required := range dep.Dependencies() {
+			j, exists := byName[required]
+			if !exists {
+				panic(fmt.Sprintf("burrow: app %q requires %q, but it was not provided", app.Name(), required))
+			}
+			inDegree[i]++
+			dependents[j] = append(dependents[j], i)
+		}
+	}
+
+	// Kahn's algorithm with a queue seeded in original order (stable).
+	queue := make([]int, 0, len(apps))
+	for i := range apps {
+		if inDegree[i] == 0 {
+			queue = append(queue, i)
+		}
+	}
+
+	sorted := make([]App, 0, len(apps))
+	for len(queue) > 0 {
+		idx := queue[0]
+		queue = queue[1:]
+		sorted = append(sorted, apps[idx])
+
+		for _, depIdx := range dependents[idx] {
+			inDegree[depIdx]--
+			if inDegree[depIdx] == 0 {
+				queue = append(queue, depIdx)
+			}
+		}
+	}
+
+	// Warn if the order changed so the developer can fix their registration order.
+	reordered := false
+	for i, app := range sorted {
+		if app.Name() != apps[i].Name() {
+			reordered = true
+			break
+		}
+	}
+	if reordered {
+		original := make([]string, len(apps))
+		for i, app := range apps {
+			original[i] = app.Name()
+		}
+		result := make([]string, len(sorted))
+		for i, app := range sorted {
+			result[i] = app.Name()
+		}
+		slog.Warn("app registration order was adjusted to satisfy dependencies",
+			"original", original, "resolved", result)
+	}
+
+	if len(sorted) != len(apps) {
+		// Find apps involved in the cycle for a useful error message.
+		var cycled []string
+		for i, deg := range inDegree {
+			if deg > 0 {
+				cycled = append(cycled, apps[i].Name())
+			}
+		}
+		panic(fmt.Sprintf("burrow: dependency cycle detected among apps: %v", cycled))
+	}
+
+	return sorted
 }
 
 // SetLayout configures the app layout function.
