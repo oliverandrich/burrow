@@ -12,30 +12,24 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
-    auth.New(
-        auth.WithRenderer(authRenderer),
-        auth.WithAuthLayout(authLayout),
-        auth.WithAdminRenderer(adminAuthRenderer),
-    ),
+    auth.New(),
     bootstrap.New(),
     htmx.New(),
-    admin.New(
-        admin.WithLayout(admintpl.Layout()),
-        admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
-    ),
+    admin.New(),
     staticfiles.New(emptyFS), // serves auth + admin static files
     // ... other apps
 )
 ```
 
-Or with custom renderers:
+`auth.New()` uses built-in defaults for the renderer, auth layout, and admin renderer. Use options to override with custom implementations:
 
 ```go
-// With custom templates.
-auth.New(auth.WithRenderer(myCustomRenderer))
-
-// API-only (no HTML pages).
-auth.New()
+// With custom renderer and layout.
+auth.New(
+    auth.WithRenderer(myCustomRenderer),
+    auth.WithAuthLayout(myCustomAuthLayout),
+    auth.WithAdminRenderer(myCustomAdminRenderer),
+)
 ```
 
 ## Default Templates
@@ -46,15 +40,13 @@ The auth app ships HTML templates via `HasTemplates`. These templates use the gl
 
 ## Auth Layout
 
-By default, public auth pages (login, register, recovery, email verification) render inside the global app layout — which typically includes a full navbar. This is often undesirable for unauthenticated users.
+By default, `auth.New()` uses a built-in minimal auth layout (`DefaultAuthLayout()`) for public auth pages (login, register, recovery, email verification). This avoids showing the full app navbar to unauthenticated users. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
-Use `auth.WithAuthLayout()` to override the layout for public auth pages. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+Use `auth.WithAuthLayout()` to override the default auth layout with a custom one:
 
 ```go
 auth.New(
-    auth.WithRenderer(authRenderer),
-    auth.WithAuthLayout(authLayout),        // built-in minimal layout
-    // auth.WithAuthLayout(myMinimalLayout), // or your own custom layout
+    auth.WithAuthLayout(myCustomAuthLayout),
 )
 ```
 

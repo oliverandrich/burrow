@@ -9,40 +9,30 @@ Admin panel coordinator that discovers and mounts admin views from other apps.
 ## Setup
 
 ```go
-import admintpl "codeberg.org/oliverandrich/burrow/contrib/admin/templates"
-
 srv := burrow.NewServer(
     session.New(),
-    auth.New(auth.WithRenderer(authRenderer)),
-    admin.New(
-        admin.WithLayout(admintpl.Layout()),
-        admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
-    ),
+    auth.New(),
+    admin.New(),
     staticfiles.New(myStaticFS), // serves admin + user static files
     // ... other apps
 )
 ```
 
-Options:
+`admin.New()` uses built-in defaults for the layout and dashboard renderer. Use options to override with custom implementations:
 
 ```go
-admin.New(                                                        // batteries-included
-    admin.WithLayout(admintpl.Layout()),
-    admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
-)
 admin.New(admin.WithLayout(myCustomLayout), admin.WithDashboardRenderer(myCustomDashboard))
-admin.New()                                                       // no layout, plain text dashboard
 ```
 
 The admin app discovers admin views from other apps via the `HasAdmin` interface. Any app that implements `HasAdmin` gets its routes mounted under `/admin` with auth protection.
 
 ## Default Layout
 
-`admintpl.Layout()` returns a `LayoutFunc` that renders a full admin HTML page with Bootstrap 5 styling, a sidebar navigation, and htmx for SPA-like navigation via `hx-get`/`hx-target`.
+The built-in default layout renders a full admin HTML page with Bootstrap 5 styling, a sidebar navigation, and htmx for SPA-like navigation via `hx-get`/`hx-target`.
 
 The layout reads admin nav items from context and renders them in the sidebar. Static assets are served via the `staticfiles` app using content-hashed URLs.
 
-**Note:** When using `admintpl.Layout()`, the `bootstrap` app must be registered to serve CSS/JS assets. The admin default layout references static files under the `"bootstrap"` prefix.
+**Note:** The `bootstrap` app must be registered to serve CSS/JS assets. The admin default layout references static files under the `"bootstrap"` prefix.
 
 ## ModelAdmin
 

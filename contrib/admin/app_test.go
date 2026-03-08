@@ -190,9 +190,14 @@ func TestNewWithLayout(t *testing.T) {
 	assert.NotNil(t, app.layout)
 }
 
-func TestNewWithoutLayout(t *testing.T) {
+func TestNewSetsDefaultLayout(t *testing.T) {
 	app := New()
-	assert.Nil(t, app.layout)
+	assert.NotNil(t, app.layout, "New() should set a default layout")
+}
+
+func TestNewSetsDefaultDashboardRenderer(t *testing.T) {
+	app := New()
+	assert.NotNil(t, app.dashboard, "New() should set a default dashboard renderer")
 }
 
 // mockDashboardRenderer is a mock DashboardRenderer for testing.
@@ -221,16 +226,22 @@ func TestIndexPageWithDashboardRenderer(t *testing.T) {
 	assert.Equal(t, "mock-dashboard", rec.Body.String())
 }
 
-func TestIndexPageWithoutDashboardRenderer(t *testing.T) {
+func TestIndexPageUsesDefaultDashboardRenderer(t *testing.T) {
 	app := New()
 
+	exec := func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+		return template.HTML("<rendered:" + name + ">"), nil //nolint:gosec // test
+	}
+
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
+	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
+	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
 	err := app.indexPage(rec, req)
 
 	require.NoError(t, err)
-	assert.Equal(t, "admin dashboard", rec.Body.String())
+	assert.Contains(t, rec.Body.String(), "<rendered:admin/index>")
 }
 
 // layoutCheckApp captures burrow.Layout from context inside the /admin group.

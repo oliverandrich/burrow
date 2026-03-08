@@ -9,7 +9,6 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
-	authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/bootstrap"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
@@ -38,10 +37,7 @@ func main() {
 		messages.New(),
 		bootstrap.New(),
 		pages.New(),
-		auth.New(
-			auth.WithRenderer(authtpl.DefaultRenderer()),
-			auth.WithAuthLayout(authtpl.AuthLayout()),
-		),
+		auth.New(),
 		polls.New(),
 	)
 

@@ -44,8 +44,13 @@ func WithDashboardRenderer(r DashboardRenderer) Option {
 }
 
 // New creates a new admin app with the given options.
+// By default, the built-in HTML layout and dashboard renderer are used.
+// Use WithLayout() and WithDashboardRenderer() to override.
 func New(opts ...Option) *App {
-	a := &App{}
+	a := &App{
+		layout:    DefaultLayout(),
+		dashboard: DefaultDashboardRenderer(),
+	}
 	for _, o := range opts {
 		o(a)
 	}

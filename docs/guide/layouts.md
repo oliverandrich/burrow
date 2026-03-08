@@ -94,23 +94,22 @@ If neither approach is used, content renders unwrapped.
 
 ## Setting the Auth Layout
 
-Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. Use `auth.WithAuthLayout()` to override the layout for these pages:
+Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. By default, `auth.New()` uses a built-in minimal auth layout (`DefaultAuthLayout()`) that renders a minimal HTML shell with Bootstrap CSS but no navigation. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+
+To override the auth layout with a custom one, use `auth.WithAuthLayout()`:
 
 ```go
 auth.New(
-    auth.WithRenderer(authtpl.DefaultRenderer()),
-    auth.WithAuthLayout(authtpl.AuthLayout()),
+    auth.WithAuthLayout(myCustomAuthLayout),
 )
 ```
 
-The built-in `authtpl.AuthLayout()` renders a minimal HTML shell with Bootstrap CSS but no navigation. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
-
 ## Setting the Admin Layout
 
-The admin layout is owned by the `admin` package. Pass it when creating the admin app:
+The admin layout is owned by the `admin` package. By default, `admin.New()` uses a built-in layout and dashboard renderer. To override with a custom layout:
 
 ```go
-admin.New(admin.WithLayout(adminLayout))
+admin.New(admin.WithLayout(myCustomLayout))
 ```
 
 Pass `nil` for no admin layout.

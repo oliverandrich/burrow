@@ -12,7 +12,7 @@ jobsApp := jobs.New()
 srv := burrow.NewServer(
     session.New(),
     jobsApp,
-    admin.New(admin.WithLayout(admintpl.Layout()), admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer())),
+    admin.New(),
     // ... other apps
 )
 ```

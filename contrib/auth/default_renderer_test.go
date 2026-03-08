@@ -1,4 +1,4 @@
-package templates
+package auth
 
 import (
 	"bytes"
@@ -10,33 +10,32 @@ import (
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-//go:embed *.html
-var testTemplateFS embed.FS
+//go:embed templates/*.html
+var testRendererTemplateFS embed.FS
 
-// Compile-time interface assertions.
-var _ auth.Renderer = (*defaultRenderer)(nil)
+// Compile-time interface assertion.
+var _ Renderer = (*defaultRenderer)(nil)
 
-// testExecutor creates a TemplateExecutor for testing with stub functions.
-func testExecutor() burrow.TemplateExecutor {
+// rendererTestExecutor creates a TemplateExecutor for testing with stub functions.
+func rendererTestExecutor() burrow.TemplateExecutor {
 	funcMap := template.FuncMap{
 		"t":                    func(key string) string { return key },
 		"csrfToken":            func() string { return "test-csrf-token" },
 		"staticURL":            func(name string) string { return "/static/" + name },
 		"authLogo":             func() template.HTML { return "" },
-		"currentUser":          func() *auth.User { return nil },
+		"currentUser":          func() *User { return nil },
 		"isAuthenticated":      func() bool { return false },
 		"isAdminEditSelf":      func() bool { return false },
 		"isAdminEditLastAdmin": func() bool { return false },
 		"lang":                 func() string { return "en" },
 		"itoa":                 func(id int64) string { return template.HTMLEscapeString(fmt.Sprintf("%d", id)) },
-		"credName":             credNameStub,
-		"emailValue":           func(user *auth.User) string { return "" },
+		"credName":             credName,
+		"emailValue":           func(user *User) string { return "" },
 		"deref": func(s *string) string {
 			if s != nil {
 				return *s
@@ -45,35 +44,27 @@ func testExecutor() burrow.TemplateExecutor {
 		},
 	}
 
-	// Parse stub for bootstrap/theme_script, then auth templates.
 	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(`{{ define "bootstrap/theme_script" }}{{ end }}`))
-	template.Must(tmpl.ParseFS(testTemplateFS, "*.html"))
+	template.Must(tmpl.ParseFS(testRendererTemplateFS, "templates/*.html"))
 
 	return func(r *http.Request, name string, data map[string]any) (template.HTML, error) {
 		var buf bytes.Buffer
 		if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 			return "", err
 		}
-		return template.HTML(buf.String()), nil
+		return template.HTML(buf.String()), nil //nolint:gosec // test
 	}
 }
 
-func credNameStub(cred auth.Credential) string {
-	if cred.Name != "" {
-		return cred.Name
-	}
-	return "Passkey"
-}
-
-// withTestExecutor sets up a request with a test template executor in context.
-func withTestExecutor(req *http.Request) *http.Request {
-	ctx := burrow.WithTemplateExecutor(req.Context(), testExecutor())
+// withRendererTestExecutor sets up a request with a test template executor in context.
+func withRendererTestExecutor(req *http.Request) *http.Request {
+	ctx := burrow.WithTemplateExecutor(req.Context(), rendererTestExecutor())
 	return req.WithContext(ctx)
 }
 
 func TestDefaultRendererLoginPage(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.LoginPage(rec, req, "/dashboard")
@@ -87,7 +78,7 @@ func TestDefaultRendererLoginPage(t *testing.T) {
 
 func TestDefaultRendererRegisterPage(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.RegisterPage(rec, req, false, false, "", "")
@@ -101,7 +92,7 @@ func TestDefaultRendererRegisterPage(t *testing.T) {
 
 func TestDefaultRendererRegisterPageEmailMode(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.RegisterPage(rec, req, true, false, "", "")
@@ -114,10 +105,10 @@ func TestDefaultRendererRegisterPageEmailMode(t *testing.T) {
 
 func TestDefaultRendererCredentialsPage(t *testing.T) {
 	r := DefaultRenderer()
-	creds := []auth.Credential{
+	creds := []Credential{
 		{ID: 1, Name: "My Passkey"},
 	}
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/credentials", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/credentials", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.CredentialsPage(rec, req, creds)
@@ -131,7 +122,7 @@ func TestDefaultRendererCredentialsPage(t *testing.T) {
 
 func TestDefaultRendererRecoveryPage(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.RecoveryPage(rec, req, "/dashboard")
@@ -147,7 +138,7 @@ func TestDefaultRendererRecoveryPage(t *testing.T) {
 func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
 	r := DefaultRenderer()
 	codes := []string{"aaaa-bbbb-cccc", "dddd-eeee-ffff"}
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.RecoveryCodesPage(rec, req, codes)
@@ -164,7 +155,7 @@ func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
 
 func TestDefaultRendererVerifyPendingPage(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-pending", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-pending", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.VerifyPendingPage(rec, req)
@@ -178,7 +169,7 @@ func TestDefaultRendererVerifyPendingPage(t *testing.T) {
 
 func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.VerifyEmailSuccess(rec, req)
@@ -192,7 +183,7 @@ func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
 
 func TestDefaultRendererVerifyEmailError(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.VerifyEmailError(rec, req, "invalid_token")
@@ -209,10 +200,9 @@ func TestDefaultRendererLoginPageWithLogo(t *testing.T) {
 	r := DefaultRenderer()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
-	// Create an executor that reads logo from context.
-	logoExec := testExecutorWithLogo(`<span class="test-logo">My Brand</span>`)
+	logoExec := rendererTestExecutorWithLogo(`<span class="test-logo">My Brand</span>`)
 	ctx := burrow.WithTemplateExecutor(req.Context(), logoExec)
-	ctx = auth.WithLogo(ctx, `<span class="test-logo">My Brand</span>`)
+	ctx = WithLogo(ctx, `<span class="test-logo">My Brand</span>`)
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -226,25 +216,23 @@ func TestDefaultRendererLoginPageWithLogo(t *testing.T) {
 
 func TestDefaultRendererLoginPageWithoutLogo(t *testing.T) {
 	r := DefaultRenderer()
-	req := withTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil))
+	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil))
 	rec := httptest.NewRecorder()
 
 	err := r.LoginPage(rec, req, "/dashboard")
 
 	require.NoError(t, err)
 	body := rec.Body.String()
-	// Without a logo, the logo wrapper div should not appear.
 	assert.NotContains(t, body, "text-center mb-4")
 }
 
 func TestDefaultRendererWithLayout(t *testing.T) {
 	r := DefaultRenderer()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
-	// Set a layout in context.
 	ctx := burrow.WithLayout(req.Context(), func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
 		return burrow.HTML(w, code, "<layout-wrapper>"+string(content)+"</layout-wrapper>")
 	})
-	ctx = burrow.WithTemplateExecutor(ctx, testExecutor())
+	ctx = burrow.WithTemplateExecutor(ctx, rendererTestExecutor())
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -260,20 +248,19 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 	r := DefaultRenderer()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
-	// Create executor with real CSRF token stub.
 	funcMap := template.FuncMap{
 		"t":                    func(key string) string { return key },
 		"csrfToken":            func() string { return "test-csrf-token-value" },
 		"staticURL":            func(name string) string { return "/static/" + name },
 		"authLogo":             func() template.HTML { return "" },
-		"currentUser":          func() *auth.User { return nil },
+		"currentUser":          func() *User { return nil },
 		"isAuthenticated":      func() bool { return false },
 		"isAdminEditSelf":      func() bool { return false },
 		"isAdminEditLastAdmin": func() bool { return false },
 		"lang":                 func() string { return "en" },
 		"itoa":                 func(id int64) string { return fmt.Sprintf("%d", id) },
-		"credName":             credNameStub,
-		"emailValue":           func(user *auth.User) string { return "" },
+		"credName":             credName,
+		"emailValue":           func(user *User) string { return "" },
 		"deref": func(s *string) string {
 			if s != nil {
 				return *s
@@ -282,13 +269,13 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 		},
 	}
 	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(`{{ define "bootstrap/theme_script" }}{{ end }}`))
-	template.Must(tmpl.ParseFS(testTemplateFS, "*.html"))
+	template.Must(tmpl.ParseFS(testRendererTemplateFS, "templates/*.html"))
 	exec := func(r *http.Request, name string, data map[string]any) (template.HTML, error) {
 		var buf bytes.Buffer
 		if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 			return "", err
 		}
-		return template.HTML(buf.String()), nil
+		return template.HTML(buf.String()), nil //nolint:gosec // test
 	}
 
 	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
@@ -304,21 +291,21 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 	assert.Contains(t, body, "test-csrf-token-value")
 }
 
-// testExecutorWithLogo creates an executor where authLogo returns the given HTML.
-func testExecutorWithLogo(logoHTML template.HTML) burrow.TemplateExecutor {
+// rendererTestExecutorWithLogo creates an executor where authLogo returns the given HTML.
+func rendererTestExecutorWithLogo(logoHTML template.HTML) burrow.TemplateExecutor {
 	funcMap := template.FuncMap{
 		"t":                    func(key string) string { return key },
 		"csrfToken":            func() string { return "test-csrf-token" },
 		"staticURL":            func(name string) string { return "/static/" + name },
 		"authLogo":             func() template.HTML { return logoHTML },
-		"currentUser":          func() *auth.User { return nil },
+		"currentUser":          func() *User { return nil },
 		"isAuthenticated":      func() bool { return false },
 		"isAdminEditSelf":      func() bool { return false },
 		"isAdminEditLastAdmin": func() bool { return false },
 		"lang":                 func() string { return "en" },
 		"itoa":                 func(id int64) string { return fmt.Sprintf("%d", id) },
-		"credName":             credNameStub,
-		"emailValue":           func(user *auth.User) string { return "" },
+		"credName":             credName,
+		"emailValue":           func(user *User) string { return "" },
 		"deref": func(s *string) string {
 			if s != nil {
 				return *s
@@ -327,12 +314,12 @@ func testExecutorWithLogo(logoHTML template.HTML) burrow.TemplateExecutor {
 		},
 	}
 	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(`{{ define "bootstrap/theme_script" }}{{ end }}`))
-	template.Must(tmpl.ParseFS(testTemplateFS, "*.html"))
+	template.Must(tmpl.ParseFS(testRendererTemplateFS, "templates/*.html"))
 	return func(r *http.Request, name string, data map[string]any) (template.HTML, error) {
 		var buf bytes.Buffer
 		if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 			return "", err
 		}
-		return template.HTML(buf.String()), nil
+		return template.HTML(buf.String()), nil //nolint:gosec // test
 	}
 }

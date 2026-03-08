@@ -1,4 +1,4 @@
-package templates
+package auth
 
 import (
 	"html/template"
@@ -6,15 +6,14 @@ import (
 	"net/http"
 
 	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/auth"
 	"codeberg.org/oliverandrich/burrow/contrib/i18n"
 )
 
-// AuthLayout returns a minimal HTML layout for unauthenticated auth pages.
+// DefaultAuthLayout returns a minimal HTML layout for unauthenticated auth pages.
 // It renders a clean page with Bootstrap CSS but no navbar or navigation.
-// Pass this to auth.WithAuthLayout() to override the global app layout
-// on login, register, recovery, and verification pages.
-func AuthLayout() burrow.LayoutFunc {
+// This is used as the default for auth.New(); pass a custom layout via
+// WithAuthLayout() to override.
+func DefaultAuthLayout() burrow.LayoutFunc {
 	return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
 		exec := burrow.TemplateExecutorFromContext(r.Context())
 		if exec == nil {
@@ -36,14 +35,15 @@ func AuthLayout() burrow.LayoutFunc {
 	}
 }
 
-// DefaultRenderer returns a Renderer that uses the built-in HTML templates.
-// Templates use burrow.RenderTemplate which reads layout from context:
-// if a layout is set, page content is wrapped in it; otherwise bare content is rendered.
-func DefaultRenderer() auth.Renderer {
+// DefaultRenderer returns the default Renderer that uses the built-in HTML
+// templates. Templates use burrow.RenderTemplate which reads layout from
+// context: if a layout is set, page content is wrapped in it; otherwise
+// bare content is rendered.
+func DefaultRenderer() Renderer {
 	return &defaultRenderer{}
 }
 
-// defaultRenderer implements auth.Renderer using built-in HTML templates.
+// defaultRenderer implements Renderer using built-in HTML templates.
 type defaultRenderer struct{}
 
 func (d *defaultRenderer) LoginPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error {
@@ -61,7 +61,7 @@ func (d *defaultRenderer) RegisterPage(w http.ResponseWriter, r *http.Request, u
 	})
 }
 
-func (d *defaultRenderer) CredentialsPage(w http.ResponseWriter, r *http.Request, creds []auth.Credential) error {
+func (d *defaultRenderer) CredentialsPage(w http.ResponseWriter, r *http.Request, creds []Credential) error {
 	return renderCard(w, r, i18n.T(r.Context(), "credentials-title"), i18n.T(r.Context(), "credentials-title"), "auth/credentials", map[string]any{
 		"Creds": creds,
 	})
@@ -100,13 +100,11 @@ func renderCentered(w http.ResponseWriter, r *http.Request, title, name string, 
 		return burrow.RenderTemplate(w, r, http.StatusOK, name, data)
 	}
 
-	// Render the inner template first.
 	inner, err := exec(r, name, data)
 	if err != nil {
 		return err
 	}
 
-	// Wrap in centered container.
 	centeredData := map[string]any{"Content": inner, "Title": title}
 	return burrow.RenderTemplate(w, r, http.StatusOK, "auth/centered", centeredData)
 }
@@ -118,13 +116,11 @@ func renderCard(w http.ResponseWriter, r *http.Request, title, cardTitle, name s
 		return burrow.RenderTemplate(w, r, http.StatusOK, name, data)
 	}
 
-	// Render the inner template first.
 	inner, err := exec(r, name, data)
 	if err != nil {
 		return err
 	}
 
-	// Wrap in card. Title is the page title for layout; CardTitle is displayed in the card.
 	cardData := map[string]any{"Content": inner, "Title": title, "CardTitle": cardTitle}
 	return burrow.RenderTemplate(w, r, http.StatusOK, "auth/card", cardData)
 }

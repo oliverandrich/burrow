@@ -11,9 +11,7 @@ import (
 
 	"codeberg.org/oliverandrich/burrow"
 	"codeberg.org/oliverandrich/burrow/contrib/admin"
-	admintpl "codeberg.org/oliverandrich/burrow/contrib/admin/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/auth"
-	authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"
 	"codeberg.org/oliverandrich/burrow/contrib/bootstrap"
 	"codeberg.org/oliverandrich/burrow/contrib/csrf"
 	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
@@ -60,17 +58,12 @@ func main() {
 		pages.New(),
 		messages.New(),
 		auth.New(
-			auth.WithRenderer(authtpl.DefaultRenderer()),
-			auth.WithAuthLayout(authtpl.AuthLayout()),
 			auth.WithLogoComponent(pages.Logo()),
 		),
 		htmx.New(),
 		bootstrap.New(),
 		notes.New(),
-		admin.New(
-			admin.WithLayout(admintpl.Layout()),
-			admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
-		),
+		admin.New(),
 	)
 
 	// Use the app layout with navbar (overrides bare bootstrap layout).

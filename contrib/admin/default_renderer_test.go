@@ -1,4 +1,4 @@
-package templates
+package admin
 
 import (
 	"html/template"
@@ -7,33 +7,32 @@ import (
 	"testing"
 
 	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // Compile-time interface assertion.
-var _ admin.DashboardRenderer = (*defaultDashboardRenderer)(nil)
+var _ DashboardRenderer = (*defaultDashboardRenderer)(nil)
 
-// stubExecutor returns a TemplateExecutor that echoes the template name
+// stubLayoutExecutor returns a TemplateExecutor that echoes the template name
 // wrapped in a tag, ignoring the actual template content.
-func stubExecutor(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+func stubLayoutExecutor(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
 	content, _ := data["Content"].(template.HTML)
 	return template.HTML("<rendered:" + name + ">" + string(content) + "</rendered:" + name + ">"), nil //nolint:gosec // test
 }
 
-func TestLayout(t *testing.T) {
-	lay := Layout()
+func TestDefaultLayout(t *testing.T) {
+	lay := DefaultLayout()
 	require.NotNil(t, lay)
 
-	groups := []admin.NavGroup{
+	groups := []NavGroup{
 		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users", URL: "/admin/users"}}},
 	}
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
-	ctx := burrow.WithTemplateExecutor(req.Context(), stubExecutor)
-	ctx = admin.WithNavGroups(ctx, groups)
-	ctx = admin.WithRequestPath(ctx, "/admin/users")
+	ctx := burrow.WithTemplateExecutor(req.Context(), stubLayoutExecutor)
+	ctx = WithNavGroups(ctx, groups)
+	ctx = WithRequestPath(ctx, "/admin/users")
 	req = req.WithContext(ctx)
 
 	rec := httptest.NewRecorder()
@@ -46,8 +45,8 @@ func TestLayout(t *testing.T) {
 	assert.Contains(t, body, "<p>content</p>")
 }
 
-func TestLayoutWithoutExecutor(t *testing.T) {
-	lay := Layout()
+func TestDefaultLayoutWithoutExecutor(t *testing.T) {
+	lay := DefaultLayout()
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 	rec := httptest.NewRecorder()
@@ -59,8 +58,8 @@ func TestLayoutWithoutExecutor(t *testing.T) {
 	assert.Contains(t, body, "<p>fallback</p>")
 }
 
-func TestLayoutPreservesTitleFromData(t *testing.T) {
-	lay := Layout()
+func TestDefaultLayoutPreservesTitleFromData(t *testing.T) {
+	lay := DefaultLayout()
 
 	var capturedData map[string]any
 	exec := func(_ *http.Request, _ string, data map[string]any) (template.HTML, error) {
@@ -86,7 +85,6 @@ func TestDefaultDashboardRendererDashboardPage(t *testing.T) {
 		return template.HTML("<dashboard:" + name + ">"), nil //nolint:gosec // test
 	}
 
-	// Set up a layout that wraps content.
 	lay := func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
 		return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
 	}
@@ -115,20 +113,20 @@ func TestDefaultDashboardRendererWithNavGroups(t *testing.T) {
 		return "ok", nil
 	}
 
-	groups := []admin.NavGroup{
+	groups := []NavGroup{
 		{AppName: "auth", Items: []burrow.NavItem{{Label: "Users", URL: "/admin/users"}}},
 	}
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
-	ctx = admin.WithNavGroups(ctx, groups)
+	ctx = WithNavGroups(ctx, groups)
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
 	err := r.DashboardPage(rec, req)
 
 	require.NoError(t, err)
-	sidebar, ok := capturedData["SidebarGroups"].([]admin.SidebarGroup)
+	sidebar, ok := capturedData["SidebarGroups"].([]SidebarGroup)
 	require.True(t, ok)
 	require.Len(t, sidebar, 1)
 	assert.Equal(t, "Auth", sidebar[0].Label)

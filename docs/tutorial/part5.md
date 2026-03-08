@@ -13,7 +13,6 @@ Update `main.go`:
 ```go
 import (
     "codeberg.org/oliverandrich/burrow/contrib/auth"
-    authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"
 )
 
 srv := burrow.NewServer(
@@ -24,10 +23,7 @@ srv := burrow.NewServer(
     messages.New(),
     bootstrap.New(),
     pages.New(),
-    auth.New(
-        auth.WithRenderer(authtpl.DefaultRenderer()),
-        auth.WithAuthLayout(authtpl.AuthLayout()),
-    ),
+    auth.New(),           // new
     polls.New(),
 )
 ```
@@ -117,7 +113,7 @@ Visit `/auth/register` to create an account (you'll need a browser that supports
 
 ## What You've Learnt
 
-- **`auth.New()`** — configures the auth app with renderer and layout options
+- **`auth.New()`** — configures the auth app with built-in default renderer and layout
 - **`auth.RequireAuth()`** — middleware that redirects unauthenticated users to login
 - **`auth.UserFromContext()`** — retrieves the authenticated user from request context
 - **`HasDependencies`** — declares inter-app dependencies for automatic ordering

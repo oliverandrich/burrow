@@ -10,11 +10,11 @@ Swappable design system using [Bootstrap 5](https://getbootstrap.com/) and [htmx
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
-    auth.New(auth.WithRenderer(authRenderer)),
+    auth.New(),
     bootstrap.New(),                    // provides base layout + Bootstrap assets
     htmx.New(),                         // serves htmx.min.js
     healthcheck.New(),
-    admin.New(admin.WithLayout(admintpl.Layout()), admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer())),
+    admin.New(),
     staticfiles.New(myStaticFS),
 )
 ```

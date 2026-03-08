@@ -85,8 +85,13 @@ func WithEmailService(e EmailService) Option {
 }
 
 // New creates a new auth app with the given options.
+// By default, the built-in HTML renderer and auth layout are used.
+// Use WithRenderer() and WithAuthLayout() to override.
 func New(opts ...Option) *App {
-	a := &App{}
+	a := &App{
+		renderer:   DefaultRenderer(),
+		authLayout: DefaultAuthLayout(),
+	}
 	for _, o := range opts {
 		o(a)
 	}

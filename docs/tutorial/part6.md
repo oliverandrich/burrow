@@ -13,16 +13,12 @@ Update `main.go`:
 ```go
 import (
     "codeberg.org/oliverandrich/burrow/contrib/admin"
-    admintpl "codeberg.org/oliverandrich/burrow/contrib/admin/templates"
 )
 
 srv := burrow.NewServer(
     // ... existing apps ...
     polls.New(),
-    admin.New(
-        admin.WithLayout(admintpl.Layout()),
-        admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
-    ),
+    admin.New(),          // new
 )
 ```
 
@@ -128,7 +124,7 @@ Visit `/admin/` to see the dashboard. Click "Questions" in the sidebar to list, 
 
 ## What You've Learnt
 
-- **`admin.New()`** — coordinates the admin panel with layout and dashboard
+- **`admin.New()`** — coordinates the admin panel with built-in default layout and dashboard
 - **`ModelAdmin`** — generic CRUD views for any Bun model, configured declaratively
 - **`HasAdmin`** — interface for apps to contribute admin routes and navigation
 - **`verbose` struct tags** — provide human-readable column labels for the admin UI
