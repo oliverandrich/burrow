@@ -12,6 +12,8 @@ go mod init polls
 go get codeberg.org/oliverandrich/burrow@latest
 ```
 
+After writing the code below, run `go mod tidy` to fetch all transitive dependencies before building.
+
 ## Write the Server
 
 Create `main.go`:
@@ -26,16 +28,12 @@ import (
     "os"
 
     "codeberg.org/oliverandrich/burrow"
-    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
-    "codeberg.org/oliverandrich/burrow/contrib/session"
     "github.com/go-chi/chi/v5"
     "github.com/urfave/cli/v3"
 )
 
 func main() {
     srv := burrow.NewServer(
-        session.New(),
-        healthcheck.New(),
         &homepageApp{},
     )
 
@@ -54,6 +52,8 @@ func main() {
 ```
 
 ### The Homepage App
+
+Add the following code to the same `main.go` file, below the `main()` function.
 
 Every Burrow application is composed of **apps**. Each app implements `burrow.App`:
 
@@ -90,9 +90,7 @@ A few things to note:
 go run .
 ```
 
-You should see log output indicating the server has started. Open `http://localhost:8080` in your browser — you'll see "Hello, Polls!".
-
-The healthcheck endpoint is also available at `http://localhost:8080/healthz`.
+You should see log output indicating the server has started. Burrow creates an `app.db` SQLite database in the working directory. Open `http://localhost:8080` in your browser — you'll see "Hello, Polls!".
 
 ## What Happens at Boot
 

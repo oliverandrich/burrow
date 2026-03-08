@@ -9,16 +9,12 @@ import (
 	"os"
 
 	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/healthcheck"
-	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/urfave/cli/v3"
 )
 
 func main() {
 	srv := burrow.NewServer(
-		session.New(),
-		healthcheck.New(),
 		&homepageApp{},
 	)
 

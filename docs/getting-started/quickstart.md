@@ -88,7 +88,7 @@ go run main.go
 
 The server starts on `localhost:8080` with:
 
-- SQLite database at `./data/app.db` (auto-created with WAL mode)
+- SQLite database at `app.db` in the working directory (auto-created with WAL mode)
 - Session cookies (auto-generated keys, logged to stdout)
 - Health check at `/healthz`
 

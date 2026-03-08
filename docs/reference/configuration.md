@@ -19,7 +19,7 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 
 | Flag | Env Var | TOML Key | Default | Description |
 |------|---------|----------|---------|-------------|
-| `--database-dsn` | `DATABASE_DSN` | `database.dsn` | `./data/app.db` | Database DSN |
+| `--database-dsn` | `DATABASE_DSN` | `database.dsn` | `app.db` | Database DSN |
 
 ### TLS
 
