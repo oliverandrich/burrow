@@ -12,22 +12,47 @@ The `authmail` package defines the `Renderer` interface for email content. The `
 
 ## Setup
 
+Register the SMTP app alongside the auth app. The `smtpApp.Mailer()` is a lazy accessor — it returns `nil` until `Configure()` runs (after CLI flag parsing), but the auth app only calls `SendVerification` / `SendInvite` at request time, well after configuration is complete.
+
+To wire the two together, create a small adapter that defers the `Mailer()` call:
+
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/authmail/smtpmail"
+import (
+    "codeberg.org/oliverandrich/burrow/contrib/auth"
+    "codeberg.org/oliverandrich/burrow/contrib/authmail/smtpmail"
+)
+
+smtpApp := smtpmail.New(
+    smtpmail.WithRenderer(emailRenderer), // custom email templates
+)
 
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
+    smtpApp,
     auth.New(
-        auth.WithRenderer(authRenderer),
-        auth.WithEmailService(smtpApp.Mailer()), // wire after Configure
-    ),
-    smtpmail.New(
-        smtpmail.WithRenderer(emailRenderer), // custom email templates
+        auth.WithEmailService(&lazyMailer{app: smtpApp}),
     ),
     // ... other apps
 )
 ```
+
+The adapter delegates to the mailer once it is configured:
+
+```go
+type lazyMailer struct{ app *smtpmail.App }
+
+func (l *lazyMailer) SendVerification(ctx context.Context, email, url string) error {
+    return l.app.Mailer().SendVerification(ctx, email, url)
+}
+
+func (l *lazyMailer) SendInvite(ctx context.Context, email, url string) error {
+    return l.app.Mailer().SendInvite(ctx, email, url)
+}
+```
+
+!!! note "Why the adapter?"
+    `smtpApp.Mailer()` returns `nil` until `Configure()` runs, so you cannot pass it directly to `auth.WithEmailService()` at `NewServer()` time. The adapter defers the call until a request actually triggers an email, by which point `Configure()` has completed.
 
 ## Renderer Interface
 
@@ -48,16 +73,14 @@ A default renderer implementation is available in the `smtpmail/templates` sub-p
 
 ## SMTP App
 
-The `smtpmail.App` is a burrow contrib app that configures an SMTP client from CLI flags:
+The `smtpmail.App` is a burrow contrib app that configures an SMTP client from CLI flags. The `Mailer()` method returns the configured `*Mailer` after `Configure()` has run:
 
 ```go
-smtpApp := smtpmail.New()
-
-// After Configure(), access the mailer:
+// Only valid after Configure() — returns nil before that.
 mailer := smtpApp.Mailer()
 ```
 
-The `Mailer` implements `auth.EmailService`, so it can be wired directly into the auth app.
+The `*Mailer` implements `auth.EmailService` (`SendVerification` and `SendInvite`).
 
 ### Email Delivery
 
