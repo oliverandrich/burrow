@@ -68,6 +68,7 @@ docs:
 
 # Build documentation
 docs-build:
+    ./scripts/generate-llms-full.sh
     uv run --with zensical zensical build
 
 # Update Bootstrap Icons SVG components (downloads latest release)
