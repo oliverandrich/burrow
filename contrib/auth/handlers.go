@@ -630,6 +630,10 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 		return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	}
 
+	if user.Email == nil {
+		return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	}
+
 	_ = h.repo.DeleteUserEmailVerificationTokens(ctx, user.ID)
 
 	plainToken, tokenHash, expiresAt, tokenErr := GenerateToken()
