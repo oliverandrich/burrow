@@ -7,4 +7,8 @@ repos:
       - id: go-test-mod
       - id: go-mod-tidy
 
-  
+  - repo: https://github.com/djlint/djLint
+    rev: v1.36.4
+    hooks:
+      - id: djlint-golang
+        types_or: [html]
