@@ -179,6 +179,25 @@ func TestValidateTLS_UnknownMode(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown TLS mode")
 }
 
+func TestFlagSourcesWithNilConfigSource(t *testing.T) {
+	chain := FlagSources(nil, "MY_VAR", "my.key")
+	// Should not panic; chain is created with only the env var source.
+	assert.NotNil(t, chain)
+}
+
+func TestFlagSourcesWithConfigSource(t *testing.T) {
+	called := false
+	configSource := func(key string) cli.ValueSource {
+		called = true
+		assert.Equal(t, "app.setting", key)
+		return cli.EnvVar("FALLBACK") // dummy source for testing
+	}
+
+	chain := FlagSources(configSource, "MY_VAR", "app.setting")
+	assert.NotNil(t, chain)
+	assert.True(t, called, "configSource should be called with the TOML key")
+}
+
 func TestConfigInAppConfig(t *testing.T) {
 	cfg := &AppConfig{
 		Config: &Config{

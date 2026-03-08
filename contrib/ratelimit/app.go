@@ -46,30 +46,30 @@ func (a *App) Name() string { return "ratelimit" }
 
 func (a *App) Register(_ *burrow.AppConfig) error { return nil }
 
-func (a *App) Flags() []cli.Flag {
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.FloatFlag{
 			Name:    "ratelimit-rate",
 			Value:   10,
 			Usage:   "Requests per second (token refill rate)",
-			Sources: cli.EnvVars("RATELIMIT_RATE"),
+			Sources: burrow.FlagSources(configSource, "RATELIMIT_RATE", "ratelimit.rate"),
 		},
 		&cli.IntFlag{
 			Name:    "ratelimit-burst",
 			Value:   20,
 			Usage:   "Maximum burst size (bucket capacity)",
-			Sources: cli.EnvVars("RATELIMIT_BURST"),
+			Sources: burrow.FlagSources(configSource, "RATELIMIT_BURST", "ratelimit.burst"),
 		},
 		&cli.DurationFlag{
 			Name:    "ratelimit-cleanup-interval",
 			Value:   time.Minute,
 			Usage:   "Interval for sweeping expired rate limit entries",
-			Sources: cli.EnvVars("RATELIMIT_CLEANUP_INTERVAL"),
+			Sources: burrow.FlagSources(configSource, "RATELIMIT_CLEANUP_INTERVAL", "ratelimit.cleanup_interval"),
 		},
 		&cli.BoolFlag{
 			Name:    "ratelimit-trust-proxy",
 			Usage:   "Use X-Forwarded-For/X-Real-IP for client IP extraction",
-			Sources: cli.EnvVars("RATELIMIT_TRUST_PROXY"),
+			Sources: burrow.FlagSources(configSource, "RATELIMIT_TRUST_PROXY", "ratelimit.trust_proxy"),
 		},
 	}
 }

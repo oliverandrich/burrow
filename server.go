@@ -142,7 +142,7 @@ func (s *Server) Registry() *Registry {
 // TOML file sourcing (or nil for ENV-only).
 func (s *Server) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	flags := CoreFlags(configSource)
-	flags = append(flags, s.registry.AllFlags()...)
+	flags = append(flags, s.registry.AllFlags(configSource)...)
 	return flags
 }
 

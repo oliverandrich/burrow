@@ -114,19 +114,19 @@ func (a *App) MigrationFS() fs.FS {
 	return sub
 }
 
-func (a *App) Flags() []cli.Flag {
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.IntFlag{
 			Name:    "jobs-workers",
 			Value:   2,
 			Usage:   "Number of concurrent job worker goroutines",
-			Sources: cli.EnvVars("JOBS_WORKERS"),
+			Sources: burrow.FlagSources(configSource, "JOBS_WORKERS", "jobs.workers"),
 		},
 		&cli.DurationFlag{
 			Name:    "jobs-poll-interval",
 			Value:   time.Second,
 			Usage:   "Interval between job queue polls",
-			Sources: cli.EnvVars("JOBS_POLL_INTERVAL"),
+			Sources: burrow.FlagSources(configSource, "JOBS_POLL_INTERVAL", "jobs.poll_interval"),
 		},
 	}
 }

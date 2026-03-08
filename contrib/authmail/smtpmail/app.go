@@ -35,41 +35,41 @@ func (a *App) Name() string { return "authmail-smtp" }
 
 func (a *App) Register(_ *burrow.AppConfig) error { return nil }
 
-func (a *App) Flags() []cli.Flag {
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "smtp-host",
 			Value:   "localhost",
 			Usage:   "SMTP server host",
-			Sources: cli.EnvVars("SMTP_HOST"),
+			Sources: burrow.FlagSources(configSource, "SMTP_HOST", "smtp.host"),
 		},
 		&cli.IntFlag{
 			Name:    "smtp-port",
 			Value:   587,
 			Usage:   "SMTP server port",
-			Sources: cli.EnvVars("SMTP_PORT"),
+			Sources: burrow.FlagSources(configSource, "SMTP_PORT", "smtp.port"),
 		},
 		&cli.StringFlag{
 			Name:    "smtp-username",
 			Usage:   "SMTP username",
-			Sources: cli.EnvVars("SMTP_USERNAME"),
+			Sources: burrow.FlagSources(configSource, "SMTP_USERNAME", "smtp.username"),
 		},
 		&cli.StringFlag{
 			Name:    "smtp-password",
 			Usage:   "SMTP password",
-			Sources: cli.EnvVars("SMTP_PASSWORD"),
+			Sources: burrow.FlagSources(configSource, "SMTP_PASSWORD", "smtp.password"),
 		},
 		&cli.StringFlag{
 			Name:    "smtp-from",
 			Value:   "noreply@localhost",
 			Usage:   "Sender email address",
-			Sources: cli.EnvVars("SMTP_FROM"),
+			Sources: burrow.FlagSources(configSource, "SMTP_FROM", "smtp.from"),
 		},
 		&cli.StringFlag{
 			Name:    "smtp-tls",
 			Value:   "starttls",
 			Usage:   "TLS mode: starttls, tls, or none",
-			Sources: cli.EnvVars("SMTP_TLS"),
+			Sources: burrow.FlagSources(configSource, "SMTP_TLS", "smtp.tls"),
 		},
 	}
 }

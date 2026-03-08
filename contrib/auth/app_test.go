@@ -51,7 +51,7 @@ func TestAppName(t *testing.T) {
 
 func TestAppFlags(t *testing.T) {
 	app := &App{}
-	flags := app.Flags()
+	flags := app.Flags(nil)
 
 	names := make(map[string]bool)
 	for _, f := range flags {

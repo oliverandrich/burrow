@@ -137,7 +137,7 @@ func TestTranslateValidationErrorsAppOverride(t *testing.T) {
 
 	cmd := &cli.Command{
 		Name:  "test",
-		Flags: app.Flags(),
+		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
 			return app.Configure(cmd)
 		},

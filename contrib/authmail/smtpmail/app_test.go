@@ -21,7 +21,7 @@ func TestAppRegister(t *testing.T) {
 
 func TestAppFlags(t *testing.T) {
 	a := New()
-	flags := a.Flags()
+	flags := a.Flags(nil)
 	assert.Len(t, flags, 6)
 }
 

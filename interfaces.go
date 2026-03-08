@@ -27,8 +27,10 @@ type HasNavItems interface {
 
 // Configurable is implemented by apps that define CLI flags
 // and need to read their configuration from the CLI command.
+// The configSource parameter enables TOML file sourcing; it may be nil
+// when only ENV/CLI sources are used.
 type Configurable interface {
-	Flags() []cli.Flag
+	Flags(configSource func(key string) cli.ValueSource) []cli.Flag
 	Configure(cmd *cli.Command) error
 }
 

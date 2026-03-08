@@ -73,24 +73,24 @@ func (a *App) Name() string { return "uploads" }
 
 func (a *App) Register(_ *burrow.AppConfig) error { return nil }
 
-func (a *App) Flags() []cli.Flag {
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "upload-dir",
 			Value:   a.dir,
 			Usage:   "Directory for uploaded files",
-			Sources: cli.EnvVars("UPLOAD_DIR"),
+			Sources: burrow.FlagSources(configSource, "UPLOAD_DIR", "uploads.dir"),
 		},
 		&cli.StringFlag{
 			Name:    "upload-url-prefix",
 			Value:   a.urlPrefix,
 			Usage:   "URL prefix for serving uploaded files",
-			Sources: cli.EnvVars("UPLOAD_URL_PREFIX"),
+			Sources: burrow.FlagSources(configSource, "UPLOAD_URL_PREFIX", "uploads.url_prefix"),
 		},
 		&cli.StringFlag{
 			Name:    "upload-allowed-types",
 			Usage:   "Comma-separated list of allowed MIME types (empty = all)",
-			Sources: cli.EnvVars("UPLOAD_ALLOWED_TYPES"),
+			Sources: burrow.FlagSources(configSource, "UPLOAD_ALLOWED_TYPES", "uploads.allowed_types"),
 		},
 	}
 }

@@ -28,12 +28,12 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	return nil
 }
 
-func (a *App) Flags() []cli.Flag {
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "csrf-key",
 			Usage:   "CSRF auth key (32-byte hex, auto-generated if empty)",
-			Sources: cli.EnvVars("CSRF_KEY"),
+			Sources: burrow.FlagSources(configSource, "CSRF_KEY", "csrf.key"),
 		},
 	}
 }

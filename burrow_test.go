@@ -34,7 +34,7 @@ func (a *fullApp) Register(_ *AppConfig) error                     { a.registere
 func (a *fullApp) MigrationFS() fs.FS                              { return nil }
 func (a *fullApp) Middleware() []func(http.Handler) http.Handler   { return nil }
 func (a *fullApp) NavItems() []NavItem                             { return nil }
-func (a *fullApp) Flags() []cli.Flag                               { return nil }
+func (a *fullApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
 func (a *fullApp) Configure(_ *cli.Command) error                  { return nil }
 func (a *fullApp) CLICommands() []*cli.Command                     { return nil }
 func (a *fullApp) Seed(_ context.Context) error                    { return nil }
@@ -67,14 +67,14 @@ func (a *trackingApp) Register(cfg *AppConfig) error {
 	}
 	return nil
 }
-func (a *trackingApp) NavItems() []NavItem                           { return a.navItems }
-func (a *trackingApp) Middleware() []func(http.Handler) http.Handler { return a.middleware }
-func (a *trackingApp) Flags() []cli.Flag                             { return a.flags }
-func (a *trackingApp) Configure(_ *cli.Command) error                { a.configured = true; return nil }
-func (a *trackingApp) CLICommands() []*cli.Command                   { return a.commands }
-func (a *trackingApp) Seed(_ context.Context) error                  { a.seeded = true; return nil }
-func (a *trackingApp) AdminRoutes(_ chi.Router)                      {}
-func (a *trackingApp) AdminNavItems() []NavItem                      { return a.adminNavItems }
+func (a *trackingApp) NavItems() []NavItem                             { return a.navItems }
+func (a *trackingApp) Middleware() []func(http.Handler) http.Handler   { return a.middleware }
+func (a *trackingApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return a.flags }
+func (a *trackingApp) Configure(_ *cli.Command) error                  { a.configured = true; return nil }
+func (a *trackingApp) CLICommands() []*cli.Command                     { return a.commands }
+func (a *trackingApp) Seed(_ context.Context) error                    { a.seeded = true; return nil }
+func (a *trackingApp) AdminRoutes(_ chi.Router)                        {}
+func (a *trackingApp) AdminNavItems() []NavItem                        { return a.adminNavItems }
 
 // failingApp returns errors from Register, Configure, or Seed.
 type failingApp struct {
@@ -91,7 +91,7 @@ func (a *failingApp) Register(_ *AppConfig) error {
 	}
 	return nil
 }
-func (a *failingApp) Flags() []cli.Flag { return nil }
+func (a *failingApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
 func (a *failingApp) Configure(_ *cli.Command) error {
 	if a.failOn == "configure" {
 		return a.err
@@ -421,7 +421,7 @@ func TestRegistryAllFlags(t *testing.T) {
 	reg.Add(&trackingApp{name: "app2", flags: []cli.Flag{flag2}})
 	reg.Add(&minimalApp{}) // Not Configurable, should be skipped.
 
-	flags := reg.AllFlags()
+	flags := reg.AllFlags(nil)
 	require.Len(t, flags, 2)
 	assert.Equal(t, flag1, flags[0])
 	assert.Equal(t, flag2, flags[1])

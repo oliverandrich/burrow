@@ -62,7 +62,7 @@ func configuredApp(t *testing.T, args ...string) *App {
 
 	cmd := &cli.Command{
 		Name:  "test",
-		Flags: app.Flags(),
+		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
 			return app.Configure(cmd)
 		},
@@ -113,7 +113,7 @@ func TestConfigureInvalidDir(t *testing.T) {
 
 	cmd := &cli.Command{
 		Name:  "test",
-		Flags: app.Flags(),
+		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
 			return app.Configure(cmd)
 		},
@@ -124,7 +124,7 @@ func TestConfigureInvalidDir(t *testing.T) {
 
 func TestConfigureOptionDefaultsShownInFlags(t *testing.T) {
 	app := New(WithBaseDir("/var/app"), WithURLPrefix("/media/"))
-	flags := app.Flags()
+	flags := app.Flags(nil)
 
 	var dirDefault, prefixDefault string
 	for _, f := range flags {

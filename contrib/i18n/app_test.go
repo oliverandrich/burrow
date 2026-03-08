@@ -39,7 +39,7 @@ func TestAppName(t *testing.T) {
 
 func TestAppFlags(t *testing.T) {
 	app := New()
-	flags := app.Flags()
+	flags := app.Flags(nil)
 
 	names := make(map[string]bool)
 	for _, f := range flags {
@@ -57,7 +57,7 @@ func configuredApp(t *testing.T) *App {
 
 	cmd := &cli.Command{
 		Name:  "test",
-		Flags: app.Flags(),
+		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
 			return app.Configure(cmd)
 		},
@@ -131,7 +131,7 @@ func TestAutoDiscoverTranslations(t *testing.T) {
 
 	cmd := &cli.Command{
 		Name:  "test",
-		Flags: app.Flags(),
+		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
 			return app.Configure(cmd)
 		},
@@ -158,7 +158,7 @@ func TestAutoDiscoverSkipsAppsWithoutTranslations(t *testing.T) {
 
 	cmd := &cli.Command{
 		Name:  "test",
-		Flags: app.Flags(),
+		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
 			return app.Configure(cmd)
 		},

@@ -36,19 +36,19 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	return nil
 }
 
-func (a *App) Flags() []cli.Flag {
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "i18n-default-language",
 			Value:   "en",
 			Usage:   "Default language",
-			Sources: cli.EnvVars("I18N_DEFAULT_LANGUAGE"),
+			Sources: burrow.FlagSources(configSource, "I18N_DEFAULT_LANGUAGE", "i18n.default_language"),
 		},
 		&cli.StringFlag{
 			Name:    "i18n-supported-languages",
 			Value:   "en,de",
 			Usage:   "Comma-separated supported languages",
-			Sources: cli.EnvVars("I18N_SUPPORTED_LANGUAGES"),
+			Sources: burrow.FlagSources(configSource, "I18N_SUPPORTED_LANGUAGES", "i18n.supported_languages"),
 		},
 	}
 }

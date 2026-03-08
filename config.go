@@ -147,85 +147,90 @@ func IsLocalhost(host string) bool {
 	return strings.HasSuffix(host, ".localhost")
 }
 
+// FlagSources builds a cli.ValueSourceChain from an environment variable
+// and an optional TOML key. If configSource is nil, only the env var is used.
+// This is the standard way for contrib apps to wire up flag sources:
+//
+//	src := burrow.FlagSources(configSource, "MY_ENV_VAR", "app.toml_key")
+func FlagSources(configSource func(key string) cli.ValueSource, envVar, tomlKey string) cli.ValueSourceChain {
+	sources := []cli.ValueSource{cli.EnvVar(envVar)}
+	if configSource != nil {
+		sources = append(sources, configSource(tomlKey))
+	}
+	return cli.NewValueSourceChain(sources...)
+}
+
 // CoreFlags returns the CLI flags for core framework configuration.
 // If configSource is provided, it is used as an additional value source
 // (e.g. a TOML file sourcer) for each flag.
 func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
-	src := func(envVar, tomlKey string) cli.ValueSourceChain {
-		sources := []cli.ValueSource{cli.EnvVar(envVar)}
-		if configSource != nil {
-			sources = append(sources, configSource(tomlKey))
-		}
-		return cli.NewValueSourceChain(sources...)
-	}
-
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "host",
 			Value:   "localhost",
 			Usage:   "Host to bind to",
-			Sources: src("HOST", "server.host"),
+			Sources: FlagSources(configSource, "HOST", "server.host"),
 		},
 		&cli.IntFlag{
 			Name:    "port",
 			Value:   8080,
 			Usage:   "Port to listen on",
-			Sources: src("PORT", "server.port"),
+			Sources: FlagSources(configSource, "PORT", "server.port"),
 		},
 		&cli.StringFlag{
 			Name:    "base-url",
 			Usage:   "Base URL for the application",
-			Sources: src("BASE_URL", "server.base_url"),
+			Sources: FlagSources(configSource, "BASE_URL", "server.base_url"),
 		},
 		&cli.IntFlag{
 			Name:    "max-body-size",
 			Value:   1,
 			Usage:   "Maximum request body size in MB",
-			Sources: src("MAX_BODY_SIZE", "server.max_body_size"),
+			Sources: FlagSources(configSource, "MAX_BODY_SIZE", "server.max_body_size"),
 		},
 		&cli.StringFlag{
 			Name:    "pid-file",
 			Usage:   "Path to PID file (for systemd/supervisor integration)",
-			Sources: src("PID_FILE", "server.pid_file"),
+			Sources: FlagSources(configSource, "PID_FILE", "server.pid_file"),
 		},
 		&cli.IntFlag{
 			Name:    "shutdown-timeout",
 			Value:   10,
 			Usage:   "Graceful shutdown timeout in seconds",
-			Sources: src("SHUTDOWN_TIMEOUT", "server.shutdown_timeout"),
+			Sources: FlagSources(configSource, "SHUTDOWN_TIMEOUT", "server.shutdown_timeout"),
 		},
 		&cli.StringFlag{
 			Name:    "database-dsn",
 			Value:   "./data/app.db",
 			Usage:   "Database DSN",
-			Sources: src("DATABASE_DSN", "database.dsn"),
+			Sources: FlagSources(configSource, "DATABASE_DSN", "database.dsn"),
 		},
 		&cli.StringFlag{
 			Name:    "tls-mode",
 			Value:   "auto",
 			Usage:   "TLS mode (auto, acme, selfsigned, manual, off)",
-			Sources: src("TLS_MODE", "tls.mode"),
+			Sources: FlagSources(configSource, "TLS_MODE", "tls.mode"),
 		},
 		&cli.StringFlag{
 			Name:    "tls-cert-dir",
 			Value:   "./data/certs",
 			Usage:   "Directory for auto-generated certificates",
-			Sources: src("TLS_CERT_DIR", "tls.cert_dir"),
+			Sources: FlagSources(configSource, "TLS_CERT_DIR", "tls.cert_dir"),
 		},
 		&cli.StringFlag{
 			Name:    "tls-email",
 			Usage:   "Email for ACME/Let's Encrypt registration",
-			Sources: src("TLS_EMAIL", "tls.email"),
+			Sources: FlagSources(configSource, "TLS_EMAIL", "tls.email"),
 		},
 		&cli.StringFlag{
 			Name:    "tls-cert-file",
 			Usage:   "Path to TLS certificate file (manual mode)",
-			Sources: src("TLS_CERT_FILE", "tls.cert_file"),
+			Sources: FlagSources(configSource, "TLS_CERT_FILE", "tls.cert_file"),
 		},
 		&cli.StringFlag{
 			Name:    "tls-key-file",
 			Usage:   "Path to TLS private key file (manual mode)",
-			Sources: src("TLS_KEY_FILE", "tls.key_file"),
+			Sources: FlagSources(configSource, "TLS_KEY_FILE", "tls.key_file"),
 		},
 	}
 }

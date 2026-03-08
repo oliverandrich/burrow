@@ -154,11 +154,12 @@ func (r *Registry) RegisterMiddleware(router chi.Router) {
 }
 
 // AllFlags collects CLI flags from all Configurable apps.
-func (r *Registry) AllFlags() []cli.Flag {
+// Pass configSource to enable TOML file sourcing (or nil for ENV-only).
+func (r *Registry) AllFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	var flags []cli.Flag
 	for _, app := range r.apps {
 		if provider, ok := app.(Configurable); ok {
-			flags = append(flags, provider.Flags()...)
+			flags = append(flags, provider.Flags(configSource)...)
 		}
 	}
 	return flags

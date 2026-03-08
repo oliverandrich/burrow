@@ -125,6 +125,6 @@ func TestApp_MigrationFS(t *testing.T) {
 
 func TestApp_Flags(t *testing.T) {
 	app := New()
-	flags := app.Flags()
+	flags := app.Flags(nil)
 	assert.Len(t, flags, 2)
 }

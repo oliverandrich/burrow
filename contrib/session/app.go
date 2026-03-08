@@ -27,29 +27,29 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	return nil
 }
 
-func (a *App) Flags() []cli.Flag {
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "session-cookie-name",
 			Value:   "_session",
 			Usage:   "Session cookie name",
-			Sources: cli.EnvVars("SESSION_COOKIE_NAME"),
+			Sources: burrow.FlagSources(configSource, "SESSION_COOKIE_NAME", "session.cookie_name"),
 		},
 		&cli.IntFlag{
 			Name:    "session-max-age",
 			Value:   604800, // 7 days
 			Usage:   "Session max age in seconds",
-			Sources: cli.EnvVars("SESSION_MAX_AGE"),
+			Sources: burrow.FlagSources(configSource, "SESSION_MAX_AGE", "session.max_age"),
 		},
 		&cli.StringFlag{
 			Name:    "session-hash-key",
 			Usage:   "Session hash key (32-byte hex, auto-generated if empty)",
-			Sources: cli.EnvVars("SESSION_HASH_KEY"),
+			Sources: burrow.FlagSources(configSource, "SESSION_HASH_KEY", "session.hash_key"),
 		},
 		&cli.StringFlag{
 			Name:    "session-block-key",
 			Usage:   "Session block key for encryption (32-byte hex, optional)",
-			Sources: cli.EnvVars("SESSION_BLOCK_KEY"),
+			Sources: burrow.FlagSources(configSource, "SESSION_BLOCK_KEY", "session.block_key"),
 		},
 	}
 }

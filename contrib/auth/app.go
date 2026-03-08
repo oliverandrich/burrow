@@ -204,51 +204,51 @@ func (a *App) MigrationFS() fs.FS {
 // TranslationFS returns the embedded translation files for auto-discovery by the i18n app.
 func (a *App) TranslationFS() fs.FS { return translationFS }
 
-func (a *App) Flags() []cli.Flag {
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "auth-login-redirect",
 			Value:   "/",
 			Usage:   "Redirect target after successful login",
-			Sources: cli.EnvVars("AUTH_LOGIN_REDIRECT"),
+			Sources: burrow.FlagSources(configSource, "AUTH_LOGIN_REDIRECT", "auth.login_redirect"),
 		},
 		&cli.StringFlag{
 			Name:    "auth-logout-redirect",
 			Value:   "/auth/login",
 			Usage:   "Redirect target after logout",
-			Sources: cli.EnvVars("AUTH_LOGOUT_REDIRECT"),
+			Sources: burrow.FlagSources(configSource, "AUTH_LOGOUT_REDIRECT", "auth.logout_redirect"),
 		},
 		&cli.BoolFlag{
 			Name:    "auth-use-email",
 			Usage:   "Use email instead of username for authentication",
-			Sources: cli.EnvVars("AUTH_USE_EMAIL"),
+			Sources: burrow.FlagSources(configSource, "AUTH_USE_EMAIL", "auth.use_email"),
 		},
 		&cli.BoolFlag{
 			Name:    "auth-require-verification",
 			Usage:   "Require email verification before login",
-			Sources: cli.EnvVars("AUTH_REQUIRE_VERIFICATION"),
+			Sources: burrow.FlagSources(configSource, "AUTH_REQUIRE_VERIFICATION", "auth.require_verification"),
 		},
 		&cli.BoolFlag{
 			Name:    "auth-invite-only",
 			Usage:   "Require an invite to register",
-			Sources: cli.EnvVars("AUTH_INVITE_ONLY"),
+			Sources: burrow.FlagSources(configSource, "AUTH_INVITE_ONLY", "auth.invite_only"),
 		},
 		&cli.StringFlag{
 			Name:    "webauthn-rp-id",
 			Value:   "localhost",
 			Usage:   "WebAuthn Relying Party ID (domain name)",
-			Sources: cli.EnvVars("WEBAUTHN_RP_ID"),
+			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_ID", "auth.webauthn_rp_id"),
 		},
 		&cli.StringFlag{
 			Name:    "webauthn-rp-display-name",
 			Value:   "Web App",
 			Usage:   "WebAuthn Relying Party display name",
-			Sources: cli.EnvVars("WEBAUTHN_RP_DISPLAY_NAME"),
+			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_DISPLAY_NAME", "auth.webauthn_rp_display_name"),
 		},
 		&cli.StringFlag{
 			Name:    "webauthn-rp-origin",
 			Usage:   "WebAuthn Relying Party origin (defaults to base URL)",
-			Sources: cli.EnvVars("WEBAUTHN_RP_ORIGIN"),
+			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_ORIGIN", "auth.webauthn_rp_origin"),
 		},
 	}
 }
