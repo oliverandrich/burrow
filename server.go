@@ -256,6 +256,8 @@ func openDB(dsn string) (*bun.DB, error) {
 		return nil, err
 	}
 
+	dsn = withTxLock(dsn)
+
 	sqldb, err := sql.Open(sqliteshim.ShimName, dsn)
 	if err != nil {
 		return nil, err
@@ -267,17 +269,48 @@ func openDB(dsn string) (*bun.DB, error) {
 
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 
-	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		return nil, fmt.Errorf("set WAL mode: %w", err)
+	pragmas := []struct {
+		sql    string
+		errMsg string
+	}{
+		{"PRAGMA journal_mode=WAL", "set WAL mode"},
+		{"PRAGMA synchronous=NORMAL", "set synchronous"},
+		{"PRAGMA foreign_keys=ON", "enable foreign keys"},
+		{"PRAGMA busy_timeout=5000", "set busy timeout"},
+		{"PRAGMA temp_store=MEMORY", "set temp store"},
+		{"PRAGMA mmap_size=134217728", "set mmap size"},
+		{"PRAGMA journal_size_limit=27103364", "set journal size limit"},
+		{"PRAGMA cache_size=2000", "set cache size"},
 	}
-	if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
-		return nil, fmt.Errorf("set synchronous: %w", err)
-	}
-	if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
-		return nil, fmt.Errorf("enable foreign keys: %w", err)
+
+	for _, p := range pragmas {
+		if _, err := db.Exec(p.sql); err != nil {
+			return nil, fmt.Errorf("%s: %w", p.errMsg, err)
+		}
 	}
 
 	return db, nil
+}
+
+// withTxLock ensures the DSN uses IMMEDIATE transaction mode.
+// This prevents transactions from failing immediately when the database is
+// locked and instead waits up to busy_timeout before returning an error.
+func withTxLock(dsn string) string {
+	if strings.Contains(dsn, "_txlock=") {
+		return dsn
+	}
+
+	switch {
+	case dsn == ":memory:" || strings.HasPrefix(dsn, "file::memory"):
+		return dsn
+	case strings.HasPrefix(dsn, "file:"):
+		if strings.Contains(dsn, "?") {
+			return dsn + "&_txlock=immediate"
+		}
+		return dsn + "?_txlock=immediate"
+	default:
+		return "file:" + dsn + "?_txlock=immediate"
+	}
 }
 
 func layoutMiddleware(fn LayoutFunc) func(http.Handler) http.Handler {

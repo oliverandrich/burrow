@@ -54,6 +54,7 @@ nav:
   - Guide:
       - Creating an App: guide/creating-an-app.md
       - Validation: guide/validation.md
+      - Database: guide/database.md
       - Configuration: guide/configuration.md
       - Layouts & Rendering: guide/layouts.md
       - Migrations: guide/migrations.md

@@ -4,7 +4,14 @@
   <img src="docs/assets/cover.png" alt="Burrow — Go gophers building a modular burrow">
 </p>
 
-A Go web framework library built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and Go's standard `html/template`. Designed around composable apps with a Django-inspired architecture.
+A web framework for Go developers who want something like Django, Rails, or Flask — but with the deployment simplicity of a single static binary.
+
+Most Go web development follows the "API backend + SPA frontend" pattern. Burrow takes a different approach: server-rendered HTML with templates, modular apps with their own routes, migrations, and middleware, and an embedded SQLite database. The result is an application you can deploy as a single file — `./myapp` and you're done.
+
+Built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and Go's standard `html/template`. Ideal for self-hosted applications, internal tools, or any project where "download, start, use" is the goal.
+
+!!! note
+    Burrow is designed for server-rendered web applications, not API-only services. If you're building a JSON API with a separate frontend, a lighter router like Chi on its own is probably a better fit.
 
 ## Features
 

@@ -17,35 +17,30 @@ package main
 
 import (
     "context"
-    "fmt"
-    "html/template"
     "log"
     "net/http"
     "os"
 
     "codeberg.org/oliverandrich/burrow"
-    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
-    "codeberg.org/oliverandrich/burrow/contrib/session"
+    "github.com/go-chi/chi/v5"
     "github.com/urfave/cli/v3"
 )
 
-// appLayout wraps page content in a minimal HTML shell.
-func appLayout() burrow.LayoutFunc {
-    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, _ map[string]any) error {
-        w.Header().Set("Content-Type", "text/html; charset=utf-8")
-        w.WriteHeader(code)
-        _, err := fmt.Fprintf(w, "<!DOCTYPE html><html><body>%s</body></html>", content)
-        return err
-    }
+// homeApp is a minimal app with a single route.
+type homeApp struct{}
+
+func (a *homeApp) Name() string                        { return "home" }
+func (a *homeApp) Register(_ *burrow.AppConfig) error   { return nil }
+func (a *homeApp) Routes(r chi.Router) {
+    r.Method("GET", "/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
+        return burrow.Text(w, http.StatusOK, "Hello from Burrow!")
+    }))
 }
 
 func main() {
     srv := burrow.NewServer(
-        session.New(),
-        healthcheck.New(),
+        &homeApp{},
     )
-
-    srv.SetLayout(appLayout())
 
     cmd := &cli.Command{
         Name:    "myapp",
@@ -61,8 +56,7 @@ func main() {
 }
 ```
 
-!!! tip "Use Bootstrap for a real layout"
-    The manual layout above is for illustration. In practice, use the `bootstrap` contrib app which provides a full HTML layout with CSS, dark mode, and htmx — see [Bootstrap](../contrib/bootstrap.md). The [Tutorial](../tutorial/index.md) walks through setting this up step by step.
+This shows the core pattern: define an app, implement `Routes()`, and use `burrow.Handle()` to write handlers that return errors. No layout needed yet — that comes later when you want to render HTML templates (see the [Tutorial](../tutorial/index.md)).
 
 ## 3. Run It
 
@@ -70,18 +64,13 @@ func main() {
 go run main.go
 ```
 
-The server starts on `localhost:8080` with:
-
-- SQLite database at `app.db` in the working directory (auto-created with WAL mode)
-- Session cookies (auto-generated keys, logged to stdout)
-- Health check at `/healthz`
+The server starts on `localhost:8080` with a SQLite database at `app.db` (auto-created with WAL mode).
 
 ## 4. Test It
 
 ```bash
-# Health check
-curl http://localhost:8080/healthz
-# {"database":"ok","status":"ok"}
+curl http://localhost:8080/
+# Hello from Burrow!
 ```
 
 ## 5. Configure It
