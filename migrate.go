@@ -57,18 +57,38 @@ func RunAppMigrations(ctx context.Context, db *bun.DB, appName string, migration
 			return fmt.Errorf("read migration %q for app %q: %w", name, appName, err)
 		}
 
-		if _, err := db.ExecContext(ctx, string(content)); err != nil {
-			return fmt.Errorf("execute migration %q for app %q: %w", name, appName, err)
-		}
-
-		if _, err := db.ExecContext(ctx,
-			"INSERT INTO _migrations (app, name) VALUES (?, ?)",
-			appName, name,
-		); err != nil {
-			return fmt.Errorf("record migration %q for app %q: %w", name, appName, err)
+		if err := runMigrationInTx(ctx, db, appName, name, string(content)); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+// runMigrationInTx executes a single migration and records it in _migrations,
+// all within a transaction. If either step fails, the entire transaction is
+// rolled back to prevent partial state.
+func runMigrationInTx(ctx context.Context, db *bun.DB, appName, name, sql string) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction for migration %q of app %q: %w", name, appName, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.ExecContext(ctx, sql); err != nil {
+		return fmt.Errorf("execute migration %q for app %q: %w", name, appName, err)
+	}
+
+	if _, err := tx.ExecContext(ctx,
+		"INSERT INTO _migrations (app, name) VALUES (?, ?)",
+		appName, name,
+	); err != nil {
+		return fmt.Errorf("record migration %q for app %q: %w", name, appName, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit migration %q for app %q: %w", name, appName, err)
+	}
 	return nil
 }
 

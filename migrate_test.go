@@ -147,6 +147,42 @@ func TestRunAppMigrationsNamespacesPerApp(t *testing.T) {
 	assert.Equal(t, 1, countB)
 }
 
+func TestRunAppMigrationsRollsBackOnFailure(t *testing.T) {
+	db := testDB(t)
+
+	// First migration succeeds, second fails mid-way.
+	// The second migration creates a table then runs invalid SQL.
+	// With transactions, the partial table creation should be rolled back.
+	migrations := fstest.MapFS{
+		"001_create_items.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY);"),
+		},
+		"002_bad_migration.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE orphan (id INTEGER PRIMARY KEY);\nTHIS IS NOT SQL;"),
+		},
+	}
+
+	err := RunAppMigrations(t.Context(), db, "testapp", migrations)
+	require.Error(t, err)
+
+	// First migration should have committed (it was in its own transaction).
+	var count int
+	err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ? AND name = ?",
+		"testapp", "001_create_items.up.sql").Scan(t.Context(), &count)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count, "first migration should be recorded")
+
+	// Second migration should NOT be recorded.
+	err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ? AND name = ?",
+		"testapp", "002_bad_migration.up.sql").Scan(t.Context(), &count)
+	require.NoError(t, err)
+	assert.Equal(t, 0, count, "failed migration should not be recorded")
+
+	// The orphan table from the failed migration should not exist (rolled back).
+	_, err = db.NewRaw("SELECT COUNT(*) FROM orphan").Exec(t.Context())
+	assert.Error(t, err, "orphan table should not exist after rollback")
+}
+
 func TestRunAppMigrationsReturnsErrorOnBadSQL(t *testing.T) {
 	db := testDB(t)
 	migrations := fstest.MapFS{
