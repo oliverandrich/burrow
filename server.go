@@ -3,10 +3,14 @@ package burrow
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -224,7 +228,34 @@ func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
 	return s.registry.Seed(ctx)
 }
 
+// checkDBDir verifies that the parent directory of a file-based DSN exists.
+// In-memory databases (":memory:" or empty DSN) are skipped.
+func checkDBDir(dsn string) error {
+	if dsn == "" || dsn == ":memory:" || strings.HasPrefix(dsn, "file::memory") {
+		return nil
+	}
+
+	// Strip query parameters from file: URIs.
+	path := dsn
+	if after, ok := strings.CutPrefix(path, "file:"); ok {
+		path = after
+		if i := strings.IndexByte(path, '?'); i >= 0 {
+			path = path[:i]
+		}
+	}
+
+	dir := filepath.Dir(path)
+	if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("database directory %q does not exist; create it with: mkdir -p %s", dir, dir)
+	}
+	return nil
+}
+
 func openDB(dsn string) (*bun.DB, error) {
+	if err := checkDBDir(dsn); err != nil {
+		return nil, err
+	}
+
 	sqldb, err := sql.Open(sqliteshim.ShimName, dsn)
 	if err != nil {
 		return nil, err

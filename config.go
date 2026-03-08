@@ -201,7 +201,7 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name:    "database-dsn",
-			Value:   "./data/app.db",
+			Value:   "app.db",
 			Usage:   "Database DSN",
 			Sources: FlagSources(configSource, "DATABASE_DSN", "database.dsn"),
 		},

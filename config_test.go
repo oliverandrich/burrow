@@ -48,7 +48,7 @@ func TestCoreDefaultValues(t *testing.T) {
 	assert.Empty(t, cfg.Server.PIDFile)
 	assert.Equal(t, 1, cfg.Server.MaxBodySize)
 	assert.Equal(t, 10, cfg.Server.ShutdownTimeout)
-	assert.Equal(t, "./data/app.db", cfg.Database.DSN)
+	assert.Equal(t, "app.db", cfg.Database.DSN)
 	assert.Equal(t, "auto", cfg.TLS.Mode)
 	assert.Equal(t, "./data/certs", cfg.TLS.CertDir)
 }

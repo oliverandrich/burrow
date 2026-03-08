@@ -28,8 +28,7 @@ type App struct {
 type Option func(*App)
 
 // WithBaseDir sets the base directory for uploads. The upload directory
-// becomes {baseDir}/uploads. Defaults to "data" (i.e. data/uploads),
-// matching the framework's data directory convention (data/app.db).
+// becomes {baseDir}/uploads. Defaults to "data" (i.e. data/uploads).
 func WithBaseDir(dir string) Option {
 	return func(a *App) {
 		a.dir = filepath.Join(dir, defaultDirName)

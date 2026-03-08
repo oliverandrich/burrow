@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -180,6 +181,33 @@ func TestNavItemsMiddleware(t *testing.T) {
 	require.Len(t, gotItems, 2)
 	assert.Equal(t, "Home", gotItems[0].Label)
 	assert.Equal(t, "About", gotItems[1].Label)
+}
+
+func TestOpenDBMissingDirectory(t *testing.T) {
+	dsn := filepath.Join(t.TempDir(), "nonexistent", "subdir", "app.db")
+	_, err := openDB(dsn)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "directory")
+	assert.Contains(t, err.Error(), "mkdir -p")
+	assert.NotContains(t, err.Error(), "out of memory")
+}
+
+func TestCheckDBDirSkipsMemory(t *testing.T) {
+	assert.NoError(t, checkDBDir(":memory:"))
+	assert.NoError(t, checkDBDir(""))
+	assert.NoError(t, checkDBDir("file::memory:?cache=shared"))
+}
+
+func TestCheckDBDirExistingDir(t *testing.T) {
+	dsn := filepath.Join(t.TempDir(), "app.db")
+	assert.NoError(t, checkDBDir(dsn))
+}
+
+func TestCheckDBDirFileURI(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "nonexistent", "app.db") + "?mode=rwc"
+	err := checkDBDir(dsn)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "directory")
 }
 
 func TestServerRunAction(t *testing.T) {
