@@ -74,27 +74,18 @@ Messages are not injected into templates automatically — your layout function 
 layoutData["Messages"] = messages.Get(r.Context())
 ```
 
-Then render them in your layout template:
+Then render them in your layout template. Note that the `error` level must be mapped to Bootstrap's `danger` class:
 
 ```html
 {{ if .Messages -}}
 {{ range .Messages -}}
-<div class="alert alert-{{ .Level }} alert-dismissible fade show" role="alert">
+<div class="alert alert-{{ if eq .Level "error" }}danger{{ else }}{{ .Level }}{{ end }} alert-dismissible fade show" role="alert">
     {{ .Text }}
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 {{ end -}}
 {{ end -}}
 ```
-
-Level mapping for Bootstrap:
-
-| Level | Bootstrap class |
-|-------|----------------|
-| `info` | `alert-info` |
-| `success` | `alert-success` |
-| `warning` | `alert-warning` |
-| `error` | `alert-danger` |
 
 ## Custom Rendering
 

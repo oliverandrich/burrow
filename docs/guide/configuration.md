@@ -59,7 +59,7 @@ email = "admin@example.com"
 Apps implement the `Configurable` interface to add their own flags:
 
 ```go
-func (a *App) Flags() []cli.Flag {
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
     return []cli.Flag{
         &cli.StringFlag{
             Name:    "notes-page-size",

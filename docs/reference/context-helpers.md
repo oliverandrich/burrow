@@ -110,18 +110,18 @@ Stores a CSRF token in the context. Used internally by the CSRF middleware.
 
 Defined in `codeberg.org/oliverandrich/burrow/contrib/auth`.
 
-### GetUser
+### UserFromContext
 
 ```go
-func GetUser(r *http.Request) *User
+func UserFromContext(ctx context.Context) *User
 ```
 
-Returns the authenticated user from the request context, or `nil` if not logged in.
+Returns the authenticated user from the context, or `nil` if not logged in.
 
 ### IsAuthenticated
 
 ```go
-func IsAuthenticated(r *http.Request) bool
+func IsAuthenticated(ctx context.Context) bool
 ```
 
 Returns `true` if a user is logged in.

@@ -36,31 +36,16 @@ func (a *App) Dependencies() []string {
 
 If a dependency is missing when `NewServer` processes your app, it panics at startup with a clear error message — a programming mistake caught immediately.
 
-!!! warning "Registration Order"
-    Dependencies must appear earlier in the `NewServer()` call:
-
-    ```go
-    // Correct: session before auth, auth before notes
-    srv := burrow.NewServer(
-        session.New(),
-        auth.New(),
-        notes.New(),
-    )
-
-    // Wrong: notes before auth — panics at startup
-    srv := burrow.NewServer(
-        notes.New(),   // needs "auth"
-        auth.New(), // not registered yet!
-    )
-    ```
+!!! info "Auto-sorting"
+    `NewServer` automatically sorts apps by their `HasDependencies` declarations — you can list them in any order. If a dependency is missing entirely, the server panics at startup with a clear error message.
 
 ## Using Auth Context
 
-The auth app sets the current user in the request context via middleware. Other apps read it with `auth.GetUser()`:
+The auth app sets the current user in the request context via middleware. Other apps read it with `auth.UserFromContext()`:
 
 ```go
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
-    user := auth.GetUser(r)
+    user := auth.UserFromContext(r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }

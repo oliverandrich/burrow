@@ -58,8 +58,8 @@ navItems := burrow.NavItems(r.Context())
 The framework provides the raw nav items — filtering based on `AuthOnly` and `AdminOnly` is up to your layout. A typical pattern:
 
 ```go
-user := auth.GetUser(r)
-for _, item := range burrow.NavItems(ctx) {
+user := auth.UserFromContext(r.Context())
+for _, item := range burrow.NavItems(r.Context()) {
     if item.AuthOnly && user == nil {
         continue
     }
