@@ -18,6 +18,19 @@ type App interface {
 - `Name()` returns a unique identifier for the app (e.g., `"auth"`, `"notes"`)
 - `Register()` receives the shared `AppConfig` for initialisation
 
+```go
+type myApp struct {
+    repo *Repository
+}
+
+func (a *myApp) Name() string { return "notes" }
+
+func (a *myApp) Register(cfg *burrow.AppConfig) error {
+    a.repo = NewRepository(cfg.DB)
+    return nil
+}
+```
+
 ### AppConfig
 
 Passed to every app's `Register` method:
@@ -51,11 +64,16 @@ type Migratable interface {
 Provides an `fs.FS` containing `.up.sql` migration files at the root level. Called during startup before `Register()`. When using `//go:embed migrations`, you must strip the directory prefix:
 
 ```go
+//go:embed migrations
+var migrationFS embed.FS
+
 func (a *App) MigrationFS() fs.FS {
     sub, _ := fs.Sub(migrationFS, "migrations")
     return sub
 }
 ```
+
+See the [Migrations guide](../guide/migrations.md) for details on file naming and tracking.
 
 ### HasRoutes
 
@@ -67,6 +85,22 @@ type HasRoutes interface {
 
 Registers HTTP handlers on the Chi router. Called after all apps are registered.
 
+```go
+func (a *App) Routes(r chi.Router) {
+    r.Route("/notes", func(r chi.Router) {
+        r.Get("/", burrow.Handle(a.handleList))
+        r.Get("/{id}", burrow.Handle(a.handleDetail))
+
+        r.Group(func(r chi.Router) {
+            r.Use(auth.RequireAuth())
+            r.Post("/", burrow.Handle(a.handleCreate))
+        })
+    })
+}
+```
+
+See the [Routing guide](../guide/routing.md) for details on handlers, URL parameters, and middleware.
+
 ### HasMiddleware
 
 ```go
@@ -76,6 +110,14 @@ type HasMiddleware interface {
 ```
 
 Returns middleware functions applied globally to the router. Applied in app registration order.
+
+```go
+func (a *App) Middleware() []func(http.Handler) http.Handler {
+    return []func(http.Handler) http.Handler{
+        a.sessionMiddleware,
+    }
+}
+```
 
 ### HasNavItems
 
@@ -99,6 +141,21 @@ type NavItem struct {
 }
 ```
 
+```go
+func (a *App) NavItems() []burrow.NavItem {
+    return []burrow.NavItem{
+        {
+            Label:    "Notes",
+            URL:      "/notes",
+            Position: 20,
+            AuthOnly: true,
+        },
+    }
+}
+```
+
+See the [Navigation guide](../guide/navigation.md) for positioning and ordering.
+
 ### HasTemplates
 
 ```go
@@ -109,6 +166,18 @@ type HasTemplates interface {
 
 Returns an `fs.FS` containing `.html` template files. Templates must use `{{ define "appname/templatename" }}` blocks to namespace themselves. All template files from all apps are parsed into a single global `*template.Template` at boot time.
 
+```go
+//go:embed templates/*.html
+var templateFS embed.FS
+
+func (a *App) TemplateFS() fs.FS {
+    sub, _ := fs.Sub(templateFS, "templates")
+    return sub
+}
+```
+
+See the [Layouts & Rendering guide](../guide/layouts.md) for details on template rendering and layout wrapping.
+
 ### HasFuncMap
 
 ```go
@@ -118,6 +187,16 @@ type HasFuncMap interface {
 ```
 
 Returns a static `template.FuncMap` added at parse time. Functions are available globally in all templates. The framework panics if two apps register the same function name.
+
+```go
+func (a *App) FuncMap() template.FuncMap {
+    return template.FuncMap{
+        "formatDate": func(t time.Time) string {
+            return t.Format("2006-01-02")
+        },
+    }
+}
+```
 
 !!! warning "Reserved function names"
     The following names are already registered by the framework and contrib apps:
@@ -132,7 +211,20 @@ type HasRequestFuncMap interface {
 }
 ```
 
-Returns request-scoped template functions that are injected per-request via `template.Clone()`. Use this for functions that depend on the request context (e.g., `csrfToken`, `currentUser`, `lang`, `t`).
+Returns request-scoped template functions that are injected per-request via `template.Clone()`. Use this for functions that depend on the request context (e.g., current user, CSRF token, locale).
+
+```go
+func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
+    return template.FuncMap{
+        "currentUser": func() *User {
+            return UserFromContext(r.Context())
+        },
+        "isAuthenticated": func() bool {
+            return UserFromContext(r.Context()) != nil
+        },
+    }
+}
+```
 
 ### Configurable
 
@@ -146,6 +238,26 @@ type Configurable interface {
 - `Flags()` returns CLI flags merged into the application's flag set. The `configSource` parameter enables TOML file sourcing — pass `nil` when no config file is used.
 - `Configure()` is called after CLI parsing to read flag values
 
+```go
+func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
+    return []cli.Flag{
+        &cli.IntFlag{
+            Name:    "notes-page-size",
+            Value:   20,
+            Usage:   "Number of notes per page",
+            Sources: burrow.FlagSources(configSource, "NOTES_PAGE_SIZE", "notes.page_size"),
+        },
+    }
+}
+
+func (a *App) Configure(cmd *cli.Command) error {
+    a.pageSize = int(cmd.Int("notes-page-size"))
+    return nil
+}
+```
+
+See the [Configuration guide](../guide/configuration.md) for the three-tier config system.
+
 ### HasCLICommands
 
 ```go
@@ -155,6 +267,20 @@ type HasCLICommands interface {
 ```
 
 Returns CLI subcommands (e.g., `promote`, `demote`). Collect them with `srv.Registry().AllCLICommands()`.
+
+```go
+func (a *App) CLICommands() []*cli.Command {
+    return []*cli.Command{
+        {
+            Name:  "seed-notes",
+            Usage: "Create sample notes for testing",
+            Action: func(ctx context.Context, cmd *cli.Command) error {
+                return a.seedNotes(ctx)
+            },
+        },
+    }
+}
+```
 
 ### Seedable
 
@@ -166,6 +292,16 @@ type Seedable interface {
 
 Seeds the database with initial data. Called automatically during startup after migrations and app registration. Seeders run in app registration order and stop on the first error.
 
+```go
+func (a *App) Seed(ctx context.Context) error {
+    count, _ := a.repo.CountCategories(ctx)
+    if count > 0 {
+        return nil // already seeded
+    }
+    return a.repo.CreateCategories(ctx, defaultCategories)
+}
+```
+
 ### HasStaticFiles
 
 ```go
@@ -174,7 +310,17 @@ type HasStaticFiles interface {
 }
 ```
 
-Contributes static file assets that the `staticfiles` app collects and serves. The `prefix` namespaces files under the static URL path (e.g., prefix `"admin"` serves files at `/static/admin/...`). Files are content-hashed and cache-busted just like user-provided static files.
+Contributes static file assets that the `staticfiles` app collects and serves. The `prefix` namespaces files under the static URL path (e.g., prefix `"auth"` serves files at `/static/auth/...`). Files are content-hashed and cache-busted just like user-provided static files.
+
+```go
+//go:embed static
+var staticFS embed.FS
+
+func (a *App) StaticFS() (string, fs.FS) {
+    sub, _ := fs.Sub(staticFS, "static")
+    return "myapp", sub
+}
+```
 
 ### HasAdmin
 
@@ -187,6 +333,21 @@ type HasAdmin interface {
 
 Contributes admin panel routes and navigation items. `AdminRoutes` receives a Chi router already prefixed with `/admin` and protected by auth middleware. The `admin` contrib app discovers all `HasAdmin` implementations and mounts them.
 
+```go
+func (a *App) AdminRoutes(r chi.Router) {
+    r.Get("/notes", burrow.Handle(a.adminListNotes))
+    r.Get("/notes/{id}", burrow.Handle(a.adminNoteDetail))
+}
+
+func (a *App) AdminNavItems() []burrow.NavItem {
+    return []burrow.NavItem{
+        {Label: "Notes", URL: "/admin/notes", Position: 30},
+    }
+}
+```
+
+See the [Admin contrib app](../contrib/admin.md) for the full admin panel setup.
+
 ### HasTranslations
 
 ```go
@@ -195,7 +356,16 @@ type HasTranslations interface {
 }
 ```
 
-Contributes translation files for the `i18n` app. The returned `fs.FS` must contain a `translations/` directory with TOML files (e.g., `translations/active.en.toml`). The `i18n` app auto-discovers all `HasTranslations` implementations at startup.
+Contributes translation files for the `i18n` app. The returned `fs.FS` must contain TOML files (e.g., `active.en.toml`, `active.de.toml`). The `i18n` app auto-discovers all `HasTranslations` implementations at startup.
+
+```go
+//go:embed translations
+var translationFS embed.FS
+
+func (a *App) TranslationFS() fs.FS { return translationFS }
+```
+
+See the [i18n contrib app](../contrib/i18n.md) for translation file format and usage.
 
 ### HasDependencies
 
@@ -207,6 +377,10 @@ type HasDependencies interface {
 
 Returns app names that must be registered before this app. `NewServer` automatically sorts apps by dependencies. The registry panics at startup if any dependency is missing.
 
+```go
+func (a *App) Dependencies() []string { return []string{"session", "auth"} }
+```
+
 ### HasShutdown
 
 ```go
@@ -216,3 +390,10 @@ type HasShutdown interface {
 ```
 
 Performs cleanup during graceful shutdown (e.g., stopping background goroutines, flushing buffers). Called in **reverse** registration order before the HTTP server stops. Errors are logged but do not prevent other apps from shutting down. The context carries the server's shutdown timeout.
+
+```go
+func (a *App) Shutdown(_ context.Context) error {
+    close(a.stopCh) // signal background worker to stop
+    return nil
+}
+```

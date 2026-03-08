@@ -99,6 +99,7 @@ nav:
           - Uploads: contrib/uploads.md
   - Reference:
       - Core Interfaces: reference/interfaces.md
+      - Core Functions: reference/core-functions.md
       - Server & Registry: reference/server.md
       - Configuration Reference: reference/configuration.md
       - Template Functions: reference/template-functions.md
