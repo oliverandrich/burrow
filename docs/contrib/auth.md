@@ -117,6 +117,19 @@ Admin routes (registered via `HasAdmin`, require auth + admin role):
 | POST | `/admin/invites` | Create an invite |
 | DELETE | `/admin/invites/{id}` | Delete an invite |
 
+## Template Functions
+
+The auth app contributes these template functions:
+
+**Via `HasRequestFuncMap` (request-scoped):**
+
+| Function | Example | Description |
+|----------|---------|-------------|
+| `currentUser` | `{{ if $u := currentUser }}{{ $u.Email }}{{ end }}` | Returns the authenticated `*auth.User` or `nil` |
+| `isAuthenticated` | `{{ if isAuthenticated }}Sign out{{ else }}Sign in{{ end }}` | Returns `true` if a user is logged in |
+
+These are available in all templates and are commonly used in layout navigation.
+
 ## Middleware
 
 The auth app provides three middleware functions:

@@ -116,7 +116,15 @@ Pass `nil` for no admin layout.
 
 ## Writing a Custom Layout
 
-Layouts typically render another template from the global set. Here's how the Bootstrap app does it:
+Layouts typically render another template from the global set. Use `burrow.TemplateExecutorFromContext()` to get a function that executes named templates:
+
+```go
+type TemplateExecutor func(r *http.Request, name string, data map[string]any) (template.HTML, error)
+```
+
+The executor is injected by the framework's template middleware and handles request-scoped FuncMap cloning automatically.
+
+Here's how the Bootstrap app does it:
 
 ```go
 func Layout() burrow.LayoutFunc {
@@ -169,6 +177,22 @@ The corresponding template file:
 {{- end }}
 ```
 
+## Data Flow in Layout Templates
+
+Layout templates receive data from two sources:
+
+- **Data map entries** (accessed with `.` prefix): `.Content`, `.Title`, `.NavItems` — these are values your layout function puts into the `layoutData` map before calling `exec()`
+- **FuncMap functions** (no `.` prefix): `{{ lang }}`, `{{ staticURL "..." }}`, `{{ csrfToken }}` — these are template functions registered by contrib apps
+
+The layout function is responsible for populating the data map. The Bootstrap layout copies all handler data and adds `Content` and `NavItems`:
+
+```go
+layoutData := make(map[string]any, len(data)+2)
+maps.Copy(layoutData, data)                          // copies Title and any other handler data
+layoutData["Content"] = content                       // the rendered page fragment
+layoutData["NavItems"] = burrow.NavItems(r.Context()) // collected from all HasNavItems apps
+```
+
 ## Layout Unification
 
 The app layout, auth layout, and admin layout all use the same context key (`burrow.Layout(ctx)`). The framework sets the app layout globally via middleware, while the auth and admin route groups override it with their own layouts. This means any handler can always rely on `burrow.Layout(ctx)` returning the correct layout for the current request.
@@ -188,4 +212,4 @@ These values are available in templates via FuncMap functions or in layout code 
 | `{{ currentUser }}` | `*auth.User` | auth app (`HasRequestFuncMap`) |
 | `{{ isAuthenticated }}` | `bool` | auth app (`HasRequestFuncMap`) |
 
-See [Context Helpers](../reference/context-helpers.md) for the complete list.
+See [Template Functions](../reference/template-functions.md) for the complete list of functions available in templates, and [Context Helpers](../reference/context-helpers.md) for Go-level context access.

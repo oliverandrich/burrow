@@ -61,8 +61,10 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
     if err := burrow.Bind(r, &req); err != nil {
         var ve *burrow.ValidationError
         if errors.As(err, &ve) {
-            // Render form with validation errors
-            return burrow.Render(w, r, myForm(ve))
+            // Re-render form with validation errors
+            return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "myapp/form", map[string]any{
+                "Errors": ve,
+            })
         }
         return err
     }

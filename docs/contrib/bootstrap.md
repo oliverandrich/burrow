@@ -88,6 +88,20 @@ These are served at `/static/bootstrap/bootstrap.min.css`, etc. when the `static
 !!! note "htmx is a separate app"
     The htmx JavaScript file is served by the dedicated [`htmx` contrib app](htmx.md), not by the bootstrap app.
 
+## Template Functions
+
+The bootstrap app contributes these template functions via `HasFuncMap`:
+
+| Function | Example | Description |
+|----------|---------|-------------|
+| `add` | `{{ add .Page 1 }}` | Integer addition |
+| `sub` | `{{ sub .Total 1 }}` | Integer subtraction |
+| `pageURL` | `{{ pageURL .BaseURL .Page .Limit }}` | Builds a pagination URL |
+| `pageLimit` | `{{ pageLimit .Limit }}` | Returns the current page size |
+| `pageNumbers` | `{{ range pageNumbers .Current .Total }}` | Generates page number slice for pagination controls |
+
+These are used internally by the `bootstrap/pagination` template but are available in all templates.
+
 ## Dark Mode
 
 The layout includes a theme switcher toggle that persists the user's preference in `localStorage`. It uses Bootstrap's `data-bs-theme` attribute to switch between light and dark modes without a page reload.

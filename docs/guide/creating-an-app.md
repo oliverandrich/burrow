@@ -183,6 +183,13 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 1. `Bind` decodes the request body **and** validates it. Returns a `*burrow.ValidationError` when validation fails — see [Validation](validation.md).
 
+!!! note "How `Handle()` processes errors"
+    `burrow.Handle()` wraps your `HandlerFunc` and converts returned errors to HTTP responses:
+
+    - **`*HTTPError`** — sends the error's status code and message as a plain text response (e.g., `NewHTTPError(404, "not found")` sends a 404)
+    - **`*ValidationError`** — not handled automatically; your handler must check for it and re-render the form
+    - **Other errors** — sends a generic 500 Internal Server Error (the original error is logged but not exposed to the client)
+
 ## Step 6: Assemble the App
 
 ```go

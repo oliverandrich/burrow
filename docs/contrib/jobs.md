@@ -23,7 +23,8 @@ Register handlers during your app's `Register()` phase — before `Configure()` 
 
 ```go
 func (a *App) Register(cfg *burrow.AppConfig) error {
-    jobsApp := cfg.Registry.MustGet("jobs").(*jobs.App)
+    app, _ := cfg.Registry.Get("jobs")
+    jobsApp := app.(*jobs.App)
 
     jobsApp.Handle("send-welcome-email", func(ctx context.Context, payload string) error {
         var data struct{ Email string }

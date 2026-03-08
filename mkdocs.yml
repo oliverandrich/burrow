@@ -92,6 +92,7 @@ nav:
       - Core Interfaces: reference/interfaces.md
       - Server & Registry: reference/server.md
       - Configuration Reference: reference/configuration.md
+      - Template Functions: reference/template-functions.md
       - Context Helpers: reference/context-helpers.md
   - Changelog: changelog.md
   - License: license.md

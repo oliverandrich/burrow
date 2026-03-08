@@ -48,7 +48,14 @@ type Migratable interface {
 }
 ```
 
-Provides an `fs.FS` containing `.up.sql` migration files. Called during startup before `Register()`.
+Provides an `fs.FS` containing `.up.sql` migration files at the root level. Called during startup before `Register()`. When using `//go:embed migrations`, you must strip the directory prefix:
+
+```go
+func (a *App) MigrationFS() fs.FS {
+    sub, _ := fs.Sub(migrationFS, "migrations")
+    return sub
+}
+```
 
 ### HasRoutes
 
@@ -112,6 +119,11 @@ type HasFuncMap interface {
 
 Returns a static `template.FuncMap` added at parse time. Functions are available globally in all templates. The framework panics if two apps register the same function name.
 
+!!! warning "Reserved function names"
+    The following names are already registered by the framework and contrib apps:
+    `safeHTML`, `safeURL`, `safeAttr`, `itoa`, `lang`, `staticURL`, `csrfToken`, `t`, `tData`, `tPlural`, `currentUser`, `isAuthenticated`, `add`, `sub`, `pageURL`, `pageLimit`, `pageNumbers`.
+    Do not use these names in your own `FuncMap` — the server will panic at startup.
+
 ### HasRequestFuncMap
 
 ```go
@@ -126,12 +138,12 @@ Returns request-scoped template functions that are injected per-request via `tem
 
 ```go
 type Configurable interface {
-    Flags() []cli.Flag
+    Flags(configSource func(key string) cli.ValueSource) []cli.Flag
     Configure(cmd *cli.Command) error
 }
 ```
 
-- `Flags()` returns CLI flags merged into the application's flag set
+- `Flags()` returns CLI flags merged into the application's flag set. The `configSource` parameter enables TOML file sourcing — pass `nil` when no config file is used.
 - `Configure()` is called after CLI parsing to read flag values
 
 ### HasCLICommands

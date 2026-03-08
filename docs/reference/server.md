@@ -15,7 +15,7 @@ srv := burrow.NewServer(
 )
 ```
 
-Apps are registered in the order provided. Dependencies must appear before the apps that depend on them.
+Apps are automatically sorted by their `HasDependencies` declarations — you can list them in any order.
 
 ### Methods
 
@@ -142,10 +142,10 @@ Calls `Routes()` on all `HasRoutes` apps.
 #### AllFlags
 
 ```go
-func (r *Registry) AllFlags() []cli.Flag
+func (r *Registry) AllFlags(configSource func(key string) cli.ValueSource) []cli.Flag
 ```
 
-Collects CLI flags from all `Configurable` apps.
+Collects CLI flags from all `Configurable` apps. Pass `nil` for CLI+ENV only.
 
 #### Configure
 
