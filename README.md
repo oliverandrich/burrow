@@ -53,7 +53,7 @@ func main() {
 }
 ```
 
-See [`example/cmd/server/`](example/cmd/server/) for a complete example with auth, admin, i18n, and more.
+See [`example/hello/`](example/hello/) for a minimal hello world app, or [`example/notes/`](example/notes/) for a complete example with auth, admin, i18n, and more.
 
 ## Architecture
 
@@ -69,7 +69,7 @@ contrib/        Reusable apps
   messages/     Flash messages
   session/      Cookie-based sessions
   staticfiles/  Static file serving with content-hashed URLs
-example/        Example application with a notes app
+example/        Example applications (hello world, notes app)
 ```
 
 ### The App Interface
@@ -158,7 +158,8 @@ just lint           # Run golangci-lint
 just fmt            # Format code
 just coverage       # Generate coverage report
 just tidy           # Tidy module dependencies
-just example        # Run the example application
+just example-hello  # Run the hello world example
+just example-notes  # Run the notes example application
 ```
 
 Requires Go 1.25+. Run `just setup` to verify your dev environment.

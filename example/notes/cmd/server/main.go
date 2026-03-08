@@ -22,8 +22,8 @@ import (
 	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
-	"codeberg.org/oliverandrich/burrow/example/internal/notes"
-	"codeberg.org/oliverandrich/burrow/example/internal/pages"
+	"codeberg.org/oliverandrich/burrow/example/notes/internal/notes"
+	"codeberg.org/oliverandrich/burrow/example/notes/internal/pages"
 	"github.com/urfave/cli/v3"
 )
 

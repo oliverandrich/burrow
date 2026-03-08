@@ -54,9 +54,13 @@ setup:
 tidy:
     go mod tidy
 
-# Run the example application
-example *args:
-    go run ./example/cmd/server {{args}}
+# Run the hello world example
+example-hello *args:
+    go run ./example/hello {{args}}
+
+# Run the notes example application
+example-notes *args:
+    go run ./example/notes/cmd/server {{args}}
 
 # Serve documentation locally
 docs:
