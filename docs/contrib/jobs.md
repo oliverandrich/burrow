@@ -4,6 +4,8 @@ In-process, SQLite-backed background job queue with a worker pool, retry logic, 
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/jobs`
 
+**Depends on:** none (optional: `admin` for admin panel UI)
+
 ## Setup
 
 ```go

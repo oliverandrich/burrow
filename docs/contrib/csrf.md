@@ -4,6 +4,8 @@ Cross-Site Request Forgery protection using `gorilla/csrf`.
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/csrf`
 
+**Depends on:** none
+
 ## Setup
 
 ```go

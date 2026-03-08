@@ -4,6 +4,8 @@ Pluggable file upload storage with a local filesystem backend and HTTP serving.
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/uploads`
 
+**Depends on:** none
+
 ## Setup
 
 ```go

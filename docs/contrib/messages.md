@@ -3,6 +3,7 @@
 Flash message support for post-redirect-get feedback.
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/messages`
+
 **Depends on:** `session`
 
 ## Setup

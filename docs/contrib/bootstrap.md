@@ -4,6 +4,8 @@ Swappable design system using [Bootstrap 5](https://getbootstrap.com/) and [htmx
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/bootstrap`
 
+**Depends on:** `staticfiles`, `htmx`
+
 ## Setup
 
 ```go

@@ -4,6 +4,8 @@ Per-client rate limiting middleware using a token bucket algorithm.
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/ratelimit`
 
+**Depends on:** none
+
 ## Setup
 
 ```go

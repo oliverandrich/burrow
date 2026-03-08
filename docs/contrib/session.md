@@ -4,6 +4,8 @@ Cookie-based session management using `gorilla/securecookie`.
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/session`
 
+**Depends on:** none
+
 ## Setup
 
 ```go

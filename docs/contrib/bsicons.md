@@ -4,6 +4,8 @@ Inline SVG icons from [Bootstrap Icons](https://icons.getbootstrap.com/) as Go f
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/bsicons`
 
+**Depends on:** none
+
 ## Usage
 
 Each icon is a Go function that returns `template.HTML` containing an inline SVG:

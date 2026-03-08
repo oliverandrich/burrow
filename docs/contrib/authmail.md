@@ -4,6 +4,8 @@ Pluggable email rendering and SMTP delivery for auth emails (verification and in
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/authmail`
 
+**Depends on:** `auth`
+
 **SMTP implementation:** `codeberg.org/oliverandrich/burrow/contrib/authmail/smtpmail`
 
 ## Overview

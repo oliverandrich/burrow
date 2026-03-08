@@ -4,6 +4,8 @@ Content-hashed static file serving with cache-busting URLs, similar to Django's 
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/staticfiles`
 
+**Depends on:** none
+
 ## Setup
 
 ```go

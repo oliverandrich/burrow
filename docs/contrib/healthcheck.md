@@ -4,6 +4,8 @@ A minimal health check endpoint that reports server and database status.
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/healthcheck`
 
+**Depends on:** none
+
 ## Setup
 
 ```go
