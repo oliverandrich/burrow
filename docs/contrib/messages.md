@@ -52,41 +52,16 @@ For full control, use `messages.Add(w, r, level, text)` with any `messages.Level
 
 ## Reading Messages in Templates
 
-In a templ template, call `messages.Get(ctx)` to retrieve the current messages:
-
-```templ
-import "codeberg.org/oliverandrich/burrow/contrib/messages"
-
-templ FlashMessages() {
-    for _, msg := range messages.Get(ctx) {
-        <div class={ "alert", cssClass(msg.Level) }>{ msg.Text }</div>
-    }
-}
-```
+Messages are available in templates via the bootstrap alert templates. The `bootstrap/layout` template automatically renders flash messages using the `bootstrap/alerts` template.
 
 Each `Message` has two fields:
 
 - `Level` — one of `messages.Info`, `messages.Success`, `messages.Warning`, `messages.Error`
 - `Text` — the message string
 
-## Bootstrap Alert Template
+### Bootstrap Alert Template
 
-The `bootstrap/templates` package ships a ready-made `Alerts()` component that renders messages as Bootstrap 5 dismissible alerts:
-
-```go
-import bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
-```
-
-```templ
-templ layout(title string, content templ.Component) {
-    <body>
-        <main class="container py-4">
-            @bstpl.Alerts()
-            @content
-        </main>
-    </body>
-}
-```
+The bootstrap app ships a ready-made `bootstrap/alerts` template that renders messages as Bootstrap 5 dismissible alerts. It is included automatically in the `bootstrap/layout` template.
 
 Level mapping:
 
@@ -97,9 +72,18 @@ Level mapping:
 | `warning` | `alert-warning` |
 | `error` | `alert-danger` |
 
+## Reading Messages in Go Code
+
+```go
+msgs := messages.Get(r.Context())
+for _, msg := range msgs {
+    fmt.Printf("%s: %s\n", msg.Level, msg.Text)
+}
+```
+
 ## HTMX Out-of-Band Alerts
 
-For HTMX partial responses (e.g. a delete button), use the same `Add*` API followed by `AlertsOOB()`. The unified API works for both redirect and same-request flows — no need for `messages.Inject()`:
+For HTMX partial responses (e.g. a delete button), use the same `Add*` API. The bootstrap app provides a `bootstrap/alerts-oob` template for out-of-band swaps:
 
 ```go
 func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
@@ -108,36 +92,27 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
     if err := messages.AddSuccess(w, r, "Note deleted."); err != nil {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
     }
-    return burrow.Render(w, r, http.StatusOK, bstpl.AlertsOOB())
+    return burrow.RenderTemplate(w, r, http.StatusOK, "bootstrap/alerts-oob", nil)
 }
 ```
 
 This works because:
 
 1. `AddSuccess()` writes to both the request-scoped store and the session cookie
-2. `AlertsOOB()` calls `messages.Get(ctx)` which reads from the store and clears the session cookie
-3. `burrow.Render()` buffers the template output before writing headers, so the cookie clear still works
-4. HTMX extracts the `<div id="alerts" hx-swap-oob="true">` and swaps it into the page's `#alerts` container
+2. The alerts-oob template calls `messages.Get(ctx)` which reads from the store and clears the session cookie
+3. HTMX extracts the `<div id="alerts" hx-swap-oob="true">` and swaps it into the page's `#alerts` container
 
 ## Custom Rendering
 
 If you use a different CSS framework, call `messages.Get(ctx)` directly and map levels to your own classes:
 
-```templ
-import "codeberg.org/oliverandrich/burrow/contrib/messages"
-
+```go
 func toastClass(level messages.Level) string {
     switch level {
     case messages.Success: return "toast-success"
     case messages.Warning: return "toast-warning"
     case messages.Error:   return "toast-error"
     default:               return "toast-info"
-    }
-}
-
-templ Toasts() {
-    for _, msg := range messages.Get(ctx) {
-        <div class={ "toast", toastClass(msg.Level) }>{ msg.Text }</div>
     }
 }
 ```

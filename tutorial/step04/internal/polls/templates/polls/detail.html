@@ -1,0 +1,19 @@
+{{ define "polls/detail" -}}
+<div class="container py-4">
+    <h1>{{ .Question.Text }}</h1>
+    <form method="post" action="/polls/{{ .Question.ID }}/vote">
+        <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+        <div class="list-group mb-3">
+            {{ range .Question.Choices -}}
+            <label class="list-group-item">
+                <input class="form-check-input me-2" type="radio"
+                       name="choice" value="{{ .ID }}">
+                {{ .Text }}
+            </label>
+            {{ end -}}
+        </div>
+        <button type="submit" class="btn btn-primary">Vote</button>
+        <a href="/polls" class="btn btn-secondary">&laquo; Back to polls</a>
+    </form>
+</div>
+{{- end }}

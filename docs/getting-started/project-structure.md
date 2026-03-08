@@ -27,17 +27,15 @@ myapp/
 │   │   ├── handlers.go       # HTTP handlers
 │   │   ├── models.go         # Domain models
 │   │   ├── repository.go     # Data access layer
+│   │   ├── templates/        # HTML template files
+│   │   │   ├── list.html     # {{ define "notes/list" }}
+│   │   │   └── detail.html   # {{ define "notes/detail" }}
 │   │   └── migrations/
 │   │       └── 001_create_notes.up.sql
 │   └── pages/                # Small app (single file is fine)
 │       └── app.go
-├── templates/                # Templ layout templates
-│   ├── layouts/
-│   │   ├── app.templ
-│   │   └── admin.templ
-│   └── auth/                 # Auth renderer templates
-│       ├── login.templ
-│       └── register.templ
+├── templates/                # Shared layout templates
+│   └── layout.html           # {{ define "app/layout" }}
 ├── static/                   # CSS, JS, images
 │   ├── styles.css
 │   └── app.js
@@ -52,10 +50,10 @@ myapp/
 
 **One file per app is fine** — for small apps, put everything in `app.go`. Larger apps split files by purpose: `context.go`, `handlers.go`, `models.go`, `repository.go`, etc. (see the [notes example](../guide/creating-an-app.md)).
 
+**Templates are `.html` files** — each app embeds its own templates via `//go:embed templates/*.html` and implements `HasTemplates`. Templates use `{{ define "appname/templatename" }}` to namespace them within the global template set.
+
 **Migrations are embedded** — each app embeds its own SQL files with `//go:embed migrations`. The framework runs them automatically at startup.
 
-**Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Pass them to `srv.SetLayouts()` in `main.go`.
-
-**Contrib apps use `templates/` sub-packages** — built-in contrib apps keep their Templ templates in a `templates/` subdirectory, which is a separate Go package. This cleanly separates template code from app logic and avoids circular dependencies.
+**Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Set them via `srv.SetLayout()` in `main.go`, or use the `bootstrap` contrib app which provides a ready-made layout.
 
 **Static files are optional** — use the [staticfiles contrib app](../contrib/staticfiles.md) if you need content-hashed URLs and cache headers.

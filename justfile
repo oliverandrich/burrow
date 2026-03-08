@@ -64,11 +64,11 @@ example-notes *args:
 
 # Serve documentation locally
 docs:
-    mkdocs serve -a localhost:3000
+    uv run --with zensical zensical serve -a localhost:3000
 
 # Build documentation
 docs-build:
-    mkdocs build
+    uv run --with zensical zensical build
 
 # Update Bootstrap Icons SVG components (downloads latest release)
 update-icons version="1.13.1":
@@ -102,5 +102,5 @@ update-htmx version="2.0.8":
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Downloading htmx v{{version}}..."
-    curl -sL "https://unpkg.com/htmx.org@{{version}}/dist/htmx.min.js" -o contrib/bootstrap/static/htmx.min.js
+    curl -sL "https://unpkg.com/htmx.org@{{version}}/dist/htmx.min.js" -o contrib/htmx/static/htmx.min.js
     echo "Done — htmx v{{version}} updated"

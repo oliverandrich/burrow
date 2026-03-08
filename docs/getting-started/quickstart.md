@@ -1,6 +1,6 @@
 # Quick Start
 
-Build a working application with session management, authentication, and a health check endpoint.
+Build a working application with session management, a health check endpoint, and a custom homepage.
 
 ## 1. Create the Project
 
@@ -17,53 +17,51 @@ package main
 
 import (
     "context"
-    "io"
+    "html/template"
     "log"
+    "net/http"
     "os"
 
     "codeberg.org/oliverandrich/burrow"
-    "codeberg.org/oliverandrich/burrow/contrib/auth"
     "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
     "codeberg.org/oliverandrich/burrow/contrib/session"
-    "github.com/a-h/templ"
     "github.com/urfave/cli/v3"
 )
 
 // appLayout wraps page content in a minimal HTML shell.
-func appLayout(title string, content templ.Component) templ.Component {
-    return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-        _, _ = io.WriteString(w, "<!DOCTYPE html><html><head><title>")
-        _, _ = io.WriteString(w, title)
-        _, _ = io.WriteString(w, "</title></head><body>")
+func appLayout() burrow.LayoutFunc {
+    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+        title, _ := data["Title"].(string)
+
+        w.Header().Set("Content-Type", "text/html; charset=utf-8")
+        w.WriteHeader(code)
+
+        _, _ = w.Write([]byte("<!DOCTYPE html><html><head><title>"))
+        _, _ = w.Write([]byte(title))
+        _, _ = w.Write([]byte("</title></head><body>"))
 
         // Render navigation from context.
-        for _, item := range burrow.NavItems(ctx) {
-            _, _ = io.WriteString(w, `<a href="`)
-            _, _ = io.WriteString(w, item.URL)
-            _, _ = io.WriteString(w, `">`)
-            _, _ = io.WriteString(w, item.Label)
-            _, _ = io.WriteString(w, `</a> `)
+        for _, item := range burrow.NavItems(r.Context()) {
+            _, _ = w.Write([]byte(`<a href="`))
+            _, _ = w.Write([]byte(item.URL))
+            _, _ = w.Write([]byte(`">`))
+            _, _ = w.Write([]byte(item.Label))
+            _, _ = w.Write([]byte(`</a> `))
         }
 
-        if err := content.Render(ctx, w); err != nil {
-            return err
-        }
-
-        _, _ = io.WriteString(w, "</body></html>")
+        _, _ = w.Write([]byte(content))
+        _, _ = w.Write([]byte("</body></html>"))
         return nil
-    })
+    }
 }
 
 func main() {
-    // Create the server with apps in dependency order.
-    // Session must come before auth (auth depends on session).
     srv := burrow.NewServer(
         session.New(),
-        auth.New(), // no renderer = API-only, no HTML pages
         healthcheck.New(),
     )
 
-    srv.SetLayout(appLayout)
+    srv.SetLayout(appLayout())
 
     cmd := &cli.Command{
         Name:    "myapp",
@@ -79,6 +77,9 @@ func main() {
 }
 ```
 
+!!! tip "Use Bootstrap for a proper layout"
+    The manual layout above is for illustration only. In practice, use the `bootstrap` contrib app which provides a full layout with CSS, icons, dark mode, and htmx — see [Bootstrap](../contrib/bootstrap.md).
+
 ## 3. Run It
 
 ```bash
@@ -89,7 +90,6 @@ The server starts on `localhost:8080` with:
 
 - SQLite database at `./data/app.db` (auto-created with WAL mode)
 - Session cookies (auto-generated keys, logged to stdout)
-- Auth routes at `/auth/*` (WebAuthn registration and login)
 - Health check at `/healthz`
 
 ## 4. Test It
@@ -122,4 +122,5 @@ See [Configuration](../guide/configuration.md) for the full reference.
 
 - [Project Structure](project-structure.md) — recommended directory layout
 - [Creating an App](../guide/creating-an-app.md) — build a custom app
+- [Tutorial](../tutorial/index.md) — build a complete polls app step by step
 - [Auth](../contrib/auth.md) — set up WebAuthn passkey authentication

@@ -9,16 +9,16 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 ## Setup
 
 ```go
-import authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"
-
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
     auth.New(
-        auth.WithRenderer(authtpl.DefaultRenderer()),
-        auth.WithAuthLayout(authtpl.AuthLayout()),
-        auth.WithAdminRenderer(authtpl.DefaultAdminRenderer()),
+        auth.WithRenderer(authRenderer),
+        auth.WithAuthLayout(authLayout),
+        auth.WithAdminRenderer(adminAuthRenderer),
     ),
+    bootstrap.New(),
+    htmx.New(),
     admin.New(
         admin.WithLayout(admintpl.Layout()),
         admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer()),
@@ -40,12 +40,7 @@ auth.New()
 
 ## Default Templates
 
-The auth app ships batteries-included Templ templates in the `auth/templates` sub-package. Use `authtpl.DefaultRenderer()` and `authtpl.DefaultAdminRenderer()` (imported as `authtpl "codeberg.org/oliverandrich/burrow/contrib/auth/templates"`) for ready-to-use pages.
-
-The default templates:
-- Read `burrow.Layout(ctx)` at render time — if a layout is set, content is wrapped in it
-- Use the `staticfiles` system for the embedded `webauthn.js` (content-hashed URLs)
-- Include inline JavaScript for WebAuthn browser ceremonies
+The auth app ships HTML templates via `HasTemplates`. These templates use the global template set and are rendered with `burrow.RenderTemplate()`. The auth app also implements `HasRequestFuncMap` to provide `currentUser`, `isAuthenticated`, and other request-scoped functions available in all templates.
 
 **Note:** When using default templates, register the `staticfiles` app so that `webauthn.js` is served. The auth app implements `HasStaticFiles` and contributes its assets under the `"auth"` prefix automatically.
 
@@ -57,13 +52,11 @@ Use `auth.WithAuthLayout()` to override the layout for public auth pages. Authen
 
 ```go
 auth.New(
-    auth.WithRenderer(authtpl.DefaultRenderer()),
-    auth.WithAuthLayout(authtpl.AuthLayout()),    // built-in minimal layout
-    // auth.WithAuthLayout(myMinimalLayout),       // or your own custom layout
+    auth.WithRenderer(authRenderer),
+    auth.WithAuthLayout(authLayout),        // built-in minimal layout
+    // auth.WithAuthLayout(myMinimalLayout), // or your own custom layout
 )
 ```
-
-The built-in `authtpl.AuthLayout()` renders a minimal HTML shell with Bootstrap CSS but no navigation — just a clean, centered page suitable for login and registration forms.
 
 This follows the same pattern as the admin app, which overrides the layout inside its `/admin` route group.
 
@@ -113,8 +106,8 @@ All routes are registered under `/auth`:
 | POST | `/auth/credentials/begin` | Add credential (auth required) |
 | POST | `/auth/credentials/finish` | Complete add credential (auth required) |
 | DELETE | `/auth/credentials/:id` | Delete credential (auth required) |
-| GET | `/auth/recovery-codes` | View recovery codes after registration/regeneration (auth required) |
-| POST | `/auth/recovery-codes/ack` | Acknowledge recovery codes and clear from session (auth required) |
+| GET | `/auth/recovery-codes` | View recovery codes (auth required) |
+| POST | `/auth/recovery-codes/ack` | Acknowledge recovery codes (auth required) |
 | POST | `/auth/recovery-codes/regenerate` | Regenerate recovery codes (auth required) |
 | GET | `/auth/verify-pending` | Email verification pending page |
 | GET | `/auth/verify-email` | Verify email via token |
@@ -171,12 +164,19 @@ r.Route("/admin", func(r chi.Router) {
 
 ## Context Helpers
 
-```go
-// Get the current user from request context.
-user := auth.GetUser(r)    // *auth.User or nil
+In Go code:
 
-// Check if a user is logged in.
+```go
+user := auth.GetUser(r)    // *auth.User or nil
 if auth.IsAuthenticated(r) { ... }
+```
+
+In templates (via `HasRequestFuncMap`):
+
+```html
+{{ if isAuthenticated }}
+    <span>Hello, {{ (currentUser).Username }}</span>
+{{ end }}
 ```
 
 ## Renderer
@@ -196,8 +196,6 @@ type Renderer interface {
 }
 ```
 
-Use `authtpl.DefaultRenderer()` (from the `auth/templates` sub-package) for built-in templates, or implement the interface to provide your own.
-
 ## Admin Renderer
 
 The `AdminRenderer` interface covers admin-only pages (user management, invites):
@@ -209,8 +207,6 @@ type AdminRenderer interface {
     AdminInvitesPage(w http.ResponseWriter, r *http.Request, invites []Invite, createdURL string, useEmail bool) error
 }
 ```
-
-Use `authtpl.DefaultAdminRenderer()` (from the `auth/templates` sub-package) for built-in templates, or implement the interface for custom admin pages.
 
 ## Configuration
 
@@ -227,16 +223,7 @@ Use `authtpl.DefaultAdminRenderer()` (from the `auth/templates` sub-package) for
 
 ## Email Service
 
-For email verification and invite emails, set an email service after configuration:
-
-```go
-auth.New(
-    auth.WithRenderer(authtpl.DefaultRenderer()),
-    auth.WithEmailService(myEmailService),
-)
-```
-
-The `EmailService` interface:
+For email verification and invite emails, wire up the [authmail](authmail.md) SMTP app or implement the `EmailService` interface:
 
 ```go
 type EmailService interface {
@@ -246,29 +233,9 @@ type EmailService interface {
 }
 ```
 
-## Static Files
-
-The auth app embeds a WebAuthn JavaScript helper and implements `HasStaticFiles` to contribute it under the `"auth"` prefix:
-
-| File | Description |
-|------|-------------|
-| `webauthn.js` | WebAuthn browser ceremony helpers (register, login, add credential) |
-
-This is served at `/static/auth/webauthn.js` (with content-hashed URL) when the `staticfiles` app is registered.
-
-## Internationalization
+## Internationalisation
 
 The auth app implements `HasTranslations` and ships English and German translations for all user-facing strings. When the `i18n` contrib app is registered, translations are auto-discovered and loaded.
-
-```go
-srv := burrow.NewServer(
-    session.New(),
-    csrf.New(),
-    i18n.New(),     // must come before auth for middleware order
-    authApp,
-    // ...
-)
-```
 
 Without the i18n app, templates fall back to displaying translation keys (which match their English text). To add a custom language, create a TOML file (e.g., `active.fr.toml`) with the same keys as `active.en.toml` and load it via `i18n.AddTranslations()`.
 
@@ -282,6 +249,8 @@ Without the i18n app, templates fall back to displaying translation keys (which 
 | `HasMiddleware` | User loading from session |
 | `HasAdmin` | Admin user/invite management routes and nav items |
 | `HasStaticFiles` | Contributes embedded `webauthn.js` under `"auth"` prefix |
+| `HasTemplates` | Contributes auth HTML templates |
+| `HasRequestFuncMap` | Provides `currentUser`, `isAuthenticated` to templates |
 | `HasTranslations` | Contributes English and German translation files |
 | `Configurable` | Auth and WebAuthn flags |
 | `HasDependencies` | Requires `session` |

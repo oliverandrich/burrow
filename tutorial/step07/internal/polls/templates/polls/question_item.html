@@ -1,0 +1,9 @@
+{{ define "polls/question_item" -}}
+<a href="/polls/{{ .ID }}" class="list-group-item list-group-item-action"
+   hx-get="/polls/{{ .ID }}" hx-target="main" hx-push-url="true">
+    <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">{{ .Text }}</h5>
+        <small class="text-body-secondary">{{ .PublishedAt.Format "2 Jan 2006" }}</small>
+    </div>
+</a>
+{{- end }}

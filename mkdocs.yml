@@ -1,5 +1,5 @@
 site_name: Burrow
-site_description: A modular Go web framework built on Chi, Bun/SQLite, and Templ
+site_description: A modular Go web framework built on Chi, Bun/SQLite, and html/template
 repo_url: https://codeberg.org/oliverandrich/burrow
 repo_name: oliverandrich/burrow
 
@@ -21,6 +21,7 @@ theme:
     - content.code.annotate
     - content.tabs.link
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - navigation.expand
     - navigation.top
@@ -58,19 +59,39 @@ nav:
       - Pagination: guide/pagination.md
       - Inter-App Communication: guide/inter-app-communication.md
       - Deployment: guide/deployment.md
+  - Tutorial:
+      - Overview: tutorial/index.md
+      - "Part 1: Setup & First View": tutorial/part1.md
+      - "Part 2: Database & Models": tutorial/part2.md
+      - "Part 3: Templates & Layouts": tutorial/part3.md
+      - "Part 4: Forms, CRUD & Validation": tutorial/part4.md
+      - "Part 5: Authentication": tutorial/part5.md
+      - "Part 6: Admin Panel": tutorial/part6.md
+      - "Part 7: HTMX, Charts & Pagination": tutorial/part7.md
   - Contrib Apps:
-      - Session: contrib/session.md
-      - Messages: contrib/messages.md
-      - CSRF: contrib/csrf.md
-      - Auth: contrib/auth.md
-      - Bootstrap: contrib/bootstrap.md
-      - Bootstrap Icons: contrib/bsicons.md
-      - Admin: contrib/admin.md
-      - i18n: contrib/i18n.md
-      - Healthcheck: contrib/healthcheck.md
-      - Static Files: contrib/staticfiles.md
+      - Core:
+          - CSRF: contrib/csrf.md
+          - Healthcheck: contrib/healthcheck.md
+          - Messages: contrib/messages.md
+          - Session: contrib/session.md
+      - Auth & Security:
+          - Auth: contrib/auth.md
+          - Auth Mail: contrib/authmail.md
+          - Rate Limiting: contrib/ratelimit.md
+      - UI & Templates:
+          - Bootstrap: contrib/bootstrap.md
+          - Bootstrap Icons: contrib/bsicons.md
+          - htmx: contrib/htmx.md
+          - i18n: contrib/i18n.md
+          - Static Files: contrib/staticfiles.md
+      - Data & Background:
+          - Admin: contrib/admin.md
+          - Jobs: contrib/jobs.md
+          - Uploads: contrib/uploads.md
   - Reference:
       - Core Interfaces: reference/interfaces.md
       - Server & Registry: reference/server.md
       - Configuration Reference: reference/configuration.md
       - Context Helpers: reference/context-helpers.md
+  - Changelog: changelog.md
+  - License: license.md

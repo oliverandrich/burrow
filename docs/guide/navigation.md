@@ -27,25 +27,30 @@ func (a *App) NavItems() []burrow.NavItem {
 | `Label` | `string` | Display text for the link |
 | `LabelKey` | `string` | i18n message ID; translated at render time, falls back to `Label` |
 | `URL` | `string` | Target path |
-| `Icon` | `templ.Component` | Icon component (e.g., `bsicons.House()`), `nil` for no icon |
+| `Icon` | `template.HTML` | Inline SVG icon (e.g., `bsicons.House()`), empty string for no icon |
 | `Position` | `int` | Sort order (lower = earlier, stable sort preserves insertion order for equal positions) |
 | `AuthOnly` | `bool` | Only show to authenticated users |
 | `AdminOnly` | `bool` | Only show to admin users |
 
-## Reading Nav Items in Layouts
+## Reading Nav Items in Templates
 
-The framework injects nav items into every request context via middleware. Read them with `burrow.NavItems(ctx)`:
+The framework injects nav items into every request context via middleware. In layout templates, they are typically passed as `.NavItems`:
+
+```html
+{{ define "app/layout" -}}
+<nav>
+  {{ range .NavItems }}
+    <a href="{{ .URL }}">{{ .Icon }} {{ .Label }}</a>
+  {{ end }}
+</nav>
+<main>{{ .Content }}</main>
+{{- end }}
+```
+
+In Go code, read them with `burrow.NavItems(ctx)`:
 
 ```go
-func appLayout(title string, content templ.Component) templ.Component {
-    return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-        for _, item := range burrow.NavItems(ctx) {
-            // Render navigation link...
-        }
-        // ...
-        return nil
-    })
-}
+navItems := burrow.NavItems(r.Context())
 ```
 
 ## Filtering by Auth Status
@@ -64,6 +69,8 @@ for _, item := range burrow.NavItems(ctx) {
     // Render item...
 }
 ```
+
+In templates, the Bootstrap layout handles this automatically.
 
 ## Ordering
 

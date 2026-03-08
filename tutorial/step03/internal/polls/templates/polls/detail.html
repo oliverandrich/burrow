@@ -1,0 +1,11 @@
+{{ define "polls/detail" -}}
+<div class="container py-4">
+    <h1>{{ .Question.Text }}</h1>
+    <ul class="list-group mb-3">
+        {{ range .Question.Choices -}}
+        <li class="list-group-item">{{ .Text }}</li>
+        {{ end -}}
+    </ul>
+    <a href="/polls" class="btn btn-secondary">&laquo; Back to polls</a>
+</div>
+{{- end }}

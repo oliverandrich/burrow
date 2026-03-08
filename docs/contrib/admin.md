@@ -38,26 +38,79 @@ The admin app discovers admin views from other apps via the `HasAdmin` interface
 
 ## Default Layout
 
-`admintpl.Layout()` returns a `LayoutFunc` that renders a full HTML page with:
+`admintpl.Layout()` returns a `LayoutFunc` that renders a full admin HTML page with Bootstrap 5 styling, a sidebar navigation, and htmx for SPA-like navigation via `hx-get`/`hx-target`.
 
-- [Bootstrap 5](https://getbootstrap.com/) — responsive CSS framework
-- [`bsicons`](bsicons.md) — inline SVG icons
-- [htmx](https://htmx.org/) — for progressive enhancement
-
-The layout reads admin nav items from context and renders them in a `<nav>` element. Static assets are served via the `staticfiles` app using content-hashed URLs.
+The layout reads admin nav items from context and renders them in the sidebar. Static assets are served via the `staticfiles` app using content-hashed URLs.
 
 **Note:** When using `admintpl.Layout()`, the `bootstrap` app must be registered to serve CSS/JS assets. The admin default layout references static files under the `"bootstrap"` prefix.
 
+## ModelAdmin
+
+The `admin/modeladmin` sub-package provides a generic, Django-style CRUD admin for any Bun model:
+
+```go
+import "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+
+ma := &modeladmin.ModelAdmin[Note]{
+    Slug:              "notes",
+    DisplayName:       "Note",
+    DisplayPluralName: "Notes",
+    DB:                cfg.DB,
+    ListFields:        []string{"ID", "Title", "CreatedAt"},
+    OrderBy:           "created_at DESC",
+    PageSize:          25,
+    CanCreate:         true,
+    CanEdit:           true,
+    CanDelete:         true,
+}
+```
+
+### Features
+
+- **List view** with configurable columns, ordering, and offset pagination
+- **Search** across text fields
+- **Filters** with select dropdowns
+- **Row actions** (e.g., retry, cancel, delete) with optional confirmation dialogs
+- **Create/edit forms** auto-generated from model struct tags
+- **i18n** — all labels are translatable via `LabelKey` fields and the i18n app
+- **HTMX** — list navigation uses `hx-get`/`hx-target` for partial updates
+
+### Row Actions
+
+```go
+RowActions: []modeladmin.RowAction{
+    {
+        Slug:    "retry",
+        Label:   "admin-jobs-action-retry",
+        Icon:    bsicons.ArrowCounterclockwise(),
+        Class:   "btn-outline-success",
+        Handler: retryHandler,
+        ShowWhen: func(j Job) bool { return j.Status == StatusFailed },
+    },
+},
+```
+
+### Registering in Your App
+
+Implement `HasAdmin` and delegate to the ModelAdmin:
+
+```go
+func (a *App) AdminRoutes(r chi.Router) {
+    a.notesAdmin.Routes(r)
+}
+
+func (a *App) AdminNavItems() []burrow.NavItem {
+    return []burrow.NavItem{
+        {Label: "Notes", LabelKey: "admin-nav-notes", URL: "/admin/notes", Icon: bsicons.JournalText(), Position: 20},
+    }
+}
+```
+
 ## Routes
 
-All routes require authentication and admin role:
+The admin app creates the `/admin` route group with `auth.RequireAuth()` and `auth.RequireAdmin()` middleware, then delegates to each `HasAdmin` app.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/admin/users` | List all users |
-| GET | `/admin/users/:id` | User detail / edit form |
-| POST | `/admin/users/:id` | Update user |
-| DELETE | `/admin/users/:id` | Delete user |
+The dashboard is available at `GET /admin/`.
 
 ## CLI Commands
 
@@ -93,4 +146,6 @@ The admin app collects all `HasAdmin` implementations and mounts their routes un
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `HasRoutes` | Creates `/admin` group and delegates to `HasAdmin` apps |
+| `HasTemplates` | Contributes admin layout and page templates |
+| `HasFuncMap` | Contributes admin icon template functions |
 | `HasDependencies` | Requires `auth` |

@@ -1,0 +1,15 @@
+{{ define "polls/results" -}}
+<div class="container py-4">
+    <h1>Results: {{ .Question.Text }}</h1>
+    <ul class="list-group mb-3">
+        {{ range .Question.Choices -}}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ .Text }}
+            <span class="badge text-bg-primary rounded-pill">{{ .Votes }} vote{{ if ne .Votes 1 }}s{{ end }}</span>
+        </li>
+        {{ end -}}
+    </ul>
+    <a href="/polls/{{ .Question.ID }}" class="btn btn-primary">Vote again</a>
+    <a href="/polls" class="btn btn-secondary">&laquo; Back to polls</a>
+</div>
+{{- end }}

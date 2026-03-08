@@ -1,20 +1,19 @@
 # Bootstrap Icons
 
-Inline SVG icons from [Bootstrap Icons](https://icons.getbootstrap.com/) as `templ.Component` functions. Only icons actually used in your code end up in the compiled binary.
+Inline SVG icons from [Bootstrap Icons](https://icons.getbootstrap.com/) as Go functions returning `template.HTML`. Only icons actually used in your code end up in the compiled binary.
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/bsicons`
 
 ## Usage
 
-Each icon is a Go function that returns a `templ.Component`:
+Each icon is a Go function that returns `template.HTML` containing an inline SVG:
 
 ```go
 import "codeberg.org/oliverandrich/burrow/contrib/bsicons"
 
-// In a templ template:
-@bsicons.Trash()
-@bsicons.House()
-@bsicons.PersonCircle()
+html := bsicons.Trash()
+html := bsicons.House()
+html := bsicons.PersonCircle()
 ```
 
 ### CSS Classes
@@ -23,10 +22,22 @@ Pass optional CSS classes to the icon:
 
 ```go
 // Single class string
-@bsicons.JournalText("fs-1 d-block mb-2")
+html := bsicons.JournalText("fs-1 d-block mb-2")
 
-// Multiple arguments are joined
-@bsicons.People("fs-1", "text-primary")
+// Multiple arguments are joined with spaces
+html := bsicons.People("fs-1", "text-primary")
+```
+
+### In Templates via FuncMap
+
+Apps that need icons in templates register them via `HasFuncMap`. For example, the admin app registers icon functions like `iconGearFill`:
+
+```html
+{{ define "admin/sidebar" -}}
+<nav>
+  {{ iconGearFill "me-2" }} Settings
+</nav>
+{{- end }}
 ```
 
 ### NavItems
@@ -46,13 +57,15 @@ func (a *App) NavItems() []burrow.NavItem {
 }
 ```
 
+The `NavItem.Icon` field is `template.HTML`, so the SVG is rendered directly in layout templates via `{{ .Icon }}`.
+
 ### In Templates with Spacing
 
-When an icon needs spacing from adjacent text, wrap it in a `<span>`:
+When an icon needs spacing from adjacent text in an HTML template:
 
-```templ
+```html
 <button class="btn btn-primary">
-    <span class="me-1">@bsicons.PlusLg()</span>Add Note
+    <span class="me-1">{{ iconPlusLg }}</span>Add Note
 </button>
 ```
 
@@ -71,7 +84,7 @@ Each icon renders an inline `<svg>` element:
 Key properties:
 
 - **`width="1em" height="1em"`** — scales with parent font-size (Bootstrap `fs-1`, `fs-4` etc.)
-- **`fill="currentColor"`** — inherits text color (Bootstrap `text-primary`, `text-danger` etc.)
+- **`fill="currentColor"`** — inherits text colour (Bootstrap `text-primary`, `text-danger` etc.)
 - **`vertical-align:-.125em`** — aligns with text baseline
 
 ## Updating Icons

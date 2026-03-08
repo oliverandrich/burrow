@@ -16,7 +16,7 @@ type App interface {
 ```
 
 - `Name()` returns a unique identifier for the app (e.g., `"auth"`, `"notes"`)
-- `Register()` receives the shared `AppConfig` for initialization
+- `Register()` receives the shared `AppConfig` for initialisation
 
 ### AppConfig
 
@@ -83,14 +83,44 @@ Returns navigation entries collected into the request context by the framework:
 ```go
 type NavItem struct {
     Label     string
-    LabelKey  string          // i18n message ID
+    LabelKey  string        // i18n message ID
     URL       string
-    Icon      templ.Component // nil = no icon
+    Icon      template.HTML // inline SVG, empty string for no icon
     Position  int
     AuthOnly  bool
     AdminOnly bool
 }
 ```
+
+### HasTemplates
+
+```go
+type HasTemplates interface {
+    TemplateFS() fs.FS
+}
+```
+
+Returns an `fs.FS` containing `.html` template files. Templates must use `{{ define "appname/templatename" }}` blocks to namespace themselves. All template files from all apps are parsed into a single global `*template.Template` at boot time.
+
+### HasFuncMap
+
+```go
+type HasFuncMap interface {
+    FuncMap() template.FuncMap
+}
+```
+
+Returns a static `template.FuncMap` added at parse time. Functions are available globally in all templates. The framework panics if two apps register the same function name.
+
+### HasRequestFuncMap
+
+```go
+type HasRequestFuncMap interface {
+    RequestFuncMap(r *http.Request) template.FuncMap
+}
+```
+
+Returns request-scoped template functions that are injected per-request via `template.Clone()`. Use this for functions that depend on the request context (e.g., `csrfToken`, `currentUser`, `lang`, `t`).
 
 ### Configurable
 
@@ -163,7 +193,7 @@ type HasDependencies interface {
 }
 ```
 
-Returns app names that must be registered before this app. The registry panics at startup if any are missing.
+Returns app names that must be registered before this app. `NewServer` automatically sorts apps by dependencies. The registry panics at startup if any dependency is missing.
 
 ### HasShutdown
 

@@ -1,0 +1,17 @@
+{{ define "polls/list_page" -}}
+{{ range .Questions -}}
+{{ template "polls/question_item" . }}
+{{ end -}}
+{{ if .Page.HasMore -}}
+<div hx-get="/polls?cursor={{ .Page.NextCursor }}&limit=20"
+     hx-trigger="revealed"
+     hx-target="#polls-list"
+     hx-swap="beforeend">
+    <div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+</div>
+{{ end -}}
+{{- end }}

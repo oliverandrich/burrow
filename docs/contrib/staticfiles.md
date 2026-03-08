@@ -36,13 +36,13 @@ url := staticfiles.URL(ctx, "styles.css")
 // "/static/styles.a1b2c3d4.css"
 ```
 
-In Templ templates:
+In HTML templates (via `HasFuncMap`):
 
-```
-templ Page() {
-    <link rel="stylesheet" href={ staticfiles.URL(ctx, "styles.css") } />
-    <script src={ staticfiles.URL(ctx, "app.js") }></script>
-}
+```html
+{{ define "app/layout" -}}
+<link rel="stylesheet" href="{{ staticURL "styles.css" }}">
+<script src="{{ staticURL "app.js" }}" defer></script>
+{{- end }}
 ```
 
 If the file is not found in the manifest, the original name is returned as-is (safe fallback).
@@ -111,3 +111,4 @@ Files from all sources get the same content-hashing and cache headers.
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `HasRoutes` | Static file serving route |
 | `HasMiddleware` | Context injection and cache header middleware |
+| `HasFuncMap` | Provides `staticURL` template function |

@@ -1,0 +1,58 @@
+{{ define "polls/results" -}}
+<div class="container py-4">
+    <h1>Results: {{ .Question.Text }}</h1>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <canvas id="results-chart" height="300"></canvas>
+        </div>
+        <div class="col-md-4">
+            <ul class="list-group">
+                {{ range .Question.Choices -}}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ .Text }}
+                    <span class="badge text-bg-primary rounded-pill">{{ .Votes }} vote{{ if ne .Votes 1 }}s{{ end }}</span>
+                </li>
+                {{ end -}}
+            </ul>
+        </div>
+    </div>
+
+    <a href="/polls/{{ .Question.ID }}" class="btn btn-primary"
+       hx-get="/polls/{{ .Question.ID }}" hx-target="main" hx-push-url="true">Vote again</a>
+    <a href="/polls" class="btn btn-secondary"
+       hx-get="/polls" hx-target="main" hx-push-url="true">&laquo; Back to polls</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById("results-chart");
+    if (!ctx) return;
+    new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: [{{ range $i, $c := .Question.Choices }}{{ if $i }}, {{ end }}"{{ $c.Text }}"{{ end }}],
+            datasets: [{
+                label: "Votes",
+                data: [{{ range $i, $c := .Question.Choices }}{{ if $i }}, {{ end }}{{ $c.Votes }}{{ end }}],
+                backgroundColor: "rgba(13, 110, 253, 0.7)",
+                borderColor: "rgb(13, 110, 253)",
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: "y",
+            scales: {
+                x: { beginAtZero: true, ticks: { stepSize: 1 } }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+});
+</script>
+{{- end }}

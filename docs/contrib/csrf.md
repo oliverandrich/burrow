@@ -19,25 +19,25 @@ The CSRF app provides middleware that protects POST/PUT/DELETE/PATCH requests us
 ## How It Works
 
 1. On every request, the middleware sets a CSRF cookie and generates a masked token
-2. The token is stored in the request context via `csrf.WithToken()`
-3. Templates read it with `csrf.Token(ctx)` and include it in forms
+2. The token is available in templates via the `{{ csrfToken }}` function (provided by `HasRequestFuncMap`)
+3. Templates include the token in forms as a hidden field
 4. On unsafe requests (POST, PUT, DELETE, PATCH), the middleware validates the submitted token against the cookie
 
 ## Using Tokens in Templates
 
-The token is available in any Templ component via the context:
+The CSRF app implements `HasRequestFuncMap` and provides a `csrfToken` function available in all templates:
 
-```go
-// In a Templ template
-templ MyForm() {
-    <form method="POST" action="/submit">
-        <input type="hidden" name="gorilla.csrf.Token" value={ csrf.Token(ctx) }/>
-        <button type="submit">Submit</button>
-    </form>
-}
+```html
+{{ define "notes/create" -}}
+<form method="POST" action="/notes">
+    <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+    <input type="text" name="title" placeholder="Title">
+    <button type="submit">Create</button>
+</form>
+{{- end }}
 ```
 
-Alternatively, send the token in the `X-CSRF-Token` HTTP header for AJAX requests:
+For AJAX requests, send the token in the `X-CSRF-Token` HTTP header:
 
 ```javascript
 fetch("/api/submit", {
@@ -47,6 +47,22 @@ fetch("/api/submit", {
     },
     body: JSON.stringify(data),
 });
+```
+
+Include a meta tag in your layout template:
+
+```html
+<meta name="csrf-token" content="{{ csrfToken }}">
+```
+
+## Go API
+
+The token is also available in Go code via the context:
+
+```go
+import "codeberg.org/oliverandrich/burrow/contrib/csrf"
+
+token := csrf.Token(r.Context())
 ```
 
 ## Configuration
@@ -77,3 +93,4 @@ fetch("/api/submit", {
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `Configurable` | CLI flag for auth key |
 | `HasMiddleware` | CSRF protection middleware |
+| `HasRequestFuncMap` | Provides `csrfToken` function to templates |

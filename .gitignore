@@ -1,6 +1,8 @@
 # Binaries
 bin/
 tmp/
+tutorial/step*/step*
+tutorial/step*/*.db
 
 # IDE
 .idea/

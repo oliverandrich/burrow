@@ -1,0 +1,29 @@
+{{ define "polls/list" -}}
+<div class="container py-4">
+    <h1>Polls</h1>
+    {{ if .Questions -}}
+    <div class="list-group" id="polls-list">
+        {{ range .Questions -}}
+        {{ template "polls/question_item" . }}
+        {{ end -}}
+    </div>
+    {{ if .Page.HasMore -}}
+    <div hx-get="/polls?cursor={{ .Page.NextCursor }}&limit=20"
+         hx-trigger="revealed"
+         hx-target="#polls-list"
+         hx-swap="beforeend"
+         hx-select="template">
+        <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+    {{ end -}}
+    {{ else -}}
+    <div class="alert alert-info">
+        No polls available yet.
+    </div>
+    {{ end -}}
+</div>
+{{- end }}

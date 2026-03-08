@@ -41,7 +41,7 @@ Key points:
 
 - `bun.BaseModel` with table name and alias
 - `bun:",soft_delete,nullzero"` on `DeletedAt` enables soft-delete
-- JSON tags control API serialization
+- JSON tags control API serialisation
 
 ## Step 2: Write the Migration
 
@@ -102,7 +102,29 @@ func (r *Repository) Delete(ctx context.Context, noteID, userID int64) error {
 }
 ```
 
-## Step 4: Write the Handlers
+## Step 4: Write the Templates
+
+Create `templates/list.html`:
+
+```html
+{{ define "notes/list" -}}
+<h1>{{ t "notes-title" }}</h1>
+<ul>
+  {{ range .Notes }}
+    <li><a href="/notes/{{ .ID }}">{{ .Title }}</a></li>
+  {{ end }}
+</ul>
+{{- end }}
+```
+
+Embed the templates:
+
+```go
+//go:embed templates/*.html
+var templateFS embed.FS
+```
+
+## Step 5: Write the Handlers
 
 ```go
 type Handlers struct {
@@ -124,7 +146,10 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
     }
 
-    return burrow.JSON(w, http.StatusOK, notes)
+    return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list", map[string]any{
+        "Title": "My Notes",
+        "Notes": notes,
+    })
 }
 
 func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
@@ -158,7 +183,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 1. `Bind` decodes the request body **and** validates it. Returns a `*burrow.ValidationError` when validation fails — see [Validation](validation.md).
 
-## Step 5: Assemble the App
+## Step 6: Assemble the App
 
 ```go
 type App struct {
@@ -185,7 +210,12 @@ func (a *App) MigrationFS() fs.FS { // (2)!
     return sub
 }
 
-func (a *App) NavItems() []burrow.NavItem { // (3)!
+func (a *App) TemplateFS() fs.FS { // (3)!
+    sub, _ := fs.Sub(templateFS, "templates")
+    return sub
+}
+
+func (a *App) NavItems() []burrow.NavItem { // (4)!
     return []burrow.NavItem{
         {
             Label:    "Notes",
@@ -197,7 +227,7 @@ func (a *App) NavItems() []burrow.NavItem { // (3)!
     }
 }
 
-func (a *App) Routes(r chi.Router) { // (4)!
+func (a *App) Routes(r chi.Router) { // (5)!
     r.Route("/notes", func(r chi.Router) {
         r.Use(auth.RequireAuth())
         r.Get("/", burrow.Handle(a.handlers.List))
@@ -208,8 +238,9 @@ func (a *App) Routes(r chi.Router) { // (4)!
 
 1. `HasDependencies` — ensures `auth` is registered before this app
 2. `Migratable` — the framework runs SQL migrations at startup
-3. `HasNavItems` — contributes navigation entries to layouts
-4. `HasRoutes` — registers HTTP handlers on the Chi router
+3. `HasTemplates` — contributes `.html` template files to the global template set
+4. `HasNavItems` — contributes navigation entries to layouts
+5. `HasRoutes` — registers HTTP handlers on the Chi router
 
 ## File Layout
 
@@ -223,11 +254,11 @@ For multi-file apps, name files by their purpose rather than repeating the packa
 | `middleware.go` | Middleware functions |
 | `models.go` | Domain models |
 | `repository.go` | Data access layer |
-| `templates/` | Templ template files (separate Go package) |
+| `templates/` | HTML template files (`{{ define "appname/..." }}`) |
 
 Small apps can keep everything in `app.go` — split only when a file grows large or mixes distinct responsibilities.
 
-## Step 6: Register the App
+## Step 7: Register the App
 
 In `main.go`:
 
@@ -240,8 +271,8 @@ srv := burrow.NewServer(
 )
 ```
 
-!!! warning "Registration Order Matters"
-    Apps are registered in the order you pass them to `NewServer`. If your app declares dependencies via `HasDependencies`, the required apps must appear earlier in the list.
+!!! info "Auto-sorting"
+    `NewServer` automatically sorts apps by their `HasDependencies` declarations. You can list them in any order, and the framework will ensure dependencies are registered first.
 
 ## Optional Interfaces
 
@@ -253,9 +284,16 @@ Your app can implement any combination of these interfaces:
 | `HasRoutes` | `Routes(r chi.Router)` | Register HTTP handlers |
 | `HasMiddleware` | `Middleware() []func(http.Handler) http.Handler` | Add global middleware |
 | `HasNavItems` | `NavItems() []burrow.NavItem` | Contribute navigation entries |
+| `HasTemplates` | `TemplateFS() fs.FS` | Contribute HTML template files |
+| `HasFuncMap` | `FuncMap() template.FuncMap` | Contribute static template functions |
+| `HasRequestFuncMap` | `RequestFuncMap(r *http.Request) template.FuncMap` | Contribute request-scoped template functions |
 | `Configurable` | `Flags() []cli.Flag` + `Configure(cmd *cli.Command) error` | Add CLI flags |
 | `HasCLICommands` | `CLICommands() []*cli.Command` | Add CLI subcommands |
 | `Seedable` | `Seed(ctx context.Context) error` | Seed initial data |
 | `HasDependencies` | `Dependencies() []string` | Declare required apps |
+| `HasAdmin` | `AdminRoutes(r chi.Router)` + `AdminNavItems() []NavItem` | Contribute admin panel |
+| `HasStaticFiles` | `StaticFS() (prefix string, fsys fs.FS)` | Contribute static assets |
+| `HasTranslations` | `TranslationFS() fs.FS` | Contribute translation files |
+| `HasShutdown` | `Shutdown(ctx context.Context) error` | Clean up on shutdown |
 
 See [Core Interfaces](../reference/interfaces.md) for the full reference.

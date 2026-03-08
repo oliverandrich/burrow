@@ -95,43 +95,7 @@ EXPOSE 8080
 ENTRYPOINT ["/server"]
 ```
 
-For zero-downtime deployments with Docker, use rolling updates at the orchestrator level (Docker Swarm, Kubernetes) rather than in-process restarts.
-
-### Kubernetes
-
-In Kubernetes, use a `Deployment` with rolling update strategy. The server's `/healthz` endpoint (from the `healthcheck` contrib app) can serve as both liveness and readiness probe:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-spec:
-  replicas: 2
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
-  template:
-    spec:
-      terminationGracePeriodSeconds: 30
-      containers:
-        - name: app
-          image: myapp:latest
-          ports:
-            - containerPort: 8080
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8080
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 8080
-          args: ["--shutdown-timeout", "25"]
-```
-
-!!! tip
-    Set `--shutdown-timeout` a few seconds below `terminationGracePeriodSeconds` so the server finishes draining before Kubernetes force-kills the pod.
+For zero-downtime deployments with Docker, use an orchestrator-level rolling restart (e.g. `docker compose up -d --force-recreate`) rather than in-process restarts.
 
 ## Bare Metal / VPS
 

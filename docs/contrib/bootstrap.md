@@ -1,6 +1,6 @@
 # Bootstrap
 
-Swappable design system using [Bootstrap 5](https://getbootstrap.com/) and [htmx](https://htmx.org/). Provides static assets and a base HTML layout for all pages. For icons, see [`bsicons`](bsicons.md).
+Swappable design system using [Bootstrap 5](https://getbootstrap.com/) and [htmx](https://htmx.org/). Provides static assets, a base HTML layout, and a dark mode theme switcher for all pages. For icons, see [`bsicons`](bsicons.md). For htmx helpers, see [`htmx`](htmx.md).
 
 **Package:** `codeberg.org/oliverandrich/burrow/contrib/bootstrap`
 
@@ -11,14 +11,15 @@ srv := burrow.NewServer(
     session.New(),
     csrf.New(),
     auth.New(auth.WithRenderer(authRenderer)),
-    bootstrap.New(),                    // provides base layout + Bootstrap/htmx assets
+    bootstrap.New(),                    // provides base layout + Bootstrap assets
+    htmx.New(),                         // serves htmx.min.js
     healthcheck.New(),
     admin.New(admin.WithLayout(admintpl.Layout()), admin.WithDashboardRenderer(admintpl.DefaultDashboardRenderer())),
     staticfiles.New(myStaticFS),
 )
 ```
 
-The `bootstrap` app must be registered before apps that reference its assets (like `admintpl.Layout()`). The `staticfiles` app must also be registered to serve the embedded CSS and JS.
+The `staticfiles` app must be registered to serve the embedded CSS and JS.
 
 ## Layout
 
@@ -28,17 +29,50 @@ The `bootstrap` app must be registered before apps that reference its assets (li
 bootstrap.Layout() // returns burrow.LayoutFunc
 ```
 
-The layout renders a responsive container — no navigation, no sidebar. It is intended as a clean base for user-facing pages like login, register, and standalone forms.
+The layout function:
 
-## Middleware Behavior
+1. Receives the rendered page fragment as `template.HTML`
+2. Executes the `"bootstrap/layout"` template, passing the fragment as `.Content`
+3. Includes navigation from context, CSRF meta tag, and theme switcher
+
+## Middleware Behaviour
 
 The bootstrap middleware injects its layout **only when no layout is already set** in the request context:
 
-- `srv.SetLayout(custom)` is called → custom layout wins, bootstrap skips
-- `srv.SetLayout()` is NOT called → bootstrap layout takes effect
+- `srv.SetLayout(custom)` is called — custom layout wins, bootstrap skips
+- `srv.SetLayout()` is NOT called — bootstrap layout takes effect
 - Admin `/admin` route group always overrides unconditionally
 
 This makes bootstrap batteries-included by default without fighting custom layouts.
+
+## Templates
+
+The bootstrap app implements `HasTemplates` and contributes these templates:
+
+| Template | Description |
+|----------|-------------|
+| `bootstrap/layout` | Full HTML page shell with nav, theme switcher, CSS/JS |
+| `bootstrap/pagination` | Offset-based pagination nav component |
+| `bootstrap/alerts` | Flash message alerts (for use with the messages app) |
+| `bootstrap/alerts-oob` | HTMX out-of-band alerts swap |
+
+### Pagination
+
+Use the pagination template in your own templates:
+
+```html
+{{ define "notes/list" -}}
+<h1>Notes</h1>
+<ul>
+  {{ range .Notes }}<li>{{ .Title }}</li>{{ end }}
+</ul>
+{{ template "bootstrap/pagination" .Page }}
+{{- end }}
+```
+
+The pagination template expects a `burrow.PageResult` value. It renders nothing when `TotalPages <= 1`, shows previous/next buttons with disabled states, and includes ellipsis for large page counts.
+
+For full pagination documentation, see the [Pagination Guide](../guide/pagination.md).
 
 ## Static Files
 
@@ -48,38 +82,15 @@ The bootstrap app embeds these static assets and implements `HasStaticFiles` to 
 |------|-------------|
 | `bootstrap.min.css` | Bootstrap 5 CSS |
 | `bootstrap.bundle.min.js` | Bootstrap 5 JS bundle (includes Popper) |
-| `htmx.min.js` | htmx library for progressive enhancement |
 
 These are served at `/static/bootstrap/bootstrap.min.css`, etc. when the `staticfiles` app is registered.
 
-## Pagination Component
+!!! note "htmx is a separate app"
+    The htmx JavaScript file is served by the dedicated [`htmx` contrib app](htmx.md), not by the bootstrap app.
 
-The `templates` sub-package provides a reusable Bootstrap 5 pagination nav for offset-based pagination:
+## Dark Mode
 
-```go
-import bstpl "codeberg.org/oliverandrich/burrow/contrib/bootstrap/templates"
-```
-
-```templ
-@bstpl.Pagination(page, "/admin/notes")
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `page` | `burrow.PageResult` | Pagination metadata from `burrow.OffsetResult()` |
-| `baseURL` | `string` | Path without query params (e.g., `/admin/notes`) |
-
-**Behavior:**
-
-- Renders nothing when `TotalPages <= 1` (single page or empty)
-- Shows previous/next buttons (`«`/`»`) with disabled state on first/last page
-- Displays page numbers with ellipsis (`…`) when there are more than 7 pages
-- Current page highlighted with Bootstrap's `active` class
-- Links include `?page=N&limit=N` query parameters
-
-For full pagination documentation, see the [Pagination Guide](../guide/pagination.md).
+The layout includes a theme switcher toggle that persists the user's preference in `localStorage`. It uses Bootstrap's `data-bs-theme` attribute to switch between light and dark modes without a page reload.
 
 ## Swapping Design Systems
 
@@ -90,5 +101,8 @@ The `bootstrap` package is intentionally self-contained. To use a different CSS 
 | Interface | Description |
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
-| `HasStaticFiles` | Contributes embedded Bootstrap + htmx assets under `"bootstrap"` prefix |
+| `HasStaticFiles` | Contributes embedded Bootstrap assets under `"bootstrap"` prefix |
 | `HasMiddleware` | Injects bootstrap layout when no layout is set in context |
+| `HasTemplates` | Contributes layout, pagination, and alert templates |
+| `HasFuncMap` | Contributes icon and utility template functions |
+| `HasDependencies` | Requires `staticfiles` |

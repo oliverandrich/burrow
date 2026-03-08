@@ -4,12 +4,13 @@
   <img src="assets/cover.png" alt="Burrow — Go gophers building a modular burrow">
 </p>
 
-A modular Go web framework built on [Chi](https://go-chi.io/), [Bun/SQLite](https://bun.uptrace.dev/), and [Templ](https://templ.guide/) templates.
+A modular Go web framework built on [Chi](https://go-chi.io/), [Bun/SQLite](https://bun.uptrace.dev/), and Go's standard [`html/template`](https://pkg.go.dev/html/template).
 
 ## Features
 
 - **Modular app system** — register self-contained apps with routes, middleware, migrations, and config
 - **Pure Go, no CGO** — uses `modernc.org/sqlite` for zero-dependency builds (`CGO_ENABLED=0`)
+- **Standard templates** — Go's `html/template` with per-app template files, FuncMaps, and automatic layout wrapping
 - **WebAuthn authentication** — passkey-based login with recovery codes and email verification
 - **Cookie-based sessions** — encrypted, signed cookies via `gorilla/securecookie`
 - **Internationalization** — Accept-Language detection with go-i18n translations
@@ -62,5 +63,6 @@ curl http://localhost:8080/healthz
 - [Installation](getting-started/installation.md) — get the module and prerequisites
 - [Quick Start](getting-started/quickstart.md) — build a working app in 5 minutes
 - [Creating an App](guide/creating-an-app.md) — build a custom app step by step
+- [Tutorial](tutorial/index.md) — hands-on guide building a polls app from scratch
 - [Contrib Apps](contrib/session.md) — use the built-in session, auth, i18n, and more
 - [Configuration Reference](reference/configuration.md) — every flag, env var, and TOML key

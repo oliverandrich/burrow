@@ -4,20 +4,21 @@
   <img src="docs/assets/cover.png" alt="Burrow — Go gophers building a modular burrow">
 </p>
 
-A Go web framework library built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and [Templ](https://templ.guide/). Designed around composable apps with a Django-inspired architecture.
+A Go web framework library built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and Go's standard `html/template`. Designed around composable apps with a Django-inspired architecture.
 
 ## Features
 
 - **App-based architecture** — build your application from composable, self-contained apps
 - **Pure Go SQLite** — no CGO required (`CGO_ENABLED=0`), cross-compiles anywhere
 - **Per-app migrations** — each app manages its own SQL migrations
+- **Standard templates** — Go's `html/template` with a global template set, per-app FuncMaps, and automatic layout wrapping
 - **CSS-agnostic** — bring your own CSS framework (Bootstrap, Tailwind, etc.)
 - **Layout system** — app layout via server, admin layout via admin package
 - **CLI configuration** — flags, environment variables, and TOML config via [urfave/cli](https://github.com/urfave/cli)
 - **CSRF protection** — automatic token generation and validation
 - **Flash messages** — session-based flash message system
-- **Bootstrap integration** — Bootstrap 5 CSS/JS, Bootstrap Icons, htmx, and dark mode theme switcher
-- **Contrib apps** — auth (WebAuthn/passkeys), sessions, i18n, admin, CSRF, flash messages, healthcheck, static files
+- **Bootstrap integration** — Bootstrap 5 CSS/JS, inline SVG icons, htmx, and dark mode theme switcher
+- **Contrib apps** — auth (WebAuthn/passkeys), sessions, i18n, admin, CSRF, flash messages, jobs, uploads, rate limiting, healthcheck, static files
 
 ## Quick Start
 
@@ -59,16 +60,21 @@ See [`example/hello/`](example/hello/) for a minimal hello world app, or [`examp
 
 ```
 contrib/        Reusable apps
-  admin/        Admin panel coordinator
+  admin/        Admin panel coordinator + ModelAdmin
   auth/         WebAuthn passkeys, recovery codes, email verification
-  bootstrap/    Bootstrap 5 CSS/JS/htmx assets, theme switcher
-  bsicons/      Bootstrap Icons as templ components
+  authmail/     Pluggable email renderer + SMTP implementation
+  bootstrap/    Bootstrap 5 CSS/JS/htmx assets, theme switcher, layout
+  bsicons/      Bootstrap Icons as inline SVG template functions
   csrf/         CSRF protection
   healthcheck/  /healthz endpoint
+  htmx/         htmx static asset + request/response helpers
   i18n/         Locale detection and translations
+  jobs/         SQLite-backed background job queue
   messages/     Flash messages
+  ratelimit/    Per-client rate limiting
   session/      Cookie-based sessions
   staticfiles/  Static file serving with content-hashed URLs
+  uploads/      File upload storage and serving
 example/        Example applications (hello world, notes app)
 ```
 
@@ -91,6 +97,9 @@ Apps can optionally implement additional interfaces:
 | `HasRoutes` | Register HTTP routes |
 | `HasMiddleware` | Contribute middleware |
 | `HasNavItems` | Contribute navigation items |
+| `HasTemplates` | Contribute `.html` template files |
+| `HasFuncMap` | Contribute static template functions |
+| `HasRequestFuncMap` | Contribute request-scoped template functions |
 | `Configurable` | Define CLI flags and read configuration |
 | `HasCLICommands` | Contribute CLI subcommands |
 | `Seedable` | Seed the database with initial data |
@@ -98,6 +107,7 @@ Apps can optionally implement additional interfaces:
 | `HasStaticFiles` | Contribute embedded static file assets |
 | `HasTranslations` | Contribute translation files |
 | `HasDependencies` | Declare required apps |
+| `HasShutdown` | Clean up on graceful shutdown |
 
 ### Layouts
 
@@ -113,10 +123,10 @@ The admin layout is owned by the admin package:
 admin.New(admin.WithLayout(layout), admin.WithDashboardRenderer(dashboardRenderer))
 ```
 
-A `LayoutFunc` receives a page title and content, and returns a wrapped component:
+A `LayoutFunc` receives the response writer, request, status code, rendered content, and template data:
 
 ```go
-type LayoutFunc func(title string, content templ.Component) templ.Component
+type LayoutFunc func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error
 ```
 
 Layouts access framework values from the request context:

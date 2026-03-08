@@ -2,13 +2,70 @@
 
 The framework provides a layout system that wraps page content in a shared HTML shell. Layouts are CSS-agnostic — you bring your own CSS framework and templates.
 
-## Layout Functions
+## The Template System
 
-A `LayoutFunc` takes a page title and content component, returning a wrapped component:
+Burrow uses Go's standard `html/template` package. Each app can contribute template files and template functions. At boot time, the framework:
+
+1. Collects `.html` files from all `HasTemplates` apps
+2. Collects static functions from all `HasFuncMap` apps
+3. Parses everything into a single global `*template.Template`
+4. Per request, clones the template and injects request-scoped functions from `HasRequestFuncMap` apps
+
+Templates use `{{ define "appname/templatename" }}` blocks to namespace themselves:
+
+```html
+{{ define "notes/list" -}}
+<h1>My Notes</h1>
+<ul>
+  {{ range .Notes }}
+    <li>{{ .Title }}</li>
+  {{ end }}
+</ul>
+{{- end }}
+```
+
+## Rendering in Handlers
+
+Use `burrow.RenderTemplate()` to render a named template with data:
 
 ```go
-type LayoutFunc func(title string, content templ.Component) templ.Component
+func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+    notes, err := h.repo.ListAll(r.Context())
+    if err != nil {
+        return err
+    }
+
+    return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list", map[string]any{
+        "Title": "My Notes",
+        "Notes": notes,
+    })
+}
 ```
+
+`RenderTemplate` does the following:
+
+1. Executes the named template with the provided data, producing an HTML fragment
+2. If the request has an `HX-Request: true` header (htmx), returns the fragment directly — no layout wrapping
+3. Otherwise, passes the fragment to the layout function (if set) which wraps it in the full HTML shell
+4. If no layout is set, returns the fragment as-is
+
+This means the same handler automatically supports both full page loads and htmx partial updates.
+
+## Layout Functions
+
+A `LayoutFunc` receives the rendered page fragment and wraps it:
+
+```go
+type LayoutFunc func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `w` | HTTP response writer |
+| `r` | HTTP request (for reading context values) |
+| `code` | HTTP status code |
+| `content` | The rendered template fragment as `template.HTML` |
+| `data` | The same data map passed to `RenderTemplate` |
 
 ## Setting the App Layout
 
@@ -28,10 +85,10 @@ The `bootstrap` app injects its layout via middleware only when no layout is alr
 **Using `SetLayout()` explicitly:**
 
 ```go
-srv.SetLayout(appLayout)
+srv.SetLayout(appLayout())
 ```
 
-When `SetLayout()` is called, it takes precedence over design system middleware like `oat`.
+When `SetLayout()` is called, it takes precedence over design system middleware like `bootstrap`.
 
 If neither approach is used, content renders unwrapped.
 
@@ -58,86 +115,78 @@ admin.New(admin.WithLayout(adminLayout))
 
 Pass `nil` for no admin layout.
 
-## Writing a Layout
+## Writing a Custom Layout
 
-Layouts read framework values from the request context:
+Layouts typically render another template from the global set. Here's how the Bootstrap app does it:
 
 ```go
-func appLayout(title string, content templ.Component) templ.Component {
-    return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-        // Read framework context values.
-        navItems := burrow.NavItems(ctx)
-        csrfToken := csrf.Token(ctx)
+func Layout() burrow.LayoutFunc {
+    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+        exec := burrow.TemplateExecutorFromContext(r.Context())
 
-        _, _ = io.WriteString(w, "<!DOCTYPE html><html><head><title>")
-        _, _ = io.WriteString(w, title)
-        _, _ = io.WriteString(w, "</title></head><body>")
-
-        // Render navigation.
-        for _, item := range navItems {
-            _, _ = io.WriteString(w, `<a href="`)
-            _, _ = io.WriteString(w, item.URL)
-            _, _ = io.WriteString(w, `">`)
-            _, _ = io.WriteString(w, item.Label)
-            _, _ = io.WriteString(w, `</a> `)
+        layoutData := make(map[string]any, len(data)+2)
+        maps.Copy(layoutData, data)
+        layoutData["Content"] = content
+        if _, ok := layoutData["Title"]; !ok {
+            layoutData["Title"] = ""
         }
 
-        // Render page content.
-        if err := content.Render(ctx, w); err != nil {
+        html, err := exec(r, "bootstrap/layout", layoutData)
+        if err != nil {
             return err
         }
 
-        _, _ = io.WriteString(w, "</body></html>")
-        return nil
-    })
+        w.Header().Set("Content-Type", "text/html; charset=utf-8")
+        w.WriteHeader(code)
+        _, err = w.Write([]byte(html))
+        return err
+    }
 }
 ```
 
-With Templ templates, the layout is cleaner:
+The corresponding template file:
 
+```html
+{{ define "bootstrap/layout" -}}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="utf-8">
+    <title>{{ .Title }}</title>
+    <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
+</head>
+<body>
+    <nav>
+        {{ range .NavItems }}
+            <a href="{{ .URL }}">{{ .Icon }} {{ .Label }}</a>
+        {{ end }}
+    </nav>
+    <main class="container py-4">
+        {{ .Content }}
+    </main>
+    <script src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
+</body>
+</html>
+{{- end }}
 ```
-// templates/layouts/app.templ
-templ AppLayout(title string, content templ.Component) {
-    <!DOCTYPE html>
-    <html>
-    <head><title>{ title }</title></head>
-    <body>
-        <nav>
-            for _, item := range burrow.NavItems(ctx) {
-                <a href={ templ.SafeURL(item.URL) }>{ item.Label }</a>
-            }
-        </nav>
-        @content
-    </body>
-    </html>
-}
-```
-
-## Rendering in Handlers
-
-Use `burrow.Render()` to render a Templ component with a status code:
-
-```go
-func (h *Handlers) HomePage(w http.ResponseWriter, r *http.Request) error {
-    return burrow.Render(w, r, http.StatusOK, homePageComponent())
-}
-```
-
-`burrow.Render()` calls `component.Render()` with the request context, so all context values (nav items, CSRF token, locale, current user) are available to the template.
 
 ## Layout Unification
 
-The app layout, auth layout, and admin layout all use the same context key (`burrow.Layout(ctx)`). The framework sets the app layout globally via middleware, while the auth and admin route groups override it with their own layouts. This means any template can always read `burrow.Layout(ctx)` to get the correct layout for the current request.
+The app layout, auth layout, and admin layout all use the same context key (`burrow.Layout(ctx)`). The framework sets the app layout globally via middleware, while the auth and admin route groups override it with their own layouts. This means any handler can always rely on `burrow.Layout(ctx)` returning the correct layout for the current request.
 
 ## Available Context Values
 
-| Helper | Type | Set By |
-|--------|------|--------|
+These values are available in templates via FuncMap functions or in layout code via context helpers:
+
+| Helper / FuncMap | Type | Set By |
+|------------------|------|--------|
 | `burrow.NavItems(ctx)` | `[]NavItem` | Framework (from all `HasNavItems` apps) |
-| `burrow.Layout(ctx)` | `LayoutFunc` | Framework middleware / auth route group / admin route group |
-| `csrf.Token(ctx)` | `string` | CSRF middleware |
-| `i18n.Locale(ctx)` | `string` | i18n middleware |
-| `i18n.T(ctx, key)` | `string` | i18n middleware |
-| `staticfiles.URL(ctx, name)` | `string` | staticfiles middleware |
+| `burrow.Layout(ctx)` | `LayoutFunc` | Framework middleware / auth / admin |
+| `{{ csrfToken }}` | `string` | CSRF app (`HasRequestFuncMap`) |
+| `{{ lang }}` | `string` | i18n app (`HasRequestFuncMap`) |
+| `{{ t "key" }}` | `string` | i18n app (`HasRequestFuncMap`) |
+| `{{ staticURL "path" }}` | `string` | staticfiles app (`HasFuncMap`) |
+| `{{ currentUser }}` | `*auth.User` | auth app (`HasRequestFuncMap`) |
+| `{{ isAuthenticated }}` | `bool` | auth app (`HasRequestFuncMap`) |
 
 See [Context Helpers](../reference/context-helpers.md) for the complete list.

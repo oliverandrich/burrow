@@ -1,0 +1,21 @@
+{{ define "polls/list" -}}
+<div class="container py-4">
+    <h1>Polls</h1>
+    {{ if .Questions -}}
+    <div class="list-group">
+        {{ range .Questions -}}
+        <a href="/polls/{{ .ID }}" class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">{{ .Text }}</h5>
+                <small class="text-body-secondary">{{ .PublishedAt.Format "2 Jan 2006" }}</small>
+            </div>
+        </a>
+        {{ end -}}
+    </div>
+    {{ else -}}
+    <div class="alert alert-info">
+        No polls available yet.
+    </div>
+    {{ end -}}
+</div>
+{{- end }}
