@@ -141,6 +141,33 @@ func TestGetInt64WrongType(t *testing.T) {
 	assert.Equal(t, int64(0), got)
 }
 
+func TestGetValuesReturnsCopy(t *testing.T) {
+	r, app := routerWithSession(t)
+	mgr := app.Manager()
+
+	cookie, err := mgr.Save(map[string]any{"user_id": int64(42)})
+	require.NoError(t, err)
+
+	var original, afterMutation map[string]any
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		original = GetValues(r)
+		// Mutate the returned map — this must NOT affect the internal state.
+		original["injected"] = "evil"
+		afterMutation = GetValues(r)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	require.NotNil(t, afterMutation)
+	_, hasInjected := afterMutation["injected"]
+	assert.False(t, hasInjected, "mutation of returned map should not affect internal state")
+}
+
 func TestGetValuesNoSession(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	assert.Nil(t, GetValues(req))

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/gob"
 	"errors"
+	"maps"
 	"net/http"
 	"time"
 
@@ -51,13 +52,14 @@ var errNoMiddleware = errors.New("session: no session middleware")
 // --- Context-based getters ---
 
 // GetValues retrieves all session values from the request.
-// Returns nil if no session is active.
+// Returns nil if no session is active. The returned map is a shallow copy;
+// mutations do not affect the session — use Set to persist changes.
 func GetValues(r *http.Request) map[string]any {
 	s := getState(r)
-	if s == nil {
+	if s == nil || s.values == nil {
 		return nil
 	}
-	return s.values
+	return maps.Clone(s.values)
 }
 
 // GetString retrieves a string value from the session.
