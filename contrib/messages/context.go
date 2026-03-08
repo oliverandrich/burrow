@@ -15,7 +15,7 @@ import (
 	"context"
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/burrow/contrib/session"
 )
 
 // messageStore is a mutable, request-scoped container for flash messages.

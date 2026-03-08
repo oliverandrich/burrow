@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"time"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/uptrace/bun"
 )
 

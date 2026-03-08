@@ -1,4 +1,4 @@
-module codeberg.org/oliverandrich/burrow
+module github.com/oliverandrich/burrow
 
 go 1.25.0
 

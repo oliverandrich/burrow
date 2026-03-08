@@ -5,7 +5,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"

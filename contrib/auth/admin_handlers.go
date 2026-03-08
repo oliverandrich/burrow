@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/htmx"
 )
 
 // handleUserDetail renders the admin user detail page with edit flags.

@@ -10,10 +10,10 @@ import (
 	"io/fs"
 	"time"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
-	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
+	"github.com/oliverandrich/burrow/contrib/bsicons"
 	"github.com/urfave/cli/v3"
 )
 

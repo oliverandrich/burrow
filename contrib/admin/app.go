@@ -6,10 +6,10 @@ import (
 	"io/fs"
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/auth"
-	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/auth"
+	"github.com/oliverandrich/burrow/contrib/bsicons"
 )
 
 //go:embed templates/*.html

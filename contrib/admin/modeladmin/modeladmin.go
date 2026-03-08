@@ -9,8 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/i18n"
 )
 
 const defaultPageSize = 25

@@ -4,7 +4,7 @@ The framework and contrib apps store values in the request context. These helper
 
 ## Core Helpers
 
-Defined in `codeberg.org/oliverandrich/burrow`.
+Defined in `github.com/oliverandrich/burrow`.
 
 ### NavItems
 
@@ -49,7 +49,7 @@ Generic context value helpers. `ContextValue` is a typed getter that returns the
 
 ## Admin Helpers
 
-Defined in `codeberg.org/oliverandrich/burrow/contrib/admin`.
+Defined in `github.com/oliverandrich/burrow/contrib/admin`.
 
 ### NavGroupsFromContext
 
@@ -88,7 +88,7 @@ Stores the current request path in the context. Used internally by the admin rou
 
 ## CSRF Helpers
 
-Defined in `codeberg.org/oliverandrich/burrow/contrib/csrf`.
+Defined in `github.com/oliverandrich/burrow/contrib/csrf`.
 
 ### Token
 
@@ -108,7 +108,7 @@ Stores a CSRF token in the context. Used internally by the CSRF middleware.
 
 ## Auth Helpers
 
-Defined in `codeberg.org/oliverandrich/burrow/contrib/auth`.
+Defined in `github.com/oliverandrich/burrow/contrib/auth`.
 
 ### UserFromContext
 
@@ -136,7 +136,7 @@ Stores the user in the context. Used internally by the auth middleware.
 
 ## Session Helpers
 
-Defined in `codeberg.org/oliverandrich/burrow/contrib/session`.
+Defined in `github.com/oliverandrich/burrow/contrib/session`.
 
 ### Getters
 
@@ -169,7 +169,7 @@ Sets up session state in the request context without the full middleware. Intend
 
 ## i18n Helpers
 
-Defined in `codeberg.org/oliverandrich/burrow/contrib/i18n`.
+Defined in `github.com/oliverandrich/burrow/contrib/i18n`.
 
 ### Translation
 
@@ -199,7 +199,7 @@ Translates validation error messages in-place using the localizer from the conte
 
 ## Static Files Helpers
 
-Defined in `codeberg.org/oliverandrich/burrow/contrib/staticfiles`.
+Defined in `github.com/oliverandrich/burrow/contrib/staticfiles`.
 
 ### URL
 

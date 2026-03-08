@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 	"github.com/urfave/cli/v3"
 )
 

@@ -8,43 +8,43 @@ Burrow is designed for server-rendered web applications, not API-only services.
 
 ## Core Concepts
 
-- [Quick Start](https://oliverandrich.codeberg.page/burrow/getting-started/quickstart/): Minimal app setup
-- [Creating an App](https://oliverandrich.codeberg.page/burrow/guide/creating-an-app/): Build a custom app with routes, templates, and migrations
-- [Core Interfaces](https://oliverandrich.codeberg.page/burrow/reference/interfaces/): App, Migratable, HasRoutes, HasMiddleware, HasTemplates, Configurable, and more
-- [Core Functions](https://oliverandrich.codeberg.page/burrow/reference/core-functions/): HandlerFunc, Handle, RenderTemplate, Bind, Validate, JSON, Text, HTML
-- [Routing](https://oliverandrich.codeberg.page/burrow/guide/routing/): Handlers, error handling, URL parameters, middleware
-- [Database](https://oliverandrich.codeberg.page/burrow/guide/database/): SQLite setup, PRAGMAs, Bun ORM usage, repository pattern
-- [Layouts & Rendering](https://oliverandrich.codeberg.page/burrow/guide/layouts/): Template rendering, layout wrapping, HTMX support
-- [Configuration](https://oliverandrich.codeberg.page/burrow/guide/configuration/): CLI flags, environment variables, TOML config
-- [Migrations](https://oliverandrich.codeberg.page/burrow/guide/migrations/): Per-app SQL migrations with tracking
+- [Quick Start](https://burrow.someonewho.codes/getting-started/quickstart/): Minimal app setup
+- [Creating an App](https://burrow.someonewho.codes/guide/creating-an-app/): Build a custom app with routes, templates, and migrations
+- [Core Interfaces](https://burrow.someonewho.codes/reference/interfaces/): App, Migratable, HasRoutes, HasMiddleware, HasTemplates, Configurable, and more
+- [Core Functions](https://burrow.someonewho.codes/reference/core-functions/): HandlerFunc, Handle, RenderTemplate, Bind, Validate, JSON, Text, HTML
+- [Routing](https://burrow.someonewho.codes/guide/routing/): Handlers, error handling, URL parameters, middleware
+- [Database](https://burrow.someonewho.codes/guide/database/): SQLite setup, PRAGMAs, Bun ORM usage, repository pattern
+- [Layouts & Rendering](https://burrow.someonewho.codes/guide/layouts/): Template rendering, layout wrapping, HTMX support
+- [Configuration](https://burrow.someonewho.codes/guide/configuration/): CLI flags, environment variables, TOML config
+- [Migrations](https://burrow.someonewho.codes/guide/migrations/): Per-app SQL migrations with tracking
 
 ## Contrib Apps
 
-- [Auth](https://oliverandrich.codeberg.page/burrow/contrib/auth/): WebAuthn/passkey authentication with recovery codes
-- [Session](https://oliverandrich.codeberg.page/burrow/contrib/session/): Cookie-based sessions via gorilla/sessions
-- [CSRF](https://oliverandrich.codeberg.page/burrow/contrib/csrf/): CSRF protection via gorilla/csrf
-- [Admin](https://oliverandrich.codeberg.page/burrow/contrib/admin/): Admin panel coordinator with ModelAdmin CRUD
-- [i18n](https://oliverandrich.codeberg.page/burrow/contrib/i18n/): Locale detection and translations
-- [Bootstrap](https://oliverandrich.codeberg.page/burrow/contrib/bootstrap/): Bootstrap 5 CSS/JS, dark mode, layout
-- [htmx](https://oliverandrich.codeberg.page/burrow/contrib/htmx/): HTMX integration with request/response helpers
-- [Jobs](https://oliverandrich.codeberg.page/burrow/contrib/jobs/): SQLite-backed background job queue
-- [Uploads](https://oliverandrich.codeberg.page/burrow/contrib/uploads/): File upload storage with content-hashed serving
-- [Messages](https://oliverandrich.codeberg.page/burrow/contrib/messages/): Flash messages
-- [Rate Limiting](https://oliverandrich.codeberg.page/burrow/contrib/ratelimit/): Per-client token bucket rate limiting
-- [Static Files](https://oliverandrich.codeberg.page/burrow/contrib/staticfiles/): Content-hashed static file serving
-- [Healthcheck](https://oliverandrich.codeberg.page/burrow/contrib/healthcheck/): /healthz endpoint
+- [Auth](https://burrow.someonewho.codes/contrib/auth/): WebAuthn/passkey authentication with recovery codes
+- [Session](https://burrow.someonewho.codes/contrib/session/): Cookie-based sessions via gorilla/sessions
+- [CSRF](https://burrow.someonewho.codes/contrib/csrf/): CSRF protection via gorilla/csrf
+- [Admin](https://burrow.someonewho.codes/contrib/admin/): Admin panel coordinator with ModelAdmin CRUD
+- [i18n](https://burrow.someonewho.codes/contrib/i18n/): Locale detection and translations
+- [Bootstrap](https://burrow.someonewho.codes/contrib/bootstrap/): Bootstrap 5 CSS/JS, dark mode, layout
+- [htmx](https://burrow.someonewho.codes/contrib/htmx/): HTMX integration with request/response helpers
+- [Jobs](https://burrow.someonewho.codes/contrib/jobs/): SQLite-backed background job queue
+- [Uploads](https://burrow.someonewho.codes/contrib/uploads/): File upload storage with content-hashed serving
+- [Messages](https://burrow.someonewho.codes/contrib/messages/): Flash messages
+- [Rate Limiting](https://burrow.someonewho.codes/contrib/ratelimit/): Per-client token bucket rate limiting
+- [Static Files](https://burrow.someonewho.codes/contrib/staticfiles/): Content-hashed static file serving
+- [Healthcheck](https://burrow.someonewho.codes/contrib/healthcheck/): /healthz endpoint
 
 ## Reference
 
-- [Server & Registry](https://oliverandrich.codeberg.page/burrow/reference/server/): Server boot sequence, registry API
-- [Configuration Reference](https://oliverandrich.codeberg.page/burrow/reference/configuration/): All flags, env vars, TOML keys
-- [Template Functions](https://oliverandrich.codeberg.page/burrow/reference/template-functions/): Built-in template functions
-- [Context Helpers](https://oliverandrich.codeberg.page/burrow/reference/context-helpers/): Request context accessors
+- [Server & Registry](https://burrow.someonewho.codes/reference/server/): Server boot sequence, registry API
+- [Configuration Reference](https://burrow.someonewho.codes/reference/configuration/): All flags, env vars, TOML keys
+- [Template Functions](https://burrow.someonewho.codes/reference/template-functions/): Built-in template functions
+- [Context Helpers](https://burrow.someonewho.codes/reference/context-helpers/): Request context accessors
 
 ## Optional
 
-- [Tutorial](https://oliverandrich.codeberg.page/burrow/tutorial/): Build a complete polls app step by step (7 parts)
-- [TLS](https://oliverandrich.codeberg.page/burrow/guide/tls/): TLS modes, ACME/Let's Encrypt, self-signed certs
-- [Deployment](https://oliverandrich.codeberg.page/burrow/guide/deployment/): Production deployment guide
-- [Contributing](https://oliverandrich.codeberg.page/burrow/contributing/): Development setup and contribution workflow
-- [Changelog](https://oliverandrich.codeberg.page/burrow/changelog/): Version history
+- [Tutorial](https://burrow.someonewho.codes/tutorial/): Build a complete polls app step by step (7 parts)
+- [TLS](https://burrow.someonewho.codes/guide/tls/): TLS modes, ACME/Let's Encrypt, self-signed certs
+- [Deployment](https://burrow.someonewho.codes/guide/deployment/): Production deployment guide
+- [Contributing](https://burrow.someonewho.codes/contributing/): Development setup and contribution workflow
+- [Changelog](https://burrow.someonewho.codes/changelog/): Version history

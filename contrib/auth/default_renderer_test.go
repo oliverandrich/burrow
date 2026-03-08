@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/csrf"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/csrf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

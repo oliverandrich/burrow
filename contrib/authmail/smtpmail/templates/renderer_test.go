@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"codeberg.org/oliverandrich/burrow/contrib/authmail"
+	"github.com/oliverandrich/burrow/contrib/authmail"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

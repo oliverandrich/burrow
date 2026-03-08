@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/auth"
-	"codeberg.org/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/auth"
+	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

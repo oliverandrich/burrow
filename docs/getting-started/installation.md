@@ -8,17 +8,17 @@
 ## Install the Module
 
 ```bash
-go get codeberg.org/oliverandrich/burrow@latest
+go get github.com/oliverandrich/burrow@latest
 ```
 
 This pulls the `burrow` package and all `contrib` apps. Import only what you need:
 
 ```go
 import (
-    "codeberg.org/oliverandrich/burrow"
-    "codeberg.org/oliverandrich/burrow/contrib/session"
-    "codeberg.org/oliverandrich/burrow/contrib/auth"
-    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
+    "github.com/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow/contrib/session"
+    "github.com/oliverandrich/burrow/contrib/auth"
+    "github.com/oliverandrich/burrow/contrib/healthcheck"
 )
 ```
 
@@ -41,8 +41,8 @@ Create a minimal `main.go` to check that everything works:
 package main
 
 import (
-    "codeberg.org/oliverandrich/burrow"
-    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
+    "github.com/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow/contrib/healthcheck"
     "github.com/urfave/cli/v3"
 )
 

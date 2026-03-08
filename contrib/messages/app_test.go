@@ -1,6 +1,6 @@
 package messages
 
-import "codeberg.org/oliverandrich/burrow"
+import "github.com/oliverandrich/burrow"
 
 // Compile-time interface assertions.
 var (

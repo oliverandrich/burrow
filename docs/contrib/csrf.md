@@ -2,7 +2,7 @@
 
 Cross-Site Request Forgery protection using `gorilla/csrf`.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/csrf`
+**Package:** `github.com/oliverandrich/burrow/contrib/csrf`
 
 **Depends on:** none
 
@@ -62,7 +62,7 @@ Include a meta tag in your layout template:
 The token is also available in Go code via the context:
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/csrf"
+import "github.com/oliverandrich/burrow/contrib/csrf"
 
 token := csrf.Token(r.Context())
 ```

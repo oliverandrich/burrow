@@ -3,7 +3,7 @@ package i18n
 import (
 	"context"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 )
 
 // TranslateValidationErrors translates the messages of a ValidationError

@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"strings"
 
-	"codeberg.org/oliverandrich/burrow"
 	"github.com/BurntSushi/toml"
 	i18nlib "github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/oliverandrich/burrow"
 	"github.com/urfave/cli/v3"
 	"golang.org/x/text/language"
 )

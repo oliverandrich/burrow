@@ -2,14 +2,14 @@
 
 In this first part you'll create a Go module, set up a minimal Burrow server, and serve a "Hello, Polls!" homepage.
 
-**Source code:** [`tutorial/step01/`](https://codeberg.org/oliverandrich/burrow/src/branch/main/tutorial/step01)
+**Source code:** [`tutorial/step01/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step01)
 
 ## Create the Project
 
 ```bash
 mkdir polls && cd polls
 go mod init polls
-go get codeberg.org/oliverandrich/burrow@latest
+go get github.com/oliverandrich/burrow@latest
 ```
 
 After writing the code below, run `go mod tidy` to fetch all transitive dependencies before building.
@@ -27,7 +27,7 @@ import (
     "net/http"
     "os"
 
-    "codeberg.org/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow"
     "github.com/go-chi/chi/v5"
     "github.com/urfave/cli/v3"
 )

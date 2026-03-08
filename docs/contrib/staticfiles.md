@@ -2,7 +2,7 @@
 
 Content-hashed static file serving with cache-busting URLs, similar to Django's `ManifestStaticFilesStorage`.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/staticfiles`
+**Package:** `github.com/oliverandrich/burrow/contrib/staticfiles`
 
 **Depends on:** none
 

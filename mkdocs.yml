@@ -1,7 +1,7 @@
 site_name: Burrow
 site_description: A modular Go web framework built on Chi, Bun/SQLite, and html/template
-site_url: https://oliverandrich.codeberg.page/burrow/
-repo_url: https://codeberg.org/oliverandrich/burrow
+site_url: https://burrow.someonewho.codes/
+repo_url: https://github.com/oliverandrich/burrow
 repo_name: oliverandrich/burrow
 copyright: "&copy; 2026 Oliver Andrich. All rights reserved."
 

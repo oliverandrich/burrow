@@ -14,7 +14,7 @@ Additional tools (linter, test formatter, etc.) are checked automatically — se
 
 ```bash
 # Clone the repository
-git clone https://codeberg.org/oliverandrich/burrow.git
+git clone https://github.com/oliverandrich/burrow.git
 cd burrow
 
 # Check that all required tools are installed
@@ -52,7 +52,7 @@ The pre-commit hooks run the linter, vulnerability checker, tests, and `go mod t
 
 ## Code Style
 
-- **Linting** — golangci-lint with the project's [`.golangci.yml`](https://codeberg.org/oliverandrich/burrow/src/branch/main/.golangci.yml) config. All code must pass `just lint` without warnings.
+- **Linting** — golangci-lint with the project's [`.golangci.yml`](https://github.com/oliverandrich/burrow/blob/main/.golangci.yml) config. All code must pass `just lint` without warnings.
 - **Testing** — use [testify](https://github.com/stretchr/testify) (`assert`, `require`) for all tests.
 - **Commit messages** — follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `perf:`).
 
@@ -72,7 +72,7 @@ Each contrib app follows a standard layout — see the [Creating an App](guide/c
 
 ## Submitting Changes
 
-1. **Fork** the repository on Codeberg.
+1. **Fork** the repository on GitHub.
 2. **Create a branch** from `main` with a descriptive name (e.g. `feat/widget-support`, `fix/session-race`).
 3. **Make focused commits** — each commit should represent one logical change.
 4. **Ensure all checks pass** — `just fmt && just lint && just test`.

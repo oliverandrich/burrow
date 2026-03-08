@@ -2,7 +2,7 @@
 
 Inline SVG icons from [Bootstrap Icons](https://icons.getbootstrap.com/) as Go functions returning `template.HTML`. Only icons actually used in your code end up in the compiled binary.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/bsicons`
+**Package:** `github.com/oliverandrich/burrow/contrib/bsicons`
 
 **Depends on:** none
 
@@ -11,7 +11,7 @@ Inline SVG icons from [Bootstrap Icons](https://icons.getbootstrap.com/) as Go f
 Each icon is a Go function that returns `template.HTML` containing an inline SVG:
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/bsicons"
+import "github.com/oliverandrich/burrow/contrib/bsicons"
 
 html := bsicons.Trash()
 html := bsicons.House()

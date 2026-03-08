@@ -2,7 +2,7 @@
 
 In this part you'll add the auth contrib app so that only logged-in users can vote.
 
-**Source code:** [`tutorial/step05/`](https://codeberg.org/oliverandrich/burrow/src/branch/main/tutorial/step05)
+**Source code:** [`tutorial/step05/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step05)
 
 ## Add the Auth App
 
@@ -12,8 +12,8 @@ Update `main.go`:
 
 ```go
 import (
-    "codeberg.org/oliverandrich/burrow/contrib/auth"
-    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
+    "github.com/oliverandrich/burrow/contrib/auth"
+    "github.com/oliverandrich/burrow/contrib/healthcheck"
 )
 
 srv := burrow.NewServer(

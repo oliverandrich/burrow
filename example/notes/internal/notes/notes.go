@@ -11,14 +11,14 @@ import (
 	"strconv"
 	"time"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
-	matpl "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin/templates"
-	"codeberg.org/oliverandrich/burrow/contrib/auth"
-	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
-	"codeberg.org/oliverandrich/burrow/contrib/htmx"
-	"codeberg.org/oliverandrich/burrow/contrib/messages"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
+	matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
+	"github.com/oliverandrich/burrow/contrib/auth"
+	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/uptrace/bun"
 )
 

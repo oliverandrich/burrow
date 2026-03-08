@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"codeberg.org/oliverandrich/burrow"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
 	"github.com/uptrace/bun"
 )
 

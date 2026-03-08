@@ -4,7 +4,7 @@ import (
 	"html/template"
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 )
 
 // RowAction defines a custom per-row action in the admin list/detail views.

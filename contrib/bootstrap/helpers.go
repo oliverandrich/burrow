@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"fmt"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 )
 
 // pageURL builds a pagination URL preserving the existing limit parameter.

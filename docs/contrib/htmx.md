@@ -2,7 +2,7 @@
 
 Serves the [htmx](https://htmx.org/) JavaScript library as a static asset and provides Go helpers for htmx request detection and response headers. Inspired by [django-htmx](https://django-htmx.readthedocs.io/).
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/htmx`
+**Package:** `github.com/oliverandrich/burrow/contrib/htmx`
 
 **Depends on:** `staticfiles`
 
@@ -27,7 +27,7 @@ The htmx app embeds `htmx.min.js` and serves it via the `staticfiles` app under 
 Parse htmx-specific request headers with `htmx.Request()`:
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/htmx"
+import "github.com/oliverandrich/burrow/contrib/htmx"
 
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
     hx := htmx.Request(r)
@@ -63,7 +63,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 Set htmx response headers to control client-side behaviour:
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/htmx"
+import "github.com/oliverandrich/burrow/contrib/htmx"
 
 func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
     // ... delete resource ...

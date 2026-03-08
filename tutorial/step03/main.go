@@ -7,10 +7,10 @@ import (
 	"log"
 	"os"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/bootstrap"
-	"codeberg.org/oliverandrich/burrow/contrib/htmx"
-	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/bootstrap"
+	"github.com/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	"github.com/urfave/cli/v3"
 
 	"tutorial/step03/internal/pages"

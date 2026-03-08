@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
-	matpl "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin/templates"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
+	matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 )
 
 // newJobsRenderer returns a ModelAdmin renderer for Jobs that delegates

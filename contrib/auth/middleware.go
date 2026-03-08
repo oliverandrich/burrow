@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"codeberg.org/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/burrow/contrib/session"
 )
 
 // RequireAuth returns middleware that redirects to login if not authenticated.

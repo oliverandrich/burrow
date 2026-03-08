@@ -2,7 +2,7 @@
 
 In-process, SQLite-backed background job queue with a worker pool, retry logic, and admin UI.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/jobs`
+**Package:** `github.com/oliverandrich/burrow/contrib/jobs`
 
 **Depends on:** none (optional: `admin` for admin panel UI)
 

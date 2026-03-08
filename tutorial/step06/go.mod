@@ -2,11 +2,11 @@ module tutorial/step06
 
 go 1.25.0
 
-replace codeberg.org/oliverandrich/burrow => ../..
+replace github.com/oliverandrich/burrow => ../..
 
 require (
-	codeberg.org/oliverandrich/burrow v0.0.0
 	github.com/go-chi/chi/v5 v5.2.5
+	github.com/oliverandrich/burrow v0.0.0
 	github.com/uptrace/bun v1.2.16
 	github.com/urfave/cli/v3 v3.6.2
 )

@@ -4,8 +4,8 @@ package healthcheck
 import (
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
 	"github.com/uptrace/bun"
 )
 

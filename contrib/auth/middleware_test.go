@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/stretchr/testify/assert"
 )
 

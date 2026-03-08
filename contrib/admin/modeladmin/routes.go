@@ -1,8 +1,8 @@
 package modeladmin
 
 import (
-	"codeberg.org/oliverandrich/burrow"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
 )
 
 // Routes mounts all CRUD routes for this ModelAdmin on the given router.

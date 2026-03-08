@@ -2,7 +2,7 @@
 
 Swappable design system using [Bootstrap 5](https://getbootstrap.com/) and [htmx](https://htmx.org/). Provides static assets, a base HTML layout, and a dark mode theme switcher for all pages. For icons, see [`bsicons`](bsicons.md). For htmx helpers, see [`htmx`](htmx.md).
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/bootstrap`
+**Package:** `github.com/oliverandrich/burrow/contrib/bootstrap`
 
 **Depends on:** `staticfiles`, `htmx`
 

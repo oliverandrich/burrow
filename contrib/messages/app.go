@@ -3,8 +3,8 @@ package messages
 import (
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/session"
 )
 
 // New creates a new messages app.

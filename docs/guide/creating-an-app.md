@@ -222,7 +222,7 @@ func (a *App) NavItems() []burrow.NavItem { // (4)!
         {
             Label:    "Notes",
             URL:      "/notes",
-            Icon:     bsicons.JournalText(), // "codeberg.org/oliverandrich/burrow/contrib/bsicons"
+            Icon:     bsicons.JournalText(), // "github.com/oliverandrich/burrow/contrib/bsicons"
             Position: 20,
             AuthOnly: true,
         },

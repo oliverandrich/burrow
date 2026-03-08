@@ -2,7 +2,7 @@
 
 In this part you'll define the data models for your polls app, write a SQL migration, and create a repository for database access.
 
-**Source code:** [`tutorial/step02/`](https://codeberg.org/oliverandrich/burrow/src/branch/main/tutorial/step02)
+**Source code:** [`tutorial/step02/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step02)
 
 ## The Polls App
 
@@ -27,7 +27,7 @@ import (
     "io/fs"
     "time"
 
-    "codeberg.org/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow"
     "github.com/uptrace/bun"
 )
 

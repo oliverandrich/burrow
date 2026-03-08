@@ -12,12 +12,12 @@ import (
 	"net/http"
 	"time"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
-	matpl "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin/templates"
-	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
-	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
+	matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
+	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/urfave/cli/v3"
 )
 

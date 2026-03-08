@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/htmx"
 )
 
 // HandleList renders the paginated list view.

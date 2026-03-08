@@ -2,7 +2,7 @@
 
 WebAuthn (passkey) authentication with recovery codes, email verification, and invite-only registration.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/auth`
+**Package:** `github.com/oliverandrich/burrow/contrib/auth`
 
 **Depends on:** `session`, `csrf`, `staticfiles`, `bootstrap` (for the default templates)
 

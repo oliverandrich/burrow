@@ -2,7 +2,7 @@
 
 Per-client rate limiting middleware using a token bucket algorithm.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/ratelimit`
+**Package:** `github.com/oliverandrich/burrow/contrib/ratelimit`
 
 **Depends on:** none
 
@@ -52,7 +52,7 @@ Override with `WithKeyFunc()` for custom identification (e.g., by API key or aut
 When a request is rate-limited, the `Retry-After` duration is available in the context:
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/ratelimit"
+import "github.com/oliverandrich/burrow/contrib/ratelimit"
 
 retryAfter := ratelimit.RetryAfter(r.Context())
 ```

@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/burrow/contrib/session"
 )
 
 func init() {

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"codeberg.org/oliverandrich/burrow/contrib/authmail"
+	"github.com/oliverandrich/burrow/contrib/authmail"
 )
 
 //go:embed emails.html

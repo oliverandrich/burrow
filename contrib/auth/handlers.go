@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/session"
 	"github.com/go-chi/chi/v5"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/session"
 )
 
 // Renderer defines the page rendering interface for auth templates.

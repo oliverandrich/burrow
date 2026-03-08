@@ -35,9 +35,9 @@ import (
     "log"
     "os"
 
-    "codeberg.org/oliverandrich/burrow"
-    "codeberg.org/oliverandrich/burrow/contrib/healthcheck"
-    "codeberg.org/oliverandrich/burrow/contrib/session"
+    "github.com/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow/contrib/healthcheck"
+    "github.com/oliverandrich/burrow/contrib/session"
     "github.com/urfave/cli/v3"
 )
 

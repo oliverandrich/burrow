@@ -1,8 +1,8 @@
 package smtpmail
 
 import (
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/authmail"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/authmail"
 	"github.com/urfave/cli/v3"
 )
 

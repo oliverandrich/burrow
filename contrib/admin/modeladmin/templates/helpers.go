@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 )
 
 // hasFieldError checks if a validation error contains a failure for the named field.

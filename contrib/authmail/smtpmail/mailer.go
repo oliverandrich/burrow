@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"codeberg.org/oliverandrich/burrow/contrib/authmail"
+	"github.com/oliverandrich/burrow/contrib/authmail"
 
 	"github.com/wneessen/go-mail"
 )

@@ -2,7 +2,7 @@
 
 In this part you'll add HTML templates, a Bootstrap-styled layout, and views that render question lists and detail pages.
 
-**Source code:** [`tutorial/step03/`](https://codeberg.org/oliverandrich/burrow/src/branch/main/tutorial/step03)
+**Source code:** [`tutorial/step03/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step03)
 
 ## How Templates Work in Burrow
 
@@ -210,7 +210,7 @@ import (
     "io/fs"
     "net/http"
 
-    "codeberg.org/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow"
     "github.com/go-chi/chi/v5"
 )
 
@@ -352,10 +352,10 @@ import (
     "log"
     "os"
 
-    "codeberg.org/oliverandrich/burrow"
-    "codeberg.org/oliverandrich/burrow/contrib/bootstrap"
-    "codeberg.org/oliverandrich/burrow/contrib/htmx"
-    "codeberg.org/oliverandrich/burrow/contrib/staticfiles"
+    "github.com/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow/contrib/bootstrap"
+    "github.com/oliverandrich/burrow/contrib/htmx"
+    "github.com/oliverandrich/burrow/contrib/staticfiles"
     "github.com/urfave/cli/v3"
 
     "polls/internal/pages"

@@ -2,7 +2,7 @@
 
 Cookie-based session management using `gorilla/securecookie`.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/session`
+**Package:** `github.com/oliverandrich/burrow/contrib/session`
 
 **Depends on:** none
 
@@ -20,7 +20,7 @@ The session app provides middleware that automatically parses and manages sessio
 ## Reading Values
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/session"
+import "github.com/oliverandrich/burrow/contrib/session"
 
 // Get a string value.
 locale := session.GetString(r, "locale")

@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
-	"codeberg.org/oliverandrich/burrow/contrib/htmx"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
+	"github.com/oliverandrich/burrow/contrib/htmx"
 )
 
 // statusChoices returns filter choices for all job statuses.

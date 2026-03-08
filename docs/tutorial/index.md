@@ -29,7 +29,7 @@ A survey/voting application where users can:
 | [Part 6](part6.md) | Admin Panel | ModelAdmin, HasAdmin interface |
 | [Part 7](part7.md) | HTMX, Charts & Polish | htmx helpers, i18n, pagination |
 
-Each part builds on the previous one. The complete source code for each step lives in the [`tutorial/`](https://codeberg.org/oliverandrich/burrow/src/branch/main/tutorial) directory.
+Each part builds on the previous one. The complete source code for each step lives in the [`tutorial/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial) directory.
 
 ## How to Follow Along
 

@@ -5,8 +5,8 @@ import (
 	"maps"
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/i18n"
 )
 
 // DefaultLayout returns a LayoutFunc that renders page content inside the

@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
-	"codeberg.org/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
+	"github.com/oliverandrich/burrow/contrib/messages"
 )
 
 type testItem struct { //nolint:govet // fieldalignment: test struct

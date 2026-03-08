@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"codeberg.org/oliverandrich/burrow"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
 )
 
 // App implements the staticfiles contrib app for serving static assets.

@@ -12,8 +12,8 @@ import (
 	"maps"
 	"net/http"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/bsicons"
 )
 
 //go:embed static

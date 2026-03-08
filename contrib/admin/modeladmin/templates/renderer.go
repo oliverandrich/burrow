@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"sync"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
-	"codeberg.org/oliverandrich/burrow/contrib/bsicons"
-	"codeberg.org/oliverandrich/burrow/contrib/csrf"
-	"codeberg.org/oliverandrich/burrow/contrib/htmx"
-	"codeberg.org/oliverandrich/burrow/contrib/i18n"
-	"codeberg.org/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
+	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/oliverandrich/burrow/contrib/csrf"
+	"github.com/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow/contrib/messages"
 )
 
 //go:embed *.html

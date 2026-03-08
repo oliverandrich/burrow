@@ -12,7 +12,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 )
 
 type testItem struct { //nolint:govet // fieldalignment: test struct

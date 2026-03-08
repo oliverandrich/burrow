@@ -14,7 +14,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 )
 
 func setupSearchDB(t *testing.T) *bun.DB {

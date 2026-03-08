@@ -8,7 +8,7 @@ import (
 
 	"github.com/uptrace/bun"
 
-	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow/contrib/i18n"
 )
 
 // FilterDef describes a filter available in the admin list view.

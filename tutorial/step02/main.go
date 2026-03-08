@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"codeberg.org/oliverandrich/burrow"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
 	"github.com/urfave/cli/v3"
 
 	"tutorial/step02/internal/polls"

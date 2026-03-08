@@ -7,7 +7,7 @@ import (
 
 	"github.com/uptrace/bun"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 )
 
 // listOpts holds all options for listing items.

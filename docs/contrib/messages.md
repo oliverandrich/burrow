@@ -2,7 +2,7 @@
 
 Flash message support for post-redirect-get feedback.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/messages`
+**Package:** `github.com/oliverandrich/burrow/contrib/messages`
 
 **Depends on:** `session`
 
@@ -27,7 +27,7 @@ The messages app installs middleware that reads flash messages from the session 
 Use the convenience helpers inside any handler — typically just before a redirect:
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/messages"
+import "github.com/oliverandrich/burrow/contrib/messages"
 
 func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
     // ... create resource ...

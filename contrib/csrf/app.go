@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/internal/cryptokey"
 	gorillacsrf "github.com/gorilla/csrf"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/internal/cryptokey"
 	"github.com/urfave/cli/v3"
 )
 

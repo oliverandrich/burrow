@@ -2,7 +2,7 @@
 
 In this part you'll add a voting form with CSRF protection, flash messages, and the redirect-after-POST pattern.
 
-**Source code:** [`tutorial/step04/`](https://codeberg.org/oliverandrich/burrow/src/branch/main/tutorial/step04)
+**Source code:** [`tutorial/step04/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step04)
 
 ## New Contrib Apps
 
@@ -15,9 +15,9 @@ Update `main.go` — add the new imports and apps:
 
 ```go
 import (
-    "codeberg.org/oliverandrich/burrow/contrib/csrf"
-    "codeberg.org/oliverandrich/burrow/contrib/messages"
-    "codeberg.org/oliverandrich/burrow/contrib/session"
+    "github.com/oliverandrich/burrow/contrib/csrf"
+    "github.com/oliverandrich/burrow/contrib/messages"
+    "github.com/oliverandrich/burrow/contrib/session"
 )
 ```
 
@@ -73,7 +73,7 @@ Key points:
 First, add the `messages` import to `internal/polls/polls.go`:
 
 ```go
-"codeberg.org/oliverandrich/burrow/contrib/messages"
+"github.com/oliverandrich/burrow/contrib/messages"
 ```
 
 Add the `IncrementVotes` method to the repository:
@@ -164,7 +164,7 @@ Update the layout to show messages above the content:
 In `internal/pages/pages.go`, add the `messages` import:
 
 ```go
-"codeberg.org/oliverandrich/burrow/contrib/messages"
+"github.com/oliverandrich/burrow/contrib/messages"
 ```
 
 Then update the layout function to pass messages to the template:

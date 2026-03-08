@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"testing"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
 )
 

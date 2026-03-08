@@ -2,7 +2,7 @@
 
 In this final part you'll add the `htmx` contrib app for SPA-like navigation, HTMX-powered voting, a Chart.js results visualisation, and cursor-based pagination with infinite scroll.
 
-**Source code:** [`tutorial/step07/`](https://codeberg.org/oliverandrich/burrow/src/branch/main/tutorial/step07)
+**Source code:** [`tutorial/step07/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step07)
 
 ## Using HTMX Helpers
 

@@ -2,7 +2,7 @@
 
 Admin panel coordinator that discovers and mounts admin views from other apps.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/admin`
+**Package:** `github.com/oliverandrich/burrow/contrib/admin`
 
 **Depends on:** `auth`
 
@@ -39,7 +39,7 @@ The layout reads admin nav items from context and renders them in the sidebar. S
 The `admin/modeladmin` sub-package provides a generic, Django-style CRUD admin for any Bun model:
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
+import "github.com/oliverandrich/burrow/contrib/admin/modeladmin"
 
 ma := &modeladmin.ModelAdmin[Note]{
     Slug:              "notes",

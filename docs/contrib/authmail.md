@@ -2,11 +2,11 @@
 
 Pluggable email rendering and SMTP delivery for auth emails (verification and invites).
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/authmail`
+**Package:** `github.com/oliverandrich/burrow/contrib/authmail`
 
 **Depends on:** `auth`
 
-**SMTP implementation:** `codeberg.org/oliverandrich/burrow/contrib/authmail/smtpmail`
+**SMTP implementation:** `github.com/oliverandrich/burrow/contrib/authmail/smtpmail`
 
 ## Overview
 
@@ -20,8 +20,8 @@ To wire the two together, create a small adapter that defers the `Mailer()` call
 
 ```go
 import (
-    "codeberg.org/oliverandrich/burrow/contrib/auth"
-    "codeberg.org/oliverandrich/burrow/contrib/authmail/smtpmail"
+    "github.com/oliverandrich/burrow/contrib/auth"
+    "github.com/oliverandrich/burrow/contrib/authmail/smtpmail"
 )
 
 smtpApp := smtpmail.New(

@@ -18,7 +18,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 )
 
 // mockRenderer records calls for testing.

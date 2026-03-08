@@ -24,11 +24,11 @@ import (
 	"net/http"
 	"os"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/bootstrap"
-	"codeberg.org/oliverandrich/burrow/contrib/i18n"
-	"codeberg.org/oliverandrich/burrow/contrib/staticfiles"
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/bootstrap"
+	"github.com/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	"github.com/urfave/cli/v3"
 )
 

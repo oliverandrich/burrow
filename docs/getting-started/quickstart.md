@@ -7,7 +7,7 @@ Build a working application with session management, a health check endpoint, an
 ```bash
 mkdir myapp && cd myapp
 go mod init myapp
-go get codeberg.org/oliverandrich/burrow@latest
+go get github.com/oliverandrich/burrow@latest
 ```
 
 ## 2. Write main.go
@@ -21,7 +21,7 @@ import (
     "net/http"
     "os"
 
-    "codeberg.org/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow"
     "github.com/go-chi/chi/v5"
     "github.com/urfave/cli/v3"
 )

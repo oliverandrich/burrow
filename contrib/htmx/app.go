@@ -4,7 +4,7 @@ import (
 	"embed"
 	"io/fs"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 )
 
 //go:embed static

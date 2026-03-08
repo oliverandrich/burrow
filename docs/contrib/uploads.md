@@ -2,7 +2,7 @@
 
 Pluggable file upload storage with a local filesystem backend and HTTP serving.
 
-**Package:** `codeberg.org/oliverandrich/burrow/contrib/uploads`
+**Package:** `github.com/oliverandrich/burrow/contrib/uploads`
 
 **Depends on:** none
 
@@ -30,7 +30,7 @@ uploads.New(
 Use `uploads.StoreFile()` in a handler to extract and store a file from a multipart form:
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/uploads"
+import "github.com/oliverandrich/burrow/contrib/uploads"
 
 func (h *Handlers) UploadAvatar(w http.ResponseWriter, r *http.Request) error {
     storage := uploads.StorageFromContext(r.Context())

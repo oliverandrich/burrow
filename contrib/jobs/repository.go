@@ -8,7 +8,7 @@ import (
 	"math"
 	"time"
 
-	"codeberg.org/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow"
 	"github.com/uptrace/bun"
 )
 

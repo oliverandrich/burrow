@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"codeberg.org/oliverandrich/burrow"
-	"codeberg.org/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/i18n"
 )
 
 // SidebarGroup holds pre-computed sidebar data for template rendering.

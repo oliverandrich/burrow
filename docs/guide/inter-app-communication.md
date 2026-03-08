@@ -60,7 +60,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 Read and write session values from any app:
 
 ```go
-import "codeberg.org/oliverandrich/burrow/contrib/session"
+import "github.com/oliverandrich/burrow/contrib/session"
 
 // Read a value.
 userID := session.GetInt64(r, "user_id")

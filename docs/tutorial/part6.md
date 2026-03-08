@@ -2,7 +2,7 @@
 
 In this part you'll add an admin panel with automatic CRUD for questions using `ModelAdmin`.
 
-**Source code:** [`tutorial/step06/`](https://codeberg.org/oliverandrich/burrow/src/branch/main/tutorial/step06)
+**Source code:** [`tutorial/step06/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step06)
 
 ## Add the Admin App
 
@@ -12,7 +12,7 @@ Update `main.go`:
 
 ```go
 import (
-    "codeberg.org/oliverandrich/burrow/contrib/admin"
+    "github.com/oliverandrich/burrow/contrib/admin"
 )
 
 srv := burrow.NewServer(
@@ -34,8 +34,8 @@ The admin app:
 
 ```go
 import (
-    "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin"
-    matpl "codeberg.org/oliverandrich/burrow/contrib/admin/modeladmin/templates"
+    "github.com/oliverandrich/burrow/contrib/admin/modeladmin"
+    matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 )
 
 type App struct {
