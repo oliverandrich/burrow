@@ -271,6 +271,30 @@ func TestHandleValidationErrorIsUnhandled(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "internal server error")
 }
 
+func TestHandleErrorAfterResponseStarted(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	slog.SetDefault(logger)
+	t.Cleanup(func() { slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil))) })
+
+	handler := Handle(func(w http.ResponseWriter, _ *http.Request) error {
+		// Write a partial response, then return an error.
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("partial"))
+		return NewHTTPError(http.StatusInternalServerError, "late error")
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/partial", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	// The original 200 status should be preserved (not overwritten to 500).
+	assert.Equal(t, http.StatusOK, rec.Code)
+	// The error should be logged since it can't be written to the client.
+	assert.Contains(t, buf.String(), "error after response started")
+	assert.Contains(t, buf.String(), "late error")
+}
+
 func TestHandleUnhandledErrorIsLogged(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))

@@ -32,7 +32,16 @@ func NewHTTPError(code int, message string) *HTTPError {
 // with centralized error handling.
 func Handle(fn HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := fn(w, r); err != nil {
+		sw := &statusWriter{ResponseWriter: w}
+		if err := fn(sw, r); err != nil {
+			if sw.written {
+				slog.Error("error after response started", //nolint:gosec // slog handlers escape values
+					"error", err,
+					"method", r.Method,
+					"path", r.URL.Path,
+				)
+				return
+			}
 			var httpErr *HTTPError
 			if errors.As(err, &httpErr) {
 				if httpErr.Code >= 500 {
@@ -54,6 +63,28 @@ func Handle(fn HandlerFunc) http.HandlerFunc {
 			}
 		}
 	}
+}
+
+// statusWriter wraps http.ResponseWriter to track whether a response has been started.
+type statusWriter struct {
+	http.ResponseWriter
+	written bool
+}
+
+func (sw *statusWriter) WriteHeader(code int) {
+	sw.written = true
+	sw.ResponseWriter.WriteHeader(code)
+}
+
+func (sw *statusWriter) Write(b []byte) (int, error) {
+	sw.written = true
+	return sw.ResponseWriter.Write(b)
+}
+
+// Unwrap returns the underlying ResponseWriter, allowing the standard library
+// to access optional interfaces like http.Flusher and http.Hijacker.
+func (sw *statusWriter) Unwrap() http.ResponseWriter {
+	return sw.ResponseWriter
 }
 
 // JSON writes a JSON response with the given status code.
