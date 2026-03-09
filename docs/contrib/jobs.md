@@ -28,9 +28,9 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
     app, _ := cfg.Registry.Get("jobs")
     jobsApp := app.(*jobs.App)
 
-    jobsApp.Handle("send-welcome-email", func(ctx context.Context, payload string) error {
+    jobsApp.Handle("send-welcome-email", func(ctx context.Context, job *jobs.Job) error {
         var data struct{ Email string }
-        json.Unmarshal([]byte(payload), &data)
+        json.Unmarshal([]byte(job.Payload), &data)
         return sendWelcomeEmail(ctx, data.Email)
     })
 
@@ -40,6 +40,38 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
     return nil
 }
 ```
+
+### Accessing Job Data in Handlers
+
+The handler receives the full `*jobs.Job` struct. The `Payload` field contains the JSON-encoded data you passed when enqueueing:
+
+```go
+jobsApp.Handle("resize-image", func(ctx context.Context, job *jobs.Job) error {
+    var params struct {
+        ImageID int64  `json:"image_id"`
+        Width   int    `json:"width"`
+    }
+    if err := json.Unmarshal([]byte(job.Payload), &params); err != nil {
+        return fmt.Errorf("invalid payload: %w", err)
+    }
+
+    log.Printf("attempt %d for job %d", job.Attempts, job.ID)
+    return resizeImage(ctx, params.ImageID, params.Width)
+})
+```
+
+Available fields on `*jobs.Job`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | `int64` | Unique job identifier |
+| `Type` | `string` | Registered job type name |
+| `Payload` | `string` | JSON-encoded payload |
+| `Status` | `JobStatus` | Current status |
+| `Attempts` | `int` | Number of attempts so far |
+| `MaxRetries` | `int` | Maximum retry count |
+| `LastError` | `string` | Error message from last failure |
+| `CreatedAt` | `time.Time` | When the job was created |
 
 ## Enqueueing Jobs
 
@@ -64,18 +96,43 @@ Jobs progress through these statuses:
 | `pending` | Waiting in the queue |
 | `running` | Currently being processed by a worker |
 | `completed` | Finished successfully |
-| `failed` | Failed after all retries exhausted |
-| `cancelled` | Manually cancelled via admin UI |
+| `failed` | Failed, will be retried |
+| `dead` | Terminal — all retries exhausted or manually cancelled |
 
-Failed jobs are retried up to `maxRetries` times (default: 3) with no backoff delay. When all retries are exhausted, the job transitions to `failed` with the last error message recorded.
+## Retry & Backoff
+
+When a handler returns an error, the job is marked `failed` and scheduled for retry with **exponential backoff**:
+
+```
+delay = 2^attempts seconds
+```
+
+| Attempt | Delay |
+|---------|-------|
+| 1 | 2s |
+| 2 | 4s |
+| 3 | 8s |
+| 4 | 16s |
+
+Once a job has exhausted its `MaxRetries` (default: 3), it transitions to `dead` — a terminal status. The last error message is recorded in `LastError`.
+
+Jobs can also reach `dead` by being manually cancelled via the admin UI.
 
 ## Admin UI
 
 The jobs app implements `HasAdmin` and provides a ModelAdmin-based admin interface at `/admin/jobs`:
 
 - **List view** with status filter, pagination, and sortable columns
-- **Row actions**: Retry (re-queue failed jobs) and Cancel (stop pending/running jobs)
+- **Row actions**: Retry (re-queue dead jobs) and Cancel (stop pending/running jobs)
 - **Detail view** with pretty-printed JSON payload and error message
+
+## Maintenance
+
+The worker pool runs two automatic maintenance tasks every 5 minutes:
+
+**Stale job rescue:** Jobs stuck in `running` for longer than 10 minutes are reset to `pending`. This handles worker crashes or panics where a job was claimed but never completed.
+
+**Completed job cleanup:** Jobs in `completed` status older than 24 hours are hard-deleted from the database to prevent unbounded table growth.
 
 ## Configuration
 

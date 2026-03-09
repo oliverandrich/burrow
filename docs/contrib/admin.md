@@ -70,6 +70,40 @@ type Note struct {
 
 If no `verbose` tag is set, the Go field name is used as-is.
 
+### The `form` Struct Tag
+
+The `form` struct tag controls how fields appear in create/edit forms:
+
+```go
+type Article struct {
+    ID     int64  `bun:",pk,autoincrement" verbose:"ID"`
+    Title  string `verbose:"Title" form:"required"`
+    Body   string `verbose:"Body" form:"widget=textarea"`
+    Status string `verbose:"Status" form:"choices=draft|published|archived"`
+}
+```
+
+| Option | Example | Description |
+|--------|---------|-------------|
+| `widget=<type>` | `form:"widget=textarea"` | Override the inferred input type |
+| `choices=<a\|b\|c>` | `form:"choices=draft\|published"` | Render as `<select>` with pipe-separated options |
+| `required` | `form:"required"` | Mark the field as required |
+| `name=<field>` | `form:"name=custom_name"` | Custom form field name for POST binding |
+| `-` | `form:"-"` | Skip the field entirely — not shown in forms |
+
+Multiple options can be combined: `form:"required,widget=textarea"`.
+
+**Type inference:** When no `widget` is specified, the form field type is inferred from the Go type:
+
+| Go Type | Input Type |
+|---------|------------|
+| `bool` | `checkbox` |
+| `int`, `int64`, etc. | `number` |
+| `time.Time` | `date` |
+| `string` | `text` |
+
+**Auto-increment primary keys** are handled automatically: skipped entirely in create forms (the database assigns the value), and rendered as hidden fields in edit forms (preserving the value without allowing modification).
+
 ### Features
 
 - **List view** with configurable columns, ordering, and offset pagination
@@ -79,6 +113,67 @@ If no `verbose` tag is set, the Go field name is used as-is.
 - **Create/edit forms** auto-generated from model struct tags (`verbose` for labels)
 - **i18n** — all labels are translatable via `LabelKey` fields and the i18n app
 - **HTMX** — list navigation uses `hx-get`/`hx-target` for partial updates
+
+### Search
+
+Enable search by listing the database column names to search across:
+
+```go
+ma := &modeladmin.ModelAdmin[Note]{
+    // ...
+    SearchFields: []string{"title", "body"},
+}
+```
+
+Search uses `LIKE` with `%term%` patterns, applied with OR logic across fields. Special characters (`%`, `_`, `\`) are escaped automatically.
+
+### Filters
+
+Add filters to the list view using `FilterDef`:
+
+```go
+ma := &modeladmin.ModelAdmin[Article]{
+    // ...
+    Filters: []modeladmin.FilterDef{
+        {
+            Field:   "status",
+            Label:   "Status",
+            Type:    "select",
+            Choices: []modeladmin.Choice{
+                {Value: "draft", Label: "Draft"},
+                {Value: "published", Label: "Published"},
+                {Value: "archived", Label: "Archived"},
+            },
+        },
+        {
+            Field: "featured",
+            Label: "Featured",
+            Type:  "bool",
+        },
+    },
+}
+```
+
+| Filter Type | Description |
+|-------------|-------------|
+| `"select"` | Dropdown with predefined choices |
+| `"bool"` | True/false toggle |
+
+Filter labels support i18n via the `LabelKey` field — when set, the label is translated at request time using the i18n app.
+
+### Sorting
+
+Enable clickable column sorting by listing the allowed database column names:
+
+```go
+ma := &modeladmin.ModelAdmin[Note]{
+    // ...
+    SortFields: []string{"title", "created_at"},
+    OrderBy:    "created_at DESC", // default order
+}
+```
+
+Sort fields are rendered as clickable column headers in the list view. The query parameter `?sort=title` sorts ascending, `?sort=-title` sorts descending. Only columns listed in `SortFields` are accepted — unknown fields are ignored.
 
 ### Row Actions
 
@@ -94,6 +189,32 @@ RowActions: []modeladmin.RowAction{
     },
 },
 ```
+
+### Custom Renderer
+
+ModelAdmin uses a `Renderer[T]` interface for all view rendering:
+
+```go
+type Renderer[T any] interface {
+    List(w http.ResponseWriter, r *http.Request, items []T, page burrow.PageResult, cfg RenderConfig) error
+    Detail(w http.ResponseWriter, r *http.Request, item *T, cfg RenderConfig) error
+    Form(w http.ResponseWriter, r *http.Request, item *T, fields []FormField, errors *burrow.ValidationError, cfg RenderConfig) error
+    ConfirmDelete(w http.ResponseWriter, r *http.Request, item *T, cfg RenderConfig) error
+}
+```
+
+The default renderer uses Bootstrap 5 HTML templates with htmx:
+
+```go
+import "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
+
+ma := &modeladmin.ModelAdmin[Note]{
+    // ...
+    Renderer: templates.DefaultRenderer[Note](),
+}
+```
+
+Override the renderer when you need custom detail views, alternative CSS frameworks, or specialised list layouts. Implement all four methods and set `Renderer` on the `ModelAdmin`.
 
 ### Registering in Your App
 
