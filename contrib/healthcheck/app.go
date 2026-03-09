@@ -1,4 +1,8 @@
 // Package healthcheck provides a minimal health check app for burrow.
+//
+// It registers a GET /healthz endpoint that returns a JSON response with
+// the server and database status. The response has HTTP 200 when healthy
+// and HTTP 503 when the database ping fails.
 package healthcheck
 
 import (

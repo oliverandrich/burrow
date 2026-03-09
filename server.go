@@ -22,8 +22,13 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// Server is the main framework entry point. It holds the Registry
-// of apps and orchestrates the boot sequence.
+// Server is the main framework entry point that orchestrates the full
+// application lifecycle. Typical usage:
+//
+//  1. Create with [NewServer] (registers apps, sorts by dependencies)
+//  2. Configure the layout with [Server.SetLayout]
+//  3. Collect CLI flags with [Server.Flags]
+//  4. Start with [Server.Run] (opens DB, migrates, bootstraps, serves HTTP)
 type Server struct {
 	registry                *Registry
 	layout                  LayoutFunc

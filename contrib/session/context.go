@@ -1,4 +1,17 @@
 // Package session provides cookie-based session management as a burrow contrib app.
+//
+// # Reading and Writing Values
+//
+// Use [GetString] and [GetInt64] to read typed values from the session.
+// Use [Set] to write a single key-value pair (the cookie is saved immediately).
+// Use [Save] to replace all session values at once, and [Clear] to delete the session.
+//
+// All read/write functions require the session middleware to be active.
+//
+// # Testing
+//
+// Use [Inject] to set up session state in tests without the full middleware.
+// It returns a new request with the session values available via the standard getters.
 package session
 
 import (

@@ -113,9 +113,18 @@ func HTML(w http.ResponseWriter, code int, s string) error {
 const defaultMaxMemory = 32 << 20 // 32 MB
 
 // Bind parses the request body into the given struct and validates it.
-// It supports JSON, multipart/form-data, and form-encoded bodies.
-// Form decoding supports all types (string, int, bool, float, etc.) via struct tags.
-// Validation uses "validate" struct tags; structs without them pass through unchanged.
+//
+// Content-Type dispatch:
+//   - application/json → JSON decoding
+//   - multipart/form-data → multipart parsing + form decoding
+//   - everything else → form-encoded parsing + form decoding
+//
+// Form decoding uses "form" struct tags (falling back to "json", then field name)
+// and supports all basic types (string, int, bool, float, slices, etc.).
+//
+// After decoding, Bind calls [Validate] automatically. If validation fails it
+// returns a [*ValidationError] with per-field errors. Structs without "validate"
+// tags pass through unchanged.
 func Bind(r *http.Request, v any) error {
 	ct := r.Header.Get("Content-Type")
 	switch {

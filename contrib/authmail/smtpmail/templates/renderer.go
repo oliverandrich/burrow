@@ -1,3 +1,6 @@
+// Package templates provides the default HTML email renderer for auth emails
+// (verification, recovery). It embeds built-in email templates that are used
+// when no custom authmail.Renderer is configured.
 package templates
 
 import (

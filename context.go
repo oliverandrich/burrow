@@ -24,11 +24,17 @@ type (
 )
 
 // WithContextValue returns a new context with the given key-value pair.
+// This is a convenience wrapper around [context.WithValue] used primarily
+// by contrib app authors to store app-specific values in the request context.
+// Application developers typically use typed helpers like [WithLayout] or
+// contrib-specific functions (e.g. csrf.WithToken) instead.
 func WithContextValue(ctx context.Context, key, val any) context.Context {
 	return context.WithValue(ctx, key, val) //nolint:staticcheck // framework key types are unexported
 }
 
 // ContextValue retrieves a typed value from the context.
+// It is the generic counterpart to [WithContextValue], used by contrib app
+// authors to read back app-specific context values with type safety.
 func ContextValue[T any](ctx context.Context, key any) (T, bool) {
 	val, ok := ctx.Value(key).(T)
 	return val, ok

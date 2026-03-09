@@ -40,6 +40,13 @@ type PageResult struct {
 }
 
 // PageResponse wraps items with pagination metadata for JSON APIs.
+// Use with [CursorResult] or [OffsetResult] to populate the Pagination field:
+//
+//	items, hasMore := burrow.TrimCursorResults(rows, pr.Limit)
+//	return burrow.PageResponse[Item]{
+//	    Items:      items,
+//	    Pagination: burrow.CursorResult(items[len(items)-1].ID, hasMore),
+//	}
 type PageResponse[T any] struct {
 	Items      []T        `json:"items"`
 	Pagination PageResult `json:"pagination"`

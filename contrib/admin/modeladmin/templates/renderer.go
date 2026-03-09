@@ -1,3 +1,6 @@
+// Package templates provides the default HTML template renderer for modeladmin
+// CRUD views. It embeds pre-built templates for list, detail, form, and delete
+// confirmation pages.
 package templates
 
 import (

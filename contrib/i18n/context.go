@@ -1,4 +1,13 @@
 // Package i18n provides internationalization as a burrow contrib app.
+//
+// The middleware detects the user's locale from the Accept-Language header
+// and stores a localizer in the request context.
+//
+// Use [T] for simple message translation, [TData] for messages with template
+// data, and [TPlural] for messages with plural support. All three fall back
+// to the message key if no localizer is present.
+//
+// [Locale] returns the current locale string, defaulting to "en".
 package i18n
 
 import (

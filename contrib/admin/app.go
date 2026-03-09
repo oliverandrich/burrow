@@ -1,3 +1,6 @@
+// Package admin provides the admin panel coordinator as a burrow contrib app.
+// It handles layout, navigation, dashboard rendering, and acts as the mount
+// point for ModelAdmin instances that provide per-model CRUD views.
 package admin
 
 import (

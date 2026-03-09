@@ -1,6 +1,13 @@
 // Package ratelimit provides per-client rate limiting as a burrow contrib app.
 // It uses a token bucket algorithm (via golang.org/x/time/rate) with automatic
 // cleanup of idle entries.
+//
+// # Usage
+//
+// Create a [Limiter] with [NewLimiter], specifying the rate (requests per
+// second), burst size, and cleanup interval. Call [Limiter.Allow] to check
+// whether a request should be permitted. Call [Limiter.Stop] to shut down
+// the background cleanup goroutine.
 package ratelimit
 
 import (

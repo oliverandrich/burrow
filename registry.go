@@ -12,7 +12,11 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// Registry holds registered apps in insertion order.
+// Registry holds registered apps in insertion order and provides methods
+// to collect capabilities (routes, middleware, flags, etc.) from all apps.
+// Application code typically does not interact with Registry directly —
+// [Server] manages it internally. Contrib app authors may use
+// [Registry.Get] to look up sibling apps during Register.
 type Registry struct {
 	index map[string]App
 	db    *bun.DB

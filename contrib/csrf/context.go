@@ -1,6 +1,10 @@
 // Package csrf provides CSRF protection as a burrow contrib app.
 // It wraps gorilla/csrf and provides context helpers for reading
-// the CSRF token in templates.
+// the CSRF token in templates and handlers.
+//
+// The middleware stores the token in the request context. Use [Token]
+// to retrieve it in handlers, or the "csrfToken" template function
+// in HTML templates.
 package csrf
 
 import "context"
