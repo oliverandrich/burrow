@@ -10,6 +10,7 @@
   <a href="https://go.dev/"><img src="https://img.shields.io/github/go-mod/go-version/oliverandrich/burrow?style=for-the-badge" alt="Go Version"></a>
   <a href="https://goreportcard.com/report/github.com/oliverandrich/burrow"><img src="https://goreportcard.com/badge/github.com/oliverandrich/burrow?style=for-the-badge" alt="Go Report Card"></a>
   <a href="/LICENSE"><img src="https://img.shields.io/github/license/oliverandrich/burrow?style=for-the-badge" alt="License"></a>
+  <a href="https://burrow.someonewho.codes/"><img src="https://img.shields.io/badge/docs-burrow.someonewho.codes-blue?style=for-the-badge" alt="Docs"></a>
 </p>
 
 A web framework for Go developers who want something like Django, Rails, or Flask — but with the deployment simplicity of a single static binary.
