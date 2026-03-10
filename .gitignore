@@ -30,6 +30,12 @@ AGENTS.md
 
 # Data
 data/
+*.db
+*.db-shm
+*.db-wal
+
+# Playwright
+.playwright-mcp/
 
 # Beans
 .beans.yml
