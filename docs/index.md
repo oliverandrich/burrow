@@ -1,7 +1,7 @@
 # Burrow
 
 <p align="center">
-  <img src="assets/cover.png" alt="Burrow — Go gophers building a modular burrow">
+  <img src="assets/cover.jpg" alt="Burrow — Go gophers building a modular burrow">
 </p>
 
 A web framework for Go developers who want something like Django, Rails, or Flask — but with the deployment simplicity of a single static binary.

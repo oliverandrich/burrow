@@ -1,7 +1,7 @@
 # Burrow
 
 <p align="center">
-  <img src="docs/assets/cover.png" alt="Burrow — Go gophers building a modular burrow">
+  <img src="docs/assets/cover.jpg" alt="Burrow — Go gophers building a modular burrow">
 </p>
 
 <p align="center">
