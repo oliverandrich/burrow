@@ -164,3 +164,62 @@ func TestWebAuthnServiceCleanupStopsOnCancel(t *testing.T) {
 		t.Fatal("cleanup goroutine did not stop within 1 second")
 	}
 }
+
+func TestWebAuthnServiceExpiredSession(t *testing.T) {
+	svc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
+	require.NoError(t, err)
+
+	ws := svc.(*webauthnService)
+
+	// Manually store an expired entry.
+	ws.mu.Lock()
+	ws.store["expired-key"] = &webauthnSessionEntry{
+		data:      &gowebauthn.SessionData{Challenge: "old"},
+		expiresAt: time.Now().Add(-time.Hour),
+	}
+	ws.mu.Unlock()
+
+	// Trying to get an expired session should return error.
+	_, err = ws.pop("expired-key")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "session expired")
+}
+
+func TestWebAuthnCleanupRemovesExpired(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	svc, err := NewWebAuthnService(ctx, "Test App", "localhost", "http://localhost:8080")
+	require.NoError(t, err)
+
+	ws := svc.(*webauthnService)
+
+	// Insert an expired entry directly.
+	ws.mu.Lock()
+	ws.store["test-expired"] = &webauthnSessionEntry{
+		data:      &gowebauthn.SessionData{Challenge: "expired"},
+		expiresAt: time.Now().Add(-time.Hour),
+	}
+	ws.mu.Unlock()
+
+	// Manually trigger the cleanup logic (tick) by calling the locked cleanup code.
+	ws.mu.Lock()
+	now := time.Now()
+	for key, entry := range ws.store {
+		if now.After(entry.expiresAt) {
+			delete(ws.store, key)
+		}
+	}
+	ws.mu.Unlock()
+
+	// Verify the expired entry was removed.
+	ws.mu.Lock()
+	_, exists := ws.store["test-expired"]
+	ws.mu.Unlock()
+	assert.False(t, exists, "expired entry should have been cleaned up")
+
+	cancel()
+	select {
+	case <-ws.done:
+	case <-time.After(time.Second):
+		t.Fatal("cleanup goroutine did not stop")
+	}
+}

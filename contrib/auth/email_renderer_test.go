@@ -120,3 +120,21 @@ func TestDefaultEmailRendererInviteTextWithGermanLocale(t *testing.T) {
 	assert.Equal(t, "Sie wurden eingeladen", subject)
 	assert.Contains(t, text, "Sie wurden eingeladen")
 }
+
+func TestDefaultEmailRendererVerificationText(t *testing.T) {
+	r := DefaultEmailRenderer()
+
+	subject, text, err := r.RenderVerificationText(context.Background(), "http://localhost/verify")
+	require.NoError(t, err)
+	assert.NotEmpty(t, subject)
+	assert.Contains(t, text, "http://localhost/verify")
+}
+
+func TestDefaultEmailRendererInviteText(t *testing.T) {
+	r := DefaultEmailRenderer()
+
+	subject, text, err := r.RenderInviteText(context.Background(), "http://localhost/register")
+	require.NoError(t, err)
+	assert.NotEmpty(t, subject)
+	assert.Contains(t, text, "http://localhost/register")
+}

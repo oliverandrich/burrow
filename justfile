@@ -15,11 +15,31 @@ fmt:
     gofmt -w .
     goimports -w .
 
-# Run tests with coverage
+# Run tests with coverage (excludes generated code via go-ignore-cov)
 coverage:
-    go test -json -coverprofile=coverage.out ./... | tparse
+    #!/usr/bin/env bash
+    set -euo pipefail
+    go test -json -coverprofile=coverage.out ./... > test.json
+    go-ignore-cov --file coverage.out --exclude-globs "**/*_generated.go"
+    # Patch coverage percentages in JSON for packages containing generated files
+    cp test.json test.patched.json
+    for dir in $(find . -name '*_generated.go' -type f | xargs -I{} dirname {} | sort -u); do
+        pkg=$(go list "./$dir")
+        pct=$(go tool cover -func=coverage.out | grep "^${pkg}/" | grep -c '100.0%' | xargs -I{} echo "100.0%") || true
+        # Calculate actual percentage: covered / total statements
+        total=$(grep "^${pkg}/" coverage.out | wc -l | tr -d ' ')
+        covered=$(grep "^${pkg}/" coverage.out | grep -v ' 0$' | wc -l | tr -d ' ')
+        if [ "$total" -gt 0 ]; then
+            pct=$(echo "scale=1; $covered * 100 / $total" | bc)
+        else
+            pct="0.0"
+        fi
+        sed -i '' "s|\\(\"Package\":\"${pkg}\".*coverage: \\)[0-9.]*%|\\1${pct}%|g" test.patched.json
+    done
+    tparse -file=test.patched.json
+    rm -f test.json test.patched.json
     go tool cover -html=coverage.out -o coverage.html
-    @echo "Coverage report: coverage.html"
+    echo "Coverage report: coverage.html"
 
 # Check that all required dev tools are installed
 setup:
@@ -40,6 +60,7 @@ setup:
     check tparse          "go install github.com/mfridman/tparse@latest"
     check goimports       "go install golang.org/x/tools/cmd/goimports@latest"
     check govulncheck     "go install golang.org/x/vuln/cmd/govulncheck@latest"
+    check go-ignore-cov   "go install github.com/quantumcycle/go-ignore-cov@latest"
     check pre-commit      "https://pre-commit.com/#install"
     echo ""
     if $ok; then

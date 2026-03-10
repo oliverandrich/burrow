@@ -497,3 +497,212 @@ func TestAdminNavItems(t *testing.T) {
 	assert.NotNil(t, items[0].Icon)
 	assert.Equal(t, 30, items[0].Position)
 }
+
+func TestDependencies(t *testing.T) {
+	app := New()
+	deps := app.Dependencies()
+	require.Len(t, deps, 1)
+	assert.Equal(t, "auth", deps[0])
+}
+
+func TestRoutesNilHandlers(t *testing.T) {
+	// Before Register is called, handlers is nil — Routes should be a no-op.
+	app := New()
+	r := chi.NewRouter()
+	app.Routes(r)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestAdminRoutesNilNotesAdmin(t *testing.T) {
+	// Before Register is called, notesAdmin is nil — AdminRoutes should be a no-op.
+	app := New()
+	r := chi.NewRouter()
+	app.AdminRoutes(r)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestFuncMapIconFunctions(t *testing.T) {
+	app := New()
+	fm := app.FuncMap()
+
+	plusLgFn, ok := fm["iconPlusLg"].(func(class ...string) template.HTML)
+	require.True(t, ok)
+	result := plusLgFn()
+	assert.NotEmpty(t, result)
+	assert.Contains(t, string(result), "<svg")
+
+	journalTextFn, ok := fm["iconJournalText"].(func(class ...string) template.HTML)
+	require.True(t, ok)
+	result = journalTextFn("my-class")
+	assert.NotEmpty(t, result)
+	assert.Contains(t, string(result), "<svg")
+}
+
+func TestListNotesNoTemplateExecutor(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	h := NewHandlers(repo)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
+	req = requestWithUser(req, &auth.User{ID: 42})
+	// No template executor in context.
+	rec := httptest.NewRecorder()
+
+	err := h.List(rec, req)
+
+	require.Error(t, err)
+	var httpErr *burrow.HTTPError
+	require.ErrorAs(t, err, &httpErr)
+	assert.Equal(t, http.StatusInternalServerError, httpErr.Code)
+}
+
+func TestListNotesHTMXScrollReturnsFragment(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Scroll Note", Content: "Content", UserID: 42}))
+
+	h := NewHandlers(repo)
+	// HTMX request with cursor → triggers the infinite scroll branch.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?cursor=9999&limit=10", nil)
+	req = requestWithUser(req, &auth.User{ID: 42})
+	req = injectTemplateExecutor(t, req)
+	req.Header.Set("HX-Request", "true")
+
+	rec := httptest.NewRecorder()
+	err := h.List(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Scroll Note")
+}
+
+func TestCreateNoteUnauthenticated(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	h := NewHandlers(repo)
+	form := strings.NewReader("title=Test&content=Content")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	err := h.Create(rec, req)
+
+	require.Error(t, err)
+	var httpErr *burrow.HTTPError
+	require.ErrorAs(t, err, &httpErr)
+	assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+}
+
+func TestDeleteNoteUnauthenticated(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	h := NewHandlers(repo)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/1", nil)
+	rec := httptest.NewRecorder()
+
+	err := h.Delete(rec, req)
+
+	require.Error(t, err)
+	var httpErr *burrow.HTTPError
+	require.ErrorAs(t, err, &httpErr)
+	assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+}
+
+func TestDeleteNoteInvalidID(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	h := NewHandlers(repo)
+
+	r := chi.NewRouter()
+	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+		err := h.Delete(w, r)
+		if err != nil {
+			var httpErr *burrow.HTTPError
+			if assert.ErrorAs(t, err, &httpErr) {
+				http.Error(w, httpErr.Message, httpErr.Code)
+			}
+		}
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/abc", nil)
+	req = requestWithUser(req, &auth.User{ID: 42})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestListByUserIDPaged(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Create enough notes to test pagination.
+	for i := range 5 {
+		require.NoError(t, repo.Create(ctx, &Note{
+			Title:   fmt.Sprintf("Note %d", i),
+			Content: "Content",
+			UserID:  1,
+		}))
+	}
+
+	// First page with limit 3.
+	pr := burrow.PageRequest{Limit: 3}
+	notes, page, err := repo.ListByUserIDPaged(ctx, 1, pr)
+	require.NoError(t, err)
+	assert.Len(t, notes, 3)
+	assert.True(t, page.HasMore)
+	assert.NotEmpty(t, page.NextCursor)
+
+	// Second page using cursor.
+	pr2 := burrow.PageRequest{Limit: 3, Cursor: page.NextCursor}
+	notes2, page2, err := repo.ListByUserIDPaged(ctx, 1, pr2)
+	require.NoError(t, err)
+	assert.Len(t, notes2, 2)
+	assert.False(t, page2.HasMore)
+}
+
+func TestListByUserIDPagedEmpty(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	pr := burrow.PageRequest{Limit: 10}
+	notes, page, err := repo.ListByUserIDPaged(t.Context(), 999, pr)
+	require.NoError(t, err)
+	assert.Empty(t, notes)
+	assert.False(t, page.HasMore)
+	assert.Empty(t, page.NextCursor)
+}
+
+func TestCreateNoteHTMXNoTemplateExecutor(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	h := NewHandlers(repo)
+	form := strings.NewReader("title=Test&content=Content")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	req = requestWithUser(req, &auth.User{ID: 42})
+	req = session.Inject(req, map[string]any{})
+	rec := httptest.NewRecorder()
+
+	err := h.Create(rec, req)
+
+	require.Error(t, err)
+	var httpErr *burrow.HTTPError
+	require.ErrorAs(t, err, &httpErr)
+	assert.Equal(t, http.StatusInternalServerError, httpErr.Code)
+}

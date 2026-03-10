@@ -1,6 +1,7 @@
 package secure
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v3"
 )
 
 // Compile-time interface assertions.
@@ -258,4 +260,151 @@ func TestHTTPAutoDetectsDevelopmentMode(t *testing.T) {
 	assert.Equal(t, "nosniff", rr.Header().Get("X-Content-Type-Options"))
 	// But no STS.
 	assert.Empty(t, rr.Header().Get("Strict-Transport-Security"))
+}
+
+func TestFlags(t *testing.T) {
+	a := New()
+	flags := a.Flags(nil)
+
+	names := make(map[string]bool)
+	for _, f := range flags {
+		names[f.Names()[0]] = true
+	}
+
+	assert.Len(t, flags, 6)
+	assert.True(t, names["secure-csp"])
+	assert.True(t, names["secure-permissions-policy"])
+	assert.True(t, names["secure-coop"])
+	assert.True(t, names["secure-allowed-hosts"])
+	assert.True(t, names["secure-ssl-redirect"])
+	assert.True(t, names["secure-development"])
+}
+
+// configuredAppViaCLI creates a secure App configured through CLI flags.
+func configuredAppViaCLI(t *testing.T, baseURL string, args []string, opts ...Option) *App {
+	t.Helper()
+	a := New(opts...)
+	err := a.Register(&burrow.AppConfig{
+		Config: &burrow.Config{
+			Server: burrow.ServerConfig{BaseURL: baseURL},
+		},
+	})
+	require.NoError(t, err)
+
+	cmd := &cli.Command{
+		Name:  "test",
+		Flags: a.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return a.Configure(cmd)
+		},
+	}
+	fullArgs := append([]string{"test"}, args...)
+	err = cmd.Run(t.Context(), fullArgs)
+	require.NoError(t, err)
+	return a
+}
+
+func TestConfigureCSPFromFlag(t *testing.T) {
+	a := configuredAppViaCLI(t, "http://localhost:8080", []string{
+		"--secure-csp", "default-src 'none'",
+	})
+	rr := serveRequest(t, a)
+	assert.Equal(t, "default-src 'none'", rr.Header().Get("Content-Security-Policy"))
+}
+
+func TestConfigurePermissionsPolicyFromFlag(t *testing.T) {
+	a := configuredAppViaCLI(t, "http://localhost:8080", []string{
+		"--secure-permissions-policy", "geolocation=()",
+	})
+	rr := serveRequest(t, a)
+	assert.Equal(t, "geolocation=()", rr.Header().Get("Permissions-Policy"))
+}
+
+func TestConfigureCOOPFromFlag(t *testing.T) {
+	a := configuredAppViaCLI(t, "http://localhost:8080", []string{
+		"--secure-coop", "same-origin-allow-popups",
+	})
+	rr := serveRequest(t, a)
+	assert.Equal(t, "same-origin-allow-popups", rr.Header().Get("Cross-Origin-Opener-Policy"))
+}
+
+func TestConfigureAllowedHostsFromFlag(t *testing.T) {
+	a := configuredAppViaCLI(t, "https://example.com", []string{
+		"--secure-allowed-hosts", "example.com, api.example.com",
+	})
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := a.Middleware()[0](inner)
+
+	// Allowed host.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Host = "api.example.com"
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	// Disallowed host.
+	req = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Host = "evil.com"
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+}
+
+func TestConfigureSSLRedirectFromFlag(t *testing.T) {
+	a := configuredAppViaCLI(t, "https://example.com", []string{
+		"--secure-ssl-redirect",
+	})
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := a.Middleware()[0](inner)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/path", nil)
+	req.Host = "example.com"
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusMovedPermanently, rr.Code)
+}
+
+func TestConfigureDevelopmentFromFlag(t *testing.T) {
+	a := configuredAppViaCLI(t, "https://example.com", []string{
+		"--secure-development",
+		"--secure-allowed-hosts", "example.com",
+	})
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := a.Middleware()[0](inner)
+
+	// Development mode should allow any host even with allowed hosts set.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Host = "evil.com"
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestConfigureConstructorOptionsTakePrecedence(t *testing.T) {
+	// Constructor sets CSP; CLI flag should be ignored.
+	a := configuredAppViaCLI(t, "http://localhost:8080", []string{
+		"--secure-csp", "default-src 'none'",
+	}, WithContentSecurityPolicy("script-src 'self'"))
+
+	rr := serveRequest(t, a)
+	assert.Equal(t, "script-src 'self'", rr.Header().Get("Content-Security-Policy"))
+}
+
+func TestConfigureNoFlags(t *testing.T) {
+	// Configure with no flags set — should work and produce default headers.
+	a := configuredAppViaCLI(t, "http://localhost:8080", nil)
+	rr := serveRequest(t, a)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "nosniff", rr.Header().Get("X-Content-Type-Options"))
+	assert.Empty(t, rr.Header().Get("Content-Security-Policy"))
 }

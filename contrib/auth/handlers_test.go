@@ -946,3 +946,217 @@ func TestResendVerificationNonexistentEmail(t *testing.T) {
 	// Should still return OK (don't reveal if email exists).
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
+
+// --- errorJSONLog tests ---
+
+func TestErrorJSONLog(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := errorJSONLog(rec, http.StatusInternalServerError, "something failed", assert.AnError)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "something failed")
+}
+
+func TestErrorJSONLogNilError(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := errorJSONLog(rec, http.StatusInternalServerError, "msg", nil)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "msg")
+}
+
+// --- ResendVerification additional paths ---
+
+func TestResendVerificationAlreadyVerified(t *testing.T) {
+	h, repo, _ := newTestHandlersEmailMode(t)
+
+	user, err := repo.CreateUserWithEmail(context.Background(), "verified@example.com", "")
+	require.NoError(t, err)
+	require.NoError(t, repo.MarkEmailVerified(context.Background(), user.ID))
+
+	body := strings.NewReader(`{"email":"verified@example.com"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err = h.ResendVerification(rec, req)
+	require.NoError(t, err)
+	// Returns OK without re-sending (don't reveal user state).
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestResendVerificationSuccess(t *testing.T) {
+	h, repo, _ := newTestHandlersEmailMode(t)
+
+	_, err := repo.CreateUserWithEmail(context.Background(), "test@example.com", "")
+	require.NoError(t, err)
+
+	body := strings.NewReader(`{"email":"test@example.com"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err = h.ResendVerification(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestResendVerificationInvalidJSON(t *testing.T) {
+	h, _, _ := newTestHandlersEmailMode(t)
+
+	body := strings.NewReader(`{invalid}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err := h.ResendVerification(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+// --- RecoveryLogin with deactivated user ---
+
+func TestRecoveryLoginDeactivatedUser(t *testing.T) {
+	h, repo, _ := newTestHandlers(t)
+	ctx := context.Background()
+
+	user, err := repo.CreateUser(ctx, "inactive", "")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserActive(ctx, user.ID, false))
+
+	body := strings.NewReader(`{"username":"inactive","code":"some-code"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err = h.RecoveryLogin(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "account deactivated")
+}
+
+// --- RecoveryCodesPage with non-slice codes ---
+
+func TestRecoveryCodesPageInvalidType(t *testing.T) {
+	h, _, _ := newTestHandlers(t)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
+	req = session.Inject(req, map[string]any{
+		"user_id":        int64(1),
+		"recovery_codes": "not-a-slice",
+	})
+	ctx := WithUser(req.Context(), &User{ID: 1})
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := h.RecoveryCodesPage(rec, req)
+	require.NoError(t, err)
+	// Invalid type should redirect.
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/dashboard", rec.Header().Get("Location"))
+}
+
+// --- AcknowledgeRecoveryCodes redirect from session ---
+
+func TestAcknowledgeRecoveryCodesUsesSessionRedirect(t *testing.T) {
+	h, _, _ := newTestHandlers(t)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
+	req = session.Inject(req, map[string]any{
+		"user_id":              int64(1),
+		"recovery_codes":       []string{"code1"},
+		"redirect_after_login": "/custom-redirect",
+	})
+	ctx := WithUser(req.Context(), &User{ID: 1})
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := h.AcknowledgeRecoveryCodes(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/custom-redirect", rec.Header().Get("Location"))
+}
+
+// --- RegisterBegin with invite-only email mode, email mismatch ---
+
+func TestRegisterBeginInviteOnlyEmailModeMismatch(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	renderer := &mockRenderer{}
+	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
+	require.NoError(t, err)
+
+	emailSvc := &mockEmailService{}
+	app := testApp(t, testI18nBundle(t))
+	app.emailService = emailSvc
+	h := NewHandlers(repo, waSvc, emailSvc, renderer, &Config{
+		LoginRedirect:       "/dashboard",
+		LogoutRedirect:      "/auth/login",
+		UseEmail:            true,
+		RequireVerification: true,
+		InviteOnly:          true,
+		BaseURL:             "http://localhost:8080",
+	}, app)
+
+	// Create existing user so first-user bypass doesn't apply.
+	_, err = repo.CreateUser(context.Background(), "existing", "")
+	require.NoError(t, err)
+
+	// Create invite for specific email.
+	invite := &Invite{
+		Email:     "invited@example.com",
+		TokenHash: HashToken("invtoken"),
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	}
+	require.NoError(t, repo.CreateInvite(context.Background(), invite))
+
+	// Try to register with different email.
+	reqBody := strings.NewReader(`{"email":"wrong@example.com","invite":"invtoken"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", reqBody)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err = h.RegisterBegin(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "email does not match invite")
+}
+
+// --- RegisterPageInviteOnlyExpiredToken ---
+
+func TestRegisterPageInviteOnlyExpiredToken(t *testing.T) {
+	h, repo, r := newTestHandlersInviteOnly(t)
+
+	// Create an expired invite.
+	invite := &Invite{
+		Email:     "expired@example.com",
+		TokenHash: HashToken("exptoken"),
+		ExpiresAt: time.Now().Add(-time.Hour),
+	}
+	require.NoError(t, repo.CreateInvite(context.Background(), invite))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register?invite=exptoken", nil)
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err := h.RegisterPage(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, "RegisterPage", r.lastMethod)
+}
+
+// --- UseEmailMode / IsInviteOnly with nil config ---
+
+func TestUseEmailModeNilConfig(t *testing.T) {
+	h := &Handlers{config: nil}
+	assert.False(t, h.UseEmailMode())
+}
+
+func TestIsInviteOnlyNilConfig(t *testing.T) {
+	h := &Handlers{config: nil}
+	assert.False(t, h.IsInviteOnly())
+}

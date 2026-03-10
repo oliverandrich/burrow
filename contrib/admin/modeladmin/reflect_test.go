@@ -2,6 +2,7 @@ package modeladmin
 
 import (
 	"context"
+	"html/template"
 	"net/http"
 	"net/url"
 	"strings"
@@ -234,4 +235,199 @@ func TestPopulateFromForm_EmptyPointerField(t *testing.T) {
 	err := PopulateFromForm(r, &item)
 	require.NoError(t, err)
 	assert.Nil(t, item.Email, "empty string should set pointer to nil")
+}
+
+func TestParseUint(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    uint64
+		wantErr bool
+	}{
+		{name: "empty string returns zero", input: "", want: 0},
+		{name: "valid uint", input: "42", want: 42},
+		{name: "zero", input: "0", want: 0},
+		{name: "invalid", input: "abc", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseUint(tt.input)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestParseFloat(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    float64
+		wantErr bool
+	}{
+		{name: "empty string returns zero", input: "", want: 0},
+		{name: "valid float", input: "3.14", want: 3.14},
+		{name: "integer as float", input: "42", want: 42},
+		{name: "zero", input: "0", want: 0},
+		{name: "invalid", input: "abc", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseFloat(tt.input)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.InDelta(t, tt.want, got, 0.001)
+			}
+		})
+	}
+}
+
+func TestPopulateFromForm_UintField(t *testing.T) {
+	type withUint struct {
+		Count uint `bun:",notnull"`
+	}
+
+	r := newFormRequest(t, url.Values{
+		"count": {"7"},
+	})
+
+	var item withUint
+	err := PopulateFromForm(r, &item)
+	require.NoError(t, err)
+	assert.Equal(t, uint(7), item.Count)
+}
+
+func TestPopulateFromForm_FloatField(t *testing.T) {
+	type withFloat struct {
+		Price float64 `bun:",notnull"`
+	}
+
+	r := newFormRequest(t, url.Values{
+		"price": {"9.99"},
+	})
+
+	var item withFloat
+	err := PopulateFromForm(r, &item)
+	require.NoError(t, err)
+	assert.InDelta(t, 9.99, item.Price, 0.001)
+}
+
+func TestFieldValue(t *testing.T) {
+	item := testArticle{
+		ID:    42,
+		Title: "Hello",
+		Views: 100,
+	}
+
+	t.Run("existing field", func(t *testing.T) {
+		assert.Equal(t, int64(42), FieldValue(item, "ID"))
+		assert.Equal(t, "Hello", FieldValue(item, "Title"))
+		assert.Equal(t, 100, FieldValue(item, "Views"))
+	})
+
+	t.Run("non-existent field", func(t *testing.T) {
+		assert.Nil(t, FieldValue(item, "NonExistent"))
+	})
+
+	t.Run("pointer to struct", func(t *testing.T) {
+		assert.Equal(t, "Hello", FieldValue(&item, "Title"))
+	})
+}
+
+func TestColumnHTML(t *testing.T) {
+	t.Run("string field", func(t *testing.T) {
+		item := testArticle{Title: "Hello <World>"}
+		got := columnHTML(item, "Title", nil)
+		assert.Equal(t, template.HTML("<span>Hello &lt;World&gt;</span>"), got)
+	})
+
+	t.Run("int field", func(t *testing.T) {
+		item := testArticle{Views: 42}
+		got := columnHTML(item, "Views", nil)
+		assert.Equal(t, template.HTML("<span>42</span>"), got)
+	})
+
+	t.Run("bool field without translator", func(t *testing.T) {
+		item := testArticle{Active: true}
+		got := columnHTML(item, "Active", nil)
+		assert.Equal(t, template.HTML("<span>modeladmin-yes</span>"), got)
+
+		item.Active = false
+		got = columnHTML(item, "Active", nil)
+		assert.Equal(t, template.HTML("<span>modeladmin-no</span>"), got)
+	})
+
+	t.Run("bool field with translator", func(t *testing.T) {
+		translator := func(key string) string {
+			if key == "modeladmin-yes" {
+				return "Yes"
+			}
+			return "No"
+		}
+		item := testArticle{Active: true}
+		got := columnHTML(item, "Active", translator)
+		assert.Equal(t, template.HTML("<span>Yes</span>"), got)
+	})
+
+	t.Run("time field", func(t *testing.T) {
+		item := testArticle{CreatedAt: time.Date(2024, 6, 15, 10, 30, 0, 0, time.UTC)}
+		got := columnHTML(item, "CreatedAt", nil)
+		assert.Equal(t, template.HTML("<span>2024-06-15 10:30</span>"), got)
+	})
+
+	t.Run("zero time field", func(t *testing.T) {
+		item := testArticle{CreatedAt: time.Time{}}
+		got := columnHTML(item, "CreatedAt", nil)
+		assert.Equal(t, template.HTML("<span>-</span>"), got)
+	})
+
+	t.Run("non-existent field", func(t *testing.T) {
+		item := testArticle{}
+		got := columnHTML(item, "NonExistent", nil)
+		assert.Equal(t, template.HTML("<span>-</span>"), got)
+	})
+
+	t.Run("pointer field nil", func(t *testing.T) {
+		type withPtr struct {
+			Name *string
+		}
+		item := withPtr{Name: nil}
+		got := columnHTML(item, "Name", nil)
+		assert.Equal(t, template.HTML("<span>-</span>"), got)
+	})
+
+	t.Run("pointer field non-nil", func(t *testing.T) {
+		type withPtr struct {
+			Name *string
+		}
+		name := "hello"
+		item := withPtr{Name: &name}
+		got := columnHTML(item, "Name", nil)
+		assert.Equal(t, template.HTML("<span>hello</span>"), got)
+	})
+}
+
+func TestColumnValue(t *testing.T) {
+	item := testArticle{Title: "Test"}
+	got := ColumnValue(item, "Title")
+	assert.Equal(t, template.HTML("<span>Test</span>"), got)
+}
+
+func TestColumnValueFunc(t *testing.T) {
+	translator := func(key string) string {
+		if key == "modeladmin-yes" {
+			return "Ja"
+		}
+		return "Nein"
+	}
+	fn := ColumnValueFunc(translator)
+	item := testArticle{Active: true}
+	got := fn(item, "Active")
+	assert.Equal(t, template.HTML("<span>Ja</span>"), got)
 }

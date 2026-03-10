@@ -163,3 +163,32 @@ func TestEnqueueEmail_FallbackDirect(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, emailSvc.sendCalled)
 }
+
+// --- sendEmailDirect additional paths ---
+
+func TestSendEmailDirectInvite(t *testing.T) {
+	emailSvc := &mockEmailService{}
+	bundle := testI18nBundle(t)
+	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
+
+	err := app.sendEmailDirect(context.Background(), "invite", "test@example.com", "http://localhost/register")
+	require.NoError(t, err)
+	assert.True(t, emailSvc.sendCalled)
+}
+
+func TestSendEmailDirectUnknownKind(t *testing.T) {
+	emailSvc := &mockEmailService{}
+	bundle := testI18nBundle(t)
+	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
+
+	err := app.sendEmailDirect(context.Background(), "unknown", "test@example.com", "http://localhost")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown email kind")
+}
+
+func TestSendEmailDirectNilService(t *testing.T) {
+	app := &App{}
+
+	err := app.sendEmailDirect(context.Background(), "verification", "test@example.com", "http://localhost")
+	require.NoError(t, err)
+}

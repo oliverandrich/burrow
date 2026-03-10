@@ -291,6 +291,69 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 	assert.Contains(t, body, "test-csrf-token-value")
 }
 
+// --- DefaultAuthLayout tests ---
+
+func TestDefaultAuthLayoutWithoutExecutor(t *testing.T) {
+	layout := DefaultAuthLayout()
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	err := layout(rec, req, http.StatusOK, "<p>content</p>", nil)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "<p>content</p>")
+}
+
+func TestDefaultAuthLayoutWithExecutor(t *testing.T) {
+	layout := DefaultAuthLayout()
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req = withRendererTestExecutor(req)
+	rec := httptest.NewRecorder()
+
+	err := layout(rec, req, http.StatusOK, "<p>test content</p>", map[string]any{})
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestDefaultAuthLayoutWithTitle(t *testing.T) {
+	layout := DefaultAuthLayout()
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req = withRendererTestExecutor(req)
+	rec := httptest.NewRecorder()
+
+	err := layout(rec, req, http.StatusOK, "<p>content</p>", map[string]any{"Title": "My Title"})
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+// --- renderCentered/renderCard without executor ---
+
+func TestDefaultRendererLoginPageWithoutExecutor(t *testing.T) {
+	r := DefaultRenderer()
+	// Request without template executor => falls back to burrow.RenderTemplate.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
+	rec := httptest.NewRecorder()
+
+	// This will try to use burrow.RenderTemplate which may return an error
+	// if no template set is configured, but we're testing the code path.
+	err := r.LoginPage(rec, req, "/dashboard")
+	// Without a template executor, renderCentered falls through to burrow.RenderTemplate
+	// which needs a template set. We just want to confirm it doesn't panic.
+	_ = err
+}
+
+func TestDefaultRendererRegisterPageWithoutExecutor(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil)
+	rec := httptest.NewRecorder()
+
+	err := r.RegisterPage(rec, req, false, false, "", "")
+	_ = err // May error without templates, but should not panic.
+}
+
 // rendererTestExecutorWithLogo creates an executor where authLogo returns the given HTML.
 func rendererTestExecutorWithLogo(logoHTML template.HTML) burrow.TemplateExecutor {
 	funcMap := template.FuncMap{

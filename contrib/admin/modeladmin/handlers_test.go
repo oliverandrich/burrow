@@ -364,3 +364,198 @@ func TestRenderConfig(t *testing.T) {
 	assert.True(t, renderer.lastConfig.CanEdit)
 	assert.True(t, renderer.lastConfig.CanDelete)
 }
+
+func TestIdFromRequest_CustomIDFunc(t *testing.T) {
+	db, renderer, ma := setupHandlerTest(t)
+	ma.IDFunc = func(r *http.Request) string {
+		return chi.URLParam(r, "id")
+	}
+
+	item := &testItem{Name: "Custom ID", Status: "active"}
+	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	require.NoError(t, err)
+
+	r := newRouter(ma)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, renderer.formCalled)
+}
+
+func TestPageSize_Default(t *testing.T) {
+	ma := &ModelAdmin[testItem]{}
+	assert.Equal(t, 25, ma.pageSize())
+}
+
+func TestPageSize_Custom(t *testing.T) {
+	ma := &ModelAdmin[testItem]{PageSize: 50}
+	assert.Equal(t, 50, ma.pageSize())
+}
+
+func TestPageSize_Zero(t *testing.T) {
+	ma := &ModelAdmin[testItem]{PageSize: 0}
+	assert.Equal(t, 25, ma.pageSize(), "zero should return default")
+}
+
+func TestPageSize_Negative(t *testing.T) {
+	ma := &ModelAdmin[testItem]{PageSize: -1}
+	assert.Equal(t, 25, ma.pageSize(), "negative should return default")
+}
+
+// validatedItem has a validate tag to trigger validation errors.
+type validatedItem struct { //nolint:govet // fieldalignment: test struct
+	bun.BaseModel `bun:"table:validated_items"`
+	ID            int64  `bun:",pk,autoincrement"`
+	Name          string `bun:",notnull" validate:"required"`
+}
+
+// mockValidatedRenderer records calls for validatedItem tests.
+type mockValidatedRenderer struct { //nolint:govet // fieldalignment: test struct
+	listCalled          bool
+	detailCalled        bool
+	formCalled          bool
+	confirmDeleteCalled bool
+	lastItem            any
+	lastFields          []FormField
+	lastErrors          *burrow.ValidationError
+	lastConfig          RenderConfig
+}
+
+func (m *mockValidatedRenderer) List(w http.ResponseWriter, _ *http.Request, _ []validatedItem, _ burrow.PageResult, cfg RenderConfig) error {
+	m.listCalled = true
+	m.lastConfig = cfg
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+func (m *mockValidatedRenderer) Detail(w http.ResponseWriter, _ *http.Request, item *validatedItem, cfg RenderConfig) error {
+	m.detailCalled = true
+	m.lastItem = item
+	m.lastConfig = cfg
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+func (m *mockValidatedRenderer) Form(w http.ResponseWriter, _ *http.Request, item *validatedItem, fields []FormField, errors *burrow.ValidationError, cfg RenderConfig) error {
+	m.formCalled = true
+	m.lastItem = item
+	m.lastFields = fields
+	m.lastErrors = errors
+	m.lastConfig = cfg
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+func (m *mockValidatedRenderer) ConfirmDelete(w http.ResponseWriter, _ *http.Request, item *validatedItem, cfg RenderConfig) error {
+	m.confirmDeleteCalled = true
+	m.lastItem = item
+	m.lastConfig = cfg
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+func setupValidatedHandlerTest(t *testing.T) (*bun.DB, *mockValidatedRenderer, *ModelAdmin[validatedItem]) {
+	t.Helper()
+	sqldb, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	db := bun.NewDB(sqldb, sqlitedialect.New())
+	t.Cleanup(func() { db.Close() })
+
+	ctx := context.Background()
+	_, err = db.NewCreateTable().Model((*validatedItem)(nil)).Exec(ctx)
+	require.NoError(t, err)
+
+	renderer := &mockValidatedRenderer{}
+	ma := &ModelAdmin[validatedItem]{
+		Slug:        "validated",
+		DisplayName: "Validated", DisplayPluralName: "Validated Items",
+		DB:        db,
+		Renderer:  renderer,
+		CanCreate: true,
+		CanEdit:   true,
+		CanDelete: true,
+		PageSize:  10,
+	}
+
+	return db, renderer, ma
+}
+
+func TestHandleCreate_ValidationError(t *testing.T) {
+	_, renderer, ma := setupValidatedHandlerTest(t)
+
+	router := chi.NewRouter()
+	ma.Routes(router)
+
+	// Submit form with empty name — should trigger validation error.
+	form := url.Values{
+		"name": {""},
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/validated", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, renderer.formCalled, "should render form with validation errors")
+	assert.NotNil(t, renderer.lastErrors, "should pass validation errors to renderer")
+	assert.True(t, renderer.lastErrors.HasField("Name"), "should have error on Name field")
+}
+
+func TestHandleUpdate_ValidationError(t *testing.T) {
+	db, renderer, ma := setupValidatedHandlerTest(t)
+
+	item := &validatedItem{Name: "Original"}
+	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	require.NoError(t, err)
+
+	router := chi.NewRouter()
+	ma.Routes(router)
+
+	// Submit form with empty name — should trigger validation error.
+	form := url.Values{
+		"name": {""},
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/validated/%d", item.ID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, renderer.formCalled, "should render form with validation errors")
+	assert.NotNil(t, renderer.lastErrors, "should pass validation errors to renderer")
+	assert.True(t, renderer.lastErrors.HasField("Name"), "should have error on Name field")
+}
+
+func TestHandleUpdate_NotFound(t *testing.T) {
+	_, _, ma := setupHandlerTest(t)
+
+	r := newRouter(ma)
+	form := url.Values{"name": {"Updated"}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/999", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestRenderConfig_EmptyMessage(t *testing.T) {
+	ma := &ModelAdmin[testItem]{
+		Slug:        "items",
+		DisplayName: "Item", DisplayPluralName: "Items",
+	}
+	cfg := ma.renderConfig()
+	assert.Equal(t, "No items found.", cfg.EmptyMessage)
+}
+
+func TestRenderConfig_CustomEmptyMessage(t *testing.T) {
+	ma := &ModelAdmin[testItem]{
+		Slug:         "items",
+		DisplayName:  "Item",
+		EmptyMessage: "Nothing here!",
+	}
+	cfg := ma.renderConfig()
+	assert.Equal(t, "Nothing here!", cfg.EmptyMessage)
+}

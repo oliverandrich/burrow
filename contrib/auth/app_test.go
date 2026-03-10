@@ -1572,3 +1572,479 @@ func TestRequestFuncMapUnauthenticated(t *testing.T) {
 	isAuthFunc := fm["isAuthenticated"].(func() bool)
 	assert.False(t, isAuthFunc())
 }
+
+// --- Option functions ---
+
+func TestWithRendererOption(t *testing.T) {
+	r := &mockRenderer{}
+	app := New(WithRenderer(r))
+	assert.Equal(t, r, app.renderer)
+}
+
+func TestWithLogoComponentOption(t *testing.T) {
+	logo := template.HTML(`<img src="logo.png"/>`)
+	app := New(WithLogoComponent(logo))
+	assert.Equal(t, logo, app.logo)
+}
+
+func TestWithEmailServiceOption(t *testing.T) {
+	svc := &mockEmailService{}
+	app := New(WithEmailService(svc))
+	assert.Equal(t, svc, app.emailService)
+}
+
+func TestTranslationFS(t *testing.T) {
+	app := &App{}
+	fsys := app.TranslationFS()
+	require.NotNil(t, fsys)
+}
+
+func TestTemplateFS(t *testing.T) {
+	app := &App{}
+	fsys := app.TemplateFS()
+	require.NotNil(t, fsys)
+}
+
+func TestFuncMap(t *testing.T) {
+	app := &App{}
+	fm := app.FuncMap()
+	require.NotNil(t, fm)
+
+	// Test credName function.
+	credNameFunc, ok := fm["credName"].(func(Credential) string)
+	require.True(t, ok)
+	assert.Equal(t, "My Key", credNameFunc(Credential{Name: "My Key"}))
+	assert.Equal(t, "Passkey", credNameFunc(Credential{Name: ""}))
+
+	// Test emailValue function.
+	emailValueFunc, ok := fm["emailValue"].(func(*User) string)
+	require.True(t, ok)
+	email := "alice@example.com"
+	assert.Equal(t, "alice@example.com", emailValueFunc(&User{Email: &email}))
+	assert.Empty(t, emailValueFunc(&User{}))
+
+	// Test deref function.
+	derefFunc, ok := fm["deref"].(func(*string) string)
+	require.True(t, ok)
+	s := "hello"
+	assert.Equal(t, "hello", derefFunc(&s))
+	assert.Empty(t, derefFunc(nil))
+}
+
+func TestShutdown(t *testing.T) {
+	// Shutdown with nil cancelCleanup should not panic.
+	app := &App{}
+	err := app.Shutdown(context.Background())
+	require.NoError(t, err)
+
+	// Shutdown with a real cancel function.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	app2 := &App{cancelCleanup: cancel}
+	err = app2.Shutdown(ctx)
+	assert.NoError(t, err)
+}
+
+func TestShutdownMultipleCalls(t *testing.T) {
+	_, cancel := context.WithCancel(context.Background())
+	app := &App{cancelCleanup: cancel}
+
+	// First call should be fine.
+	assert.NoError(t, app.Shutdown(context.Background()))
+	// Second call should also be safe (cancel is idempotent).
+	assert.NoError(t, app.Shutdown(context.Background()))
+}
+
+func TestRepoAccessor(t *testing.T) {
+	repo := &Repository{}
+	app := &App{repo: repo}
+	assert.Same(t, repo, app.Repo())
+}
+
+func TestHandlersAccessor(t *testing.T) {
+	handlers := &Handlers{}
+	app := &App{handlers: handlers}
+	assert.Same(t, handlers, app.Handlers())
+}
+
+func TestAuthMiddlewareWithValidUser(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	user, err := repo.CreateUser(context.Background(), "alice", "Alice")
+	require.NoError(t, err)
+
+	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+
+	var gotUser *User
+	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUser = UserFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req = session.Inject(req, map[string]any{"user_id": user.ID})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	require.NotNil(t, gotUser)
+	assert.Equal(t, "alice", gotUser.Username)
+}
+
+func TestAuthMiddlewareWithInactiveUser(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	user, err := repo.CreateUser(context.Background(), "inactive", "")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserActive(context.Background(), user.ID, false))
+
+	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+
+	var gotUser *User
+	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUser = UserFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req = session.Inject(req, map[string]any{"user_id": user.ID})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Nil(t, gotUser, "inactive user should not be set in context")
+}
+
+func TestAuthMiddlewareWithNonexistentUser(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+
+	var gotUser *User
+	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUser = UserFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req = session.Inject(req, map[string]any{"user_id": int64(999)})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Nil(t, gotUser, "nonexistent user should not be set in context")
+}
+
+func TestAuthLogoMiddleware(t *testing.T) {
+	logo := template.HTML(`<img src="logo.png"/>`)
+	mw := authLogoMiddleware(logo)
+
+	var gotLogo template.HTML
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotLogo = LogoFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, logo, gotLogo)
+}
+
+func TestCredNameWithName(t *testing.T) {
+	assert.Equal(t, "My Key", credName(Credential{Name: "My Key"}))
+}
+
+func TestCredNameWithoutName(t *testing.T) {
+	assert.Equal(t, "Passkey", credName(Credential{Name: ""}))
+}
+
+func TestRequestFuncMapAdminEditFlags(t *testing.T) {
+	app := &App{}
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	ctx := withAdminEditFlags(req.Context(), true, true)
+	req = req.WithContext(ctx)
+
+	fm := app.RequestFuncMap(req)
+
+	isSelfFunc := fm["isAdminEditSelf"].(func() bool)
+	assert.True(t, isSelfFunc())
+
+	isLastAdminFunc := fm["isAdminEditLastAdmin"].(func() bool)
+	assert.True(t, isLastAdminFunc())
+}
+
+func TestRequestFuncMapAuthLogo(t *testing.T) {
+	app := &App{}
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	logo := template.HTML(`<span>Logo</span>`)
+	ctx := WithLogo(req.Context(), logo)
+	req = req.WithContext(ctx)
+
+	fm := app.RequestFuncMap(req)
+	logoFunc := fm["authLogo"].(func() template.HTML)
+	assert.Equal(t, logo, logoFunc())
+}
+
+func TestNewWithMultipleOptions(t *testing.T) {
+	r := &mockRenderer{}
+	logo := template.HTML(`<span>Logo</span>`)
+	emailSvc := &mockEmailService{}
+	layout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+		return nil
+	})
+
+	app := New(
+		WithRenderer(r),
+		WithLogoComponent(logo),
+		WithEmailService(emailSvc),
+		WithAuthLayout(layout),
+	)
+
+	assert.Equal(t, r, app.renderer)
+	assert.Equal(t, logo, app.logo)
+	assert.Equal(t, emailSvc, app.emailService)
+	assert.NotNil(t, app.authLayout)
+}
+
+func TestDependencies(t *testing.T) {
+	app := &App{}
+	deps := app.Dependencies()
+	require.Len(t, deps, 1)
+	assert.Equal(t, "session", deps[0])
+}
+
+func TestAdminRoutes(t *testing.T) {
+	app, _ := newTestApp(t)
+
+	// AdminRoutes should not panic when called.
+	router := chi.NewRouter()
+	app.AdminRoutes(router)
+}
+
+func TestRoutesWithLogoMiddleware(t *testing.T) {
+	app := &App{
+		renderer: &mockRenderer{},
+		logo:     template.HTML(`<img src="logo.png"/>`),
+	}
+	app.handlers = NewHandlers(nil, nil, nil, app.renderer, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale})
+
+	router := chi.NewRouter()
+	// Should not panic.
+	app.Routes(router)
+
+	// Verify logo middleware works by hitting the login page.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestConfigure(t *testing.T) {
+	db := openTestDB(t)
+	registry := burrow.NewRegistry()
+	registry.Add(session.New())
+	app := New()
+	registry.Add(app)
+	require.NoError(t, registry.RegisterAll(db))
+
+	// Build a CLI command that sets the flags and calls Configure.
+	cliCmd := &cli.Command{
+		Name:  "test",
+		Flags: app.Flags(nil),
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
+	}
+
+	err := cliCmd.Run(context.Background(), []string{
+		"test",
+		"--webauthn-rp-id", "localhost",
+		"--webauthn-rp-display-name", "Test App",
+		"--webauthn-rp-origin", "http://localhost:8080",
+		"--auth-login-redirect", "/home",
+		"--auth-logout-redirect", "/goodbye",
+	})
+	require.NoError(t, err)
+
+	// Verify configuration was applied.
+	require.NotNil(t, app.config)
+	assert.Equal(t, "/home", app.config.LoginRedirect)
+	assert.Equal(t, "/goodbye", app.config.LogoutRedirect)
+	require.NotNil(t, app.handlers)
+	require.NotNil(t, app.cancelCleanup)
+
+	// Clean up.
+	require.NoError(t, app.Shutdown(context.Background()))
+}
+
+func TestConfigureWithDefaultOrigin(t *testing.T) {
+	db := openTestDB(t)
+	registry := burrow.NewRegistry()
+	registry.Add(session.New())
+	app := New()
+	registry.Add(app)
+	require.NoError(t, registry.RegisterAll(db))
+	app.globalConfig = &burrow.Config{}
+
+	cliCmd := &cli.Command{
+		Name:  "test",
+		Flags: app.Flags(nil),
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
+	}
+
+	// No --webauthn-rp-origin set, should fallback to base URL.
+	err := cliCmd.Run(context.Background(), []string{
+		"test",
+		"--webauthn-rp-id", "localhost",
+		"--webauthn-rp-display-name", "Test App",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, app.config)
+
+	require.NoError(t, app.Shutdown(context.Background()))
+}
+
+func TestCleanupOrphanedUsersStopsOnCancel(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	app := &App{repo: repo}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan struct{})
+	go func() {
+		app.cleanupOrphanedUsers(ctx)
+		close(done)
+	}()
+
+	// Cancel immediately to test the context cancellation path.
+	cancel()
+
+	select {
+	case <-done:
+		// Goroutine exited cleanly.
+	case <-time.After(2 * time.Second):
+		t.Fatal("cleanupOrphanedUsers did not stop within 2 seconds")
+	}
+}
+
+func TestCLIPromoteNoArgs(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	app := &App{repo: repo}
+	cmds := app.CLICommands()
+
+	var promoteCmd *cli.Command
+	for _, cmd := range cmds {
+		if cmd.Name == "promote" {
+			promoteCmd = cmd
+			break
+		}
+	}
+	require.NotNil(t, promoteCmd)
+
+	cliCmd := &cli.Command{
+		Name:     "test",
+		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
+		Commands: []*cli.Command{promoteCmd},
+	}
+	err := cliCmd.Run(context.Background(), []string{"test", "promote"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "username is required")
+}
+
+func TestCLIPromoteUserNotFound(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	app := &App{repo: repo}
+	cmds := app.CLICommands()
+
+	var promoteCmd *cli.Command
+	for _, cmd := range cmds {
+		if cmd.Name == "promote" {
+			promoteCmd = cmd
+			break
+		}
+	}
+	require.NotNil(t, promoteCmd)
+
+	cliCmd := &cli.Command{
+		Name:     "test",
+		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
+		Commands: []*cli.Command{promoteCmd},
+	}
+	err := cliCmd.Run(context.Background(), []string{"test", "promote", "nonexistent"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestCLICreateInviteNoArgs(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	app := &App{repo: repo}
+	cmds := app.CLICommands()
+
+	var createInviteCmd *cli.Command
+	for _, cmd := range cmds {
+		if cmd.Name == "create-invite" {
+			createInviteCmd = cmd
+			break
+		}
+	}
+	require.NotNil(t, createInviteCmd)
+
+	cliCmd := &cli.Command{
+		Name:     "test",
+		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
+		Commands: []*cli.Command{createInviteCmd},
+	}
+	err := cliCmd.Run(context.Background(), []string{"test", "create-invite"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "email is required")
+}
+
+func TestAdminCreateInviteWithEmailMode(t *testing.T) {
+	app, repo := newTestApp(t)
+	ctx := context.Background()
+	emailSvc := &mockEmailService{}
+	app.emailService = emailSvc
+	app.config = &Config{UseEmail: true, BaseURL: "http://localhost:8080"}
+
+	user, _ := repo.CreateUser(ctx, "admin", "")
+
+	body := strings.NewReader(`label=Test&email=invitee@example.com`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = requestWithSession(req, user)
+	rec := httptest.NewRecorder()
+
+	err := app.handleCreateInvite(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.True(t, emailSvc.sendCalled)
+}
+
+func TestAdminCreateInviteEmailModeMissingEmail(t *testing.T) {
+	app, _ := newTestApp(t)
+	app.config = &Config{UseEmail: true}
+
+	body := strings.NewReader(`label=Test`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = requestWithSession(req, &User{ID: 1})
+	rec := httptest.NewRecorder()
+
+	err := app.handleCreateInvite(rec, req)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "email is required")
+}

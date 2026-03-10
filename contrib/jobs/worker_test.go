@@ -199,6 +199,69 @@ func TestWorker_GracefulShutdown(t *testing.T) {
 	assert.Equal(t, StatusCompleted, job.Status)
 }
 
+func TestDefaultWorkerConfig(t *testing.T) {
+	cfg := DefaultWorkerConfig()
+	assert.Equal(t, 2, cfg.NumWorkers)
+	assert.Equal(t, time.Second, cfg.PollInterval)
+	assert.Equal(t, 10, cfg.BatchSize)
+	assert.Equal(t, 10*time.Minute, cfg.StaleTimeout)
+}
+
+func TestNewWorker(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	handlers := map[string]burrow.JobHandlerFunc{}
+	cfg := DefaultWorkerConfig()
+
+	w := NewWorker(repo, handlers, cfg)
+	require.NotNil(t, w)
+	assert.Equal(t, cfg.NumWorkers, w.config.NumWorkers)
+	assert.Equal(t, cfg.PollInterval, w.config.PollInterval)
+	assert.Equal(t, cfg.BatchSize, w.config.BatchSize)
+}
+
+func TestWorker_Maintenance(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	handlers := map[string]burrow.JobHandlerFunc{}
+	cfg := testWorkerConfig()
+	w := NewWorker(repo, handlers, cfg)
+
+	// Create a stale running job (locked 30 min ago).
+	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	require.NoError(t, err)
+	claimed, err := repo.Claim(ctx, 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	_, err = db.NewUpdate().Model((*Job)(nil)).
+		Set("locked_at = ?", time.Now().Add(-30*time.Minute)).
+		Where("id = ?", job.ID).Exec(ctx)
+	require.NoError(t, err)
+
+	// Create a completed job older than 24h.
+	job2, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	require.NoError(t, err)
+	require.NoError(t, repo.Complete(ctx, job2.ID))
+	_, err = db.NewUpdate().Model((*Job)(nil)).
+		Set("completed_at = ?", time.Now().Add(-48*time.Hour)).
+		Where("id = ?", job2.ID).Exec(ctx)
+	require.NoError(t, err)
+
+	// Run maintenance directly.
+	w.maintenance(ctx)
+
+	// Stale job should be rescued (back to pending).
+	got, err := repo.GetByID(ctx, job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, StatusPending, got.Status)
+
+	// Completed job should be deleted.
+	_, err = repo.GetByID(ctx, job2.ID)
+	require.ErrorIs(t, err, ErrNotFound)
+}
+
 func TestWorker_ScheduledJob(t *testing.T) {
 	db := testDB(t)
 	repo := NewRepository(db)
