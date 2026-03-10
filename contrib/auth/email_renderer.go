@@ -8,7 +8,7 @@ import (
 	"html/template"
 
 	"github.com/oliverandrich/burrow/contrib/authmail"
-	"github.com/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 //go:embed email_templates/emails.html

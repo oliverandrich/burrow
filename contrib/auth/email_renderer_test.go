@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/oliverandrich/burrow/contrib/authmail"
-	"github.com/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,9 +61,9 @@ func TestDefaultEmailRendererInviteTextFallback(t *testing.T) {
 // using the auth translation files.
 func newLocalizedCtx(t *testing.T, lang string) context.Context {
 	t.Helper()
-	i18nApp, err := i18n.NewTestApp("en", translationFS)
+	bundle, err := i18n.NewTestBundle("en", translationFS)
 	require.NoError(t, err)
-	return i18nApp.WithLocale(context.Background(), lang)
+	return bundle.WithLocale(context.Background(), lang)
 }
 
 func TestDefaultEmailRendererVerificationHTMLWithLocale(t *testing.T) {

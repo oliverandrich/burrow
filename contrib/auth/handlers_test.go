@@ -11,8 +11,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/i18n"
 	"github.com/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/burrow/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,16 +79,16 @@ func (m *mockEmailService) SendInvite(_ context.Context, _, _ string) error {
 
 // --- Test helpers ---
 
-func testI18nApp(t *testing.T) *i18n.App {
+func testI18nBundle(t *testing.T) *i18n.Bundle {
 	t.Helper()
-	app, err := i18n.NewTestApp("en", translationFS)
+	bundle, err := i18n.NewTestBundle("en", translationFS)
 	require.NoError(t, err)
-	return app
+	return bundle
 }
 
-func testApp(t *testing.T, i18nApp *i18n.App) *App {
+func testApp(t *testing.T, bundle *i18n.Bundle) *App {
 	t.Helper()
-	return &App{i18nApp: i18nApp}
+	return &App{withLocale: bundle.WithLocale}
 }
 
 func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
@@ -99,7 +99,7 @@ func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	app := testApp(t, testI18nApp(t))
+	app := testApp(t, testI18nBundle(t))
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
@@ -116,7 +116,7 @@ func newTestHandlersEmailMode(t *testing.T) (*Handlers, *Repository, *mockRender
 	require.NoError(t, err)
 
 	emailSvc := &mockEmailService{}
-	app := testApp(t, testI18nApp(t))
+	app := testApp(t, testI18nBundle(t))
 	app.emailService = emailSvc
 	h := NewHandlers(repo, waSvc, emailSvc, renderer, &Config{
 		LoginRedirect:       "/dashboard",
@@ -136,7 +136,7 @@ func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRende
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	app := testApp(t, testI18nApp(t))
+	app := testApp(t, testI18nBundle(t))
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
@@ -542,7 +542,7 @@ func TestLogoutCustomRedirect(t *testing.T) {
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	app := testApp(t, testI18nApp(t))
+	app := testApp(t, testI18nBundle(t))
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/goodbye",

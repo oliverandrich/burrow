@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 // emailJobPayload is the JSON payload for the auth.send_email job.
@@ -33,7 +33,7 @@ func (a *App) handleEmailJob(ctx context.Context, payload []byte) error {
 		return fmt.Errorf("unmarshal email job payload: %w", err)
 	}
 
-	ctx = a.i18nApp.WithLocale(ctx, p.Locale)
+	ctx = a.withLocale(ctx, p.Locale)
 
 	switch p.Kind {
 	case "verification":

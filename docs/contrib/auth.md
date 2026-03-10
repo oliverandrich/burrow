@@ -305,7 +305,6 @@ When a `burrow.Queue` implementation is registered (e.g., [`contrib/jobs`](jobs.
 ```go
 srv := burrow.NewServer(
     session.New(),
-    i18n.New(),
     jobs.New(),   // register a queue — auth will use it automatically
     auth.New(
         auth.WithEmailService(mailer),

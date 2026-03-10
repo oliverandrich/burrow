@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 // DefaultLayout returns a LayoutFunc that renders page content inside the

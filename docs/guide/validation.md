@@ -127,12 +127,12 @@ type Request struct {
 
 ## Translating Error Messages
 
-When using the [i18n contrib app](../contrib/i18n.md#translating-validation-errors), validation messages can be translated to the user's locale:
+When using the [i18n](i18n.md#translating-validation-errors) package, validation messages can be translated to the user's locale:
 
 ```go
 var ve *burrow.ValidationError
 if errors.As(err, &ve) {
-    i18n.TranslateValidationErrors(r.Context(), ve)
+    ve.Translate(r.Context(), i18n.TData)
     // ve.Errors[*].Message now contains translated messages
 }
 ```

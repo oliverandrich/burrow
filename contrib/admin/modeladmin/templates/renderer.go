@@ -16,8 +16,8 @@ import (
 	"github.com/oliverandrich/burrow/contrib/bsicons"
 	"github.com/oliverandrich/burrow/contrib/csrf"
 	"github.com/oliverandrich/burrow/contrib/htmx"
-	"github.com/oliverandrich/burrow/contrib/i18n"
 	"github.com/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 //go:embed *.html

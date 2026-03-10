@@ -9,8 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/htmx"
-	"github.com/oliverandrich/burrow/contrib/i18n"
 	"github.com/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 // CreateInviteRequest is the request body for creating an invite.

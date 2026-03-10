@@ -9,20 +9,14 @@ import (
 )
 
 func TestT(t *testing.T) {
-	app := configuredApp(t)
-	err := app.AddTranslations(testTranslationsFS)
-	require.NoError(t, err)
-
-	ctx := app.WithLocale(context.Background(), "en")
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "en")
 	assert.Equal(t, "Hello", T(ctx, "hello"))
 }
 
 func TestTGerman(t *testing.T) {
-	app := configuredApp(t)
-	err := app.AddTranslations(testTranslationsFS)
-	require.NoError(t, err)
-
-	ctx := app.WithLocale(context.Background(), "de")
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "de")
 	assert.Equal(t, "Hallo", T(ctx, "hello"))
 }
 
@@ -32,20 +26,14 @@ func TestTFallsBackToKey(t *testing.T) {
 }
 
 func TestTData(t *testing.T) {
-	app := configuredApp(t)
-	err := app.AddTranslations(testTranslationsFS)
-	require.NoError(t, err)
-
-	ctx := app.WithLocale(context.Background(), "en")
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "en")
 	assert.Equal(t, "Hello, World!", TData(ctx, "greeting", map[string]any{"Name": "World"}))
 }
 
 func TestTDataGerman(t *testing.T) {
-	app := configuredApp(t)
-	err := app.AddTranslations(testTranslationsFS)
-	require.NoError(t, err)
-
-	ctx := app.WithLocale(context.Background(), "de")
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "de")
 	assert.Equal(t, "Hallo, World!", TData(ctx, "greeting", map[string]any{"Name": "World"}))
 }
 
@@ -55,21 +43,15 @@ func TestTDataFallsBackToKey(t *testing.T) {
 }
 
 func TestTPlural(t *testing.T) {
-	app := configuredApp(t)
-	err := app.AddTranslations(testTranslationsFS)
-	require.NoError(t, err)
-
-	ctx := app.WithLocale(context.Background(), "en")
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "en")
 	assert.Equal(t, "1 item", TPlural(ctx, "items_count", 1))
 	assert.Equal(t, "5 items", TPlural(ctx, "items_count", 5))
 }
 
 func TestTPluralGerman(t *testing.T) {
-	app := configuredApp(t)
-	err := app.AddTranslations(testTranslationsFS)
-	require.NoError(t, err)
-
-	ctx := app.WithLocale(context.Background(), "de")
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "de")
 	assert.Equal(t, "1 Artikel", TPlural(ctx, "items_count", 1))
 	assert.Equal(t, "5 Artikel", TPlural(ctx, "items_count", 5))
 }
@@ -85,7 +67,25 @@ func TestLocaleDefault(t *testing.T) {
 }
 
 func TestLocaleFromContext(t *testing.T) {
-	app := configuredApp(t)
-	ctx := app.WithLocale(context.Background(), "de")
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "de")
 	assert.Equal(t, "de", Locale(ctx))
+}
+
+func TestValidationTranslateEnglish(t *testing.T) {
+	bundle, err := NewTestBundle("en")
+	require.NoError(t, err)
+	ctx := bundle.WithLocale(context.Background(), "en")
+
+	got := TData(ctx, "validation-required", map[string]any{"Field": "Email", "Param": ""})
+	assert.Equal(t, "Email is required", got)
+}
+
+func TestValidationTranslateGerman(t *testing.T) {
+	bundle, err := NewTestBundle("en")
+	require.NoError(t, err)
+	ctx := bundle.WithLocale(context.Background(), "de")
+
+	got := TData(ctx, "validation-required", map[string]any{"Field": "Email", "Param": ""})
+	assert.Equal(t, "Email ist erforderlich", got)
 }

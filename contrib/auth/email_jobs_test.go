@@ -75,8 +75,8 @@ func TestRegisterJobs_NoEmailService(t *testing.T) {
 
 func TestHandleEmailJob_Verification(t *testing.T) {
 	emailSvc := &mockEmailService{}
-	i18nApp := testI18nApp(t)
-	app := &App{emailService: emailSvc, i18nApp: i18nApp}
+	bundle := testI18nBundle(t)
+	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
 
 	payload, err := json.Marshal(emailJobPayload{
 		Kind:   "verification",
@@ -93,8 +93,8 @@ func TestHandleEmailJob_Verification(t *testing.T) {
 
 func TestHandleEmailJob_Invite(t *testing.T) {
 	emailSvc := &mockEmailService{}
-	i18nApp := testI18nApp(t)
-	app := &App{emailService: emailSvc, i18nApp: i18nApp}
+	bundle := testI18nBundle(t)
+	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
 
 	payload, err := json.Marshal(emailJobPayload{
 		Kind:   "invite",
@@ -111,8 +111,8 @@ func TestHandleEmailJob_Invite(t *testing.T) {
 
 func TestHandleEmailJob_UnknownKind(t *testing.T) {
 	emailSvc := &mockEmailService{}
-	i18nApp := testI18nApp(t)
-	app := &App{emailService: emailSvc, i18nApp: i18nApp}
+	bundle := testI18nBundle(t)
+	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
 
 	payload, err := json.Marshal(emailJobPayload{
 		Kind:   "unknown",
@@ -129,8 +129,8 @@ func TestHandleEmailJob_UnknownKind(t *testing.T) {
 
 func TestHandleEmailJob_InvalidPayload(t *testing.T) {
 	emailSvc := &mockEmailService{}
-	i18nApp := testI18nApp(t)
-	app := &App{emailService: emailSvc, i18nApp: i18nApp}
+	bundle := testI18nBundle(t)
+	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
 
 	err := app.handleEmailJob(context.Background(), []byte("not json"))
 	require.Error(t, err)
@@ -139,8 +139,8 @@ func TestHandleEmailJob_InvalidPayload(t *testing.T) {
 
 func TestEnqueueEmail(t *testing.T) {
 	q := newMockQueue()
-	i18nApp := testI18nApp(t)
-	app := &App{jobs: q, emailService: &mockEmailService{}, i18nApp: i18nApp}
+	bundle := testI18nBundle(t)
+	app := &App{jobs: q, emailService: &mockEmailService{}, withLocale: bundle.WithLocale}
 
 	err := app.enqueueEmail(context.Background(), "verification", "test@example.com", "http://localhost/verify")
 	require.NoError(t, err)
@@ -156,8 +156,8 @@ func TestEnqueueEmail(t *testing.T) {
 
 func TestEnqueueEmail_FallbackDirect(t *testing.T) {
 	emailSvc := &mockEmailService{}
-	i18nApp := testI18nApp(t)
-	app := &App{emailService: emailSvc, i18nApp: i18nApp} // no jobs queue
+	bundle := testI18nBundle(t)
+	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale} // no jobs queue
 
 	err := app.enqueueEmail(context.Background(), "verification", "test@example.com", "http://localhost/verify")
 	require.NoError(t, err)

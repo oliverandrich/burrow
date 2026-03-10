@@ -62,6 +62,7 @@ nav:
           - Layouts & Rendering: guide/layouts.md
           - Navigation: guide/navigation.md
           - Validation: guide/validation.md
+          - Internationalization: guide/i18n.md
       - Advanced:
           - Pagination: guide/pagination.md
           - Inter-App Communication: guide/inter-app-communication.md

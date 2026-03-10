@@ -1,6 +1,7 @@
 package burrow
 
 import (
+	"context"
 	"html/template"
 
 	"github.com/uptrace/bun"
@@ -17,9 +18,10 @@ type App interface {
 // AppConfig is passed to each app's Register method, providing
 // access to shared framework resources.
 type AppConfig struct {
-	DB       *bun.DB
-	Registry *Registry
-	Config   *Config
+	DB         *bun.DB
+	Registry   *Registry
+	Config     *Config
+	WithLocale func(ctx context.Context, lang string) context.Context
 }
 
 // NavItem represents a navigation entry contributed by an app.

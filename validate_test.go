@@ -1,6 +1,7 @@
 package burrow
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -166,4 +167,45 @@ func TestValidateFieldErrorParamEmpty(t *testing.T) {
 	require.Len(t, ve.Errors, 1)
 	assert.Equal(t, "required", ve.Errors[0].Tag)
 	assert.Empty(t, ve.Errors[0].Param)
+}
+
+func TestValidationErrorTranslate(t *testing.T) {
+	ve := &ValidationError{
+		Errors: []FieldError{
+			{Field: "Email", Tag: "required", Message: "Email is required"},
+			{Field: "Age", Tag: "min", Param: "18", Message: "Age must be at least 18"},
+		},
+	}
+
+	// Mock translation function that adds a prefix.
+	mockTranslate := func(_ context.Context, key string, data map[string]any) string {
+		if key == "validation-required" {
+			return data["Field"].(string) + " ist erforderlich"
+		}
+		if key == "validation-min" {
+			return data["Field"].(string) + " muss mindestens " + data["Param"].(string) + " sein"
+		}
+		return key
+	}
+
+	ve.Translate(context.Background(), mockTranslate)
+
+	assert.Equal(t, "Email ist erforderlich", ve.Errors[0].Message)
+	assert.Equal(t, "Age muss mindestens 18 sein", ve.Errors[1].Message)
+}
+
+func TestValidationErrorTranslatePreservesUnknownTags(t *testing.T) {
+	ve := &ValidationError{
+		Errors: []FieldError{
+			{Field: "Code", Tag: "custom_tag", Message: "Code failed custom_tag validation"},
+		},
+	}
+
+	// Translation function returns the key for unknown tags.
+	mockTranslate := func(_ context.Context, key string, _ map[string]any) string {
+		return key
+	}
+
+	ve.Translate(context.Background(), mockTranslate)
+	assert.Equal(t, "Code failed custom_tag validation", ve.Errors[0].Message)
 }

@@ -365,7 +365,7 @@ var translationFS embed.FS
 func (a *App) TranslationFS() fs.FS { return translationFS }
 ```
 
-See the [i18n contrib app](../contrib/i18n.md) for translation file format and usage.
+See the [i18n guide](../guide/i18n.md) for translation file format and usage.
 
 ### HasDependencies
 

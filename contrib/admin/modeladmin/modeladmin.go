@@ -10,7 +10,7 @@ import (
 	"github.com/uptrace/bun"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 const defaultPageSize = 25

@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/i18n"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/stretchr/testify/assert"
@@ -677,7 +676,6 @@ func newTestApp(t *testing.T) (*App, *Repository) {
 	t.Helper()
 	db := openTestDB(t)
 	registry := burrow.NewRegistry()
-	registry.Add(i18n.New())
 	registry.Add(session.New())
 	app := New()
 	registry.Add(app)
@@ -1335,7 +1333,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 
 	app := &App{
 		renderer: mockR,
-		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{i18nApp: testI18nApp(t)}),
+		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
 	}
 
 	authLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
@@ -1377,7 +1375,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	app := &App{
 		repo:     repo,
 		renderer: mockR,
-		handlers: NewHandlers(repo, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{i18nApp: testI18nApp(t)}),
+		handlers: NewHandlers(repo, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
 	}
 
 	authLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
@@ -1421,7 +1419,7 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 
 	app := &App{
 		renderer: mockR,
-		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{i18nApp: testI18nApp(t)}),
+		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
 	}
 	// No SetAuthLayout call.
 

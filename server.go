@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v3"
+	"github.com/oliverandrich/burrow/i18n"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	"github.com/uptrace/bun/driver/sqliteshim"
@@ -29,11 +30,12 @@ import (
 //  2. Configure the layout with [Server.SetLayout]
 //  3. Collect CLI flags with [Server.Flags]
 //  4. Start with [Server.Run] (opens DB, migrates, bootstraps, serves HTTP)
-type Server struct {
+type Server struct { //nolint:govet // fieldalignment: readability over optimization
 	registry                *Registry
 	layout                  LayoutFunc
 	templates               *template.Template
 	requestFuncMapProviders []func(r *http.Request) template.FuncMap
+	i18nBundle              *i18n.Bundle
 }
 
 // NewServer creates a Server and registers the given apps.
@@ -175,6 +177,14 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		"base_url", cfg.Server.BaseURL,
 	)
 
+	// Create i18n bundle from core config (before bootstrap so apps get WithLocale).
+	langs := strings.Split(cfg.I18n.SupportedLanguages, ",")
+	bundle, err := i18n.NewBundle(cfg.I18n.DefaultLanguage, langs)
+	if err != nil {
+		return fmt.Errorf("create i18n bundle: %w", err)
+	}
+	s.i18nBundle = bundle
+
 	db, err := openDB(cfg.Database.DSN)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
@@ -189,9 +199,21 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	// Load translations from all HasTranslations apps (after Register).
+	for _, app := range s.registry.Apps() {
+		if p, ok := app.(HasTranslations); ok {
+			if err := s.i18nBundle.AddTranslations(p.TranslationFS()); err != nil {
+				return fmt.Errorf("load translations from %q: %w", app.Name(), err)
+			}
+		}
+	}
+
 	if err := s.registry.Configure(cmd); err != nil {
 		return err
 	}
+
+	// Register i18n request func map provider (lang, t, tData, tPlural).
+	s.requestFuncMapProviders = append(s.requestFuncMapProviders, s.i18nBundle.RequestFuncMap)
 
 	if err := s.buildTemplates(); err != nil {
 		return fmt.Errorf("build templates: %w", err)
@@ -199,6 +221,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 
 	r := chi.NewRouter()
 	setupCoreMiddleware(r, cfg)
+	r.Use(s.i18nBundle.LocaleMiddleware())
 	navItems := s.registry.AllNavItems()
 	r.Use(navItemsMiddleware(navItems))
 	if s.layout != nil {
@@ -220,9 +243,10 @@ func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
 	}
 
 	appCfg := &AppConfig{
-		DB:       db,
-		Registry: s.registry,
-		Config:   cfg,
+		DB:         db,
+		Registry:   s.registry,
+		Config:     cfg,
+		WithLocale: s.i18nBundle.WithLocale,
 	}
 	for _, app := range s.registry.Apps() {
 		if err := app.Register(appCfg); err != nil {

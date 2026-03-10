@@ -16,7 +16,6 @@ import (
 	"github.com/oliverandrich/burrow/contrib/csrf"
 	"github.com/oliverandrich/burrow/contrib/healthcheck"
 	"github.com/oliverandrich/burrow/contrib/htmx"
-	"github.com/oliverandrich/burrow/contrib/i18n"
 	"github.com/oliverandrich/burrow/contrib/jobs"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
@@ -51,7 +50,6 @@ func main() {
 	srv := burrow.NewServer(
 		session.New(),
 		csrf.New(),
-		i18n.New(),
 		staticApp,
 		healthcheck.New(),
 		jobs.New(),

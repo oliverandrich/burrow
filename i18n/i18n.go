@@ -1,4 +1,4 @@
-// Package i18n provides internationalization as a burrow contrib app.
+// Package i18n provides internationalization as core framework infrastructure.
 //
 // The middleware detects the user's locale from the Accept-Language header
 // and stores a localizer in the request context.

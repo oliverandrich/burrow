@@ -17,6 +17,7 @@ Burrow is designed for server-rendered web applications, not API-only services.
 - [Layouts & Rendering](https://burrow.someonewho.codes/guide/layouts/): Template rendering, layout wrapping, HTMX support
 - [Configuration](https://burrow.someonewho.codes/guide/configuration/): CLI flags, environment variables, TOML config
 - [Migrations](https://burrow.someonewho.codes/guide/migrations/): Per-app SQL migrations with tracking
+- [Internationalization](https://burrow.someonewho.codes/guide/i18n/): Built-in i18n with Accept-Language detection and go-i18n translations
 
 ## Contrib Apps
 
@@ -24,7 +25,6 @@ Burrow is designed for server-rendered web applications, not API-only services.
 - [Session](https://burrow.someonewho.codes/contrib/session/): Cookie-based sessions via gorilla/sessions
 - [CSRF](https://burrow.someonewho.codes/contrib/csrf/): CSRF protection via gorilla/csrf
 - [Admin](https://burrow.someonewho.codes/contrib/admin/): Admin panel coordinator with ModelAdmin CRUD
-- [i18n](https://burrow.someonewho.codes/contrib/i18n/): Locale detection and translations
 - [Bootstrap](https://burrow.someonewho.codes/contrib/bootstrap/): Bootstrap 5 CSS/JS, dark mode, layout
 - [htmx](https://burrow.someonewho.codes/contrib/htmx/): HTMX integration with request/response helpers
 - [Jobs](https://burrow.someonewho.codes/contrib/jobs/): SQLite-backed background job queue

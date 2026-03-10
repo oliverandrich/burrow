@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/i18n"
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 // SidebarGroup holds pre-computed sidebar data for template rendering.

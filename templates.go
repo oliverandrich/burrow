@@ -32,6 +32,18 @@ func (s *Server) buildTemplates() error {
 		baseKeys[k] = true
 	}
 
+	// Register stubs for any pre-registered request func map providers
+	// (e.g. the core i18n bundle, added before buildTemplates).
+	stubReq := &http.Request{}
+	for _, provider := range s.requestFuncMapProviders {
+		for k := range provider(stubReq) {
+			if _, exists := funcMap[k]; exists && !baseKeys[k] {
+				panic(fmt.Sprintf("burrow: duplicate template func %q registered by core provider", k))
+			}
+			funcMap[k] = func() string { return "" }
+		}
+	}
+
 	for _, app := range s.registry.Apps() {
 		if provider, ok := app.(HasFuncMap); ok {
 			for k, v := range provider.FuncMap() {
@@ -45,7 +57,6 @@ func (s *Server) buildTemplates() error {
 			s.requestFuncMapProviders = append(s.requestFuncMapProviders, provider.RequestFuncMap)
 			// Register stub functions so templates can be parsed.
 			// The real implementations are injected per request via Clone()+Funcs().
-			stubReq := &http.Request{}
 			for k := range provider.RequestFuncMap(stubReq) {
 				if _, exists := funcMap[k]; exists && !baseKeys[k] {
 					panic(fmt.Sprintf("burrow: duplicate template func %q registered by app %q", k, app.Name()))

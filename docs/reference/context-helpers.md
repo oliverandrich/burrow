@@ -169,7 +169,7 @@ Sets up session state in the request context without the full middleware. Intend
 
 ## i18n Helpers
 
-Defined in `github.com/oliverandrich/burrow/contrib/i18n`.
+Defined in `github.com/oliverandrich/burrow/i18n`.
 
 ### Translation
 

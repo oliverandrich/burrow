@@ -14,7 +14,6 @@ Register the messages app after session (it depends on session for storage):
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
-    i18n.New(),
     messages.New(),
     // ... other apps
 )

@@ -1,6 +1,7 @@
 package burrow
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -54,6 +55,23 @@ func (e *ValidationError) Error() string {
 		parts[i] = fmt.Sprintf("%s is %s", fe.Field, fe.Tag)
 	}
 	return "validation failed: " + strings.Join(parts, "; ")
+}
+
+// Translate translates field error messages using the given translation function.
+// The translateData function receives a key and template data, and returns the
+// translated string. Typically called with i18n.TData:
+//
+//	ve.Translate(ctx, i18n.TData)
+func (e *ValidationError) Translate(ctx context.Context, translateData func(context.Context, string, map[string]any) string) {
+	for i := range e.Errors {
+		fe := &e.Errors[i]
+		key := "validation-" + fe.Tag
+		data := map[string]any{"Field": fe.Field, "Param": fe.Param}
+		translated := translateData(ctx, key, data)
+		if translated != key {
+			fe.Message = translated
+		}
+	}
 }
 
 // HasField reports whether the validation error contains a failure for the named field.
