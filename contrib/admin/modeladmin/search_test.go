@@ -216,3 +216,137 @@ func TestSort_DisallowedField(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, items, 5, "disallowed sort field should be ignored")
 }
+
+// setupFTSDB creates a test database with an FTS5 table and triggers.
+func setupFTSDB(t *testing.T) *bun.DB {
+	t.Helper()
+	db := setupSearchDB(t)
+	ctx := context.Background()
+
+	// Create FTS5 virtual table.
+	_, err := db.ExecContext(ctx, `
+		CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
+			name,
+			content='items',
+			content_rowid='id',
+			tokenize='unicode61'
+		)`)
+	require.NoError(t, err)
+
+	// Create triggers to keep FTS in sync.
+	_, err = db.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS items_ai AFTER INSERT ON items BEGIN
+			INSERT INTO items_fts(rowid, name) VALUES (new.id, new.name);
+		END`)
+	require.NoError(t, err)
+
+	_, err = db.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS items_ad AFTER DELETE ON items BEGIN
+			INSERT INTO items_fts(items_fts, rowid, name) VALUES ('delete', old.id, old.name);
+		END`)
+	require.NoError(t, err)
+
+	_, err = db.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS items_au AFTER UPDATE ON items BEGIN
+			INSERT INTO items_fts(items_fts, rowid, name) VALUES ('delete', old.id, old.name);
+			INSERT INTO items_fts(rowid, name) VALUES (new.id, new.name);
+		END`)
+	require.NoError(t, err)
+
+	// Rebuild FTS index for already-inserted data.
+	_, err = db.ExecContext(ctx, `INSERT INTO items_fts(items_fts) VALUES('rebuild')`)
+	require.NoError(t, err)
+
+	return db
+}
+
+func TestDetectFTS(t *testing.T) {
+	t.Run("FTS table exists", func(t *testing.T) {
+		db := setupFTSDB(t)
+		got := detectFTS(db, "items")
+		assert.Equal(t, "items_fts", got)
+	})
+
+	t.Run("no FTS table", func(t *testing.T) {
+		db := setupSearchDB(t)
+		got := detectFTS(db, "items")
+		assert.Empty(t, got)
+	})
+}
+
+func TestFTSSearch_Detected(t *testing.T) {
+	db := setupFTSDB(t)
+	opts := listOpts{
+		searchTerm:   "Alpha",
+		searchFields: []string{"name"},
+		ftsTable:     "items_fts",
+	}
+	pr := burrow.PageRequest{Limit: 10, Page: 1}
+
+	items, page, err := listItems[testItem](context.Background(), db, opts, pr)
+	require.NoError(t, err)
+	assert.Len(t, items, 2, "FTS should find 'Alpha' and 'Alpha Beta'")
+	assert.Equal(t, 2, page.TotalCount)
+}
+
+func TestFTSSearch_WordBased(t *testing.T) {
+	db := setupFTSDB(t)
+
+	// FTS5 matches whole words, so "lph" should NOT match "Alpha"
+	// (unlike LIKE which would match with %lph%).
+	opts := listOpts{
+		searchTerm:   "lph",
+		searchFields: []string{"name"},
+		ftsTable:     "items_fts",
+	}
+	pr := burrow.PageRequest{Limit: 10, Page: 1}
+
+	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
+	require.NoError(t, err)
+	assert.Empty(t, items, "FTS5 should not match partial words")
+}
+
+func TestFTSSearch_NotDetected(t *testing.T) {
+	db := setupSearchDB(t)
+	// No ftsTable set — should fall back to LIKE.
+	opts := listOpts{
+		searchTerm:   "alpha",
+		searchFields: []string{"name"},
+	}
+	pr := burrow.PageRequest{Limit: 10, Page: 1}
+
+	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
+	require.NoError(t, err)
+	assert.Len(t, items, 2, "LIKE fallback should find 'Alpha' and 'Alpha Beta'")
+}
+
+func TestFTSSearch_SyntaxError(t *testing.T) {
+	db := setupFTSDB(t)
+	// Unmatched quotes are a syntax error in FTS5.
+	opts := listOpts{
+		searchTerm:   `"unclosed quote`,
+		searchFields: []string{"name"},
+		ftsTable:     "items_fts",
+	}
+	pr := burrow.PageRequest{Limit: 10, Page: 1}
+
+	// Should fall back to LIKE instead of returning an error.
+	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
+	require.NoError(t, err)
+	// LIKE with %"unclosed quote% should return no results.
+	assert.Empty(t, items, "FTS5 syntax error should fall back to LIKE")
+}
+
+func TestFTSSearch_EmptyTerm(t *testing.T) {
+	db := setupFTSDB(t)
+	opts := listOpts{
+		searchTerm:   "",
+		searchFields: []string{"name"},
+		ftsTable:     "items_fts",
+	}
+	pr := burrow.PageRequest{Limit: 10, Page: 1}
+
+	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
+	require.NoError(t, err)
+	assert.Len(t, items, 5, "empty search should return all items")
+}

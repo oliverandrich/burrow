@@ -206,6 +206,22 @@ CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(title, content);
 
 Content-less tables are smaller and faster to write, but `snippet()` and `highlight()` are not available.
 
-## Outlook: ModelAdmin Integration
+## ModelAdmin Integration
 
-The built-in ModelAdmin currently uses `LIKE '%term%'` for search. A future enhancement could replace this with FTS5 for better performance and relevance ranking on large datasets. See the project roadmap for details.
+ModelAdmin auto-detects FTS5 tables at boot time. If a table named `{tablename}_fts` exists in `sqlite_master` (e.g., `notes_fts` for a model with `bun:"table:notes"`), ModelAdmin automatically switches from `LIKE` to FTS5 `MATCH` queries — no configuration needed.
+
+This gives admin search all the benefits of FTS5: word-based matching, query syntax (AND, OR, NOT, prefix with `*`), and better performance on large datasets. If a user's search query has FTS5 syntax errors (e.g., unmatched quotes), ModelAdmin falls back to `LIKE` transparently.
+
+To enable FTS5 for your model's admin search:
+
+1. Create the FTS5 virtual table and triggers as shown [above](#creating-the-fts5-table)
+2. Set `SearchFields` on your `ModelAdmin` — that's it
+
+```go
+ma := &modeladmin.ModelAdmin[Note]{
+    // ...
+    SearchFields: []string{"title", "body"},
+}
+```
+
+See the [Admin docs](../contrib/admin.md#fts5-auto-detection) for more details.

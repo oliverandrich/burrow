@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/uptrace/bun"
 )
 
 type testArticle struct { //nolint:govet // fieldalignment: test struct
@@ -430,4 +431,29 @@ func TestColumnValueFunc(t *testing.T) {
 	item := testArticle{Active: true}
 	got := fn(item, "Active")
 	assert.Equal(t, template.HTML("<span>Ja</span>"), got)
+}
+
+func TestTableName(t *testing.T) {
+	t.Run("with bun table tag", func(t *testing.T) {
+		type tagged struct {
+			bun.BaseModel `bun:"table:articles"`
+			ID            int64 `bun:",pk"`
+		}
+		assert.Equal(t, "articles", tableName[tagged]())
+	})
+
+	t.Run("no bun table tag", func(t *testing.T) {
+		type untagged struct {
+			ID int64 `bun:",pk"`
+		}
+		assert.Empty(t, tableName[untagged]())
+	})
+
+	t.Run("pointer type", func(t *testing.T) {
+		type tagged struct {
+			bun.BaseModel `bun:"table:notes"`
+			ID            int64 `bun:",pk"`
+		}
+		assert.Equal(t, "notes", tableName[tagged]())
+	})
 }

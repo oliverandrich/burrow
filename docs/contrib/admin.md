@@ -125,7 +125,15 @@ ma := &modeladmin.ModelAdmin[Note]{
 }
 ```
 
-Search uses `LIKE` with `%term%` patterns, applied with OR logic across fields. Special characters (`%`, `_`, `\`) are escaped automatically.
+By default, search uses `LIKE` with `%term%` patterns, applied with OR logic across fields. Special characters (`%`, `_`, `\`) are escaped automatically.
+
+#### FTS5 Auto-Detection
+
+If you create an FTS5 virtual table following the `{tablename}_fts` naming convention (e.g., `notes_fts` for a `notes` table), ModelAdmin automatically detects it at boot time and uses FTS5 `MATCH` queries instead of `LIKE`. This gives you word-based matching, FTS5 query syntax (AND, OR, NOT, prefix), and better performance on large datasets — with zero configuration.
+
+If the FTS5 query has syntax errors (e.g., unmatched quotes from user input), ModelAdmin falls back to LIKE automatically.
+
+See the [Full-Text Search guide](../guide/fts5.md) for instructions on creating FTS5 tables and triggers.
 
 ### Filters
 

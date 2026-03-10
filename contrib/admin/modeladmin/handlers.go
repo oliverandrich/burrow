@@ -26,6 +26,7 @@ func (ma *ModelAdmin[T]) HandleList(w http.ResponseWriter, r *http.Request) erro
 		orderBy:      ma.OrderBy,
 		searchTerm:   r.URL.Query().Get("q"),
 		searchFields: ma.SearchFields,
+		ftsTable:     ma.ftsTable,
 		filters:      ma.Filters,
 		sortFields:   ma.SortFields,
 		r:            r,

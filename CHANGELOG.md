@@ -42,6 +42,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Changed
 
+- ModelAdmin search auto-detects FTS5 tables at boot time. If a `{tablename}_fts` virtual table exists, search uses FTS5 `MATCH` instead of `LIKE`, with automatic fallback on syntax errors.
 - Auth email delivery (verification, invite) now uses the job queue with retries and persistence instead of fire-and-forget goroutines.
 - `contrib/jobs` implements `burrow.Queue` interface; apps register handlers via `HasJobs` instead of manual `Registry.Get()` lookups.
 - Migrated all contrib apps from Templ to `html/template`.

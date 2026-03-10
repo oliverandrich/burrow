@@ -9,6 +9,11 @@ import (
 // Routes are mounted under /{slug} so the caller should mount this
 // within the /admin route group.
 func (ma *ModelAdmin[T]) Routes(r chi.Router) {
+	// Auto-detect FTS5 table at boot time.
+	if tbl := tableName[T](); tbl != "" && len(ma.SearchFields) > 0 {
+		ma.ftsTable = detectFTS(ma.DB, tbl)
+	}
+
 	r.Route("/"+ma.Slug, func(r chi.Router) {
 		r.Get("/", burrow.Handle(ma.HandleList))
 

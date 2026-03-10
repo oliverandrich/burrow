@@ -16,6 +16,7 @@ type listOpts struct { //nolint:govet // fieldalignment: readability over optimi
 	orderBy      string
 	searchTerm   string
 	searchFields []string
+	ftsTable     string
 	filters      []FilterDef
 	sortFields   []string
 	r            *http.Request
@@ -31,7 +32,7 @@ func listItems[T any](ctx context.Context, db *bun.DB, opts listOpts, pr burrow.
 	}
 
 	// Apply search.
-	q = applySearch(q, opts.searchTerm, opts.searchFields)
+	q = applySearch(q, db, opts.searchTerm, opts.searchFields, opts.ftsTable)
 
 	// Apply filters.
 	if opts.r != nil {

@@ -301,6 +301,30 @@ func containsOption(tag, option string) bool {
 	return false
 }
 
+// tableName extracts the Bun table name from the bun:"table:..." struct tag
+// on the embedded bun.BaseModel field. Returns "" if not found.
+func tableName[T any]() string {
+	var zero T
+	t := reflect.TypeOf(zero)
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	for i := range t.NumField() {
+		sf := t.Field(i)
+		if !sf.Anonymous {
+			continue
+		}
+		bunTag := sf.Tag.Get("bun")
+		for part := range strings.SplitSeq(bunTag, ",") {
+			part = strings.TrimSpace(part)
+			if name, ok := strings.CutPrefix(part, "table:"); ok {
+				return name
+			}
+		}
+	}
+	return ""
+}
+
 // pkFieldName returns the struct field name tagged as the primary key.
 func pkFieldName[T any]() string {
 	var zero T

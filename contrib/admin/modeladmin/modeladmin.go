@@ -59,6 +59,10 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	// EmptyMessageKey is the i18n key for the empty-list message.
 	// Translated via i18n.T at request time.
 	EmptyMessageKey string
+
+	// ftsTable is the detected FTS5 table name (e.g. "notes_fts").
+	// Set automatically in Routes() if a {tablename}_fts table exists.
+	ftsTable string
 }
 
 // idFromRequest returns the ID from the URL, using IDFunc if set.
