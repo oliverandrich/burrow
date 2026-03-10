@@ -1,12 +1,8 @@
 # Changelog
 
-All notable changes to Burrow are documented here. This project uses [Conventional Commits](https://www.conventionalcommits.org/).
+All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
-
-### Added
-
-- `contrib/secure` — security response headers middleware (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, HSTS, CSP, Permissions-Policy, COOP) using [unrolled/secure](https://github.com/unrolled/secure).
 
 ### Breaking Changes
 
@@ -17,6 +13,7 @@ All notable changes to Burrow are documented here. This project uses [Convention
 
 ### Added
 
+- `contrib/secure` — security response headers middleware (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, HSTS, CSP, Permissions-Policy, COOP) using [unrolled/secure](https://github.com/unrolled/secure).
 - `contrib/htmx` — dedicated contrib app with request detection and response helpers, inspired by django-htmx.
 - `contrib/jobs` — in-process SQLite-backed job queue with worker pool, retry logic, and admin UI via ModelAdmin.
 - `contrib/uploads` — pluggable file upload storage with local filesystem backend and content-hashed serving.
@@ -44,20 +41,7 @@ All notable changes to Burrow are documented here. This project uses [Convention
 - Replaced `Registry.Bootstrap()` with `Registry.RegisterAll()`.
 - Options pattern adopted for `auth.New()`, `admin.New()`, `jobs.New()`, `uploads.New()`, and `ratelimit.New()`.
 - Unified auth context helpers to `context.Context` pattern.
-
-### Changed
-
 - SQLite connection defaults aligned with [dj-lite](https://github.com/adamghill/dj-lite/) recommendations: added `busy_timeout=5000`, `temp_store=MEMORY`, `mmap_size=128MB`, `journal_size_limit=26MB`, `cache_size=2000`, and `IMMEDIATE` transaction mode for better production concurrency.
-
-### Fixed
-
-- Auth pages now render with a minimal layout instead of full app chrome.
-- WebAuthn cleanup goroutine uses context-based cancellation.
-- `buildManifest` errors are propagated instead of silently discarded.
-- `Seed` is called on `Seedable` apps during server bootstrap.
-
-### Documentation
-
 - Rewritten project description (README and docs index) with clear positioning, target audience, and API-only disclaimer.
 - Simplified Quick Start to a minimal app without layout, session, or healthcheck.
 - New guides: [Database](guide/database.md), [TLS](guide/tls.md), [Routing](guide/routing.md), [Contributing](contributing.md).
@@ -66,8 +50,15 @@ All notable changes to Burrow are documented here. This project uses [Convention
 - Added dependency declarations (`Depends on:`) to all contrib app docs.
 - Reorganized guide sidebar into Core, Templates & UI, Advanced, and Deployment groups.
 - Added copyright footer to documentation site.
-- Fixed broken cross-links and removed redundant content across docs.
 - Expanded auth [Renderer](contrib/auth.md#renderer) and [Auth Layout](contrib/auth.md#auth-layout) documentation with usage examples.
+
+### Fixed
+
+- Auth pages now render with a minimal layout instead of full app chrome.
+- WebAuthn cleanup goroutine uses context-based cancellation.
+- `buildManifest` errors are propagated instead of silently discarded.
+- `Seed` is called on `Seedable` apps during server bootstrap.
+- Fixed broken cross-links and removed redundant content across docs.
 
 ## 2026-02-19 — Initial Release
 
