@@ -2,7 +2,7 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## 0.2.0 — 2026-03-10
 
 ### Breaking Changes
 
@@ -61,6 +61,11 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - Reorganized guide sidebar into Core, Templates & UI, Advanced, and Deployment groups.
 - New guide: [Full-Text Search](guide/fts5.md) covering FTS5 virtual tables, triggers, sanitization, highlighting, and performance.
 - Added copyright footer to documentation site.
+- New guide: [Coming from Django](getting-started/coming-from-django.md) mapping Django concepts to Burrow equivalents with side-by-side code examples.
+- Added request lifecycle diagram to the [Routing](guide/routing.md) guide.
+- Added "Why urfave/cli?" section to [Server & Registry](reference/server.md) reference.
+- New guide: [Testing](guide/testing.md) covering test helpers and patterns.
+- New pages: [Examples & Tutorial](getting-started/examples.md) overview, seven-part [Tutorial](tutorial/index.md).
 - Expanded auth [Renderer](contrib/auth.md#renderer) and [Auth Layout](contrib/auth.md#auth-layout) documentation with usage examples.
 - **Default email renderer moved** from `authmail/smtpmail/templates` to `auth.DefaultEmailRenderer()`. The `authmail` package keeps the `Renderer` interface only.
 - Auth app now declares `i18n` as a dependency alongside `session`.
@@ -75,7 +80,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - `Seed` is called on `Seedable` apps during server bootstrap.
 - Fixed broken cross-links and removed redundant content across docs.
 
-## 2026-02-19 — Initial Release
+## 0.1.0 — 2026-02-19
 
 - App-based architecture with `burrow.App` interface and optional interfaces.
 - Pure Go SQLite via `modernc.org/sqlite` (no CGO required).
