@@ -11,8 +11,8 @@ flowchart TD
     A[Incoming Request] --> B[Core Middleware]
     B --> C[i18n Locale Detection]
     C --> D[NavItems Injection]
-    D --> E[Layout Injection]
-    E --> F[Template Middleware]
+    D --> E[Layout Injection*]
+    E --> F[Template Middleware*]
     F --> G[App Middleware]
     G --> H{Chi Router}
     H --> I[Handler]
@@ -30,12 +30,14 @@ flowchart TD
     Q -- No --> S[500 Internal Server Error]
 
     style B fill:#f0f0f0,color:#333
+    style E fill:#f0f0f0,color:#333,stroke-dasharray: 5 5
+    style F fill:#f0f0f0,color:#333,stroke-dasharray: 5 5
     style G fill:#f0f0f0,color:#333
     style I fill:#e8f4e8,color:#333
     style Q fill:#fde8e8,color:#333
 ```
 
-**Core middleware** includes request logging, request ID generation, response compression, and body size limiting. **App middleware** is contributed by apps via `HasMiddleware` and runs in registration order. Context values (locale, nav items, layout, template executor) are injected by framework middleware and available to all handlers downstream.
+**Core middleware** includes request logging, request ID generation, response compression, and body size limiting. **App middleware** is contributed by apps via `HasMiddleware` and runs in registration order. Steps marked with **\*** only run when configured — Layout Injection requires a `LayoutFunc` (via `SetLayout()` or a design system app like `bootstrap`), and Template Middleware requires at least one `HasTemplates` app.
 
 ## Handlers
 

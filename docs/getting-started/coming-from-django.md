@@ -10,6 +10,7 @@ Burrow shares Django's "batteries-included" philosophy but takes a Go-idiomatic 
 | `django.contrib.*` | `contrib/` packages |
 | `models.Model` | Bun model with `bun.BaseModel` embed |
 | `Manager` / `QuerySet` | Repository pattern + Bun query builder |
+| `ForeignKey` / `ManyToManyField` | Bun struct fields + `.Relation()` eager loading |
 | `forms.Form` | Struct with `form` + `validate` tags, `burrow.Bind()` |
 | `django.template` | `html/template` with `{{ define }}` blocks |
 | `{% extends %}` / `{% block %}` | `LayoutFunc` wrapping |
@@ -21,8 +22,9 @@ Burrow shares Django's "batteries-included" philosophy but takes a Go-idiomatic 
 | `middleware` | `func(http.Handler) http.Handler` via `HasMiddleware` |
 | `django.contrib.admin` | `contrib/admin` with `ModelAdmin` |
 | `django.contrib.auth` | `contrib/auth` (WebAuthn/passkeys) |
+| `@permission_required` | Middleware checks (e.g. `auth.RequireAuth()`) |
 | `django.contrib.sessions` | `contrib/session` (gorilla/sessions) |
-| `signals` | Direct function calls or `Registry.Get()` |
+| `signals` | Explicit function calls (no automatic dispatch) |
 | `wsgi` / `gunicorn` | Single binary with built-in HTTP server |
 
 ## Apps & Registration
@@ -75,7 +77,25 @@ Django uses `models.Model` with ORM magic — managers, querysets, `makemigratio
         Scan(ctx)
     ```
 
-Migrations are hand-written SQL files embedded in each app, not auto-generated. See [Migrations](../guide/migrations.md).
+Django relationships (`ForeignKey`, `ManyToManyField`) create automatic reverse accessors and lazy loading. In Burrow, relationships are struct fields with Bun relation tags — loading is always explicit:
+
+```go
+type Note struct {
+    bun.BaseModel `bun:"table:notes"`
+    ID       int64  `bun:",pk,autoincrement"`
+    AuthorID int64  `bun:",notnull"`
+    Author   *User  `bun:"rel:belongs_to,join:author_id=id"`
+}
+
+// Eager-load the Author relation
+var note Note
+err := db.NewSelect().Model(&note).
+    Relation("Author").
+    Where("note.id = ?", id).
+    Scan(ctx)
+```
+
+There are no automatic reverse relations, no lazy loading, and no `note.author_set.all()` equivalent. You write the query you need. Migrations are hand-written SQL files embedded in each app, not auto-generated. See [Migrations](../guide/migrations.md).
 
 ## Forms & Validation
 
@@ -156,7 +176,7 @@ Django uses `{% extends "base.html" %}` with `{% block content %}` to build page
     srv.SetLayout(myLayout())
     ```
 
-Templates only define their own content. The layout function wraps it. See [Layouts & Rendering](../guide/layouts.md) for details.
+Templates only define their own content. The layout function receives the **entire rendered page as a single HTML fragment** and wraps it — unlike Django's blocks, you can't inject content into multiple slots. If you need reusable parts within a page, use `{{ template "name" . }}` calls (similar to Django's `{% include %}`). See [Layouts & Rendering](../guide/layouts.md) for details.
 
 ### Named Blocks Instead of Includes
 
@@ -299,4 +319,6 @@ Key philosophical differences from Django:
 - **SQLite by default** — no PostgreSQL/MySQL abstraction layer. One database engine, optimized for it.
 - **No admin auto-generation** — Django builds admin from model metadata. Burrow's `ModelAdmin` requires explicit configuration of fields, columns, and queries.
 - **Context instead of thread-locals** — `context.Context` replaces Django's `request.user` magic and thread-local storage. Values flow explicitly through the call chain.
+- **No signals** — Django dispatches `post_save`, `pre_delete`, etc. automatically via the ORM. Burrow has no automatic lifecycle hooks — you call functions explicitly in your handlers or services. Use `Registry.Get()` for cross-app communication.
+- **No built-in permission system** — Django has model-level permissions and `@permission_required`. Burrow provides authentication middleware (`auth.RequireAuth()`) but authorization logic is your responsibility — write middleware or handler checks.
 - **No form rendering** — Django renders form fields as HTML. Burrow handles binding and validation; you write the HTML yourself.
