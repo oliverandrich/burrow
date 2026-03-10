@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/oliverandrich/burrow"
 )
 
 // WorkerConfig holds configuration for the worker pool.
@@ -28,7 +30,7 @@ func DefaultWorkerConfig() WorkerConfig {
 // Worker manages a poller goroutine and a pool of worker goroutines.
 type Worker struct { //nolint:govet // fieldalignment: readability over optimization
 	repo     *Repository
-	handlers map[string]HandlerFunc
+	handlers map[string]burrow.JobHandlerFunc
 	config   WorkerConfig
 	jobs     chan Job
 	wg       sync.WaitGroup
@@ -36,7 +38,7 @@ type Worker struct { //nolint:govet // fieldalignment: readability over optimiza
 }
 
 // NewWorker creates a new Worker.
-func NewWorker(repo *Repository, handlers map[string]HandlerFunc, config WorkerConfig) *Worker {
+func NewWorker(repo *Repository, handlers map[string]burrow.JobHandlerFunc, config WorkerConfig) *Worker {
 	return &Worker{
 		repo:     repo,
 		handlers: handlers,
@@ -136,7 +138,7 @@ func (w *Worker) processJob(job Job) {
 
 	// Handlers get a background context so they can finish even after
 	// the poller context is cancelled.
-	err := handler(context.Background(), &job)
+	err := handler(context.Background(), []byte(job.Payload))
 	if err != nil {
 		slog.Error("jobs: handler failed", "type", job.Type, "id", job.ID, "error", err, "attempt", job.Attempts)
 		if failErr := w.repo.Fail(context.Background(), job.ID, err.Error(), job.Attempts, job.MaxRetries); failErr != nil {

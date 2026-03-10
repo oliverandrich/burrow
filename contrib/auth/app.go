@@ -47,6 +47,7 @@ type App struct {
 	config        *Config
 	globalConfig  *burrow.Config
 	i18nApp       *i18n.App
+	jobs          burrow.Queue
 	logo          template.HTML
 }
 
@@ -292,7 +293,7 @@ func (a *App) Configure(cmd *cli.Command) error {
 	}
 
 	// Create handlers with the stored email service (if any).
-	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config, a.i18nApp)
+	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config, a)
 
 	// Start background cleanup of orphaned users from abandoned registrations.
 	go a.cleanupOrphanedUsers(ctx)

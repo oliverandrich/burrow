@@ -289,17 +289,40 @@ For email verification and invite emails, wire up the [authmail](authmail.md) SM
 
 ```go
 type EmailService interface {
-    GenerateToken() (string, string, time.Time, error)
-    SendVerification(ctx context.Context, toEmail, token string) error
-    SendInvite(ctx context.Context, toEmail, token string) error
+    SendVerification(ctx context.Context, toEmail, verifyURL string) error
+    SendInvite(ctx context.Context, toEmail, inviteURL string) error
 }
 ```
+
+### Job-based delivery (recommended)
+
+When a `burrow.Queue` implementation is registered (e.g., [`contrib/jobs`](jobs.md)), the auth app automatically delivers emails via the job queue. This gives you:
+
+- **Automatic retries** with exponential backoff (5 retries by default)
+- **Persistence** — emails survive server restarts
+- **Admin visibility** — failed deliveries are visible in the jobs admin UI
+
+```go
+srv := burrow.NewServer(
+    session.New(),
+    i18n.New(),
+    jobs.New(),   // register a queue — auth will use it automatically
+    auth.New(
+        auth.WithEmailService(mailer),
+    ),
+    // ...
+)
+```
+
+The auth app implements `burrow.HasJobs` and registers an `auth.send_email` job handler. The queue implementation discovers it during `Configure()` — no manual wiring needed.
+
+Without a queue, emails are sent directly (synchronously in the request handler). This works for development but is not recommended for production, since transient SMTP failures will cause the email to be lost.
 
 ## Internationalisation
 
 The auth app implements `HasTranslations` and ships English and German translations for all user-facing strings. When the `i18n` contrib app is registered, translations are auto-discovered and loaded.
 
-**Email i18n:** Auth emails (verification, invite) are sent in the user's locale. The locale is captured from the request context before the email goroutine is spawned, and injected into the email context via `i18n.App.WithLocale()`. The default email renderer (`auth.DefaultEmailRenderer()`) uses `i18n.T()` for all translatable strings.
+**Email i18n:** Auth emails (verification, invite) are sent in the user's locale. The locale is captured from the request context and serialized into the job payload. The job handler restores the locale via `i18n.App.WithLocale()` before rendering the email. The default email renderer (`auth.DefaultEmailRenderer()`) uses `i18n.T()` for all translatable strings.
 
 Without the i18n app, templates fall back to displaying translation keys (which match their English text). To add a custom language, create a TOML file (e.g., `active.fr.toml`) with the same keys as `active.en.toml` and contribute it via the `HasTranslations` interface in your app.
 
@@ -319,5 +342,6 @@ Without the i18n app, templates fall back to displaying translation keys (which 
 | `HasFuncMap` | Provides `credName`, `emailValue`, `deref` to templates |
 | `Configurable` | Auth and WebAuthn flags |
 | `HasDependencies` | Requires `session`, `i18n` |
+| `HasJobs` | Registers `auth.send_email` job handler for email delivery via queue |
 | `HasCLICommands` | Provides `promote`, `demote`, `create-invite` subcommands |
 | `HasShutdown` | Stops the background WebAuthn challenge cleanup goroutine |

@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"context"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -37,7 +36,3 @@ type Job struct { //nolint:govet // fieldalignment: readability over optimizatio
 	CreatedAt   time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" verbose:"Created at"`
 	UpdatedAt   *time.Time `bun:",nullzero" json:"updated_at,omitempty"`
 }
-
-// HandlerFunc is the signature for job handler functions.
-// The context carries a deadline from the shutdown timeout.
-type HandlerFunc func(ctx context.Context, job *Job) error

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -26,27 +27,14 @@ var translationFS embed.FS
 //go:embed templates/*.html
 var htmlTemplateFS embed.FS
 
-// JobOption configures job handler registration.
-type JobOption func(*handlerConfig)
-
-type handlerConfig struct {
-	maxRetries int
-}
-
-// WithMaxRetries sets the maximum number of retries for a job type.
-func WithMaxRetries(n int) JobOption {
-	return func(c *handlerConfig) {
-		c.maxRetries = n
-	}
-}
-
 // Option configures the jobs app.
 type Option func(*App)
 
 // App implements the jobs contrib app.
 type App struct {
 	repo       *Repository
-	handlers   map[string]HandlerFunc
+	registry   *burrow.Registry
+	handlers   map[string]burrow.JobHandlerFunc
 	retries    map[string]int
 	worker     *Worker
 	cancelFunc context.CancelFunc
@@ -56,7 +44,7 @@ type App struct {
 // New creates a new jobs app with the given options.
 func New(opts ...Option) *App {
 	a := &App{
-		handlers: make(map[string]HandlerFunc),
+		handlers: make(map[string]burrow.JobHandlerFunc),
 		retries:  make(map[string]int),
 	}
 	for _, o := range opts {
@@ -69,6 +57,7 @@ func (a *App) Name() string { return "jobs" }
 
 func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
+	a.registry = cfg.Registry
 
 	a.jobsAdmin = &modeladmin.ModelAdmin[Job]{
 		Slug:              "jobs",
@@ -132,6 +121,15 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 }
 
 func (a *App) Configure(cmd *cli.Command) error {
+	// Discover HasJobs implementors and let them register their handlers.
+	if a.registry != nil {
+		for _, app := range a.registry.Apps() {
+			if hj, ok := app.(burrow.HasJobs); ok {
+				hj.RegisterJobs(a)
+			}
+		}
+	}
+
 	cfg := DefaultWorkerConfig()
 	cfg.NumWorkers = int(cmd.Int("jobs-workers"))
 	cfg.PollInterval = cmd.Duration("jobs-poll-interval")
@@ -156,36 +154,52 @@ func (a *App) Shutdown(_ context.Context) error {
 }
 
 // Handle registers a handler function for a job type. Call this during
-// your app's Register() phase, before Configure() starts the workers.
-func (a *App) Handle(typeName string, fn HandlerFunc, opts ...JobOption) {
-	cfg := handlerConfig{maxRetries: 3}
+// your app's RegisterJobs() phase, before Configure() starts the workers.
+func (a *App) Handle(typeName string, fn burrow.JobHandlerFunc, opts ...burrow.JobOption) {
+	cfg := burrow.JobConfig{MaxRetries: 3}
 	for _, o := range opts {
 		o(&cfg)
 	}
 	a.handlers[typeName] = fn
-	a.retries[typeName] = cfg.maxRetries
+	a.retries[typeName] = cfg.MaxRetries
 }
 
 // Enqueue adds a job to the queue for immediate processing.
 // The payload is marshaled to JSON. The type must be registered via Handle().
-func (a *App) Enqueue(ctx context.Context, typeName string, payload any) (*Job, error) {
+// Returns the job ID as an opaque string.
+func (a *App) Enqueue(ctx context.Context, typeName string, payload any) (string, error) {
 	return a.EnqueueAt(ctx, typeName, payload, time.Now())
 }
 
 // EnqueueAt adds a job to the queue scheduled for a specific time.
 // The payload is marshaled to JSON. The type must be registered via Handle().
-func (a *App) EnqueueAt(ctx context.Context, typeName string, payload any, runAt time.Time) (*Job, error) {
+// Returns the job ID as an opaque string.
+func (a *App) EnqueueAt(ctx context.Context, typeName string, payload any, runAt time.Time) (string, error) {
 	if _, ok := a.handlers[typeName]; !ok {
-		return nil, fmt.Errorf("jobs: unknown type %q (not registered via Handle)", typeName)
+		return "", fmt.Errorf("jobs: unknown type %q (not registered via Handle)", typeName)
 	}
 
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("jobs: marshal payload for %q: %w", typeName, err)
+		return "", fmt.Errorf("jobs: marshal payload for %q: %w", typeName, err)
 	}
 
 	maxRetries := a.retries[typeName]
-	return a.repo.Enqueue(ctx, typeName, string(data), maxRetries, runAt)
+	job, err := a.repo.Enqueue(ctx, typeName, string(data), maxRetries, runAt)
+	if err != nil {
+		return "", err
+	}
+	return strconv.FormatInt(job.ID, 10), nil
+}
+
+// Dequeue cancels a pending job by its ID. Returns an error if the job
+// is already running, completed, or not found.
+func (a *App) Dequeue(ctx context.Context, id string) error {
+	jobID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return fmt.Errorf("jobs: invalid job ID %q: %w", id, err)
+	}
+	return a.repo.Cancel(ctx, jobID)
 }
 
 // AdminRoutes registers admin routes for job management.
@@ -242,6 +256,7 @@ func (a *App) TranslationFS() fs.FS { return translationFS }
 // Compile-time interface assertions.
 var (
 	_ burrow.App             = (*App)(nil)
+	_ burrow.Queue           = (*App)(nil)
 	_ burrow.Migratable      = (*App)(nil)
 	_ burrow.Configurable    = (*App)(nil)
 	_ burrow.HasShutdown     = (*App)(nil)

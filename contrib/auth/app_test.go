@@ -1335,7 +1335,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 
 	app := &App{
 		renderer: mockR,
-		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, testI18nApp(t)),
+		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{i18nApp: testI18nApp(t)}),
 	}
 
 	authLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
@@ -1377,7 +1377,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	app := &App{
 		repo:     repo,
 		renderer: mockR,
-		handlers: NewHandlers(repo, nil, nil, mockR, &Config{LoginRedirect: "/"}, testI18nApp(t)),
+		handlers: NewHandlers(repo, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{i18nApp: testI18nApp(t)}),
 	}
 
 	authLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
@@ -1421,7 +1421,7 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 
 	app := &App{
 		renderer: mockR,
-		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, testI18nApp(t)),
+		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{i18nApp: testI18nApp(t)}),
 	}
 	// No SetAuthLayout call.
 

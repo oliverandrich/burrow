@@ -96,6 +96,9 @@ func (r *Registry) Add(app App) {
 	if _, ok := app.(HasRequestFuncMap); ok {
 		caps = append(caps, "requestfuncmap")
 	}
+	if _, ok := app.(HasJobs); ok {
+		caps = append(caps, "jobs")
+	}
 	slog.Debug("app registered", "name", name, "capabilities", caps)
 }
 

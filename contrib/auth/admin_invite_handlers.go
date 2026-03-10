@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -61,16 +60,9 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 
 	var flashMsg string
 	if a.emailService != nil && req.Email != "" {
-		inviteURL := createdURL
-		locale := i18n.Locale(r.Context())
-		go func() { //nolint:gosec // G118: intentionally detached from request — email must send after response
-			sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer cancel()
-			sendCtx = a.i18nApp.WithLocale(sendCtx, locale)
-			if sendErr := a.emailService.SendInvite(sendCtx, req.Email, inviteURL); sendErr != nil {
-				slog.Error("failed to send invite email", "error", sendErr, "email", req.Email)
-			}
-		}()
+		if err := a.enqueueEmail(r.Context(), "invite", req.Email, createdURL); err != nil {
+			slog.Error("failed to enqueue invite email", "error", err, "email", req.Email)
+		}
 		flashMsg = i18n.T(r.Context(), "admin-invites-sent")
 	} else {
 		flashMsg = i18n.T(r.Context(), "admin-invites-copy-url") + " " + createdURL

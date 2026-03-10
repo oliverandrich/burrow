@@ -10,9 +10,16 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **LayoutFunc signature changed**: `func(title string, content templ.Component) templ.Component` is now `func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error`.
 - **NavItem.Icon type changed**: `templ.Component` is now `template.HTML`.
 - **`burrow.Render()` replaced by `burrow.RenderTemplate()`**: Handlers now call `RenderTemplate(w, r, statusCode, "app/template", data)` instead of `Render(w, r, statusCode, component)`.
+- **`contrib/jobs` handler signature changed**: `HandlerFunc` changed from `func(ctx context.Context, job *Job) error` to `func(ctx context.Context, payload []byte) error`. Handlers now receive raw JSON payload bytes instead of the full `*Job` struct.
+- **`contrib/jobs` `Enqueue`/`EnqueueAt` return type changed**: Now returns `(string, error)` instead of `(*Job, error)`. The string is an opaque job ID.
+- **`contrib/auth` email delivery via jobs**: Auth emails are delivered via the job queue when available, with automatic fallback to direct sending. Register a `burrow.Queue` implementation (e.g., `jobs.New()`) to enable retries and persistence.
 
 ### Added
 
+- `burrow.Queue` interface — core abstraction for job queues with `Handle()`, `Enqueue()`, `EnqueueAt()`, and `Dequeue()` methods.
+- `burrow.HasJobs` interface — apps implement `RegisterJobs(q Queue)` to declare job handlers, discovered automatically by the queue during `Configure()`.
+- `burrow.JobHandlerFunc`, `burrow.JobOption`, `burrow.JobConfig`, `burrow.WithMaxRetries()` — core job handler types and options.
+- `contrib/jobs.Dequeue()` — cancel a pending job by its ID.
 - `contrib/secure` — security response headers middleware (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, HSTS, CSP, Permissions-Policy, COOP) using [unrolled/secure](https://github.com/unrolled/secure).
 - `contrib/htmx` — dedicated contrib app with request detection and response helpers, inspired by django-htmx.
 - `contrib/jobs` — in-process SQLite-backed job queue with worker pool, retry logic, and admin UI via ModelAdmin.
@@ -35,6 +42,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Changed
 
+- Auth email delivery (verification, invite) now uses the job queue with retries and persistence instead of fire-and-forget goroutines.
+- `contrib/jobs` implements `burrow.Queue` interface; apps register handlers via `HasJobs` instead of manual `Registry.Get()` lookups.
 - Migrated all contrib apps from Templ to `html/template`.
 - Bootstrap Icons are now inline SVG functions returning `template.HTML` instead of `templ.Component`.
 - Admin panel uses HTMX with explicit `hx-get`/`hx-target` instead of `hx-boost`.

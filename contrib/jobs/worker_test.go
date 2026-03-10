@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,8 +26,8 @@ func TestWorker_ProcessJob(t *testing.T) {
 	repo := NewRepository(db)
 
 	var processed atomic.Int32
-	handlers := map[string]HandlerFunc{
-		"test": func(_ context.Context, _ *Job) error {
+	handlers := map[string]burrow.JobHandlerFunc{
+		"test": func(_ context.Context, _ []byte) error {
 			processed.Add(1)
 			return nil
 		},
@@ -54,8 +55,8 @@ func TestWorker_RetryOnFailure(t *testing.T) {
 	repo := NewRepository(db)
 
 	var attempts atomic.Int32
-	handlers := map[string]HandlerFunc{
-		"flaky": func(_ context.Context, _ *Job) error {
+	handlers := map[string]burrow.JobHandlerFunc{
+		"flaky": func(_ context.Context, _ []byte) error {
 			if attempts.Add(1) <= 2 {
 				return fmt.Errorf("temporary error")
 			}
@@ -97,8 +98,8 @@ func TestWorker_DeadAfterMaxRetries(t *testing.T) {
 	db := testDB(t)
 	repo := NewRepository(db)
 
-	handlers := map[string]HandlerFunc{
-		"always_fail": func(_ context.Context, _ *Job) error {
+	handlers := map[string]burrow.JobHandlerFunc{
+		"always_fail": func(_ context.Context, _ []byte) error {
 			return fmt.Errorf("permanent error")
 		},
 	}
@@ -129,7 +130,7 @@ func TestWorker_UnknownType(t *testing.T) {
 	db := testDB(t)
 	repo := NewRepository(db)
 
-	handlers := map[string]HandlerFunc{} // No handlers registered.
+	handlers := map[string]burrow.JobHandlerFunc{} // No handlers registered.
 
 	cfg := testWorkerConfig()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -157,8 +158,8 @@ func TestWorker_GracefulShutdown(t *testing.T) {
 	repo := NewRepository(db)
 
 	started := make(chan struct{})
-	handlers := map[string]HandlerFunc{
-		"slow": func(_ context.Context, _ *Job) error {
+	handlers := map[string]burrow.JobHandlerFunc{
+		"slow": func(_ context.Context, _ []byte) error {
 			close(started)
 			time.Sleep(100 * time.Millisecond)
 			return nil
@@ -203,8 +204,8 @@ func TestWorker_ScheduledJob(t *testing.T) {
 	repo := NewRepository(db)
 
 	var processed atomic.Int32
-	handlers := map[string]HandlerFunc{
-		"scheduled": func(_ context.Context, _ *Job) error {
+	handlers := map[string]burrow.JobHandlerFunc{
+		"scheduled": func(_ context.Context, _ []byte) error {
 			processed.Add(1)
 			return nil
 		},

@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"io/fs"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 func TestApp_InterfaceAssertions(t *testing.T) {
 	app := New()
 	assert.Implements(t, (*burrow.App)(nil), app)
+	assert.Implements(t, (*burrow.Queue)(nil), app)
 	assert.Implements(t, (*burrow.Migratable)(nil), app)
 	assert.Implements(t, (*burrow.Configurable)(nil), app)
 	assert.Implements(t, (*burrow.HasShutdown)(nil), app)
@@ -30,11 +32,17 @@ func TestApp_HandleAndEnqueue(t *testing.T) {
 	app := New()
 	app.repo = NewRepository(db)
 
-	app.Handle("test_job", func(_ context.Context, _ *Job) error {
+	app.Handle("test_job", func(_ context.Context, _ []byte) error {
 		return nil
-	}, WithMaxRetries(5))
+	}, burrow.WithMaxRetries(5))
 
-	job, err := app.Enqueue(context.Background(), "test_job", map[string]string{"key": "value"})
+	jobID, err := app.Enqueue(context.Background(), "test_job", map[string]string{"key": "value"})
+	require.NoError(t, err)
+	assert.NotEmpty(t, jobID)
+
+	// Verify the job was stored correctly.
+	id, _ := strconv.ParseInt(jobID, 10, 64)
+	job, err := app.repo.GetByID(context.Background(), id)
 	require.NoError(t, err)
 	assert.Equal(t, "test_job", job.Type)
 	assert.JSONEq(t, `{"key":"value"}`, job.Payload)
@@ -46,12 +54,16 @@ func TestApp_EnqueueAt(t *testing.T) {
 	app := New()
 	app.repo = NewRepository(db)
 
-	app.Handle("delayed", func(_ context.Context, _ *Job) error {
+	app.Handle("delayed", func(_ context.Context, _ []byte) error {
 		return nil
 	})
 
 	future := time.Now().Add(time.Hour)
-	job, err := app.EnqueueAt(context.Background(), "delayed", "payload", future)
+	jobID, err := app.EnqueueAt(context.Background(), "delayed", "payload", future)
+	require.NoError(t, err)
+
+	id, _ := strconv.ParseInt(jobID, 10, 64)
+	job, err := app.repo.GetByID(context.Background(), id)
 	require.NoError(t, err)
 	assert.WithinDuration(t, future, job.RunAt, time.Second)
 }
@@ -71,7 +83,7 @@ func TestApp_Enqueue_InvalidPayload(t *testing.T) {
 	app := New()
 	app.repo = NewRepository(db)
 
-	app.Handle("test", func(_ context.Context, _ *Job) error { return nil })
+	app.Handle("test", func(_ context.Context, _ []byte) error { return nil })
 
 	// Channels cannot be marshaled to JSON.
 	_, err := app.Enqueue(context.Background(), "test", make(chan int))
@@ -85,7 +97,7 @@ func TestApp_FullLifecycle(t *testing.T) {
 	app.repo = NewRepository(db)
 
 	var processed atomic.Int32
-	app.Handle("lifecycle", func(_ context.Context, _ *Job) error {
+	app.Handle("lifecycle", func(_ context.Context, _ []byte) error {
 		processed.Add(1)
 		return nil
 	})

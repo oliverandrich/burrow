@@ -86,6 +86,11 @@ func testI18nApp(t *testing.T) *i18n.App {
 	return app
 }
 
+func testApp(t *testing.T, i18nApp *i18n.App) *App {
+	t.Helper()
+	return &App{i18nApp: i18nApp}
+}
+
 func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
 	t.Helper()
 	db := openTestDB(t)
@@ -94,10 +99,11 @@ func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
+	app := testApp(t, testI18nApp(t))
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
-	}, testI18nApp(t))
+	}, app)
 	return h, repo, renderer
 }
 
@@ -109,13 +115,16 @@ func newTestHandlersEmailMode(t *testing.T) (*Handlers, *Repository, *mockRender
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	h := NewHandlers(repo, waSvc, &mockEmailService{}, renderer, &Config{
+	emailSvc := &mockEmailService{}
+	app := testApp(t, testI18nApp(t))
+	app.emailService = emailSvc
+	h := NewHandlers(repo, waSvc, emailSvc, renderer, &Config{
 		LoginRedirect:       "/dashboard",
 		LogoutRedirect:      "/auth/login",
 		UseEmail:            true,
 		RequireVerification: true,
 		BaseURL:             "http://localhost:8080",
-	}, testI18nApp(t))
+	}, app)
 	return h, repo, renderer
 }
 
@@ -127,11 +136,12 @@ func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRende
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
+	app := testApp(t, testI18nApp(t))
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
 		InviteOnly:     true,
-	}, testI18nApp(t))
+	}, app)
 	return h, repo, renderer
 }
 
@@ -532,10 +542,11 @@ func TestLogoutCustomRedirect(t *testing.T) {
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
+	app := testApp(t, testI18nApp(t))
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/goodbye",
-	}, testI18nApp(t))
+	}, app)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/logout", nil)
 	req = requestWithSession(req, nil)
