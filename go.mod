@@ -15,6 +15,7 @@ require (
 	github.com/gorilla/securecookie v1.1.2
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/stretchr/testify v1.11.1
+	github.com/unrolled/secure v1.17.0
 	github.com/uptrace/bun v1.2.18
 	github.com/uptrace/bun/dialect/sqlitedialect v1.2.18
 	github.com/uptrace/bun/driver/sqliteshim v1.2.18

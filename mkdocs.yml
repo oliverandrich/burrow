@@ -87,6 +87,7 @@ nav:
           - Auth: contrib/auth.md
           - Auth Mail: contrib/authmail.md
           - Rate Limiting: contrib/ratelimit.md
+          - Security Headers: contrib/secure.md
       - UI & Templates:
           - Bootstrap: contrib/bootstrap.md
           - Bootstrap Icons: contrib/bsicons.md
