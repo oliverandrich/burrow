@@ -129,3 +129,17 @@ admin-app-auth = "Authentifizierung"
 admin-nav-users = "Benutzer"
 admin-nav-invites = "Einladungen"
 admin-logout = "Abmelden"
+
+# E-Mail: Verifizierung
+email-verification-subject = "E-Mail-Adresse bestätigen"
+email-verification-heading = "E-Mail-Adresse bestätigen"
+email-verification-body = "Klicken Sie auf die Schaltfläche unten, um Ihre E-Mail-Adresse zu bestätigen:"
+email-verification-button = "E-Mail bestätigen"
+email-verification-fallback = "Falls die Schaltfläche nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:"
+
+# E-Mail: Einladung
+email-invite-subject = "Sie wurden eingeladen"
+email-invite-heading = "Sie wurden eingeladen"
+email-invite-body = "Sie wurden eingeladen, ein Konto zu erstellen. Klicken Sie auf die Schaltfläche unten, um zu beginnen:"
+email-invite-button = "Einladung annehmen"
+email-invite-fallback = "Falls die Schaltfläche nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:"

@@ -5,18 +5,18 @@
         <meta charset="utf-8"/>
     </head>
     <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #333;">Verify your email</h1>
-        <p>Click the button below to verify your email address:</p>
+        <h1 style="color: #333;">{{ .Heading }}</h1>
+        <p>{{ .Body }}</p>
         <p style="text-align: center; margin: 30px 0;">
             <a
                 href="{{ .URL }}"
                 style="background-color: #0066cc; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;"
             >
-                Verify Email
+                {{ .Button }}
             </a>
         </p>
         <p style="color: #666; font-size: 14px;">
-            If the button doesn't work, copy and paste this link into your browser:
+            {{ .Fallback }}
             <br/>
             <a href="{{ .URL }}">{{ .URL }}</a>
         </p>
@@ -31,18 +31,18 @@
         <meta charset="utf-8"/>
     </head>
     <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #333;">You've been invited</h1>
-        <p>You've been invited to create an account. Click the button below to get started:</p>
+        <h1 style="color: #333;">{{ .Heading }}</h1>
+        <p>{{ .Body }}</p>
         <p style="text-align: center; margin: 30px 0;">
             <a
                 href="{{ .URL }}"
                 style="background-color: #0066cc; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;"
             >
-                Accept Invite
+                {{ .Button }}
             </a>
         </p>
         <p style="color: #666; font-size: 14px;">
-            If the button doesn't work, copy and paste this link into your browser:
+            {{ .Fallback }}
             <br/>
             <a href="{{ .URL }}">{{ .URL }}</a>
         </p>

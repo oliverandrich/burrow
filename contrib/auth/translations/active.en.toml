@@ -121,3 +121,17 @@ admin-app-auth = "Authentication"
 admin-nav-users = "Users"
 admin-nav-invites = "Invites"
 admin-logout = "Sign out"
+
+# Email: Verification
+email-verification-subject = "Verify your email"
+email-verification-heading = "Verify your email"
+email-verification-body = "Click the button below to verify your email address:"
+email-verification-button = "Verify Email"
+email-verification-fallback = "If the button doesn't work, copy and paste this link into your browser:"
+
+# Email: Invite
+email-invite-subject = "You've been invited"
+email-invite-heading = "You've been invited"
+email-invite-body = "You've been invited to create an account. Click the button below to get started:"
+email-invite-button = "Accept Invite"
+email-invite-fallback = "If the button doesn't work, copy and paste this link into your browser:"

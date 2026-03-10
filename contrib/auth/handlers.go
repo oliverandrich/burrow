@@ -12,6 +12,7 @@ import (
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/i18n"
 	"github.com/oliverandrich/burrow/contrib/session"
 )
 
@@ -36,16 +37,19 @@ type Handlers struct {
 	email    EmailService // nil if email mode is disabled
 	renderer Renderer
 	config   *Config
+	i18nApp  *i18n.App
 }
 
 // NewHandlers creates a new Handlers instance.
 // email can be nil if email mode is disabled.
+// i18nApp can be nil; when present, email goroutines receive a localized context.
 func NewHandlers(
 	repo *Repository,
 	wa WebAuthnService,
 	email EmailService,
 	renderer Renderer,
 	config *Config,
+	i18nApp *i18n.App,
 ) *Handlers {
 	return &Handlers{
 		repo:     repo,
@@ -54,6 +58,7 @@ func NewHandlers(
 		email:    email,
 		renderer: renderer,
 		config:   config,
+		i18nApp:  i18nApp,
 	}
 }
 
@@ -244,9 +249,11 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 		}
 
 		verifyURL := h.config.BaseURL + "/auth/verify-email?token=" + plainToken
+		locale := i18n.Locale(r.Context())
 		go func() { //nolint:gosec // G118: intentionally detached from request — email must send after response
 			sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
+			sendCtx = h.withLocale(sendCtx, locale)
 			if sendErr := h.email.SendVerification(sendCtx, *user.Email, verifyURL); sendErr != nil {
 				slog.Error("failed to send verification email", "error", sendErr, "email", *user.Email)
 			}
@@ -645,9 +652,11 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 	}
 
 	verifyURL := h.config.BaseURL + "/auth/verify-email?token=" + plainToken
+	locale := i18n.Locale(r.Context())
 	go func() { //nolint:gosec // G118: intentionally detached from request — email must send after response
 		sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
+		sendCtx = h.withLocale(sendCtx, locale)
 		if sendErr := h.email.SendVerification(sendCtx, *user.Email, verifyURL); sendErr != nil {
 			slog.Error("failed to send verification email", "error", sendErr, "email", *user.Email)
 		}
@@ -684,6 +693,11 @@ func (h *Handlers) generateAndStoreRecoveryCodes(ctx context.Context, userID int
 func (h *Handlers) validateInviteToken(ctx context.Context, token string) (*Invite, error) {
 	tokenHash := HashToken(token)
 	return h.repo.GetInviteByTokenHash(ctx, tokenHash)
+}
+
+// withLocale returns a context with the locale set via i18n.
+func (h *Handlers) withLocale(ctx context.Context, locale string) context.Context {
+	return h.i18nApp.WithLocale(ctx, locale)
 }
 
 func (h *Handlers) isFirstUser(ctx context.Context) (bool, error) {

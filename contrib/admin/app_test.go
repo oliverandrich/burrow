@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
+	"github.com/oliverandrich/burrow/contrib/i18n"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,6 +39,7 @@ func TestAppRegister(t *testing.T) {
 	app := New()
 	registry := burrow.NewRegistry()
 
+	registry.Add(i18n.New())
 	registry.Add(session.New())
 	authApp := auth.New()
 	registry.Add(authApp)
@@ -83,6 +85,7 @@ func (a *hasAdminApp) AdminNavItems() []burrow.NavItem {
 func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 	registry := burrow.NewRegistry()
 
+	registry.Add(i18n.New())
 	registry.Add(session.New())
 	authApp := auth.New()
 	registry.Add(authApp)
@@ -118,6 +121,7 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 func TestRoutesRequiresAuth(t *testing.T) {
 	registry := burrow.NewRegistry()
 
+	registry.Add(i18n.New())
 	registry.Add(session.New())
 	authApp := auth.New()
 	registry.Add(authApp)
@@ -145,6 +149,7 @@ func TestRoutesRequiresAuth(t *testing.T) {
 func TestRoutesRequiresAdmin(t *testing.T) {
 	registry := burrow.NewRegistry()
 
+	registry.Add(i18n.New())
 	registry.Add(session.New())
 	authApp := auth.New()
 	registry.Add(authApp)
@@ -265,6 +270,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 	})
 
 	registry := burrow.NewRegistry()
+	registry.Add(i18n.New())
 	registry.Add(session.New())
 	authApp := auth.New()
 	registry.Add(authApp)
@@ -298,6 +304,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 func TestBuildNavGroups(t *testing.T) {
 	registry := burrow.NewRegistry()
 
+	registry.Add(i18n.New())
 	registry.Add(session.New())
 	authApp := auth.New()
 	registry.Add(authApp)
@@ -342,6 +349,7 @@ func (a *navGroupsCheckApp) AdminNavItems() []burrow.NavItem {
 
 func TestRoutesInjectNavGroups(t *testing.T) {
 	registry := burrow.NewRegistry()
+	registry.Add(i18n.New())
 	registry.Add(session.New())
 	authApp := auth.New()
 	registry.Add(authApp)

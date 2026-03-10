@@ -4,7 +4,7 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 
 **Package:** `github.com/oliverandrich/burrow/contrib/auth`
 
-**Depends on:** `session`, `csrf`, `staticfiles`, `bootstrap` (for the default templates)
+**Depends on:** `session`, `i18n`, `csrf`, `staticfiles`, `bootstrap` (for the default templates)
 
 ## Setup
 
@@ -299,6 +299,8 @@ type EmailService interface {
 
 The auth app implements `HasTranslations` and ships English and German translations for all user-facing strings. When the `i18n` contrib app is registered, translations are auto-discovered and loaded.
 
+**Email i18n:** Auth emails (verification, invite) are sent in the user's locale. The locale is captured from the request context before the email goroutine is spawned, and injected into the email context via `i18n.App.WithLocale()`. The default email renderer (`auth.DefaultEmailRenderer()`) uses `i18n.T()` for all translatable strings.
+
 Without the i18n app, templates fall back to displaying translation keys (which match their English text). To add a custom language, create a TOML file (e.g., `active.fr.toml`) with the same keys as `active.en.toml` and contribute it via the `HasTranslations` interface in your app.
 
 ## Interfaces Implemented
@@ -316,6 +318,6 @@ Without the i18n app, templates fall back to displaying translation keys (which 
 | `HasTranslations` | Contributes English and German translation files |
 | `HasFuncMap` | Provides `credName`, `emailValue`, `deref` to templates |
 | `Configurable` | Auth and WebAuthn flags |
-| `HasDependencies` | Requires `session` |
+| `HasDependencies` | Requires `session`, `i18n` |
 | `HasCLICommands` | Provides `promote`, `demote`, `create-invite` subcommands |
 | `HasShutdown` | Stops the background WebAuthn challenge cleanup goroutine |

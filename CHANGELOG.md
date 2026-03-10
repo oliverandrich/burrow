@@ -51,9 +51,13 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - Reorganized guide sidebar into Core, Templates & UI, Advanced, and Deployment groups.
 - Added copyright footer to documentation site.
 - Expanded auth [Renderer](contrib/auth.md#renderer) and [Auth Layout](contrib/auth.md#auth-layout) documentation with usage examples.
+- **Default email renderer moved** from `authmail/smtpmail/templates` to `auth.DefaultEmailRenderer()`. The `authmail` package keeps the `Renderer` interface only.
+- Auth app now declares `i18n` as a dependency alongside `session`.
+- Added `i18n.NewTestApp()` helper for creating a minimal i18n setup in tests.
 
 ### Fixed
 
+- Auth emails (verification, invite) are now rendered in the user's locale. Previously, emails were always in English because goroutines used `context.Background()`, losing the request locale.
 - Auth pages now render with a minimal layout instead of full app chrome.
 - WebAuthn cleanup goroutine uses context-based cancellation.
 - `buildManifest` errors are propagated instead of silently discarded.

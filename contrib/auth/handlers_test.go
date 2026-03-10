@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/i18n"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,6 +79,13 @@ func (m *mockEmailService) SendInvite(_ context.Context, _, _ string) error {
 
 // --- Test helpers ---
 
+func testI18nApp(t *testing.T) *i18n.App {
+	t.Helper()
+	app, err := i18n.NewTestApp("en", translationFS)
+	require.NoError(t, err)
+	return app
+}
+
 func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
 	t.Helper()
 	db := openTestDB(t)
@@ -89,7 +97,7 @@ func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
-	})
+	}, testI18nApp(t))
 	return h, repo, renderer
 }
 
@@ -107,7 +115,7 @@ func newTestHandlersEmailMode(t *testing.T) (*Handlers, *Repository, *mockRender
 		UseEmail:            true,
 		RequireVerification: true,
 		BaseURL:             "http://localhost:8080",
-	})
+	}, testI18nApp(t))
 	return h, repo, renderer
 }
 
@@ -123,7 +131,7 @@ func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRende
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
 		InviteOnly:     true,
-	})
+	}, testI18nApp(t))
 	return h, repo, renderer
 }
 
@@ -527,7 +535,7 @@ func TestLogoutCustomRedirect(t *testing.T) {
 	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/goodbye",
-	})
+	}, testI18nApp(t))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/logout", nil)
 	req = requestWithSession(req, nil)

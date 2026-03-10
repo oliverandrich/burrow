@@ -17,6 +17,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
 	matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/oliverandrich/burrow/contrib/i18n"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/urfave/cli/v3"
 )
@@ -45,6 +46,7 @@ type App struct {
 	cancelCleanup context.CancelFunc
 	config        *Config
 	globalConfig  *burrow.Config
+	i18nApp       *i18n.App
 	logo          template.HTML
 }
 
@@ -101,11 +103,14 @@ func New(opts ...Option) *App {
 
 func (a *App) Name() string { return "auth" }
 
-func (a *App) Dependencies() []string { return []string{"session"} }
+func (a *App) Dependencies() []string { return []string{"session", "i18n"} }
 
 func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 	a.globalConfig = cfg.Config
+
+	i18nRaw, _ := cfg.Registry.Get("i18n")
+	a.i18nApp = i18nRaw.(*i18n.App) //nolint:errcheck // guaranteed by dependency declaration
 
 	a.usersAdmin = &modeladmin.ModelAdmin[User]{
 		Slug:              "users",
@@ -287,7 +292,7 @@ func (a *App) Configure(cmd *cli.Command) error {
 	}
 
 	// Create handlers with the stored email service (if any).
-	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config)
+	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config, a.i18nApp)
 
 	// Start background cleanup of orphaned users from abandoned registrations.
 	go a.cleanupOrphanedUsers(ctx)

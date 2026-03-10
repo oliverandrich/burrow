@@ -71,7 +71,7 @@ type Renderer interface {
 
 The context carries the request locale (via i18n middleware), enabling localised email content.
 
-A default renderer implementation is available in the `smtpmail/templates` sub-package.
+A default renderer implementation is available via `auth.DefaultEmailRenderer()` in the `auth` package. It uses `i18n.T()` for all translatable strings, so emails are rendered in the user's locale when the `i18n` app is configured.
 
 ## SMTP App
 
