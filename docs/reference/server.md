@@ -80,6 +80,12 @@ When `Run()` is called, the following happens in order:
 !!! note "Logging"
     The framework uses `slog.Default()` for all logging. Configure your preferred logger (text, JSON, [tint](https://github.com/lmittmann/tint), etc.) by calling `slog.SetDefault()` before starting the server.
 
+### Why urfave/cli?
+
+`Server.Run()` is a `cli.ActionFunc` by design. The framework uses `urfave/cli` throughout — `NewConfig()` reads values from `*cli.Command`, `Configure()` passes the command to each app, and flags define the three-layer config cascade (CLI flags → ENV vars → TOML file).
+
+This means you cannot start the server with a different CLI framework (cobra, kong, etc.) or without one. This is intentional: the tight integration gives every app a consistent way to declare and read configuration without boilerplate. The trade-off is that `urfave/cli` is a load-bearing dependency — it's part of the framework contract, not a swappable implementation detail.
+
 ## Registry
 
 The `Registry` manages registered apps and provides access to their capabilities.
