@@ -65,6 +65,7 @@ nav:
           - Internationalization: guide/i18n.md
       - Advanced:
           - Pagination: guide/pagination.md
+          - Full-Text Search: guide/fts5.md
           - Inter-App Communication: guide/inter-app-communication.md
       - Deployment:
           - TLS: guide/tls.md

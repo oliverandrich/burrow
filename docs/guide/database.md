@@ -244,6 +244,7 @@ Each app manages its own SQL migrations. See the [Migrations](migrations.md) gui
 
 ## Further Reading
 
+- [Full-Text Search](fts5.md) — add FTS5 full-text search to your app
 - [Bun documentation](https://bun.uptrace.dev/) — full ORM reference
 - [SQLite documentation](https://www.sqlite.org/docs.html) — SQL syntax and features
 - [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) — the pure Go SQLite driver

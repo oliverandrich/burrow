@@ -58,6 +58,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - Added code examples to every interface in the [Core Interfaces](reference/interfaces.md) reference.
 - Added dependency declarations (`Depends on:`) to all contrib app docs.
 - Reorganized guide sidebar into Core, Templates & UI, Advanced, and Deployment groups.
+- New guide: [Full-Text Search](guide/fts5.md) covering FTS5 virtual tables, triggers, sanitization, highlighting, and performance.
 - Added copyright footer to documentation site.
 - Expanded auth [Renderer](contrib/auth.md#renderer) and [Auth Layout](contrib/auth.md#auth-layout) documentation with usage examples.
 - **Default email renderer moved** from `authmail/smtpmail/templates` to `auth.DefaultEmailRenderer()`. The `authmail` package keeps the `Renderer` interface only.
