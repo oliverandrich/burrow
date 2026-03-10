@@ -95,7 +95,31 @@ err := db.NewSelect().Model(&note).
     Scan(ctx)
 ```
 
-There are no automatic reverse relations, no lazy loading, and no `note.author_set.all()` equivalent. You write the query you need. Migrations are hand-written SQL files embedded in each app, not auto-generated. See [Migrations](../guide/migrations.md).
+There are no automatic reverse relations, no lazy loading, and no `note.author_set.all()` equivalent. You write the query you need.
+
+Unlike Django's lazy `QuerySet`, Bun queries execute immediately when you call `.Scan()`. There's no deferred evaluation — you build the query, run it, and get the result. This also means there's no `.aggregate()` or `.annotate()` shorthand; write SQL aggregates directly:
+
+```go
+var count int
+err := db.NewSelect().Model((*Note)(nil)).
+    ColumnExpr("COUNT(*)").
+    Scan(ctx, &count)
+```
+
+Django's `get_object_or_404()` maps to a fetch + error check pattern:
+
+```go
+var note Note
+err := db.NewSelect().Model(&note).Where("id = ?", id).Scan(ctx)
+if err != nil {
+    if errors.Is(err, sql.ErrNoRows) {
+        return burrow.NewHTTPError(http.StatusNotFound, "note not found")
+    }
+    return err
+}
+```
+
+Migrations are hand-written SQL files embedded in each app, not auto-generated. See [Migrations](../guide/migrations.md).
 
 ## Forms & Validation
 
@@ -131,7 +155,22 @@ Django provides `forms.Form` and `ModelForm` with field definitions, `is_valid()
     }
     ```
 
-There is no form rendering — you write the HTML yourself. See [Validation](../guide/validation.md).
+In Django, `form.is_valid()` returns `False` and you re-render the template with `form.errors`. In Burrow, catch the `*ValidationError` and re-render with the user's input preserved:
+
+```go
+if err := burrow.Bind(r, &req); err != nil {
+    var ve *burrow.ValidationError
+    if errors.As(err, &ve) {
+        return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "notes/form", map[string]any{
+            "Form":   req,  // preserve user input
+            "Errors": ve,   // per-field errors
+        })
+    }
+    return err
+}
+```
+
+There is no form rendering — you write the HTML yourself. See [Validation](../guide/validation.md) for the full pattern including template-side error display.
 
 ## Templates
 
@@ -256,7 +295,7 @@ func (a *myApp) Configure(cmd *cli.Command) error {
 }
 ```
 
-See [Configuration](../guide/configuration.md) for the full guide.
+For multi-environment setups (like Django's `settings/dev.py` and `settings/prod.py`), use separate TOML files and environment variables for secrets — similar to Django's 12-factor pattern. See [Configuration](../guide/configuration.md) for the full guide.
 
 ## Middleware
 
@@ -317,8 +356,9 @@ Key philosophical differences from Django:
 - **Compile-time safety** — type errors are caught at build time, not at runtime when a user hits a page.
 - **Single binary deployment** — no virtualenv, no pip, no process manager, no external database server.
 - **SQLite by default** — no PostgreSQL/MySQL abstraction layer. One database engine, optimized for it.
-- **No admin auto-generation** — Django builds admin from model metadata. Burrow's `ModelAdmin` requires explicit configuration of fields, columns, and queries.
+- **No admin auto-generation** — Django introspects your models and auto-generates CRUD forms, list views, and search. Burrow's `ModelAdmin` requires you to manually specify which fields are displayed, editable, and searchable — more work, but fully explicit.
 - **Context instead of thread-locals** — `context.Context` replaces Django's `request.user` magic and thread-local storage. Values flow explicitly through the call chain.
 - **No signals** — Django dispatches `post_save`, `pre_delete`, etc. automatically via the ORM. Burrow has no automatic lifecycle hooks — you call functions explicitly in your handlers or services. Use `Registry.Get()` for cross-app communication.
 - **No built-in permission system** — Django has model-level permissions and `@permission_required`. Burrow provides authentication middleware (`auth.RequireAuth()`) but authorization logic is your responsibility — write middleware or handler checks.
 - **No form rendering** — Django renders form fields as HTML. Burrow handles binding and validation; you write the HTML yourself.
+- **No interactive shell** — Django's `manage.py shell` lets you experiment with models interactively. Go is compiled — exploratory work happens through tests and handlers, not a REPL.
