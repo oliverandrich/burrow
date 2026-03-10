@@ -17,6 +17,8 @@ type App interface {
 
 ## Step 1: Define the Model
 
+`models.go`:
+
 ```go
 package notes
 
@@ -45,7 +47,7 @@ Key points:
 
 ## Step 2: Write the Migration
 
-Create `migrations/001_create_notes.up.sql`:
+`migrations/001_create_notes.up.sql`:
 
 ```sql
 CREATE TABLE IF NOT EXISTS notes (
@@ -60,16 +62,24 @@ CREATE TABLE IF NOT EXISTS notes (
 CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes (user_id);
 ```
 
-Embed it in the package:
+Embed all static assets in `app.go` (we'll use these later):
 
 ```go
 import "embed"
 
 //go:embed migrations
 var migrationFS embed.FS
+
+//go:embed templates/*.html
+var templateFS embed.FS
+
+//go:embed translations
+var translationFS embed.FS
 ```
 
 ## Step 3: Create the Repository
+
+`repository.go`:
 
 ```go
 type Repository struct {
@@ -104,7 +114,7 @@ func (r *Repository) Delete(ctx context.Context, noteID, userID int64) error {
 
 ## Step 4: Write the Templates
 
-Create `templates/list.html`:
+`templates/list.html`:
 
 ```html
 {{ define "notes/list" -}}
@@ -117,16 +127,20 @@ Create `templates/list.html`:
 {{- end }}
 ```
 
-Embed the templates:
-
-```go
-//go:embed templates/*.html
-var templateFS embed.FS
-```
+The `{{ t "notes-title" }}` call uses the `t` template function provided by the [i18n system](i18n.md). It looks up a translation key from your app's TOML files. If you don't need i18n, use a plain string instead: `<h1>My Notes</h1>`.
 
 ## Step 5: Write the Handlers
 
+`handlers.go`:
+
 ```go
+import (
+    "net/http"
+
+    "github.com/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow/contrib/auth"
+)
+
 type Handlers struct {
     repo *Repository
 }
@@ -187,6 +201,8 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 ## Step 6: Assemble the App
 
+`app.go`:
+
 ```go
 type App struct {
     repo     *Repository
@@ -217,6 +233,8 @@ func (a *App) TemplateFS() fs.FS { // (3)!
     return sub
 }
 
+func (a *App) TranslationFS() fs.FS { return translationFS } // (6)!
+
 func (a *App) NavItems() []burrow.NavItem { // (4)!
     return []burrow.NavItem{
         {
@@ -239,10 +257,11 @@ func (a *App) Routes(r chi.Router) { // (5)!
 ```
 
 1. `HasDependencies` — ensures `auth` is registered before this app
-2. `Migratable` — the framework runs SQL migrations at startup
-3. `HasTemplates` — contributes `.html` template files to the global template set
-4. `HasNavItems` — contributes navigation entries to layouts
+2. `Migratable` — the framework runs SQL migrations at startup. Uses `fs.Sub()` to strip the `migrations/` prefix from the embedded filesystem.
+3. `HasTemplates` — contributes `.html` template files to the global template set. Uses `fs.Sub()` to strip the `templates/` prefix.
+4. `HasNavItems` — contributes navigation entries to layouts. Entries with `AuthOnly: true` are only shown to authenticated users — this filtering is handled automatically by the layout.
 5. `HasRoutes` — registers HTTP handlers on the Chi router
+6. `HasTranslations` — contributes TOML translation files. Returns the `embed.FS` directly (not `fs.Sub`) because the i18n loader expects the `translations/` directory to be present.
 
 ## File Layout
 
@@ -262,7 +281,7 @@ Small apps can keep everything in `app.go` — split only when a file grows larg
 
 ## Step 7: Register the App
 
-In `main.go`:
+`cmd/server/main.go`:
 
 ```go
 srv := burrow.NewServer(

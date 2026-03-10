@@ -9,13 +9,23 @@ This page lists all template functions available in Burrow templates. Functions 
 
 Provided by the framework itself. Always available.
 
+**Static:**
+
 | Function | Example | Description |
 |----------|---------|-------------|
 | `safeHTML` | `{{ safeHTML .RawHTML }}` | Mark a string as safe HTML (no escaping) |
 | `safeURL` | `{{ safeURL .Link }}` | Mark a string as safe URL |
 | `safeAttr` | `{{ safeAttr .Attr }}` | Mark a string as safe HTML attribute |
 | `itoa` | `{{ itoa .ID }}` | Convert `int64` to string |
-| `lang` | `<html lang="{{ lang }}">` | Current locale (default `"en"`, overridden by i18n) |
+
+**i18n (request-scoped, provided by the core `i18n` sub-package):**
+
+| Function | Example | Description |
+|----------|---------|-------------|
+| `lang` | `<html lang="{{ lang }}">` | Current locale (e.g., `"en"`, `"de"`). Returns the locale detected from the `Accept-Language` header. |
+| `t` | `{{ t "welcome-title" }}` | Simple translation lookup by message ID. |
+| `tData` | `{{ tData "greeting" .Data }}` | Translation with interpolation data (`map[string]any`). |
+| `tPlural` | `{{ tPlural "items-count" .Count }}` | Pluralised translation. |
 
 ## Contrib App Functions
 
@@ -30,15 +40,6 @@ Provided by the framework itself. Always available.
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|
 | `csrfToken` | Request | `<input name="gorilla.csrf.Token" value="{{ csrfToken }}">` | Returns the CSRF token for the current request. |
-
-### i18n
-
-| Function | Type | Example | Description |
-|----------|------|---------|-------------|
-| `lang` | Request | `{{ lang }}` | Current locale (e.g., `"en"`, `"de"`). Overrides the core `lang` function. |
-| `t` | Request | `{{ t "welcome-title" }}` | Simple translation lookup by message ID. |
-| `tData` | Request | `{{ tData "greeting" .Data }}` | Translation with interpolation data (`map[string]any`). |
-| `tPlural` | Request | `{{ tPlural "items-count" .Count }}` | Pluralised translation. |
 
 ### auth
 
