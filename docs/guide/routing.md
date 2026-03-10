@@ -2,6 +2,41 @@
 
 Burrow uses [Chi](https://go-chi.io/) as its HTTP router. Chi is a lightweight, composable router built on Go's `net/http` standard library. Burrow adds error-returning handlers and response helpers on top.
 
+## Request Lifecycle
+
+Every HTTP request flows through the following stages:
+
+```mermaid
+flowchart TD
+    A[Incoming Request] --> B[Core Middleware]
+    B --> C[i18n Locale Detection]
+    C --> D[NavItems Injection]
+    D --> E[Layout Injection]
+    E --> F[Template Middleware]
+    F --> G[App Middleware]
+    G --> H{Chi Router}
+    H --> I[Handler]
+    I --> J{RenderTemplate?}
+    J -- Yes --> K[Execute Template]
+    K --> L{HX-Request?}
+    L -- Yes --> M[Return Fragment]
+    L -- No --> N{Layout Set?}
+    N -- Yes --> O[Wrap in Layout]
+    N -- No --> M
+    O --> M
+    J -- No --> P[JSON / Text / HTML / Redirect]
+    I -- Error --> Q{HTTPError?}
+    Q -- Yes --> R[Status Code + Message]
+    Q -- No --> S[500 Internal Server Error]
+
+    style B fill:#f0f0f0,color:#333
+    style G fill:#f0f0f0,color:#333
+    style I fill:#e8f4e8,color:#333
+    style Q fill:#fde8e8,color:#333
+```
+
+**Core middleware** includes request logging, request ID generation, response compression, and body size limiting. **App middleware** is contributed by apps via `HasMiddleware` and runs in registration order. Context values (locale, nav items, layout, template executor) are injected by framework middleware and available to all handlers downstream.
+
 ## Handlers
 
 Standard Go HTTP handlers have the signature `func(w http.ResponseWriter, r *http.Request)`. Burrow extends this with an error return value:
