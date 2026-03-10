@@ -20,13 +20,13 @@ jobs:
       matrix:
         go-version: ['1.25', '1.26']
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.cache/go-build
           key: go-build-${{ matrix.go-version }}-${{ hashFiles('**/*.go', 'go.sum') }}
@@ -40,20 +40,20 @@ jobs:
 
       - name: Upload coverage
         if: matrix.go-version == '1.26'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: coverage.out
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v6
         with:
           go-version: '1.26'
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.cache/go-build
           key: go-build-1.26-${{ hashFiles('**/*.go', 'go.sum') }}
