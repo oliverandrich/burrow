@@ -340,7 +340,7 @@ Without the i18n app, templates fall back to displaying translation keys (which 
 | `HasTranslations` | Contributes English and German translation files |
 | `HasFuncMap` | Provides `credName`, `emailValue`, `deref` to templates |
 | `Configurable` | Auth and WebAuthn flags |
-| `HasDependencies` | Requires `session`, `i18n` |
+| `HasDependencies` | Requires `session` |
 | `HasJobs` | Registers `auth.send_email` job handler for email delivery via queue |
 | `HasCLICommands` | Provides `promote`, `demote`, `create-invite` subcommands |
 | `HasShutdown` | Stops the background WebAuthn challenge cleanup goroutine |

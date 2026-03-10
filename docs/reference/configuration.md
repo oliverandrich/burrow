@@ -31,6 +31,13 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--tls-cert-file` | `TLS_CERT_FILE` | `tls.cert_file` | (none) | Path to TLS certificate file (manual mode) |
 | `--tls-key-file` | `TLS_KEY_FILE` | `tls.key_file` | (none) | Path to TLS private key file (manual mode) |
 
+### i18n
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--i18n-default-language` | `I18N_DEFAULT_LANGUAGE` | `en` | Default language |
+| `--i18n-supported-languages` | `I18N_SUPPORTED_LANGUAGES` | `en,de` | Comma-separated supported languages |
+
 ## Contrib App Flags
 
 ### Session
@@ -60,13 +67,6 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--webauthn-rp-id` | `WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (domain name) |
 | `--webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | `Web App` | WebAuthn RP display name |
 | `--webauthn-rp-origin` | `WEBAUTHN_RP_ORIGIN` | (base URL) | WebAuthn RP origin |
-
-### i18n
-
-| Flag | Env Var | Default | Description |
-|------|---------|---------|-------------|
-| `--i18n-default-language` | `I18N_DEFAULT_LANGUAGE` | `en` | Default language |
-| `--i18n-supported-languages` | `I18N_SUPPORTED_LANGUAGES` | `en,de` | Comma-separated supported languages |
 
 ## TOML Config Example
 

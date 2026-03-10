@@ -21,21 +21,28 @@ srv := burrow.NewServer(
 
 ## Registering Job Handlers
 
-Register handlers during your app's `Register()` phase — before `Configure()` starts the workers:
+Register handlers during your app's `Register()` phase — before `Configure()` starts the workers. The handler type is `burrow.JobHandlerFunc`:
+
+```go
+// Defined in the burrow root package:
+// type JobHandlerFunc func(ctx context.Context, payload []byte) error
+```
 
 ```go
 func (a *App) Register(cfg *burrow.AppConfig) error {
     app, _ := cfg.Registry.Get("jobs")
     jobsApp := app.(*jobs.App)
 
-    jobsApp.Handle("send-welcome-email", func(ctx context.Context, job *jobs.Job) error {
+    jobsApp.Handle("send-welcome-email", func(ctx context.Context, payload []byte) error {
         var data struct{ Email string }
-        json.Unmarshal([]byte(job.Payload), &data)
+        if err := json.Unmarshal(payload, &data); err != nil {
+            return fmt.Errorf("invalid payload: %w", err)
+        }
         return sendWelcomeEmail(ctx, data.Email)
     })
 
     // With custom max retries (default: 3)
-    jobsApp.Handle("process-upload", processUpload, jobs.WithMaxRetries(5))
+    jobsApp.Handle("process-upload", processUpload, burrow.WithMaxRetries(5))
 
     return nil
 }
@@ -43,46 +50,31 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 
 ### Accessing Job Data in Handlers
 
-The handler receives the full `*jobs.Job` struct. The `Payload` field contains the JSON-encoded data you passed when enqueueing:
+The handler receives the raw JSON `payload` as `[]byte` — the same data you passed when enqueueing, marshaled to JSON:
 
 ```go
-jobsApp.Handle("resize-image", func(ctx context.Context, job *jobs.Job) error {
+jobsApp.Handle("resize-image", func(ctx context.Context, payload []byte) error {
     var params struct {
         ImageID int64  `json:"image_id"`
         Width   int    `json:"width"`
     }
-    if err := json.Unmarshal([]byte(job.Payload), &params); err != nil {
+    if err := json.Unmarshal(payload, &params); err != nil {
         return fmt.Errorf("invalid payload: %w", err)
     }
 
-    log.Printf("attempt %d for job %d", job.Attempts, job.ID)
     return resizeImage(ctx, params.ImageID, params.Width)
 })
-```
-
-Available fields on `*jobs.Job`:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `ID` | `int64` | Unique job identifier |
-| `Type` | `string` | Registered job type name |
-| `Payload` | `string` | JSON-encoded payload |
-| `Status` | `JobStatus` | Current status |
-| `Attempts` | `int` | Number of attempts so far |
-| `MaxRetries` | `int` | Maximum retry count |
-| `LastError` | `string` | Error message from last failure |
-| `CreatedAt` | `time.Time` | When the job was created |
 
 ## Enqueueing Jobs
 
 ```go
-// Enqueue for immediate processing
-job, err := jobsApp.Enqueue(ctx, "send-welcome-email", map[string]string{
+// Enqueue for immediate processing — returns the job ID as a string
+jobID, err := jobsApp.Enqueue(ctx, "send-welcome-email", map[string]string{
     "Email": "alice@example.com",
 })
 
 // Schedule for a specific time
-job, err := jobsApp.EnqueueAt(ctx, "send-welcome-email", payload, time.Now().Add(time.Hour))
+jobID, err := jobsApp.EnqueueAt(ctx, "send-welcome-email", payload, time.Now().Add(time.Hour))
 ```
 
 The payload can be any value that `json.Marshal` can serialise. The type must be registered via `Handle()` — unknown types return an error.

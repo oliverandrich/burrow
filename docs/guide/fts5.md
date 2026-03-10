@@ -86,7 +86,7 @@ func (r *Repository) Search(
           AND notes.user_id = ?
           AND notes.deleted_at IS NULL`,
         query, userID,
-    ).Exec(ctx, &count) //nolint:reassign
+    ).Scan(ctx, &count)
     if err != nil {
         return nil, burrow.PageResult{}, fmt.Errorf("count search results: %w", err)
     }

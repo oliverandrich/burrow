@@ -33,7 +33,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - `HasRequestFuncMap` interface for apps to contribute request-scoped template functions.
 - Auto-sorting of apps by `HasDependencies` declarations in `NewServer`.
 - Form binding with validation via `burrow.Bind()` and `burrow.Validate()`.
-- i18n-aware validation error translation via `i18n.TranslateValidationErrors()`.
+- i18n-aware validation error translation via `ve.Translate(ctx, i18n.TData)`.
 - Graceful restart via SIGHUP using tableflip.
 - TLS/ACME support for standalone deployment.
 - Dark mode toggle with theme persistence in the Bootstrap app.

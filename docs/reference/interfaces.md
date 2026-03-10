@@ -37,9 +37,10 @@ Passed to every app's `Register` method:
 
 ```go
 type AppConfig struct {
-    DB       *bun.DB
-    Registry *Registry
-    Config   *Config
+    DB         *bun.DB
+    Registry   *Registry
+    Config     *Config
+    WithLocale func(ctx context.Context, lang string) context.Context
 }
 ```
 
@@ -48,6 +49,7 @@ type AppConfig struct {
 | `DB` | Bun database connection (SQLite with WAL mode) |
 | `Registry` | App registry for looking up other apps |
 | `Config` | Parsed framework configuration |
+| `WithLocale` | Function that returns a new context with the given locale set (provided by the i18n `Bundle`) |
 
 ## Optional
 

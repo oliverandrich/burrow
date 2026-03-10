@@ -189,13 +189,15 @@ func Locale(ctx context.Context) string
 
 Returns the current locale (e.g., `"en"`, `"de"`). Defaults to `"en"`.
 
-### TranslateValidationErrors
+### Translating Validation Errors
+
+Validation errors are translated via the `Translate` method on `*burrow.ValidationError`, not a standalone function:
 
 ```go
-func TranslateValidationErrors(ctx context.Context, ve *burrow.ValidationError)
+ve.Translate(ctx, i18n.TData)
 ```
 
-Translates validation error messages in-place using the localizer from the context. For each `FieldError`, looks up the key `"validation-" + tag` (e.g., `"validation-required"`). If a translation is found, replaces `Message`; otherwise preserves the original English message.
+For each `FieldError`, looks up the key `"validation-" + tag` (e.g., `"validation-required"`) with `{"Field": fe.Field, "Param": fe.Param}` as template data. If a translation is found, replaces `Message`; otherwise preserves the original English message.
 
 ## Static Files Helpers
 

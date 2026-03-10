@@ -42,10 +42,23 @@ Provided by the framework itself. Always available.
 
 ### auth
 
+**Static** (`HasFuncMap`):
+
+| Function | Type | Example | Description |
+|----------|------|---------|-------------|
+| `credName` | Static | `{{ credName .Credential }}` | Returns a human-readable name for a WebAuthn credential. |
+| `emailValue` | Static | `{{ emailValue .User }}` | Returns the user's email or empty string if nil. |
+| `deref` | Static | `{{ deref .StringPtr }}` | Dereferences a `*string`, returns empty string if nil. |
+
+**Request-scoped** (`HasRequestFuncMap`):
+
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|
 | `currentUser` | Request | `{{ if $u := currentUser }}{{ $u.Email }}{{ end }}` | Returns the authenticated `*auth.User` or `nil`. |
 | `isAuthenticated` | Request | `{{ if isAuthenticated }}...{{ end }}` | Returns `true` if a user is logged in. |
+| `isAdminEditSelf` | Request | `{{ if isAdminEditSelf }}...{{ end }}` | Returns `true` if the admin is editing their own account. |
+| `isAdminEditLastAdmin` | Request | `{{ if isAdminEditLastAdmin }}...{{ end }}` | Returns `true` if the admin is editing the last remaining admin. |
+| `authLogo` | Request | `{{ authLogo }}` | Returns the auth logo HTML. |
 
 ### bootstrap
 
