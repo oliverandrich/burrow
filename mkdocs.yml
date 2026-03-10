@@ -97,7 +97,6 @@ nav:
           - Bootstrap: contrib/bootstrap.md
           - Bootstrap Icons: contrib/bsicons.md
           - htmx: contrib/htmx.md
-          - i18n: contrib/i18n.md
           - Static Files: contrib/staticfiles.md
       - Data & Background:
           - Admin: contrib/admin.md

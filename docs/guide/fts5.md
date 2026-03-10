@@ -1,5 +1,8 @@
 # Full-Text Search
 
+!!! info "Prerequisites"
+    This guide assumes familiarity with [Database](database.md) access, [Migrations](migrations.md), and [Pagination](pagination.md). Read those first if you haven't already.
+
 SQLite ships with [FTS5](https://www.sqlite.org/fts5.html), a full-text search engine that supports word-based matching, relevance ranking, and match highlighting. Because Burrow uses `modernc.org/sqlite` (which compiles FTS5 by default), full-text search works out-of-the-box — no build tags or CGO required.
 
 Compared to `LIKE '%term%'` queries, FTS5 offers:

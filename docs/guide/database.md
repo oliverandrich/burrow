@@ -16,7 +16,7 @@ Burrow uses [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), a pure 
 
 ## How It Works
 
-At startup, Burrow opens the SQLite database and configures it with production-ready defaults inspired by [dj-lite](https://github.com/adamghill/dj-lite/):
+At startup, Burrow opens the SQLite database using the DSN (Data Source Name — the file path or connection string, e.g., `app.db` or `./data/production.db`) and configures it with production-ready defaults inspired by [dj-lite](https://github.com/adamghill/dj-lite/):
 
 | PRAGMA | Value | Purpose |
 |---|---|---|
