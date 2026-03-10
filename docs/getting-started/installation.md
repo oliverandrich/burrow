@@ -41,6 +41,10 @@ Create a minimal `main.go` to check that everything works:
 package main
 
 import (
+    "context"
+    "log"
+    "os"
+
     "github.com/oliverandrich/burrow"
     "github.com/oliverandrich/burrow/contrib/healthcheck"
     "github.com/urfave/cli/v3"
@@ -52,7 +56,9 @@ func main() {
         Flags:  srv.Flags(nil),
         Action: srv.Run,
     }
-    cmd.Run(nil, nil)
+    if err := cmd.Run(context.Background(), os.Args); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 

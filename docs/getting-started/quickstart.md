@@ -32,7 +32,7 @@ type homeApp struct{}
 func (a *homeApp) Name() string                        { return "home" }
 func (a *homeApp) Register(_ *burrow.AppConfig) error   { return nil }
 func (a *homeApp) Routes(r chi.Router) {
-    r.Method("GET", "/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
+    r.Get("/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
         return burrow.Text(w, http.StatusOK, "Hello from Burrow!")
     }))
 }
