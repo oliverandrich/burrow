@@ -64,10 +64,12 @@ example-notes *args:
 
 # Serve documentation locally
 docs:
+    cp CHANGELOG.md docs/changelog.md
     uv run --with zensical zensical serve -a localhost:3000
 
 # Build documentation
 docs-build:
+    cp CHANGELOG.md docs/changelog.md
     ./scripts/generate-llms-full.sh
     uv run --with zensical zensical build
 

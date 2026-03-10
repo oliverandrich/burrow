@@ -21,6 +21,7 @@ coverage.html
 # Documentation build output
 site/
 docs/llms-full.txt
+docs/changelog.md
 
 # Claude Code
 CLAUDE.md
