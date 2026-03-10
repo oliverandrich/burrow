@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -92,6 +93,40 @@ func (r *Repository) ListByUserIDPaged(ctx context.Context, userID int64, pr bur
 	return notes, burrow.CursorResult(lastID, hasMore), nil
 }
 
+// SearchByUserID performs a full-text search across notes for a user using FTS5.
+// Results are ordered by ID descending (newest first) with cursor-based pagination.
+// Returns empty results for empty queries or FTS5 syntax errors.
+func (r *Repository) SearchByUserID(ctx context.Context, userID int64, query string, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, burrow.PageResult{}, nil
+	}
+
+	// Validate FTS5 syntax with a probe query.
+	var count int
+	if err := r.db.NewRaw("SELECT COUNT(*) FROM notes_fts WHERE notes_fts MATCH ?", query).Scan(ctx, &count); err != nil {
+		// FTS5 syntax error — return empty results.
+		return nil, burrow.PageResult{}, nil //nolint:nilerr // intentional: treat FTS5 syntax errors as empty results
+	}
+
+	var notes []Note
+	q := r.db.NewSelect().Model(&notes).
+		Where("user_id = ?", userID).
+		Where("id IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?)", query)
+	q = burrow.ApplyCursor(q, pr, "id")
+	if err := q.Scan(ctx); err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("search notes for user %d: %w", userID, err)
+	}
+
+	notes, hasMore := burrow.TrimCursorResults(notes, pr.Limit)
+	var lastID string
+	if len(notes) > 0 {
+		lastID = strconv.FormatInt(notes[len(notes)-1].ID, 10)
+	}
+
+	return notes, burrow.CursorResult(lastID, hasMore), nil
+}
+
 // Delete soft-deletes a note owned by the given user.
 func (r *Repository) Delete(ctx context.Context, noteID, userID int64) error {
 	if _, err := r.db.NewDelete().Model((*Note)(nil)).
@@ -134,6 +169,7 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		CanEdit:           true,
 		CanDelete:         true,
 		ListFields:        []string{"ID", "Title", "Content", "UserID", "CreatedAt"},
+		SearchFields:      []string{"title", "content"},
 		OrderBy:           "created_at DESC, id DESC",
 	}
 	a.notesAdmin.RowActions = []modeladmin.RowAction{
@@ -237,7 +273,17 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	pr := burrow.ParsePageRequest(r)
-	notes, page, err := h.repo.ListByUserIDPaged(r.Context(), user.ID, pr)
+	searchQuery := r.URL.Query().Get("q")
+
+	var notes []Note
+	var page burrow.PageResult
+	var err error
+
+	if searchQuery != "" {
+		notes, page, err = h.repo.SearchByUserID(r.Context(), user.ID, searchQuery, pr)
+	} else {
+		notes, page, err = h.repo.ListByUserIDPaged(r.Context(), user.ID, pr)
+	}
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
 	}
@@ -248,18 +294,29 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	data := map[string]any{
-		"Notes": notes,
-		"Page":  page,
-		"Title": "Notes",
+		"Notes":       notes,
+		"Page":        page,
+		"Title":       "Notes",
+		"SearchQuery": searchQuery,
 	}
 
-	// HTMX infinite scroll: return only the notes fragment.
-	if htmx.Request(r).IsHTMX() && pr.Cursor != "" {
-		content, execErr := exec(r, "notes/notes_page", data)
-		if execErr != nil {
-			return execErr
+	if htmx.Request(r).IsHTMX() {
+		tmpl := ""
+		switch {
+		case pr.Cursor != "":
+			// Infinite scroll: return only new cards + next scroll trigger.
+			tmpl = "notes/notes_page"
+		case r.URL.Query().Has("q"):
+			// Search (including empty clear): replace the entire notes grid.
+			tmpl = "notes/notes_list"
 		}
-		return burrow.Render(w, r, http.StatusOK, content)
+		if tmpl != "" {
+			content, execErr := exec(r, tmpl, data)
+			if execErr != nil {
+				return execErr
+			}
+			return burrow.Render(w, r, http.StatusOK, content)
+		}
 	}
 
 	// Normal + HTMX nav: RenderTemplate handles layout/fragment automatically.

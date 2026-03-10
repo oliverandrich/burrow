@@ -8,6 +8,8 @@ notes-empty = "No notes yet. Create your first one above!"
 notes-delete-confirm = "Delete this note?"
 notes-delete-button = "Delete"
 notes-loading = "Loading…"
+notes-search-placeholder = "Search notes…"
+notes-search-button = "Search"
 
 # Admin sidebar
 admin-app-notes = "Notes"

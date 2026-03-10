@@ -686,6 +686,92 @@ func TestListByUserIDPagedEmpty(t *testing.T) {
 	assert.Empty(t, page.NextCursor)
 }
 
+func TestSearchByUserID(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Golang Tutorial", Content: "Learn Go basics", UserID: 1}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Python Guide", Content: "Learn Python", UserID: 1}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Golang Advanced", Content: "Concurrency in Go", UserID: 1}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Other User Note", Content: "Golang stuff", UserID: 2}))
+
+	t.Run("matches word in title", func(t *testing.T) {
+		notes, page, err := repo.SearchByUserID(ctx, 1, "Golang", burrow.PageRequest{Limit: 10})
+		require.NoError(t, err)
+		assert.Len(t, notes, 2)
+		assert.False(t, page.HasMore)
+	})
+
+	t.Run("matches word in content", func(t *testing.T) {
+		notes, _, err := repo.SearchByUserID(ctx, 1, "Python", burrow.PageRequest{Limit: 10})
+		require.NoError(t, err)
+		assert.Len(t, notes, 1)
+		assert.Equal(t, "Python Guide", notes[0].Title)
+	})
+
+	t.Run("does not return other user's notes", func(t *testing.T) {
+		notes, _, err := repo.SearchByUserID(ctx, 2, "Golang", burrow.PageRequest{Limit: 10})
+		require.NoError(t, err)
+		assert.Len(t, notes, 1)
+		assert.Equal(t, "Other User Note", notes[0].Title)
+	})
+
+	t.Run("empty query returns empty results", func(t *testing.T) {
+		notes, _, err := repo.SearchByUserID(ctx, 1, "", burrow.PageRequest{Limit: 10})
+		require.NoError(t, err)
+		assert.Empty(t, notes)
+	})
+
+	t.Run("no matches returns empty", func(t *testing.T) {
+		notes, _, err := repo.SearchByUserID(ctx, 1, "Rust", burrow.PageRequest{Limit: 10})
+		require.NoError(t, err)
+		assert.Empty(t, notes)
+	})
+
+	t.Run("syntax error returns empty results", func(t *testing.T) {
+		notes, _, err := repo.SearchByUserID(ctx, 1, `"unclosed`, burrow.PageRequest{Limit: 10})
+		require.NoError(t, err)
+		assert.Empty(t, notes)
+	})
+
+	t.Run("pagination with cursor", func(t *testing.T) {
+		notes, page, err := repo.SearchByUserID(ctx, 1, "Learn", burrow.PageRequest{Limit: 1})
+		require.NoError(t, err)
+		assert.Len(t, notes, 1)
+		assert.True(t, page.HasMore)
+		assert.NotEmpty(t, page.NextCursor)
+
+		notes2, page2, err := repo.SearchByUserID(ctx, 1, "Learn", burrow.PageRequest{Limit: 1, Cursor: page.NextCursor})
+		require.NoError(t, err)
+		assert.Len(t, notes2, 1)
+		assert.False(t, page2.HasMore)
+		assert.NotEqual(t, notes[0].ID, notes2[0].ID)
+	})
+}
+
+func TestListNotesHandlerWithSearch(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Searchable Note", Content: "Find me", UserID: 42}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Other Note", Content: "Not this", UserID: 42}))
+
+	h := NewHandlers(repo)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?q=Searchable", nil)
+	req = requestWithUser(req, &auth.User{ID: 42})
+	req = injectTemplateExecutor(t, req)
+	rec := httptest.NewRecorder()
+
+	err := h.List(rec, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Searchable Note")
+	assert.NotContains(t, rec.Body.String(), "Other Note")
+}
+
 func TestCreateNoteHTMXNoTemplateExecutor(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)

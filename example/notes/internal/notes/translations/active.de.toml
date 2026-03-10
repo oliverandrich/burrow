@@ -8,6 +8,8 @@ notes-empty = "Noch keine Notizen. Erstellen Sie oben Ihre erste!"
 notes-delete-confirm = "Diese Notiz löschen?"
 notes-delete-button = "Löschen"
 notes-loading = "Laden…"
+notes-search-placeholder = "Notizen durchsuchen…"
+notes-search-button = "Suchen"
 
 # Admin-Seitenleiste
 admin-app-notes = "Notizen"
