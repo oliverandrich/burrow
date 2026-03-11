@@ -110,7 +110,7 @@ Update the navbar in `internal/pages/templates/app/layout.html`. The user contro
             <ul class="navbar-nav ms-auto">
                 {{ if .User -}}
                 <li class="nav-item">
-                    <span class="nav-link text-body-secondary">{{ .User.Email }}</span>
+                    <span class="nav-link text-body-secondary">{{ .User.Username }}</span>
                 </li>
                 <li class="nav-item">
                     <form method="post" action="/auth/logout">
