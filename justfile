@@ -61,6 +61,7 @@ setup:
     check goimports       "go install golang.org/x/tools/cmd/goimports@latest"
     check govulncheck     "go install golang.org/x/vuln/cmd/govulncheck@latest"
     check go-ignore-cov   "go install github.com/quantumcycle/go-ignore-cov@latest"
+    check go-licenses     "go install github.com/google/go-licenses@latest"
     check pre-commit      "https://pre-commit.com/#install"
     echo ""
     if $ok; then
@@ -83,6 +84,10 @@ example-hello *args:
 example-notes *args:
     go run ./example/notes/cmd/server {{args}}
 
+# Regenerate THIRD_PARTY_LICENSES.md from go-licenses
+licenses:
+    ./scripts/generate-licenses.sh
+
 # Serve documentation locally
 docs:
     cp CHANGELOG.md docs/changelog.md
@@ -91,6 +96,7 @@ docs:
 # Build documentation
 docs-build:
     cp CHANGELOG.md docs/changelog.md
+    ./scripts/generate-licenses.sh
     ./scripts/generate-llms-full.sh
     uv run --with zensical zensical build
 
