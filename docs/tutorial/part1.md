@@ -55,16 +55,7 @@ func main() {
 
 Add the following code to the same `main.go` file, below the `main()` function.
 
-Every Burrow application is composed of **apps**. Each app implements `burrow.App`:
-
-```go
-type App interface {
-    Name() string
-    Register(cfg *AppConfig) error
-}
-```
-
-Our homepage app also implements `HasRoutes` to register an HTTP endpoint:
+Every Burrow application is composed of **apps**. Each app implements the [`burrow.App`](../reference/interfaces.md#app) interface — a `Name()` that returns a unique identifier and a `Register()` method for initialisation. Our homepage app also implements `HasRoutes` to register an HTTP endpoint:
 
 ```go
 type homepageApp struct{}
