@@ -18,6 +18,7 @@ import (
 
 func TestRecoveryServiceGenerateCodes(t *testing.T) {
 	svc := NewRecoveryService()
+	svc.BcryptCost = bcrypt.MinCost
 
 	codes, hashes, err := svc.GenerateCodes(8)
 	require.NoError(t, err)
@@ -41,6 +42,7 @@ func TestRecoveryServiceGenerateCodes(t *testing.T) {
 
 func TestRecoveryServiceDefaultCount(t *testing.T) {
 	svc := NewRecoveryService()
+	svc.BcryptCost = bcrypt.MinCost
 	codes, _, err := svc.GenerateCodes(0)
 	require.NoError(t, err)
 	assert.Len(t, codes, CodeCount)

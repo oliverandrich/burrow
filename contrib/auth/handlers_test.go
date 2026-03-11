@@ -15,6 +15,7 @@ import (
 	"github.com/oliverandrich/burrow/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // --- Mocks ---
@@ -104,6 +105,7 @@ func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
 	}, app)
+	h.recovery.BcryptCost = bcrypt.MinCost
 	return h, repo, renderer
 }
 
@@ -125,6 +127,7 @@ func newTestHandlersEmailMode(t *testing.T) (*Handlers, *Repository, *mockRender
 		RequireVerification: true,
 		BaseURL:             "http://localhost:8080",
 	}, app)
+	h.recovery.BcryptCost = bcrypt.MinCost
 	return h, repo, renderer
 }
 
@@ -142,6 +145,7 @@ func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRende
 		LogoutRedirect: "/auth/login",
 		InviteOnly:     true,
 	}, app)
+	h.recovery.BcryptCost = bcrypt.MinCost
 	return h, repo, renderer
 }
 
@@ -703,7 +707,7 @@ func TestRecoveryLoginInvalidCode(t *testing.T) {
 	h, repo, _ := newTestHandlers(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 
-	svc := NewRecoveryService()
+	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
 	_, hashes, err := svc.GenerateCodes(CodeCount)
 	require.NoError(t, err)
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))
@@ -724,7 +728,7 @@ func TestRecoveryLoginSuccess(t *testing.T) {
 	h, repo, _ := newTestHandlers(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 
-	svc := NewRecoveryService()
+	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
 	codes, hashes, err := svc.GenerateCodes(CodeCount)
 	require.NoError(t, err)
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))
@@ -749,7 +753,7 @@ func TestRegenerateRecoveryCodes(t *testing.T) {
 	h, repo, _ := newTestHandlers(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 
-	svc := NewRecoveryService()
+	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
 	_, hashes, err := svc.GenerateCodes(CodeCount)
 	require.NoError(t, err)
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))

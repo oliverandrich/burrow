@@ -85,11 +85,14 @@ const (
 const recoveryAlphabet = "23456789abcdefghjkmnpqrstuvwxyz"
 
 // RecoveryService handles recovery code generation.
-type RecoveryService struct{}
+type RecoveryService struct {
+	// BcryptCost overrides the default bcrypt cost. Use bcrypt.MinCost in tests.
+	BcryptCost int
+}
 
 // NewRecoveryService creates a new recovery service.
 func NewRecoveryService() *RecoveryService {
-	return &RecoveryService{}
+	return &RecoveryService{BcryptCost: bcryptCost}
 }
 
 // GenerateCodes generates recovery codes and their bcrypt hashes.
@@ -108,7 +111,7 @@ func (s *RecoveryService) GenerateCodes(count int) ([]string, []string, error) {
 			return nil, nil, fmt.Errorf("generate code: %w", err)
 		}
 
-		hash, err := bcrypt.GenerateFromPassword([]byte(code), bcryptCost)
+		hash, err := bcrypt.GenerateFromPassword([]byte(code), s.BcryptCost)
 		if err != nil {
 			return nil, nil, fmt.Errorf("hash code: %w", err)
 		}
