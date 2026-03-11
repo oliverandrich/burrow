@@ -16,7 +16,7 @@ Verify your layout includes the htmx script:
 
 ## Enable hx-boost
 
-Add `hx-boost="true"` to the `<body>` tag in the layout:
+In `internal/pages/templates/app/layout.html`, add `hx-boost="true"` to the `<body>` tag:
 
 ```html
 <body hx-boost="true">
@@ -26,7 +26,11 @@ This makes all links and forms use HTMX automatically — navigating via AJAX an
 
 ## HTMX-Aware Voting
 
-Update the vote handler to handle both HTMX and regular requests:
+In `internal/polls/polls.go`, add the `htmx` import and update the `Vote` handler to handle both HTMX and regular requests:
+
+```go
+"github.com/oliverandrich/burrow/contrib/htmx"
+```
 
 ```go
 func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
@@ -55,7 +59,7 @@ func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
 
 Add a bar chart to the results page using [Chart.js](https://www.chartjs.org/) loaded from a CDN. The chart shows vote counts per choice as a horizontal bar chart alongside the existing badge list.
 
-Update `templates/polls/results.html`:
+Update `internal/polls/templates/polls/results.html`:
 
 ```html
 {{ define "polls/results" -}}
@@ -122,7 +126,7 @@ Key points:
 
 ## Cursor-Based Pagination
 
-Replace the simple `ListQuestions` with a paginated version using Burrow's pagination helpers:
+In `internal/polls/polls.go`, replace the simple `ListQuestions` with a paginated version using Burrow's pagination helpers:
 
 ```go
 func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageRequest) ([]Question, burrow.PageResult, error) {
@@ -148,7 +152,7 @@ func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageReque
 
 ## Infinite Scroll
 
-Update the list handler to detect HTMX scroll requests:
+Still in `internal/polls/polls.go`, update the `List` handler to detect HTMX scroll requests:
 
 ```go
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
@@ -190,7 +194,7 @@ The scroll trigger in the template:
 {{ end -}}
 ```
 
-Create `internal/polls/templates/polls/list_page.html` — it returns only the question items and a new scroll trigger (no layout wrapping):
+Create a new file `internal/polls/templates/polls/list_page.html` — it returns only the question items and a new scroll trigger (no layout wrapping):
 
 ```html
 {{ define "polls/list_page" -}}
@@ -224,6 +228,7 @@ When the user scrolls to the bottom, htmx fetches the next page and appends the 
 ## Run It
 
 ```bash
+go mod tidy
 go run .
 ```
 

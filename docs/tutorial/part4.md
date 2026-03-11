@@ -182,6 +182,7 @@ Messages have a `Level` (success, error, warning, info) and `Text`. Each level m
 ## Run It
 
 ```bash
+go mod tidy
 go run .
 ```
 

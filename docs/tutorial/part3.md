@@ -405,6 +405,7 @@ This replaces the `homepageApp` from Part 1 with proper apps:
 ## Run It
 
 ```bash
+go mod tidy
 go run .
 ```
 

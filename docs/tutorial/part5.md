@@ -93,31 +93,46 @@ layoutData := map[string]any{
 }
 ```
 
-Update the navbar section in `internal/pages/templates/app/layout.html`:
+Update the navbar in `internal/pages/templates/app/layout.html`. The user controls go into a second `<ul>` with `ms-auto` to push them to the right, while the existing navigation links stay on the left:
 
 ```html
-<ul class="navbar-nav">
-    {{ if .User -}}
-    <li class="nav-item">
-        <span class="nav-link text-body-secondary">{{ .User.Email }}</span>
-    </li>
-    <li class="nav-item">
-        <form method="post" action="/auth/logout">
-            <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
-            <button type="submit" class="btn btn-link nav-link">Sign out</button>
-        </form>
-    </li>
-    {{ else -}}
-    <li class="nav-item">
-        <a class="nav-link" href="/auth/login">Sign in</a>
-    </li>
-    {{ end -}}
-</ul>
+<nav class="navbar navbar-expand-lg bg-body-tertiary mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="/">Polls</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav">
+                {{ range .NavItems -}}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ .URL }}">{{ .Label }}</a>
+                </li>
+                {{ end -}}
+            </ul>
+            <ul class="navbar-nav ms-auto">
+                {{ if .User -}}
+                <li class="nav-item">
+                    <span class="nav-link text-body-secondary">{{ .User.Email }}</span>
+                </li>
+                <li class="nav-item">
+                    <form method="post" action="/auth/logout">
+                        <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+                        <button type="submit" class="btn btn-link nav-link">Sign out</button>
+                    </form>
+                </li>
+                {{ else -}}
+                <li class="nav-item">
+                    <a class="nav-link" href="/auth/login">Sign in</a>
+                </li>
+                {{ end -}}
+            </ul>
+        </div>
+    </div>
+</nav>
 ```
 
 ## Run It
 
 ```bash
+go mod tidy
 go run .
 ```
 
