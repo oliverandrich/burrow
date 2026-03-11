@@ -144,28 +144,12 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 }
 
 func (a *App) AdminRoutes(r chi.Router) {
-    r.Route("/questions", func(r chi.Router) {
-        r.Get("/", burrow.Handle(a.questionsAdmin.HandleList))
-        r.Get("/new", burrow.Handle(a.questionsAdmin.HandleNew))
-        r.Post("/new", burrow.Handle(a.questionsAdmin.HandleNew))
-        r.Get("/{id}", burrow.Handle(a.questionsAdmin.HandleDetail))
-        r.Post("/{id}", burrow.Handle(a.questionsAdmin.HandleDetail))
-        r.Get("/{id}/delete", burrow.Handle(a.questionsAdmin.HandleDelete))
-        r.Post("/{id}/delete", burrow.Handle(a.questionsAdmin.HandleDelete))
-    })
-    r.Route("/choices", func(r chi.Router) {
-        r.Get("/", burrow.Handle(a.choicesAdmin.HandleList))
-        r.Get("/new", burrow.Handle(a.choicesAdmin.HandleNew))
-        r.Post("/new", burrow.Handle(a.choicesAdmin.HandleNew))
-        r.Get("/{id}", burrow.Handle(a.choicesAdmin.HandleDetail))
-        r.Post("/{id}", burrow.Handle(a.choicesAdmin.HandleDetail))
-        r.Get("/{id}/delete", burrow.Handle(a.choicesAdmin.HandleDelete))
-        r.Post("/{id}/delete", burrow.Handle(a.choicesAdmin.HandleDelete))
-    })
+    a.questionsAdmin.Routes(r)
+    a.choicesAdmin.Routes(r)
 }
 ```
 
-`AdminRoutes` receives a router scoped to `/admin/`, so the full paths become `/admin/questions` and `/admin/choices`.
+`AdminRoutes` receives a router scoped to `/admin/`. Each `ModelAdmin.Routes()` call mounts list, create, detail, update, and delete routes under its slug, so the full paths become `/admin/questions` and `/admin/choices`.
 
 ## Add an Admin Link to the Navbar
 
