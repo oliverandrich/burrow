@@ -1,8 +1,10 @@
 package burrow
 
 import (
+	"bytes"
 	"database/sql"
 	"io/fs"
+	"log/slog"
 	"testing"
 	"testing/fstest"
 
@@ -227,6 +229,58 @@ func TestRegistryRunMigrations(t *testing.T) {
 		Scan(t.Context(), &count)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
+}
+
+func TestRunAppMigrationsLogsAppliedMigrations(t *testing.T) {
+	db := testDB(t)
+
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	slog.SetDefault(slog.New(handler))
+	t.Cleanup(func() { slog.SetDefault(slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))) })
+
+	migrations := fstest.MapFS{
+		"001_create_items.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY);"),
+		},
+		"002_add_name.up.sql": &fstest.MapFile{
+			Data: []byte("ALTER TABLE items ADD COLUMN name TEXT;"),
+		},
+	}
+
+	err := RunAppMigrations(t.Context(), db, "testapp", migrations)
+	require.NoError(t, err)
+
+	logOutput := buf.String()
+	assert.Contains(t, logOutput, "migration applied")
+	assert.Contains(t, logOutput, "001_create_items.up.sql")
+	assert.Contains(t, logOutput, "002_add_name.up.sql")
+	assert.Contains(t, logOutput, "testapp")
+}
+
+func TestRunAppMigrationsDoesNotLogSkippedMigrations(t *testing.T) {
+	db := testDB(t)
+
+	migrations := fstest.MapFS{
+		"001_create_items.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY);"),
+		},
+	}
+
+	// Apply first.
+	err := RunAppMigrations(t.Context(), db, "testapp", migrations)
+	require.NoError(t, err)
+
+	// Run again with logging captured.
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	slog.SetDefault(slog.New(handler))
+	t.Cleanup(func() { slog.SetDefault(slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))) })
+
+	err = RunAppMigrations(t.Context(), db, "testapp", migrations)
+	require.NoError(t, err)
+
+	assert.NotContains(t, buf.String(), "migration applied")
 }
 
 // migratableApp is a test helper implementing App + Migratable.

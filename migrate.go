@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"sort"
 	"strings"
 
@@ -60,6 +61,8 @@ func RunAppMigrations(ctx context.Context, db *bun.DB, appName string, migration
 		if err := runMigrationInTx(ctx, db, appName, name, string(content)); err != nil {
 			return err
 		}
+
+		slog.Info("migration applied", "app", appName, "migration", name)
 	}
 
 	return nil
