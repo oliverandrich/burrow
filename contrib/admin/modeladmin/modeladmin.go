@@ -3,6 +3,7 @@
 package modeladmin
 
 import (
+	"context"
 	"html/template"
 	"net/http"
 
@@ -12,6 +13,9 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/i18n"
 )
+
+// ChoicesFunc returns dynamic choices for a select field, typically loaded from the database.
+type ChoicesFunc func(ctx context.Context) ([]Choice, error)
 
 const defaultPageSize = 25
 
@@ -54,6 +58,11 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	SortFields []string
 	// RowActions defines custom per-row actions for the list/detail views.
 	RowActions []RowAction
+	// FieldChoices provides dynamic choices for form select fields.
+	// Key is the Go struct field name, value is a function that returns choices
+	// (typically loaded from the database). Fields with FieldChoices are
+	// rendered as <select> dropdowns instead of text/number inputs.
+	FieldChoices map[string]ChoicesFunc
 	// EmptyMessage is shown when the list has no items. Default: "No items found."
 	EmptyMessage string
 	// EmptyMessageKey is the i18n key for the empty-list message.
@@ -178,6 +187,27 @@ func (ma *ModelAdmin[T]) translateRenderConfig(cfg *RenderConfig, r *http.Reques
 	if ma.EmptyMessageKey != "" {
 		cfg.EmptyMessage = i18n.T(ctx, ma.EmptyMessageKey)
 	}
+}
+
+// applyFieldChoices loads dynamic choices for fields configured in FieldChoices
+// and sets their type to "select".
+func (ma *ModelAdmin[T]) applyFieldChoices(ctx context.Context, fields []FormField) error {
+	if len(ma.FieldChoices) == 0 {
+		return nil
+	}
+	for i := range fields {
+		fn, ok := ma.FieldChoices[fields[i].Name]
+		if !ok {
+			continue
+		}
+		choices, err := fn(ctx)
+		if err != nil {
+			return err
+		}
+		fields[i].Type = "select"
+		fields[i].Choices = choices
+	}
+	return nil
 }
 
 // translateFormFields translates form field labels via i18n.

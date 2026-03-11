@@ -541,6 +541,102 @@ func TestHandleUpdate_NotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
+func TestHandleNew_FieldChoices(t *testing.T) {
+	_, renderer, ma := setupHandlerTest(t)
+	ma.FieldChoices = map[string]ChoicesFunc{
+		"Status": func(_ context.Context) ([]Choice, error) {
+			return []Choice{
+				{Value: "active", Label: "Active"},
+				{Value: "inactive", Label: "Inactive"},
+			}, nil
+		},
+	}
+
+	r := newRouter(ma)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/new", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, renderer.formCalled)
+
+	var statusField *FormField
+	for i := range renderer.lastFields {
+		if renderer.lastFields[i].Name == "Status" {
+			statusField = &renderer.lastFields[i]
+			break
+		}
+	}
+	require.NotNil(t, statusField, "Status field should exist")
+	assert.Equal(t, "select", statusField.Type)
+	assert.Len(t, statusField.Choices, 2)
+	assert.Equal(t, "Active", statusField.Choices[0].Label)
+}
+
+func TestHandleDetail_FieldChoices(t *testing.T) {
+	db, renderer, ma := setupHandlerTest(t)
+	ma.FieldChoices = map[string]ChoicesFunc{
+		"Status": func(_ context.Context) ([]Choice, error) {
+			return []Choice{
+				{Value: "active", Label: "Active"},
+				{Value: "inactive", Label: "Inactive"},
+			}, nil
+		},
+	}
+
+	item := &testItem{Name: "Test", Status: "active"}
+	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	require.NoError(t, err)
+
+	r := newRouter(ma)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, renderer.formCalled)
+
+	var statusField *FormField
+	for i := range renderer.lastFields {
+		if renderer.lastFields[i].Name == "Status" {
+			statusField = &renderer.lastFields[i]
+			break
+		}
+	}
+	require.NotNil(t, statusField)
+	assert.Equal(t, "select", statusField.Type)
+	assert.Len(t, statusField.Choices, 2)
+}
+
+func TestHandleCreate_FieldChoicesOnValidationError(t *testing.T) {
+	_, renderer, ma := setupValidatedHandlerTest(t)
+	ma.FieldChoices = map[string]ChoicesFunc{
+		"Name": func(_ context.Context) ([]Choice, error) {
+			return []Choice{{Value: "a", Label: "A"}}, nil
+		},
+	}
+
+	router := chi.NewRouter()
+	ma.Routes(router)
+
+	form := url.Values{"name": {""}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/validated", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.True(t, renderer.formCalled)
+	var nameField *FormField
+	for i := range renderer.lastFields {
+		if renderer.lastFields[i].Name == "Name" {
+			nameField = &renderer.lastFields[i]
+			break
+		}
+	}
+	require.NotNil(t, nameField)
+	assert.Equal(t, "select", nameField.Type, "FieldChoices should be applied even on validation error re-render")
+}
+
 func TestRenderConfig_EmptyMessage(t *testing.T) {
 	ma := &ModelAdmin[testItem]{
 		Slug:        "items",

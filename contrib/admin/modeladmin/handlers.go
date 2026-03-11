@@ -74,6 +74,9 @@ func (ma *ModelAdmin[T]) HandleDetail(w http.ResponseWriter, r *http.Request) er
 
 	if ma.CanEdit {
 		fields := AutoFields[T](item)
+		if err := ma.applyFieldChoices(r.Context(), fields); err != nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
+		}
 		translateFormFields(fields, r)
 		return ma.Renderer.Form(w, r, item, fields, nil, cfg)
 	}
@@ -91,6 +94,9 @@ func (ma *ModelAdmin[T]) HandleNew(w http.ResponseWriter, r *http.Request) error
 	cfg := ma.renderConfig()
 	ma.translateRenderConfig(&cfg, r)
 	fields := AutoFields[T](nil)
+	if err := ma.applyFieldChoices(r.Context(), fields); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
+	}
 	translateFormFields(fields, r)
 	return ma.Renderer.Form(w, r, nil, fields, nil, cfg)
 }
@@ -113,6 +119,9 @@ func (ma *ModelAdmin[T]) HandleCreate(w http.ResponseWriter, r *http.Request) er
 			vCfg := ma.renderConfig()
 			ma.translateRenderConfig(&vCfg, r)
 			fields := AutoFields[T](item)
+			if fcErr := ma.applyFieldChoices(r.Context(), fields); fcErr != nil {
+				return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
+			}
 			translateFormFields(fields, r)
 			return ma.Renderer.Form(w, r, item, fields, ve, vCfg)
 		}
@@ -159,6 +168,9 @@ func (ma *ModelAdmin[T]) HandleUpdate(w http.ResponseWriter, r *http.Request) er
 			vCfg := ma.renderConfig()
 			ma.translateRenderConfig(&vCfg, r)
 			fields := AutoFields[T](item)
+			if fcErr := ma.applyFieldChoices(r.Context(), fields); fcErr != nil {
+				return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
+			}
 			translateFormFields(fields, r)
 			return ma.Renderer.Form(w, r, item, fields, ve, vCfg)
 		}
