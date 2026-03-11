@@ -90,13 +90,16 @@ licenses:
 
 # Serve documentation locally
 docs:
+    ./scripts/generate-licenses.sh
     cp CHANGELOG.md docs/changelog.md
+    cp THIRD_PARTY_LICENSES.md docs/third-party-licenses.md
     uv run --with zensical zensical serve -a localhost:3000
 
 # Build documentation
 docs-build:
-    cp CHANGELOG.md docs/changelog.md
     ./scripts/generate-licenses.sh
+    cp CHANGELOG.md docs/changelog.md
+    cp THIRD_PARTY_LICENSES.md docs/third-party-licenses.md
     ./scripts/generate-llms-full.sh
     uv run --with zensical zensical build
 

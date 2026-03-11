@@ -22,6 +22,7 @@ coverage.html
 site/
 docs/llms-full.txt
 docs/changelog.md
+docs/third-party-licenses.md
 
 # Claude Code
 CLAUDE.md
