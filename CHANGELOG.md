@@ -2,7 +2,20 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## 0.3.0
+
+### Breaking Changes
+
+- **`contrib/jobs` `Repository.Fail()` signature changed**: Added `baseDelay time.Duration` parameter for configurable exponential backoff. Default backoff changed from `2^attempts` seconds (2s, 4s, 8s) to `baseDelay * 2^(attempts-1)` with a 30s default (30s, 1m, 2m, 4m).
+
+### Added
+
+- `csrfField` template function — renders a complete `<input type="hidden">` element with the CSRF token, reducing form boilerplate
+- `FieldChoices` on `ModelAdmin` — dynamic `<select>` dropdowns for foreign key fields, loaded from the database at request time
+- `--jobs-retry-base-delay` flag — configurable base delay for exponential retry backoff (default: 30s)
+- `RenderTemplate()` now applies the layout for `hx-boost` requests (`HX-Boosted` header), fixing navbar disappearing on boosted navigation
+- `RequireAuth()` middleware uses `Referer` header for post-login redirect on non-GET requests, fixing 405 errors on POST-protected routes
+- `slog.Info` logging for applied database migrations
 
 ### Changed
 
@@ -12,12 +25,20 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - Add template function availability note to i18n guide
 - Add working example reference (notes app) to FTS5 guide
 - Link to urfave/cli flag documentation in configuration guide
+- Add all missing contrib app flags (Jobs, Uploads, Rate Limit, Secure, SMTP Mail) to configuration reference
+- Add FieldChoices documentation to admin contrib docs
+- Comprehensive tutorial review and fixes (parts 1–7): explicit file paths, missing imports, `go mod tidy` in run sections
 - Add missing setup steps (`go mod init`, `go get`, `go mod tidy`) to quick start examples in README, index, installation, and quickstart pages
 - Split notes example app into standard file layout (`models.go`, `repository.go`, `handlers.go`, `app.go`)
 - Add missing `HasJobs` interface to all interface tables in docs
+- Remove internal "Updating Icons" section from Bootstrap Icons docs
 
 ### Fixed
 
+- `RenderTemplate()` skipped layout for `hx-boost` requests, causing navbar to disappear on boosted navigation
+- `RequireAuth()` redirected to POST URL after login, causing 405 Method Not Allowed
+- Tutorial Part 5 showed `<nil>` in navbar — `User.Email` (`*string`) replaced with `User.Username` (`string`)
+- Tutorial Part 6 used manual route registration with wrong HTTP methods, causing 405 on admin delete
 - Replace broken Codeberg URLs with GitHub URLs across documentation
 - Convert and resize cover image from PNG (2.9MB) to JPEG (352KB)
 
