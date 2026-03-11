@@ -76,8 +76,9 @@ nav:
       - Testing:
           - Testing: guide/testing.md
       - Deployment:
-          - TLS: guide/tls.md
           - Deployment: guide/deployment.md
+          - Logging: guide/logging.md
+          - TLS: guide/tls.md
   - Tutorial:
       - Overview: tutorial/index.md
       - "Part 1: Setup & First View": tutorial/part1.md

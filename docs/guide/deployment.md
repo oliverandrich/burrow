@@ -1,43 +1,38 @@
 # Deployment
 
-Burrow is designed for standalone deployment — it handles TLS termination, ACME certificates, and graceful restarts without requiring a reverse proxy.
+Burrow compiles to a single static binary with an embedded SQLite database. There is no app server, no external database, and no runtime dependency to install. Deployment is: copy the binary, run it.
 
-## Graceful Restart (SIGHUP)
+## Deployment Options
 
-On Linux and macOS, the server supports zero-downtime restarts via `SIGHUP`. When a `SIGHUP` signal is received, the server:
+| Option | Best For |
+|--------|----------|
+| [Bare metal / VPS](#bare-metal-vps) | Simple standalone deployment, single server |
+| [systemd service](#systemd) | Production Linux servers with automatic restarts and log management |
+| [Docker](#docker) | Container orchestration, CI/CD pipelines |
 
-1. Spawns a new child process that inherits the listener file descriptors
-2. The child starts accepting connections
-3. The parent stops accepting new connections and drains in-flight requests
-4. The parent exits
+All three options support graceful shutdown. Bare metal and systemd also support [zero-downtime restarts](#graceful-restart-sighup) via `SIGHUP`.
 
-This allows binary upgrades and configuration changes without dropping any connections.
+For TLS, the server handles ACME certificates, manual certs, or self-signed certs natively — no reverse proxy needed. See the [TLS guide](tls.md) for details.
 
-```bash
-# Trigger a graceful restart
-kill -HUP $(cat /run/myapp/server.pid)
-```
+## Bare Metal / VPS
 
-!!! note
-    The parent process exits after the child takes over. If you start the server from a terminal, the shell prompt returns while the child continues running in the background. Use a PID file or process manager (systemd, supervisor) to manage the server lifecycle.
-
-### PID File
-
-Use `--pid-file` to write the server's PID to a file. The PID file is updated on each restart so it always points to the current active process.
+For a simple standalone deployment without a process manager:
 
 ```bash
-./server --pid-file /run/myapp/server.pid
+# Build
+go build -o server ./cmd/server
+
+# Run with PID file for restart support
+./server --pid-file ./server.pid &
+
+# Graceful restart (e.g. after deploying a new binary)
+kill -HUP $(cat ./server.pid)
+
+# Graceful shutdown
+kill $(cat ./server.pid)
 ```
 
-### When Graceful Restart Is Disabled
-
-The server automatically falls back to simple mode (no graceful restart, only graceful shutdown) in these situations:
-
-- **Windows** — `SIGHUP` and file descriptor inheritance are not available
-- **PID 1 (containers)** — the parent exiting would stop the container (see [Docker](#docker) below)
-- **Concurrent upgrader** — if tableflip cannot initialize (e.g. in tests)
-
-In simple mode, `SIGINT` and `SIGTERM` still trigger a graceful shutdown that drains in-flight requests.
+For production use, a process manager like systemd is recommended to handle automatic restarts on failure and log management.
 
 ## systemd
 
@@ -97,25 +92,42 @@ ENTRYPOINT ["/server"]
 
 For zero-downtime deployments with Docker, use an orchestrator-level rolling restart (e.g. `docker compose up -d --force-recreate`) rather than in-process restarts.
 
-## Bare Metal / VPS
+## Graceful Restart (SIGHUP)
 
-For a simple standalone deployment without a process manager:
+On Linux and macOS, the server supports zero-downtime restarts via `SIGHUP`. When a `SIGHUP` signal is received, the server:
+
+1. Spawns a new child process that inherits the listener file descriptors
+2. The child starts accepting connections
+3. The parent stops accepting new connections and drains in-flight requests
+4. The parent exits
+
+This allows binary upgrades and configuration changes without dropping any connections.
 
 ```bash
-# Build
-go build -o server ./cmd/server
-
-# Run with PID file for restart support
-./server --pid-file ./server.pid &
-
-# Graceful restart (e.g. after deploying a new binary)
-kill -HUP $(cat ./server.pid)
-
-# Graceful shutdown
-kill $(cat ./server.pid)
+# Trigger a graceful restart
+kill -HUP $(cat /run/myapp/server.pid)
 ```
 
-For production use, a process manager like systemd is recommended to handle automatic restarts on failure and log management.
+!!! note
+    The parent process exits after the child takes over. If you start the server from a terminal, the shell prompt returns while the child continues running in the background. Use a PID file or process manager (systemd, supervisor) to manage the server lifecycle.
+
+### PID File
+
+Use `--pid-file` to write the server's PID to a file. The PID file is updated on each restart so it always points to the current active process.
+
+```bash
+./server --pid-file /run/myapp/server.pid
+```
+
+### When Graceful Restart Is Disabled
+
+The server automatically falls back to simple mode (no graceful restart, only graceful shutdown) in these situations:
+
+- **Windows** — `SIGHUP` and file descriptor inheritance are not available
+- **PID 1 (containers)** — the parent exiting would stop the container (see [Docker](#docker) above)
+- **Concurrent upgrader** — if tableflip cannot initialize (e.g. in tests)
+
+In simple mode, `SIGINT` and `SIGTERM` still trigger a graceful shutdown that drains in-flight requests.
 
 ## TLS
 

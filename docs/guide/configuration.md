@@ -76,6 +76,6 @@ func (a *App) Configure(cmd *cli.Command) error {
 }
 ```
 
-Custom flags are automatically merged into the CLI when you call `srv.Flags()`.
+Custom flags are automatically merged into the CLI when you call `srv.Flags()`. See the [urfave/cli flag documentation](https://cli.urfave.org/v3/examples/flags/basics/) for all available flag types (`StringFlag`, `IntFlag`, `BoolFlag`, `Float64Flag`, etc.) and options.
 
 See the [TLS guide](tls.md) for HTTPS configuration and the [Configuration Reference](../reference/configuration.md) for the complete flag table.

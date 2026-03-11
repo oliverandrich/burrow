@@ -124,7 +124,70 @@ type TemplateExecutor func(r *http.Request, name string, data map[string]any) (t
 
 The executor is injected by the framework's template middleware and handles request-scoped FuncMap cloning automatically.
 
-Here's how the Bootstrap app does it:
+### Example: Minimal Custom Layout
+
+Here's a complete example of a custom layout with a navbar and footer. First, the layout function:
+
+```go
+func appLayout() burrow.LayoutFunc {
+    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
+        exec := burrow.TemplateExecutorFromContext(r.Context())
+
+        layoutData := maps.Clone(data)
+        layoutData["Content"] = content
+        layoutData["NavItems"] = burrow.NavItems(r.Context())
+
+        html, err := exec(r, "myapp/layout", layoutData)
+        if err != nil {
+            return err
+        }
+
+        return burrow.HTML(w, code, string(html))
+    }
+}
+```
+
+The corresponding template (`templates/layout.html` in your app):
+
+```html
+{{ define "myapp/layout" -}}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav>
+        {{ range .NavItems }}
+            <a href="{{ .URL }}">{{ .Label }}</a>
+        {{ end }}
+    </nav>
+
+    <main>{{ .Content }}</main>
+
+    <footer>
+        <p>&copy; 2026 My App</p>
+    </footer>
+</body>
+</html>
+{{- end }}
+```
+
+Wire it up in your server setup:
+
+```go
+srv := burrow.NewServer(myapp.New(), /* ... */)
+srv.SetLayout(appLayout())
+```
+
+Your app must implement `HasTemplates` so that `myapp/layout` is part of the global template set. See [Creating an App](creating-an-app.md#step-6-assemble-the-app) for how to provide template files.
+
+### How the Bootstrap App Does It
+
+Here's how the built-in Bootstrap app implements the same pattern:
 
 ```go
 func Layout() burrow.LayoutFunc {

@@ -228,3 +228,7 @@ ma := &modeladmin.ModelAdmin[Note]{
 ```
 
 See the [Admin docs](../contrib/admin.md#fts5-auto-detection) for more details.
+
+## Working Example
+
+The [Notes example app](https://github.com/oliverandrich/burrow/tree/main/example/notes) implements FTS5 search end-to-end — migration with triggers, repository search method, and an HTMX-powered search form. Read its source to see all the pieces working together.
