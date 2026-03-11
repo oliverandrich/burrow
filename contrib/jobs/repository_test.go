@@ -127,7 +127,7 @@ func TestRepository_Fail_Retry(t *testing.T) {
 	require.NoError(t, err)
 
 	// Fail with attempts=1, maxRetries=3 → should retry.
-	err = repo.Fail(ctx, job.ID, "connection timeout", 1, 3)
+	err = repo.Fail(ctx, job.ID, "connection timeout", 1, 3, 30*time.Second)
 	require.NoError(t, err)
 
 	var updated Job
@@ -136,6 +136,40 @@ func TestRepository_Fail_Retry(t *testing.T) {
 	assert.Equal(t, StatusFailed, updated.Status)
 	assert.Equal(t, "connection timeout", updated.LastError)
 	assert.True(t, updated.RunAt.After(time.Now()), "run_at should be in the future")
+}
+
+func TestRepository_Fail_BackoffDuration(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+	baseDelay := 30 * time.Second
+
+	tests := []struct {
+		attempt  int
+		expected time.Duration
+	}{
+		{1, 30 * time.Second},  // 30s * 2^0
+		{2, 60 * time.Second},  // 30s * 2^1
+		{3, 120 * time.Second}, // 30s * 2^2
+		{4, 240 * time.Second}, // 30s * 2^3
+	}
+
+	for _, tt := range tests {
+		job, err := repo.Enqueue(ctx, "task", `{}`, 10, time.Now())
+		require.NoError(t, err)
+
+		before := time.Now()
+		err = repo.Fail(ctx, job.ID, "err", tt.attempt, 10, baseDelay)
+		require.NoError(t, err)
+
+		var updated Job
+		err = db.NewSelect().Model(&updated).Where("id = ?", job.ID).Scan(ctx)
+		require.NoError(t, err)
+
+		expectedRunAt := before.Add(tt.expected)
+		assert.InDelta(t, expectedRunAt.Unix(), updated.RunAt.Unix(), 2,
+			"attempt %d: expected ~%v backoff", tt.attempt, tt.expected)
+	}
 }
 
 func TestRepository_Fail_Dead(t *testing.T) {
@@ -147,7 +181,7 @@ func TestRepository_Fail_Dead(t *testing.T) {
 	require.NoError(t, err)
 
 	// Fail with attempts=3, maxRetries=3 → should be dead.
-	err = repo.Fail(ctx, job.ID, "permanent failure", 3, 3)
+	err = repo.Fail(ctx, job.ID, "permanent failure", 3, 3, 30*time.Second)
 	require.NoError(t, err)
 
 	var updated Job
@@ -300,7 +334,7 @@ func TestRepository_Retry(t *testing.T) {
 	t.Run("from dead", func(t *testing.T) {
 		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 		require.NoError(t, err)
-		require.NoError(t, repo.Fail(ctx, job.ID, "boom", 3, 3)) // marks dead
+		require.NoError(t, repo.Fail(ctx, job.ID, "boom", 3, 3, 30*time.Second)) // marks dead
 
 		err = repo.Retry(ctx, job.ID)
 		require.NoError(t, err)
@@ -317,7 +351,7 @@ func TestRepository_Retry(t *testing.T) {
 	t.Run("from failed", func(t *testing.T) {
 		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 		require.NoError(t, err)
-		require.NoError(t, repo.Fail(ctx, job.ID, "oops", 1, 3)) // marks failed
+		require.NoError(t, repo.Fail(ctx, job.ID, "oops", 1, 3, 30*time.Second)) // marks failed
 
 		err = repo.Retry(ctx, job.ID)
 		require.NoError(t, err)

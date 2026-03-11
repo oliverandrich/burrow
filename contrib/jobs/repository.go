@@ -75,11 +75,11 @@ func (r *Repository) Complete(ctx context.Context, jobID int64) error {
 }
 
 // Fail records a job failure. If attempts < maxRetries, the job is re-queued
-// with exponential backoff (2^attempts seconds). Otherwise it is marked dead.
-func (r *Repository) Fail(ctx context.Context, jobID int64, errMsg string, attempts, maxRetries int) error {
+// with exponential backoff (baseDelay * 2^(attempts-1)). Otherwise it is marked dead.
+func (r *Repository) Fail(ctx context.Context, jobID int64, errMsg string, attempts, maxRetries int, baseDelay time.Duration) error {
 	now := time.Now()
 	if attempts < maxRetries {
-		backoff := time.Duration(math.Pow(2, float64(attempts))) * time.Second
+		backoff := baseDelay * time.Duration(math.Pow(2, float64(attempts-1)))
 		runAt := now.Add(backoff)
 		if _, err := r.db.NewUpdate().Model((*Job)(nil)).
 			Set("status = ?", StatusFailed).

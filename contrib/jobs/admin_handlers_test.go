@@ -22,7 +22,7 @@ func TestRetryHandler(t *testing.T) {
 
 	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
-	require.NoError(t, repo.Fail(ctx, job.ID, "boom", 3, 3)) // dead
+	require.NoError(t, repo.Fail(ctx, job.ID, "boom", 3, 3, 30*time.Second)) // dead
 
 	handler := retryHandler(repo)
 

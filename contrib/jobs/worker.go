@@ -11,19 +11,21 @@ import (
 
 // WorkerConfig holds configuration for the worker pool.
 type WorkerConfig struct {
-	NumWorkers   int
-	PollInterval time.Duration
-	BatchSize    int
-	StaleTimeout time.Duration
+	NumWorkers     int
+	PollInterval   time.Duration
+	BatchSize      int
+	StaleTimeout   time.Duration
+	RetryBaseDelay time.Duration
 }
 
 // DefaultWorkerConfig returns sensible defaults.
 func DefaultWorkerConfig() WorkerConfig {
 	return WorkerConfig{
-		NumWorkers:   2,
-		PollInterval: time.Second,
-		BatchSize:    10,
-		StaleTimeout: 10 * time.Minute,
+		NumWorkers:     2,
+		PollInterval:   time.Second,
+		BatchSize:      10,
+		StaleTimeout:   10 * time.Minute,
+		RetryBaseDelay: 30 * time.Second,
 	}
 }
 
@@ -130,7 +132,7 @@ func (w *Worker) processJob(job Job) {
 	handler, ok := w.handlers[job.Type]
 	if !ok {
 		slog.Error("jobs: unknown job type", "type", job.Type, "id", job.ID)
-		if err := w.repo.Fail(context.Background(), job.ID, "unknown job type: "+job.Type, job.MaxRetries, job.MaxRetries); err != nil {
+		if err := w.repo.Fail(context.Background(), job.ID, "unknown job type: "+job.Type, job.MaxRetries, job.MaxRetries, w.config.RetryBaseDelay); err != nil {
 			slog.Error("jobs: fail unknown job", "error", err, "id", job.ID)
 		}
 		return
@@ -141,7 +143,7 @@ func (w *Worker) processJob(job Job) {
 	err := handler(context.Background(), []byte(job.Payload))
 	if err != nil {
 		slog.Error("jobs: handler failed", "type", job.Type, "id", job.ID, "error", err, "attempt", job.Attempts)
-		if failErr := w.repo.Fail(context.Background(), job.ID, err.Error(), job.Attempts, job.MaxRetries); failErr != nil {
+		if failErr := w.repo.Fail(context.Background(), job.ID, err.Error(), job.Attempts, job.MaxRetries, w.config.RetryBaseDelay); failErr != nil {
 			slog.Error("jobs: record failure", "error", failErr, "id", job.ID)
 		}
 		return

@@ -117,6 +117,12 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Usage:   "Interval between job queue polls",
 			Sources: burrow.FlagSources(configSource, "JOBS_POLL_INTERVAL", "jobs.poll_interval"),
 		},
+		&cli.DurationFlag{
+			Name:    "jobs-retry-base-delay",
+			Value:   30 * time.Second,
+			Usage:   "Base delay for exponential retry backoff (delay * 2^(attempt-1))",
+			Sources: burrow.FlagSources(configSource, "JOBS_RETRY_BASE_DELAY", "jobs.retry_base_delay"),
+		},
 	}
 }
 
@@ -133,6 +139,7 @@ func (a *App) Configure(cmd *cli.Command) error {
 	cfg := DefaultWorkerConfig()
 	cfg.NumWorkers = int(cmd.Int("jobs-workers"))
 	cfg.PollInterval = cmd.Duration("jobs-poll-interval")
+	cfg.RetryBaseDelay = cmd.Duration("jobs-retry-base-delay")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancelFunc = cancel
