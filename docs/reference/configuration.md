@@ -68,6 +68,52 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | `Web App` | WebAuthn RP display name |
 | `--webauthn-rp-origin` | `WEBAUTHN_RP_ORIGIN` | (base URL) | WebAuthn RP origin |
 
+### Jobs
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--jobs-workers` | `JOBS_WORKERS` | `2` | Number of concurrent worker goroutines |
+| `--jobs-poll-interval` | `JOBS_POLL_INTERVAL` | `1s` | Interval between queue polls |
+| `--jobs-retry-base-delay` | `JOBS_RETRY_BASE_DELAY` | `30s` | Base delay for exponential retry backoff |
+
+### Uploads
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--upload-dir` | `UPLOAD_DIR` | `./uploads` | Directory for uploaded files |
+| `--upload-url-prefix` | `UPLOAD_URL_PREFIX` | `/uploads` | URL prefix for serving uploaded files |
+| `--upload-allowed-types` | `UPLOAD_ALLOWED_TYPES` | (all) | Comma-separated list of allowed MIME types |
+
+### Rate Limit
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--ratelimit-rate` | `RATELIMIT_RATE` | `10` | Requests per second (token refill rate) |
+| `--ratelimit-burst` | `RATELIMIT_BURST` | `20` | Maximum burst size (bucket capacity) |
+| `--ratelimit-cleanup-interval` | `RATELIMIT_CLEANUP_INTERVAL` | `1m` | Interval for sweeping expired entries |
+| `--ratelimit-trust-proxy` | `RATELIMIT_TRUST_PROXY` | `false` | Use X-Forwarded-For/X-Real-IP for client IP |
+
+### Secure
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--secure-csp` | `SECURE_CSP` | (none) | Content-Security-Policy header value |
+| `--secure-permissions-policy` | `SECURE_PERMISSIONS_POLICY` | (none) | Permissions-Policy header value |
+| `--secure-coop` | `SECURE_COOP` | (none) | Cross-Origin-Opener-Policy header value |
+| `--secure-allowed-hosts` | `SECURE_ALLOWED_HOSTS` | (none) | Comma-separated list of allowed hostnames |
+| `--secure-ssl-redirect` | `SECURE_SSL_REDIRECT` | `false` | Redirect HTTP requests to HTTPS |
+| `--secure-development` | `SECURE_DEVELOPMENT` | `false` | Disable HSTS, SSL redirect, host checks |
+
+### SMTP Mail
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--smtp-host` | `SMTP_HOST` | `localhost` | SMTP server host |
+| `--smtp-port` | `SMTP_PORT` | `587` | SMTP server port |
+| `--smtp-username` | `SMTP_USERNAME` | (none) | SMTP username |
+| `--smtp-password` | `SMTP_PASSWORD` | (none) | SMTP password |
+| `--smtp-from` | `SMTP_FROM` | `noreply@localhost` | Sender email address |
+
 ## TOML Config Example
 
 ```toml
@@ -88,4 +134,4 @@ cert_dir = "./data/certs"
 ```
 
 !!! note
-    Contrib app flags do not currently support TOML sourcing — they use CLI and environment variables only. Core flags support all three sources.
+    All flags support CLI, environment variable, and TOML sourcing. The TOML key is shown in each contrib app's flag definition (e.g., `jobs.workers`, `ratelimit.rate`).
