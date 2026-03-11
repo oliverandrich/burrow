@@ -1,8 +1,50 @@
 # License
 
-Burrow is licensed under the **European Union Public Licence v1.2 (EUPL-1.2)**.
+Burrow is licensed under the [European Union Public Licence v1.2 (EUPL-1.2)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12).
 
-The EUPL is a copyleft licence approved by the European Commission. It is compatible with several other open-source licences including GPL v2/v3, AGPL v3, MPL 2, and LGPL v2.1/v3.
+## What This Means for You
+
+### Building Apps with Burrow
+
+You can build **any kind of software** on top of Burrow — commercial, proprietary, open source, whatever you like. Your application code is yours, and the EUPL does not require you to open-source it.
+
+### Contributing to Burrow
+
+If you **modify Burrow itself** and distribute those changes (e.g. publish a patched version of the framework), you must make your modifications available under the EUPL or a [compatible licence](#compatible-licences).
+
+### In Short
+
+| What you do | What's required |
+|---|---|
+| Build an app using Burrow | Nothing — your code, your rules |
+| Use Burrow as a dependency | Keep the licence and copyright notice |
+| Modify Burrow and distribute the changes | Open-source your modifications |
+| Contribute back to Burrow | Your contribution falls under the EUPL 1.2 |
+
+## Why EUPL?
+
+We chose the EUPL because it strikes a balance: everyone can use Burrow freely for any purpose, while improvements to the framework itself stay open for the whole community. It's similar in spirit to the MPL 2.0 or LGPL, but with better licence compatibility and written for European law.
+
+## Compatible Licences
+
+The EUPL 1.2 includes a compatibility clause (Article 5 and Appendix). Derivative works of Burrow may also be distributed under the following licences:
+
+- GNU General Public Licence (GPL) v2, v3
+- GNU Affero General Public Licence (AGPL) v3
+- GNU Lesser General Public Licence (LGPL) v2.1, v3
+- Mozilla Public Licence (MPL) v2
+- Eclipse Public Licence (EPL) v1.0
+- CeCILL v2.0, v2.1
+- Open Software Licence (OSL) v2.1, v3.0
+- Creative Commons Attribution-ShareAlike (CC BY-SA) v3.0 Unported (for works other than software)
+- European Union Public Licence (EUPL) v1.1, v1.2
+- Québec Free and Open-Source Licence — Reciprocity (LiLiQ-R) or Strong Reciprocity (LiLiQ-R+)
+
+This means Burrow can be combined with code under any of these licences without conflicts.
+
+## Questions?
+
+If you're unsure whether your use case is covered, feel free to [open a discussion](https://github.com/oliverandrich/burrow/discussions). In most cases the answer is simple: **if you're building on Burrow, you're fine.**
 
 For third-party licences (embedded assets and Go module dependencies), see [Third-Party Licenses](third-party-licenses.md).
 

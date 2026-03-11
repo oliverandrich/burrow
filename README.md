@@ -221,4 +221,6 @@ Full documentation is available in the [`docs/`](docs/) directory.
 
 ## License
 
-See [LICENSE](LICENSE). Third-party licenses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+Burrow is licensed under the [European Union Public Licence v1.2 (EUPL-1.2)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12). You can build any kind of software on top of Burrow — commercial, proprietary, or open source — without having to open-source your application code. See the [licensing guide](https://burrow.someonewho.codes/license/) for details on what the EUPL means for you.
+
+Third-party licenses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
