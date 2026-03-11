@@ -6,20 +6,18 @@ In this final part you'll add the `htmx` contrib app for SPA-like navigation, HT
 
 ## Using HTMX Helpers
 
-The `htmx` contrib app (registered since Part 3) provides Go helpers for detecting HTMX requests and setting response headers. The htmx script is already in the layout.
+The `htmx` contrib app (registered since Part 3) provides Go helpers for detecting HTMX requests and setting response headers. To use htmx on the client side, add the script to your layout.
 
-Verify your layout includes the htmx script:
-
-```html
-<script src="{{ staticURL "htmx/htmx.min.js" }}"></script>
-```
-
-## Enable hx-boost
-
-In `internal/pages/templates/app/layout.html`, add `hx-boost="true"` to the `<body>` tag:
+In `internal/pages/templates/app/layout.html`, add the htmx script before the closing `</body>` tag (after the Bootstrap script) and add `hx-boost="true"` to the `<body>` tag:
 
 ```html
 <body hx-boost="true">
+```
+
+```html
+    <script src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
+    <script src="{{ staticURL "htmx/htmx.min.js" }}"></script>
+</body>
 ```
 
 This makes all links and forms use HTMX automatically — navigating via AJAX and swapping just the `<body>` content. Burrow's `RenderTemplate()` detects the `HX-Request` header and returns only the fragment (no layout wrapping), making this work seamlessly.
@@ -177,21 +175,42 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
-The scroll trigger in the template:
+Update `internal/polls/templates/polls/list.html` to add an `id` to the list group and append the scroll trigger:
 
 ```html
-{{ if .Page.HasMore -}}
-<div hx-get="/polls?cursor={{ .Page.NextCursor }}&limit=20"
-     hx-trigger="revealed"
-     hx-target="#polls-list"
-     hx-swap="beforeend">
-    <div class="text-center py-3">
-        <div class="spinner-border spinner-border-sm" role="status">
-            <span class="visually-hidden">Loading...</span>
+{{ define "polls/list" -}}
+<div class="container py-4">
+    <h1>Polls</h1>
+    {{ if .Questions -}}
+    <div id="polls-list" class="list-group">
+        {{ range .Questions -}}
+        <a href="/polls/{{ .ID }}" class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">{{ .Text }}</h5>
+                <small class="text-body-secondary">
+                    {{ .PublishedAt.Format "2 Jan 2006" }}
+                </small>
+            </div>
+        </a>
+        {{ end -}}
+    </div>
+    {{ if .Page.HasMore -}}
+    <div hx-get="/polls?cursor={{ .Page.NextCursor }}&limit=20"
+         hx-trigger="revealed"
+         hx-target="#polls-list"
+         hx-swap="beforeend">
+        <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
         </div>
     </div>
+    {{ end -}}
+    {{ else -}}
+    <div class="alert alert-info">No polls available yet.</div>
+    {{ end -}}
 </div>
-{{ end -}}
+{{- end }}
 ```
 
 Create a new file `internal/polls/templates/polls/list_page.html` — it returns only the question items and a new scroll trigger (no layout wrapping):
