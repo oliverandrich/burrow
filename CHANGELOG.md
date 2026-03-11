@@ -2,6 +2,25 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Changed
+
+- Restructure deployment guide: add intro with deployment options table, reorder sections (bare metal → systemd → Docker → graceful restart)
+- Add logging guide explaining slog configuration responsibility and handler options
+- Add custom LayoutFunc example to layouts guide
+- Add template function availability note to i18n guide
+- Add working example reference (notes app) to FTS5 guide
+- Link to urfave/cli flag documentation in configuration guide
+- Add missing setup steps (`go mod init`, `go get`, `go mod tidy`) to quick start examples in README, index, installation, and quickstart pages
+- Split notes example app into standard file layout (`models.go`, `repository.go`, `handlers.go`, `app.go`)
+- Add missing `HasJobs` interface to all interface tables in docs
+
+### Fixed
+
+- Replace broken Codeberg URLs with GitHub URLs across documentation
+- Convert and resize cover image from PNG (2.9MB) to JPEG (352KB)
+
 ## 0.2.0 — 2026-03-10
 
 ### Breaking Changes
