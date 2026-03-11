@@ -38,6 +38,12 @@ Built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and 
 
 ## Quick Start
 
+```bash
+mkdir myapp && cd myapp
+go mod init myapp
+go get github.com/oliverandrich/burrow@latest
+```
+
 ```go
 package main
 
@@ -78,6 +84,11 @@ func main() {
         log.Fatal(err)
     }
 }
+```
+
+```bash
+go mod tidy
+go run .
 ```
 
 See [`example/hello/`](example/hello/) for a minimal hello world app, or [`example/notes/`](example/notes/) for a complete example with auth, admin, i18n, and more.
@@ -133,6 +144,7 @@ Apps can optionally implement additional interfaces:
 | `HasStaticFiles` | Contribute embedded static file assets |
 | `HasTranslations` | Contribute translation files |
 | `HasDependencies` | Declare required apps |
+| `HasJobs` | Register background job handlers |
 | `HasShutdown` | Clean up on graceful shutdown |
 
 ### Layouts

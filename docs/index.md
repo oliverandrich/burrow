@@ -27,6 +27,12 @@ Built on [Chi](https://go-chi.io/), [Bun/SQLite](https://bun.uptrace.dev/), and 
 
 ## Minimal Example
 
+```bash
+mkdir myapp && cd myapp
+go mod init myapp
+go get github.com/oliverandrich/burrow@latest
+```
+
 ```go
 package main
 
@@ -60,6 +66,7 @@ func main() {
 ```
 
 ```bash
+go mod tidy
 go run . --port 8080
 curl http://localhost:8080/healthz
 # {"database":"ok","status":"ok"}

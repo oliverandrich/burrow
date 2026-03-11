@@ -61,6 +61,7 @@ This shows the core pattern: define an app, implement `Routes()`, and use `burro
 ## 3. Run It
 
 ```bash
+go mod tidy
 go run main.go
 ```
 

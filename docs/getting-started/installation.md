@@ -5,13 +5,15 @@
 - **Go 1.25+**
 - **CGO_ENABLED=0** — the framework uses pure-Go SQLite (`modernc.org/sqlite`), no C compiler needed
 
-## Install the Module
+## Create a Project
 
 ```bash
+mkdir myapp && cd myapp
+go mod init myapp
 go get github.com/oliverandrich/burrow@latest
 ```
 
-This pulls the `burrow` package and all `contrib` apps. Import only what you need:
+This creates a Go module and pulls the `burrow` package with all `contrib` apps. Import only what you need:
 
 ```go
 import (
@@ -63,6 +65,7 @@ func main() {
 ```
 
 ```bash
+go mod tidy
 go run main.go
 # time=... level=INFO msg="starting server" host=localhost port=8080 ...
 # Visit http://localhost:8080/healthz → "ok"
