@@ -246,7 +246,7 @@ func (a *App) Routes(r chi.Router) {
 
 ### The Layout Function
 
-The layout wraps every page in a consistent HTML shell:
+Still in `internal/pages/pages.go`, add the `Layout()` function. It wraps every page in a consistent HTML shell:
 
 ```go
 func Layout() burrow.LayoutFunc {
