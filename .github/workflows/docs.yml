@@ -22,10 +22,18 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+
       - uses: astral-sh/setup-uv@v6
+
+      - name: Install go-licenses
+        run: go install github.com/google/go-licenses@latest
 
       - name: Prepare docs
         run: |
+          ./scripts/generate-licenses.sh
           cp CHANGELOG.md docs/changelog.md
           cp THIRD_PARTY_LICENSES.md docs/third-party-licenses.md
           ./scripts/generate-llms-full.sh
