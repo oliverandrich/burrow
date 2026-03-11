@@ -19,8 +19,11 @@ Most Go web development follows the "API backend + SPA frontend" pattern. Burrow
 
 Built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and Go's standard `html/template`. Ideal for self-hosted applications, internal tools, or any project where "download, start, use" is the goal.
 
-!!! note
-    Burrow is designed for server-rendered web applications, not API-only services. If you're building a JSON API with a separate frontend, a lighter router like Chi on its own is probably a better fit.
+> [!TIP]
+> **Why *Burrow*?** A burrow is a network of interconnected chambers — each with its own purpose, yet part of a larger whole. That's exactly how the framework works: pluggable apps are the rooms, and your gophers live in them.
+
+> [!NOTE]
+> Burrow is designed for server-rendered web applications, not API-only services. If you're building a JSON API with a separate frontend, a lighter router like Chi on its own is probably a better fit.
 
 ## Features
 
