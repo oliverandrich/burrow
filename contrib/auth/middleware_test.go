@@ -44,6 +44,41 @@ func TestRequireAuthStoresRedirectInSession(t *testing.T) {
 	assert.Equal(t, "/protected?foo=bar", capturedValues["redirect_after_login"])
 }
 
+func TestRequireAuthStoresRefererForPOST(t *testing.T) {
+	r := chi.NewRouter()
+	r.Use(RequireAuth())
+	r.Post("/polls/1/vote", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/polls/1/vote", nil)
+	req.Header.Set("Referer", "http://localhost:8080/polls/1")
+	req = session.Inject(req, nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	capturedValues := session.GetValues(req)
+	assert.Equal(t, "/polls/1", capturedValues["redirect_after_login"])
+}
+
+func TestRequireAuthSkipsRedirectForPOSTWithoutReferer(t *testing.T) {
+	r := chi.NewRouter()
+	r.Use(RequireAuth())
+	r.Post("/polls/1/vote", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/polls/1/vote", nil)
+	req = session.Inject(req, nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	capturedValues := session.GetValues(req)
+	assert.Nil(t, capturedValues["redirect_after_login"])
+}
+
 func TestRequireAuthAllowsAuthenticated(t *testing.T) {
 	r := chi.NewRouter()
 	// Inject user into context before RequireAuth.

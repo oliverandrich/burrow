@@ -38,7 +38,7 @@ srv := burrow.NewServer(
 
 ## Add a Voting Form
 
-Update the detail template to include a form with radio buttons:
+Update `internal/polls/templates/polls/detail.html` to include a form with radio buttons:
 
 ```html
 {{ define "polls/detail" -}}
@@ -70,7 +70,7 @@ Key points:
 
 ## Handle the Vote
 
-First, add the `messages` import to `internal/polls/polls.go`:
+All the following changes go into `internal/polls/polls.go`. First, add the `messages` import:
 
 ```go
 "github.com/oliverandrich/burrow/contrib/messages"
@@ -145,7 +145,7 @@ func (a *App) Routes(r chi.Router) {
 
 ## Display Flash Messages
 
-Update the layout to show messages above the content:
+Update the layout template in `internal/pages/templates/app/layout.html` to show messages above the content:
 
 ```html
 <main class="container">

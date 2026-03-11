@@ -13,14 +13,13 @@ Update `main.go`:
 ```go
 import (
     "github.com/oliverandrich/burrow/contrib/auth"
-    "github.com/oliverandrich/burrow/contrib/healthcheck"
 )
 
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
     staticApp,
-    healthcheck.New(),
+    htmx.New(),
     messages.New(),
     bootstrap.New(),
     pages.New(),
@@ -37,7 +36,13 @@ The auth app:
 
 ## Protect the Vote Route
 
-Use `auth.RequireAuth()` middleware to restrict voting to authenticated users:
+In `internal/polls/polls.go`, add the `auth` import:
+
+```go
+"github.com/oliverandrich/burrow/contrib/auth"
+```
+
+Then update the `Routes` method to use `auth.RequireAuth()` middleware, restricting voting to authenticated users:
 
 ```go
 func (a *App) Routes(r chi.Router) {
@@ -71,7 +76,13 @@ Burrow automatically sorts apps by dependencies during `NewServer()`, so you don
 
 ## Show the User in the Navbar
 
-Update the layout to display the current user's email and a sign-out button:
+In `internal/pages/pages.go`, add the `auth` import:
+
+```go
+"github.com/oliverandrich/burrow/contrib/auth"
+```
+
+Then update the `Layout()` function to pass the current user to the template:
 
 ```go
 layoutData := map[string]any{
@@ -82,7 +93,7 @@ layoutData := map[string]any{
 }
 ```
 
-In the layout template:
+Update the navbar section in `internal/pages/templates/app/layout.html`:
 
 ```html
 <ul class="navbar-nav">
