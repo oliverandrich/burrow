@@ -315,6 +315,7 @@ Your app can implement any combination of these interfaces:
 | `HasAdmin` | `AdminRoutes(r chi.Router)` + `AdminNavItems() []NavItem` | Contribute admin panel |
 | `HasStaticFiles` | `StaticFS() (prefix string, fsys fs.FS)` | Contribute static assets |
 | `HasTranslations` | `TranslationFS() fs.FS` | Contribute translation files |
+| `HasJobs` | `RegisterJobs(q Queue)` | Register background job handlers |
 | `HasShutdown` | `Shutdown(ctx context.Context) error` | Clean up on shutdown |
 
 See [Core Interfaces](../reference/interfaces.md) for the full reference.

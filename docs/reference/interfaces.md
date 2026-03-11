@@ -383,6 +383,22 @@ Returns app names that must be registered before this app. `NewServer` automatic
 func (a *App) Dependencies() []string { return []string{"session", "auth"} }
 ```
 
+### HasJobs
+
+```go
+type HasJobs interface {
+    RegisterJobs(q Queue)
+}
+```
+
+Registers background job handlers with the job queue. The queue implementation (e.g., `contrib/jobs`) discovers all `HasJobs` apps during `Configure()` and calls `RegisterJobs` on each one. Use `q.Handle()` to register named handlers:
+
+```go
+func (a *App) RegisterJobs(q burrow.Queue) {
+    q.Handle("notes.cleanup", burrow.JobHandlerFunc(a.handleCleanup))
+}
+```
+
 ### HasShutdown
 
 ```go
