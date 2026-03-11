@@ -30,7 +30,9 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, statusCode int, name
 	}
 
 	// HTMX requests get the fragment only, no layout wrapping.
-	if r.Header.Get("HX-Request") == "true" {
+	// Exception: boosted requests (hx-boost) swap the full body,
+	// so they need the layout applied like normal requests.
+	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Boosted") != "true" {
 		return HTML(w, statusCode, string(content))
 	}
 

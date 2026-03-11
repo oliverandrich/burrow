@@ -96,6 +96,30 @@ func TestRenderTemplateHTMXSkipsLayout(t *testing.T) {
 	assert.False(t, layoutCalled, "layout should not be called for HTMX requests")
 }
 
+func TestRenderTemplateBoostedRequestAppliesLayout(t *testing.T) {
+	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+		return template.HTML("<p>content</p>"), nil
+	})
+	layoutCalled := false
+	layout := LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
+		layoutCalled = true
+		return HTML(w, code, "<html>"+string(content)+"</html>")
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set("HX-Request", "true")
+	req.Header.Set("HX-Boosted", "true")
+	ctx := WithTemplateExecutor(req.Context(), exec)
+	ctx = WithLayout(ctx, layout)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := RenderTemplate(rec, req, http.StatusOK, "page", nil)
+	require.NoError(t, err)
+	assert.True(t, layoutCalled, "layout should be called for boosted requests")
+	assert.Equal(t, "<html><p>content</p></html>", rec.Body.String())
+}
+
 func TestRenderTemplateWithoutLayout(t *testing.T) {
 	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>bare</p>"), nil
