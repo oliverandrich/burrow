@@ -104,6 +104,38 @@ Multiple options can be combined: `form:"required,widget=textarea"`.
 
 **Auto-increment primary keys** are handled automatically: skipped entirely in create forms (the database assigns the value), and rendered as hidden fields in edit forms (preserving the value without allowing modification).
 
+### Dynamic Select Dropdowns (FieldChoices)
+
+For foreign key fields, use `FieldChoices` to render a `<select>` dropdown with options loaded from the database at request time:
+
+```go
+ma := &modeladmin.ModelAdmin[Choice]{
+    // ...
+    FieldChoices: map[string]modeladmin.ChoicesFunc{
+        "QuestionID": func(ctx context.Context) ([]modeladmin.Choice, error) {
+            var questions []Question
+            err := db.NewSelect().Model(&questions).
+                Order("title ASC").Scan(ctx)
+            if err != nil {
+                return nil, err
+            }
+            choices := make([]modeladmin.Choice, len(questions))
+            for i, q := range questions {
+                choices[i] = modeladmin.Choice{
+                    Value: strconv.FormatInt(q.ID, 10),
+                    Label: q.Title,
+                }
+            }
+            return choices, nil
+        },
+    },
+}
+```
+
+The key in the map is the Go struct field name (not the database column). The function is called on every form render, so new records appear automatically. This overrides the field's inferred type to `select`.
+
+Unlike `form:"choices=a|b|c"` which defines static options, `FieldChoices` loads options dynamically — ideal for foreign keys and any field whose options come from the database.
+
 ### Features
 
 - **List view** with configurable columns, ordering, and offset pagination

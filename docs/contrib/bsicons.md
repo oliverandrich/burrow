@@ -89,16 +89,6 @@ Key properties:
 - **`fill="currentColor"`** — inherits text colour (Bootstrap `text-primary`, `text-danger` etc.)
 - **`vertical-align:-.125em`** — aligns with text baseline
 
-## Updating Icons
-
-To update to a new Bootstrap Icons release:
-
-```bash
-just update-icons 1.14.0
-```
-
-This downloads the release, extracts all SVGs, and regenerates the Go source file. See `contrib/bsicons/internal/generate/` for the generator source.
-
 ## Available Icons
 
 All ~2000 Bootstrap Icons are available. Function names are PascalCase versions of the icon names:

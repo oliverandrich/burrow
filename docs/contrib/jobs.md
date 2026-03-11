@@ -96,15 +96,18 @@ Jobs progress through these statuses:
 When a handler returns an error, the job is marked `failed` and scheduled for retry with **exponential backoff**:
 
 ```
-delay = 2^attempts seconds
+delay = base_delay * 2^(attempt-1)
 ```
+
+With the default base delay of 30 seconds:
 
 | Attempt | Delay |
 |---------|-------|
-| 1 | 2s |
-| 2 | 4s |
-| 3 | 8s |
-| 4 | 16s |
+| 1 | 30s |
+| 2 | 1m |
+| 3 | 2m |
+| 4 | 4m |
+| 5 | 8m |
 
 Once a job has exhausted its `MaxRetries` (default: 3), it transitions to `dead` — a terminal status. The last error message is recorded in `LastError`.
 
@@ -132,6 +135,7 @@ The worker pool runs two automatic maintenance tasks every 5 minutes:
 |------|---------|---------|-------------|
 | `--jobs-workers` | `JOBS_WORKERS` | `2` | Number of concurrent worker goroutines |
 | `--jobs-poll-interval` | `JOBS_POLL_INTERVAL` | `1s` | Interval between queue polls |
+| `--jobs-retry-base-delay` | `JOBS_RETRY_BASE_DELAY` | `30s` | Base delay for exponential retry backoff |
 
 ## Graceful Shutdown
 
