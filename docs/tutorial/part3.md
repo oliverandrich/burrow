@@ -2,7 +2,7 @@
 
 In this part you'll add HTML templates, a Bootstrap-styled layout, and views that render question lists and detail pages.
 
-**Source code:** [`tutorial/step03/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step03)
+**Source code:** [`tutorial/step03/`](https://github.com/oliverandrich/burrow/tree/main/tutorial/step03)
 
 ## How Templates Work in Burrow
 

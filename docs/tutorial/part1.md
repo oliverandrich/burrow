@@ -2,7 +2,7 @@
 
 In this first part you'll create a Go module, set up a minimal Burrow server, and serve a "Hello, Polls!" homepage.
 
-**Source code:** [`tutorial/step01/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step01)
+**Source code:** [`tutorial/step01/`](https://github.com/oliverandrich/burrow/tree/main/tutorial/step01)
 
 ## Create the Project
 

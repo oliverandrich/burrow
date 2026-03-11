@@ -2,7 +2,7 @@
 
 In this part you'll add a voting form with CSRF protection, flash messages, and the redirect-after-POST pattern.
 
-**Source code:** [`tutorial/step04/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step04)
+**Source code:** [`tutorial/step04/`](https://github.com/oliverandrich/burrow/tree/main/tutorial/step04)
 
 ## New Contrib Apps
 

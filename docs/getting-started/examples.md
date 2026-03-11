@@ -4,7 +4,7 @@ Burrow ships with two example applications and a step-by-step tutorial. Each one
 
 ## Hello World
 
-**Source:** [`example/hello/`](https://github.com/oliverandrich/burrow/src/branch/main/example/hello)
+**Source:** [`example/hello/`](https://github.com/oliverandrich/burrow/tree/main/example/hello)
 
 A single-file application (~150 lines) that serves a "Hello, World!" page with Bootstrap styling and i18n support. Start here to understand the absolute minimum needed for a burrow app.
 
@@ -23,7 +23,7 @@ go run ./example/hello
 
 ## Notes
 
-**Source:** [`example/notes/`](https://github.com/oliverandrich/burrow/src/branch/main/example/notes)
+**Source:** [`example/notes/`](https://github.com/oliverandrich/burrow/tree/main/example/notes)
 
 A full-featured notes application with authentication, an admin panel, and HTMX-powered interactions. This is the closest thing to a real-world burrow app and demonstrates how multiple contrib apps work together.
 
@@ -44,7 +44,7 @@ go run ./example/notes/cmd/server
 
 ## Tutorial: Polls App
 
-**Source:** [`tutorial/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial) (one directory per step)
+**Source:** [`tutorial/`](https://github.com/oliverandrich/burrow/tree/main/tutorial) (one directory per step)
 
 A guided, seven-part tutorial that builds a survey/voting application from scratch. Each part has its own complete, compilable project in `tutorial/stepNN/`.
 

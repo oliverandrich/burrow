@@ -4,7 +4,7 @@ Burrow is licensed under the **European Union Public Licence v1.2 (EUPL-1.2)**.
 
 The EUPL is a copyleft licence approved by the European Commission. It is compatible with several other open-source licences including GPL v2/v3, AGPL v3, MPL 2, and LGPL v2.1/v3.
 
-For third-party licences (embedded assets and Go module dependencies), see [`THIRD_PARTY_LICENSES.md`](https://github.com/oliverandrich/burrow/src/branch/main/THIRD_PARTY_LICENSES.md) in the repository root.
+For third-party licences (embedded assets and Go module dependencies), see [`THIRD_PARTY_LICENSES.md`](https://github.com/oliverandrich/burrow/tree/main/THIRD_PARTY_LICENSES.md) in the repository root.
 
 ---
 

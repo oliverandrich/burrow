@@ -2,7 +2,7 @@
 
 In this part you'll add an admin panel with automatic CRUD for questions using `ModelAdmin`.
 
-**Source code:** [`tutorial/step06/`](https://github.com/oliverandrich/burrow/src/branch/main/tutorial/step06)
+**Source code:** [`tutorial/step06/`](https://github.com/oliverandrich/burrow/tree/main/tutorial/step06)
 
 ## Add the Admin App
 
