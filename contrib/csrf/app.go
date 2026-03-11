@@ -66,6 +66,9 @@ func (a *App) configure(keyHex string, secure bool) error {
 func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
 	return template.FuncMap{
 		"csrfToken": func() string { return Token(r.Context()) },
+		"csrfField": func() template.HTML {
+			return template.HTML(`<input type="hidden" name="gorilla.csrf.Token" value="` + Token(r.Context()) + `">`) // #nosec G203 -- token is framework-generated
+		},
 	}
 }
 

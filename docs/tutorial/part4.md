@@ -45,7 +45,7 @@ Update `internal/polls/templates/polls/detail.html` to include a form with radio
 <div class="container py-4">
     <h1>{{ .Question.Text }}</h1>
     <form method="post" action="/polls/{{ .Question.ID }}/vote">
-        <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+        {{ csrfField }}
         <div class="list-group mb-3">
             {{ range .Question.Choices -}}
             <label class="list-group-item">
@@ -64,8 +64,7 @@ Update `internal/polls/templates/polls/detail.html` to include a form with radio
 
 Key points:
 
-- **`{{ csrfToken }}`** is a template function provided by the `csrf` app via `HasRequestFuncMap`. It returns the CSRF token for the current request.
-- The token is submitted as a hidden form field named `gorilla.csrf.Token`.
+- **`{{ csrfField }}`** is a template function provided by the `csrf` app via `HasRequestFuncMap`. It renders a hidden input field containing the CSRF token for the current request.
 - Without a valid token, the POST request will be rejected with a 403.
 
 ## Handle the Vote

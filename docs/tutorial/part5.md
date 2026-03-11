@@ -114,7 +114,7 @@ Update the navbar in `internal/pages/templates/app/layout.html`. The user contro
                 </li>
                 <li class="nav-item">
                     <form method="post" action="/auth/logout">
-                        <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+                        {{ csrfField }}
                         <button type="submit" class="btn btn-link nav-link">Sign out</button>
                     </form>
                 </li>

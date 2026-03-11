@@ -1,6 +1,7 @@
 package csrf
 
 import (
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -189,6 +190,28 @@ func TestRequestFuncMap(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.NotEmpty(t, gotToken)
+}
+
+func TestRequestFuncMapCsrfField(t *testing.T) {
+	a := newTestApp(t)
+
+	var gotField template.HTML
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fm := a.RequestFuncMap(r)
+		csrfFieldFunc := fm["csrfField"].(func() template.HTML)
+		gotField = csrfFieldFunc()
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := a.Middleware()[0](inner)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, string(gotField), `<input type="hidden" name="gorilla.csrf.Token"`)
+	assert.Contains(t, string(gotField), `value="`)
 }
 
 func TestSecureDerivedFromBaseURL(t *testing.T) {

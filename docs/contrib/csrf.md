@@ -27,19 +27,42 @@ The CSRF app provides middleware that protects POST/PUT/DELETE/PATCH requests us
 
 ## Using Tokens in Templates
 
-The CSRF app implements `HasRequestFuncMap` and provides a `csrfToken` function available in all templates:
+The CSRF app implements `HasRequestFuncMap` and provides two template functions:
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `{{ csrfToken }}` | `string` | The raw CSRF token value |
+| `{{ csrfField }}` | `template.HTML` | A complete `<input type="hidden">` element |
+
+Use `csrfField` for the common case — it renders the entire hidden input:
 
 ```html
 {{ define "notes/create" -}}
 <form method="POST" action="/notes">
-    <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+    {{ csrfField }}
     <input type="text" name="title" placeholder="Title">
     <button type="submit">Create</button>
 </form>
 {{- end }}
 ```
 
-For AJAX requests, send the token in the `X-CSRF-Token` HTTP header:
+Use `csrfToken` when you need just the token value, e.g. for meta tags or JavaScript.
+
+### htmx
+
+Add `hx-headers` to the `<body>` tag so all htmx requests include the token automatically:
+
+```html
+<body hx-headers='{"X-CSRF-Token": "{{ csrfToken }}"}'>
+```
+
+### fetch / XMLHttpRequest
+
+Include a meta tag in your layout so JavaScript can read the token from the DOM:
+
+```html
+<meta name="csrf-token" content="{{ csrfToken }}">
+```
 
 ```javascript
 fetch("/api/submit", {
@@ -49,12 +72,6 @@ fetch("/api/submit", {
     },
     body: JSON.stringify(data),
 });
-```
-
-Include a meta tag in your layout template:
-
-```html
-<meta name="csrf-token" content="{{ csrfToken }}">
 ```
 
 ## Go API
@@ -95,4 +112,4 @@ token := csrf.Token(r.Context())
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `Configurable` | CLI flag for auth key |
 | `HasMiddleware` | CSRF protection middleware |
-| `HasRequestFuncMap` | Provides `csrfToken` function to templates |
+| `HasRequestFuncMap` | Provides `csrfToken` and `csrfField` functions to templates |

@@ -39,7 +39,8 @@ Provided by the framework itself. Always available.
 
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|
-| `csrfToken` | Request | `<input name="gorilla.csrf.Token" value="{{ csrfToken }}">` | Returns the CSRF token for the current request. |
+| `csrfToken` | Request | `{{ csrfToken }}` | Returns the raw CSRF token string. |
+| `csrfField` | Request | `{{ csrfField }}` | Renders a complete `<input type="hidden">` element with the CSRF token. |
 
 ### auth
 
