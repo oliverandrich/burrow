@@ -53,6 +53,8 @@ The bootstrap app implements `HasTemplates` and contributes these templates:
 
 | Template | Description |
 |----------|-------------|
+| `bootstrap/css` | `<link>` tag for Bootstrap CSS stylesheet |
+| `bootstrap/js` | `<script defer>` tag for Bootstrap JS bundle |
 | `bootstrap/layout` | Base HTML page shell with theme switcher, CSS/JS |
 | `bootstrap/pagination` | Offset-based pagination nav component |
 | `bootstrap/theme_script` | Inline script for dark mode persistence |

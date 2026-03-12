@@ -28,6 +28,15 @@ The `htmx/config` template renders a `<meta>` tag that configures htmx to swap `
 !!! note "Included in the Bootstrap layout"
     If you use the `bootstrap` app, `htmx/config` is already included in the default layout.
 
+## Templates
+
+The htmx app implements `HasTemplates` and contributes these templates:
+
+| Template | Description |
+|----------|-------------|
+| `htmx/js` | `<script defer>` tag for htmx JS |
+| `htmx/config` | `<meta>` tag with htmx response handling config (swaps 422 responses) |
+
 ## Request Detection
 
 Parse htmx-specific request headers with `htmx.Request()`:
@@ -101,5 +110,5 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `HasStaticFiles` | Contributes embedded `htmx.min.js` under `"htmx"` prefix |
-| `HasTemplates` | Contributes `htmx/config` template with response handling config |
+| `HasTemplates` | Contributes `htmx/js` and `htmx/config` templates |
 | `HasDependencies` | Requires `staticfiles` |
