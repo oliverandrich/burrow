@@ -67,6 +67,9 @@ Key points:
 - **`{{ csrfField }}`** is a template function provided by the `csrf` app via `HasRequestFuncMap`. It renders a hidden input field containing the CSRF token for the current request.
 - Without a valid token, the POST request will be rejected with a 403.
 
+!!! tip "For complex forms, use the forms package"
+    This tutorial uses `r.FormValue()` directly because the voting form has a single radio-button field — no model binding or per-field error rendering needed. For forms with multiple fields, validation, and error display, see the [Forms guide](../guide/forms.md).
+
 ## Handle the Vote
 
 All the following changes go into `internal/polls/polls.go`. First, add the `messages` import:
