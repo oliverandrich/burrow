@@ -1029,24 +1029,6 @@ func TestFuncMapIconFunctions(t *testing.T) {
 	assert.Contains(t, string(result), "<svg")
 }
 
-func TestListNotesNoTemplateExecutor(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository(db)
-
-	h := NewHandlers(repo)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
-	// No template executor in context.
-	rec := httptest.NewRecorder()
-
-	err := h.List(rec, req)
-
-	require.Error(t, err)
-	var httpErr *burrow.HTTPError
-	require.ErrorAs(t, err, &httpErr)
-	assert.Equal(t, http.StatusInternalServerError, httpErr.Code)
-}
-
 func TestListNotesHTMXScrollReturnsFragment(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)

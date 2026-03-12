@@ -53,11 +53,6 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
 	}
 
-	exec := burrow.TemplateExecutorFromContext(r.Context())
-	if exec == nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
-	}
-
 	data := map[string]any{
 		"Notes":       notes,
 		"Page":        page,
@@ -65,27 +60,17 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 		"SearchQuery": searchQuery,
 	}
 
+	tmpl := "notes/list_page"
 	if htmx.Request(r).IsHTMX() {
-		tmpl := ""
 		switch {
 		case pr.Cursor != "":
-			// Infinite scroll: return only new cards + next scroll trigger.
 			tmpl = "notes/notes_page"
 		case r.URL.Query().Has("q"):
-			// Search (including empty clear): replace the entire notes grid.
 			tmpl = "notes/notes_list"
-		}
-		if tmpl != "" {
-			content, execErr := exec(r, tmpl, data)
-			if execErr != nil {
-				return execErr
-			}
-			return burrow.Render(w, r, http.StatusOK, content)
 		}
 	}
 
-	// Normal + HTMX nav: RenderTemplate handles layout/fragment automatically.
-	return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list_page", data)
+	return burrow.RenderTemplate(w, r, http.StatusOK, tmpl, data)
 }
 
 // New renders the empty create form.
@@ -136,20 +121,10 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 	// HTMX: prepend new card via OOB + clear the form.
 	if htmx.Request(r).IsHTMX() {
-		exec := burrow.TemplateExecutorFromContext(r.Context())
-		if exec == nil {
-			return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
-		}
-
-		data := map[string]any{
+		return burrow.RenderTemplate(w, r, http.StatusOK, "notes/create_response", map[string]any{
 			"Note":     note,
 			"Messages": messages.Get(r.Context()),
-		}
-		content, err := exec(r, "notes/create_response", data)
-		if err != nil {
-			return err
-		}
-		return burrow.Render(w, r, http.StatusOK, content)
+		})
 	}
 
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
@@ -225,20 +200,10 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 
 	// HTMX: replace existing card via OOB + clear the form.
 	if htmx.Request(r).IsHTMX() {
-		exec := burrow.TemplateExecutorFromContext(r.Context())
-		if exec == nil {
-			return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
-		}
-
-		data := map[string]any{
+		return burrow.RenderTemplate(w, r, http.StatusOK, "notes/update_response", map[string]any{
 			"Note":     updated,
 			"Messages": messages.Get(r.Context()),
-		}
-		content, err := exec(r, "notes/update_response", data)
-		if err != nil {
-			return err
-		}
-		return burrow.Render(w, r, http.StatusOK, content)
+		})
 	}
 
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
@@ -265,18 +230,7 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	exec := burrow.TemplateExecutorFromContext(r.Context())
-	if exec == nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
-	}
-
-	data := map[string]any{
+	return burrow.RenderTemplate(w, r, http.StatusOK, "app/alerts_oob", map[string]any{
 		"Messages": messages.Get(r.Context()),
-	}
-
-	content, execErr := exec(r, "app/alerts_oob", data)
-	if execErr != nil {
-		return execErr
-	}
-	return burrow.Render(w, r, http.StatusOK, content)
+	})
 }
