@@ -36,20 +36,22 @@
     <div class="mb-3">
         <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
         <textarea
-            class="form-control{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            class="form-control{{ if .Errors }} is-invalid{{ end }}"
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             rows="4"
             {{ if .Required }}required{{ end }}
         >{{ printf "%v" .Value }}</textarea>
-        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+        {{- range .Errors }}
+        <div class="invalid-feedback">{{ . }}</div>
+        {{- end }}
     </div>
     {{- else if eq .Type "select" }}
     {{- $currentVal := printf "%v" .Value }}
     <div class="mb-3">
         <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
         <select
-            class="form-select{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            class="form-select{{ if .Errors }} is-invalid{{ end }}"
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             {{ if .Required }}required{{ end }}
@@ -58,45 +60,53 @@
             <option value="{{ .Value }}"{{ if eq $currentVal .Value }} selected{{ end }}>{{ .Label }}</option>
             {{- end }}
         </select>
-        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+        {{- range .Errors }}
+        <div class="invalid-feedback">{{ . }}</div>
+        {{- end }}
     </div>
     {{- else if eq .Type "checkbox" }}
     <div class="mb-3 form-check">
         <input
             type="checkbox"
-            class="form-check-input{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            class="form-check-input{{ if .Errors }} is-invalid{{ end }}"
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             {{ if isTruthy .Value }}checked{{ end }}
         >
         <label class="form-check-label" for="{{ .FormName }}">{{ .Label }}</label>
-        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+        {{- range .Errors }}
+        <div class="invalid-feedback">{{ . }}</div>
+        {{- end }}
     </div>
     {{- else if eq .Type "date" }}
     <div class="mb-3">
         <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
         <input
             type="date"
-            class="form-control{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            class="form-control{{ if .Errors }} is-invalid{{ end }}"
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             value="{{ formatDateValue .Value }}"
             {{ if .Required }}required{{ end }}
         >
-        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+        {{- range .Errors }}
+        <div class="invalid-feedback">{{ . }}</div>
+        {{- end }}
     </div>
     {{- else }}
     <div class="mb-3">
         <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
         <input
             type="{{ if eq .Type "email" }}email{{ else if eq .Type "number" }}number{{ else }}text{{ end }}"
-            class="form-control{{ if hasFieldError $.ValidationErrors .FormName }} is-invalid{{ end }}"
+            class="form-control{{ if .Errors }} is-invalid{{ end }}"
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             value="{{ printf "%v" .Value }}"
             {{ if .Required }}required{{ end }}
         >
-        {{- template "modeladmin/field_errors" dict "Errors" $.ValidationErrors "Field" .FormName }}
+        {{- range .Errors }}
+        <div class="invalid-feedback">{{ . }}</div>
+        {{- end }}
     </div>
     {{- end }}
     {{- end }}
@@ -118,14 +128,4 @@
         {{- end }}
     </div>
 </form>
-{{- end }}
-
-{{ define "modeladmin/field_errors" -}}
-{{- if .Errors }}
-{{- range .Errors.Errors }}
-{{- if eq .Field $.Field }}
-<div class="invalid-feedback">{{ .Message }}</div>
-{{- end }}
-{{- end }}
-{{- end }}
 {{- end }}

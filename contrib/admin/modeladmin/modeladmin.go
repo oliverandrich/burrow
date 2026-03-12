@@ -6,16 +6,18 @@ import (
 	"context"
 	"html/template"
 	"net/http"
+	"reflect"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/forms"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
 // ChoicesFunc returns dynamic choices for a select field, typically loaded from the database.
-type ChoicesFunc func(ctx context.Context) ([]Choice, error)
+type ChoicesFunc func(ctx context.Context) ([]forms.Choice, error)
 
 const defaultPageSize = 25
 
@@ -94,7 +96,7 @@ func (ma *ModelAdmin[T]) pageSize() int {
 type Renderer[T any] interface {
 	List(w http.ResponseWriter, r *http.Request, items []T, page burrow.PageResult, cfg RenderConfig) error
 	Detail(w http.ResponseWriter, r *http.Request, item *T, cfg RenderConfig) error
-	Form(w http.ResponseWriter, r *http.Request, item *T, fields []FormField, errors *burrow.ValidationError, cfg RenderConfig) error
+	Form(w http.ResponseWriter, r *http.Request, item *T, fields []forms.BoundField, cfg RenderConfig) error
 	ConfirmDelete(w http.ResponseWriter, r *http.Request, item *T, cfg RenderConfig) error
 }
 
@@ -189,33 +191,46 @@ func (ma *ModelAdmin[T]) translateRenderConfig(cfg *RenderConfig, r *http.Reques
 	}
 }
 
-// applyFieldChoices loads dynamic choices for fields configured in FieldChoices
-// and sets their type to "select".
-func (ma *ModelAdmin[T]) applyFieldChoices(ctx context.Context, fields []FormField) error {
-	if len(ma.FieldChoices) == 0 {
-		return nil
+// formOptions builds forms.Option[T] from bun tag analysis and FieldChoices.
+// Choices are eagerly resolved from FieldChoices using the given context.
+func (ma *ModelAdmin[T]) formOptions(ctx context.Context) ([]forms.Option[T], error) {
+	var opts []forms.Option[T]
+
+	// Exclude autoincrement PKs.
+	if excluded := bunAutoIncrementPKs[T](); len(excluded) > 0 {
+		opts = append(opts, forms.WithExclude[T](excluded...))
 	}
-	for i := range fields {
-		fn, ok := ma.FieldChoices[fields[i].Name]
-		if !ok {
-			continue
-		}
+
+	// Eagerly resolve FieldChoices to static choices.
+	for field, fn := range ma.FieldChoices {
 		choices, err := fn(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		fields[i].Type = "select"
-		fields[i].Choices = choices
+		opts = append(opts, forms.WithChoices[T](field, choices))
 	}
-	return nil
+
+	return opts, nil
 }
 
-// translateFormFields translates form field labels via i18n.
-func translateFormFields(fields []FormField, r *http.Request) {
-	ctx := r.Context()
-	for i := range fields {
-		fields[i].Label = i18n.T(ctx, fields[i].Label)
+// bunAutoIncrementPKs returns field names tagged with bun:",pk,autoincrement".
+func bunAutoIncrementPKs[T any]() []string {
+	t := reflect.TypeFor[T]()
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
 	}
+	var result []string
+	for i := range t.NumField() {
+		sf := t.Field(i)
+		if !sf.IsExported() || sf.Anonymous {
+			continue
+		}
+		bunTag := sf.Tag.Get("bun")
+		if containsOption(bunTag, "pk") && containsOption(bunTag, "autoincrement") {
+			result = append(result, sf.Name)
+		}
+	}
+	return result
 }
 
 // ColumnValue extracts a display value for a list column from an item.

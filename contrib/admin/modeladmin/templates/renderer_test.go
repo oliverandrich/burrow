@@ -14,11 +14,12 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
 	"github.com/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow/forms"
 )
 
 type testItem struct { //nolint:govet // fieldalignment: test struct
-	ID   int64 `bun:",pk,autoincrement"`
-	Name string
+	ID   int64  `bun:",pk,autoincrement"`
+	Name string `form:"name"`
 }
 
 func TestRenderWithLayout_SkipsLayoutForHTMX(t *testing.T) {
@@ -209,7 +210,7 @@ func TestDefaultRenderer_Detail(t *testing.T) {
 
 func TestDefaultRenderer_Form_Create(t *testing.T) {
 	r := DefaultRenderer[testItem]()
-	fields := modeladmin.AutoFields[testItem](nil)
+	fields := forms.FromModel[testItem](nil, forms.WithExclude[testItem]("ID")).Fields()
 	cfg := modeladmin.RenderConfig{
 		Slug:              "items",
 		DisplayName:       "Item",
@@ -221,7 +222,7 @@ func TestDefaultRenderer_Form_Create(t *testing.T) {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/new", nil)
 	w := httptest.NewRecorder()
 
-	err := r.Form(w, req, nil, fields, nil, cfg)
+	err := r.Form(w, req, nil, fields, cfg)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
 	body := w.Body.String()
@@ -232,7 +233,7 @@ func TestDefaultRenderer_Form_Create(t *testing.T) {
 func TestDefaultRenderer_Form_Edit(t *testing.T) {
 	r := DefaultRenderer[testItem]()
 	item := &testItem{ID: 42, Name: "Existing"}
-	fields := modeladmin.AutoFields(item)
+	fields := forms.FromModel(item, forms.WithExclude[testItem]("ID")).Fields()
 	cfg := modeladmin.RenderConfig{
 		Slug:              "items",
 		DisplayName:       "Item",
@@ -244,7 +245,7 @@ func TestDefaultRenderer_Form_Edit(t *testing.T) {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/42", nil)
 	w := httptest.NewRecorder()
 
-	err := r.Form(w, req, item, fields, nil, cfg)
+	err := r.Form(w, req, item, fields, cfg)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
 	body := w.Body.String()
@@ -254,11 +255,12 @@ func TestDefaultRenderer_Form_Edit(t *testing.T) {
 
 func TestDefaultRenderer_Form_WithValidationErrors(t *testing.T) {
 	r := DefaultRenderer[testItem]()
-	fields := modeladmin.AutoFields[testItem](nil)
-	ve := &burrow.ValidationError{
-		Errors: []burrow.FieldError{
-			{Field: "name", Tag: "required", Message: "name is required"},
-		},
+	fields := forms.FromModel[testItem](nil, forms.WithExclude[testItem]("ID")).Fields()
+	// Manually inject errors for testing the template rendering.
+	for i := range fields {
+		if fields[i].FormName == "name" {
+			fields[i].Errors = []string{"name is required"}
+		}
 	}
 	cfg := modeladmin.RenderConfig{
 		Slug:              "items",
@@ -270,7 +272,7 @@ func TestDefaultRenderer_Form_WithValidationErrors(t *testing.T) {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/new", nil)
 	w := httptest.NewRecorder()
 
-	err := r.Form(w, req, nil, fields, ve, cfg)
+	err := r.Form(w, req, nil, fields, cfg)
 	require.NoError(t, err)
 	body := w.Body.String()
 	assert.Contains(t, body, "is-invalid")
@@ -465,24 +467,4 @@ func TestRenderWithLayout_NoLayout(t *testing.T) {
 	err := renderWithLayout(w, req, "Items", template.HTML("<p>bare</p>"))
 	require.NoError(t, err)
 	assert.Contains(t, w.Body.String(), "<p>bare</p>")
-}
-
-// --- hasFieldError tests ---
-
-func TestHasFieldError(t *testing.T) {
-	t.Run("nil error returns false", func(t *testing.T) {
-		assert.False(t, hasFieldError(nil, "name"))
-	})
-	t.Run("field present", func(t *testing.T) {
-		ve := &burrow.ValidationError{
-			Errors: []burrow.FieldError{{Field: "name", Tag: "required"}},
-		}
-		assert.True(t, hasFieldError(ve, "name"))
-	})
-	t.Run("field absent", func(t *testing.T) {
-		ve := &burrow.ValidationError{
-			Errors: []burrow.FieldError{{Field: "email", Tag: "required"}},
-		}
-		assert.False(t, hasFieldError(ve, "name"))
-	})
 }

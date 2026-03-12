@@ -3,17 +3,7 @@ package templates
 import (
 	"fmt"
 	"time"
-
-	"github.com/oliverandrich/burrow"
 )
-
-// hasFieldError checks if a validation error contains a failure for the named field.
-func hasFieldError(ve *burrow.ValidationError, field string) bool {
-	if ve == nil {
-		return false
-	}
-	return ve.HasField(field)
-}
 
 // isTruthy returns true for bool true, non-zero numbers, and "true"/"on"/"1" strings.
 func isTruthy(v any) bool {

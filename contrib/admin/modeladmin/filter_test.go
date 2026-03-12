@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/oliverandrich/burrow/forms"
 )
 
 func TestBuildActiveFilters_NoFilters(t *testing.T) {
@@ -22,7 +24,7 @@ func TestBuildActiveFilters_SelectFilter(t *testing.T) {
 			Field: "status",
 			Label: "Status",
 			Type:  "select",
-			Choices: []Choice{
+			Choices: []forms.Choice{
 				{Value: "pending", Label: "Pending"},
 				{Value: "done", Label: "Done"},
 			},
@@ -53,7 +55,7 @@ func TestBuildActiveFilters_ActiveFilter(t *testing.T) {
 			Field: "status",
 			Label: "Status",
 			Type:  "select",
-			Choices: []Choice{
+			Choices: []forms.Choice{
 				{Value: "pending", Label: "Pending"},
 				{Value: "done", Label: "Done"},
 			},
@@ -79,7 +81,7 @@ func TestBuildActiveFilters_WithLabelKeys(t *testing.T) {
 			Label:    "Status",
 			LabelKey: "filter-status",
 			Type:     "select",
-			Choices: []Choice{
+			Choices: []forms.Choice{
 				{Value: "pending", Label: "Pending", LabelKey: "filter-pending"},
 				{Value: "done", Label: "Done", LabelKey: "filter-done"},
 			},

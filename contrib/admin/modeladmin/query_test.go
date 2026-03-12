@@ -18,8 +18,8 @@ import (
 type testItem struct { //nolint:govet // fieldalignment: test struct
 	bun.BaseModel `bun:"table:items"`
 	ID            int64  `bun:",pk,autoincrement"`
-	Name          string `bun:",notnull"`
-	Status        string `bun:",notnull,default:'active'"`
+	Name          string `bun:",notnull" form:"name"`
+	Status        string `bun:",notnull,default:'active'" form:"status"`
 }
 
 func setupTestDB(t *testing.T) *bun.DB {

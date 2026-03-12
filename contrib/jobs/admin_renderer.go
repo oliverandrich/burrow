@@ -7,6 +7,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
 	matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
+	"github.com/oliverandrich/burrow/forms"
 )
 
 // newJobsRenderer returns a ModelAdmin renderer for Jobs that delegates
@@ -33,8 +34,8 @@ func (r *jobsRenderer) Detail(w http.ResponseWriter, req *http.Request, item *Jo
 	})
 }
 
-func (r *jobsRenderer) Form(w http.ResponseWriter, req *http.Request, item *Job, fields []modeladmin.FormField, errors *burrow.ValidationError, cfg modeladmin.RenderConfig) error {
-	return r.base.Form(w, req, item, fields, errors, cfg)
+func (r *jobsRenderer) Form(w http.ResponseWriter, req *http.Request, item *Job, fields []forms.BoundField, cfg modeladmin.RenderConfig) error {
+	return r.base.Form(w, req, item, fields, cfg)
 }
 
 func (r *jobsRenderer) ConfirmDelete(_ http.ResponseWriter, _ *http.Request, _ *Job, _ modeladmin.RenderConfig) error {

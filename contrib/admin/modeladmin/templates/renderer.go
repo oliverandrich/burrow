@@ -17,6 +17,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/csrf"
 	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow/forms"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
@@ -39,7 +40,6 @@ func getTemplates() *template.Template {
 
 func funcMap() template.FuncMap {
 	return template.FuncMap{
-		"hasFieldError":   hasFieldError,
 		"isTruthy":        isTruthy,
 		"formatDateValue": formatDateValue,
 		"columnValue":     modeladmin.ColumnValue,
@@ -143,31 +143,20 @@ func (d *defaultRenderer[T]) Detail(w http.ResponseWriter, r *http.Request, item
 	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
 }
 
-func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *T, fields []modeladmin.FormField, errors *burrow.ValidationError, cfg modeladmin.RenderConfig) error {
+func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *T, fields []forms.BoundField, cfg modeladmin.RenderConfig) error {
 	var itemAny any
 	if item != nil {
 		itemAny = any(*item)
 	}
 
-	// Pre-compute FormName for each field for template access.
-	type fieldData struct { //nolint:govet // fieldalignment: embedded struct
-		modeladmin.FormField
-		FormName string
-	}
-	tplFields := make([]fieldData, len(fields))
-	for i, f := range fields {
-		tplFields[i] = fieldData{FormField: f, FormName: f.FormName()}
-	}
-
 	ctx := r.Context()
 	t := func(key string) string { return i18n.T(ctx, key) }
 	data := map[string]any{
-		"Item":             itemAny,
-		"Fields":           tplFields,
-		"ValidationErrors": errors,
-		"Cfg":              cfg,
-		"CSRFToken":        csrf.Token(ctx),
-		"Messages":         messages.Get(ctx),
+		"Item":      itemAny,
+		"Fields":    fields,
+		"Cfg":       cfg,
+		"CSRFToken": csrf.Token(ctx),
+		"Messages":  messages.Get(ctx),
 	}
 	content, err := executeTemplate("modeladmin/form", t, data)
 	if err != nil {

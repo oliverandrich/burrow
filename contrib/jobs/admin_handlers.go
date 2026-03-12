@@ -7,13 +7,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
 	"github.com/oliverandrich/burrow/contrib/htmx"
+
+	"github.com/oliverandrich/burrow/forms"
 )
 
 // statusChoices returns filter choices for all job statuses.
-func statusChoices() []modeladmin.Choice {
-	return []modeladmin.Choice{
+func statusChoices() []forms.Choice {
+	return []forms.Choice{
 		{Value: string(StatusPending), Label: "Pending", LabelKey: "admin-jobs-filter-pending"},
 		{Value: string(StatusRunning), Label: "Running", LabelKey: "admin-jobs-filter-running"},
 		{Value: string(StatusFailed), Label: "Failed", LabelKey: "admin-jobs-filter-failed"},

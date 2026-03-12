@@ -17,6 +17,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
 	matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/oliverandrich/burrow/forms"
 
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/urfave/cli/v3"
@@ -188,8 +189,8 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 }
 
 // roleChoices returns filter choices for the user role field.
-func roleChoices() []modeladmin.Choice {
-	return []modeladmin.Choice{
+func roleChoices() []forms.Choice {
+	return []forms.Choice{
 		{Value: RoleUser, Label: "User", LabelKey: "admin-user-detail-role-user"},
 		{Value: RoleAdmin, Label: "Admin", LabelKey: "admin-user-detail-role-admin"},
 	}

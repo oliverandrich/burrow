@@ -8,16 +8,17 @@ import (
 
 	"github.com/uptrace/bun"
 
+	"github.com/oliverandrich/burrow/forms"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
 // FilterDef describes a filter available in the admin list view.
 type FilterDef struct { //nolint:govet // fieldalignment: readability over optimization
-	Field    string   // database column name
-	Label    string   // human-readable label
-	LabelKey string   // i18n key for the label; translated via i18n.T at request time
-	Type     string   // "select", "bool", "date_range"
-	Choices  []Choice // for select filters
+	Field    string         // database column name
+	Label    string         // human-readable label
+	LabelKey string         // i18n key for the label; translated via i18n.T at request time
+	Type     string         // "select", "bool", "date_range"
+	Choices  []forms.Choice // for select filters
 }
 
 // applyFilters applies filter query parameters to the Bun query.
@@ -77,7 +78,7 @@ func applySort(q *bun.SelectQuery, r *http.Request, allowed []string) *bun.Selec
 }
 
 // isValidChoice checks if a value is in the list of allowed choices.
-func isValidChoice(val string, choices []Choice) bool {
+func isValidChoice(val string, choices []forms.Choice) bool {
 	for _, c := range choices {
 		if c.Value == val {
 			return true

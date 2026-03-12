@@ -14,6 +14,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/oliverandrich/burrow/forms"
+
 	"github.com/oliverandrich/burrow"
 )
 
@@ -141,7 +143,7 @@ func TestFilter_Select(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?status=active", nil)
 	opts := listOpts{
 		filters: []FilterDef{
-			{Field: "status", Type: "select", Choices: []Choice{{Value: "active"}, {Value: "inactive"}}},
+			{Field: "status", Type: "select", Choices: []forms.Choice{{Value: "active"}, {Value: "inactive"}}},
 		},
 		r: req,
 	}
@@ -158,7 +160,7 @@ func TestFilter_SelectInvalidChoice(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?status=invalid", nil)
 	opts := listOpts{
 		filters: []FilterDef{
-			{Field: "status", Type: "select", Choices: []Choice{{Value: "active"}, {Value: "inactive"}}},
+			{Field: "status", Type: "select", Choices: []forms.Choice{{Value: "active"}, {Value: "inactive"}}},
 		},
 		r: req,
 	}

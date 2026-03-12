@@ -8,6 +8,8 @@ import (
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/burrow/forms"
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 // HandleList renders the paginated list view.
@@ -73,12 +75,14 @@ func (ma *ModelAdmin[T]) HandleDetail(w http.ResponseWriter, r *http.Request) er
 	}
 
 	if ma.CanEdit {
-		fields := AutoFields[T](item)
-		if err := ma.applyFieldChoices(r.Context(), fields); err != nil {
+		opts, err := ma.formOptions(r.Context())
+		if err != nil {
 			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
 		}
-		translateFormFields(fields, r)
-		return ma.Renderer.Form(w, r, item, fields, nil, cfg)
+		f := forms.FromModel(item, opts...)
+		fields := f.Fields()
+		translateBoundFields(fields, r)
+		return ma.Renderer.Form(w, r, item, fields, cfg)
 	}
 
 	return ma.Renderer.Detail(w, r, item, cfg)
@@ -93,12 +97,14 @@ func (ma *ModelAdmin[T]) HandleNew(w http.ResponseWriter, r *http.Request) error
 
 	cfg := ma.renderConfig()
 	ma.translateRenderConfig(&cfg, r)
-	fields := AutoFields[T](nil)
-	if err := ma.applyFieldChoices(r.Context(), fields); err != nil {
+	opts, err := ma.formOptions(r.Context())
+	if err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
 	}
-	translateFormFields(fields, r)
-	return ma.Renderer.Form(w, r, nil, fields, nil, cfg)
+	f := forms.FromModel[T](nil, opts...)
+	fields := f.Fields()
+	translateBoundFields(fields, r)
+	return ma.Renderer.Form(w, r, nil, fields, cfg)
 }
 
 // HandleCreate processes the create form submission.
@@ -108,27 +114,20 @@ func (ma *ModelAdmin[T]) HandleCreate(w http.ResponseWriter, r *http.Request) er
 		return burrow.NewHTTPError(http.StatusForbidden, "create not allowed")
 	}
 
-	item := new(T)
-	if err := PopulateFromForm(r, item); err != nil {
-		return burrow.NewHTTPError(http.StatusBadRequest, "invalid form data")
+	opts, err := ma.formOptions(r.Context())
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
+	}
+	f := forms.FromModel[T](nil, opts...)
+	if !f.Bind(r) {
+		vCfg := ma.renderConfig()
+		ma.translateRenderConfig(&vCfg, r)
+		fields := f.Fields()
+		translateBoundFields(fields, r)
+		return ma.Renderer.Form(w, r, f.Instance(), fields, vCfg)
 	}
 
-	if err := burrow.Validate(item); err != nil {
-		var ve *burrow.ValidationError
-		if errors.As(err, &ve) {
-			vCfg := ma.renderConfig()
-			ma.translateRenderConfig(&vCfg, r)
-			fields := AutoFields[T](item)
-			if fcErr := ma.applyFieldChoices(r.Context(), fields); fcErr != nil {
-				return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
-			}
-			translateFormFields(fields, r)
-			return ma.Renderer.Form(w, r, item, fields, ve, vCfg)
-		}
-		return burrow.NewHTTPError(http.StatusBadRequest, "validation failed")
-	}
-
-	if err := createItem(r.Context(), ma.DB, item); err != nil {
+	if err := createItem(r.Context(), ma.DB, f.Instance()); err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to create item")
 	}
 
@@ -149,7 +148,7 @@ func (ma *ModelAdmin[T]) HandleUpdate(w http.ResponseWriter, r *http.Request) er
 		return burrow.NewHTTPError(http.StatusBadRequest, "missing id")
 	}
 
-	// Verify item exists.
+	// Verify item exists and use it as the form base.
 	item, err := getItem[T](r.Context(), ma.DB, id, ma.Relations)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -158,26 +157,20 @@ func (ma *ModelAdmin[T]) HandleUpdate(w http.ResponseWriter, r *http.Request) er
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get item")
 	}
 
-	if err := PopulateFromForm(r, item); err != nil {
-		return burrow.NewHTTPError(http.StatusBadRequest, "invalid form data")
+	opts, err := ma.formOptions(r.Context())
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
+	}
+	f := forms.FromModel(item, opts...)
+	if !f.Bind(r) {
+		vCfg := ma.renderConfig()
+		ma.translateRenderConfig(&vCfg, r)
+		fields := f.Fields()
+		translateBoundFields(fields, r)
+		return ma.Renderer.Form(w, r, f.Instance(), fields, vCfg)
 	}
 
-	if err := burrow.Validate(item); err != nil {
-		var ve *burrow.ValidationError
-		if errors.As(err, &ve) {
-			vCfg := ma.renderConfig()
-			ma.translateRenderConfig(&vCfg, r)
-			fields := AutoFields[T](item)
-			if fcErr := ma.applyFieldChoices(r.Context(), fields); fcErr != nil {
-				return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load field choices")
-			}
-			translateFormFields(fields, r)
-			return ma.Renderer.Form(w, r, item, fields, ve, vCfg)
-		}
-		return burrow.NewHTTPError(http.StatusBadRequest, "validation failed")
-	}
-
-	if err := updateItem(r.Context(), ma.DB, item); err != nil {
+	if err := updateItem(r.Context(), ma.DB, f.Instance()); err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to update item")
 	}
 
@@ -219,4 +212,12 @@ func (ma *ModelAdmin[T]) HandleDelete(w http.ResponseWriter, r *http.Request) er
 	htmx.Redirect(w, "/admin/"+ma.Slug)
 	w.WriteHeader(http.StatusOK)
 	return nil
+}
+
+// translateBoundFields translates field labels via i18n at request time.
+func translateBoundFields(fields []forms.BoundField, r *http.Request) {
+	ctx := r.Context()
+	for i := range fields {
+		fields[i].Label = i18n.T(ctx, fields[i].Label)
+	}
 }

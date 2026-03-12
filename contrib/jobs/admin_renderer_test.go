@@ -51,5 +51,5 @@ func TestJobsRenderer_Form_Delegates(t *testing.T) {
 	r := newJobsRenderer()
 	w := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs/1/edit", nil)
-	_ = r.Form(w, req, &Job{}, nil, nil, modeladmin.RenderConfig{})
+	_ = r.Form(w, req, &Job{}, nil, modeladmin.RenderConfig{})
 }

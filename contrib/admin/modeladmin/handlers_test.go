@@ -19,6 +19,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/forms"
 )
 
 // mockRenderer records calls for testing.
@@ -29,8 +30,7 @@ type mockRenderer struct { //nolint:govet // fieldalignment: test struct
 	confirmDeleteCalled bool
 	lastItems           any
 	lastItem            any
-	lastFields          []FormField
-	lastErrors          *burrow.ValidationError
+	lastFields          []forms.BoundField
 	lastConfig          RenderConfig
 	lastPage            burrow.PageResult
 }
@@ -52,11 +52,10 @@ func (m *mockRenderer) Detail(w http.ResponseWriter, r *http.Request, item *test
 	return nil
 }
 
-func (m *mockRenderer) Form(w http.ResponseWriter, r *http.Request, item *testItem, fields []FormField, errors *burrow.ValidationError, cfg RenderConfig) error {
+func (m *mockRenderer) Form(w http.ResponseWriter, r *http.Request, item *testItem, fields []forms.BoundField, cfg RenderConfig) error {
 	m.formCalled = true
 	m.lastItem = item
 	m.lastFields = fields
-	m.lastErrors = errors
 	m.lastConfig = cfg
 	w.WriteHeader(http.StatusOK)
 	return nil
@@ -408,7 +407,7 @@ func TestPageSize_Negative(t *testing.T) {
 type validatedItem struct { //nolint:govet // fieldalignment: test struct
 	bun.BaseModel `bun:"table:validated_items"`
 	ID            int64  `bun:",pk,autoincrement"`
-	Name          string `bun:",notnull" validate:"required"`
+	Name          string `bun:",notnull" form:"name" validate:"required"`
 }
 
 // mockValidatedRenderer records calls for validatedItem tests.
@@ -418,8 +417,7 @@ type mockValidatedRenderer struct { //nolint:govet // fieldalignment: test struc
 	formCalled          bool
 	confirmDeleteCalled bool
 	lastItem            any
-	lastFields          []FormField
-	lastErrors          *burrow.ValidationError
+	lastFields          []forms.BoundField
 	lastConfig          RenderConfig
 }
 
@@ -438,11 +436,10 @@ func (m *mockValidatedRenderer) Detail(w http.ResponseWriter, _ *http.Request, i
 	return nil
 }
 
-func (m *mockValidatedRenderer) Form(w http.ResponseWriter, _ *http.Request, item *validatedItem, fields []FormField, errors *burrow.ValidationError, cfg RenderConfig) error {
+func (m *mockValidatedRenderer) Form(w http.ResponseWriter, _ *http.Request, item *validatedItem, fields []forms.BoundField, cfg RenderConfig) error {
 	m.formCalled = true
 	m.lastItem = item
 	m.lastFields = fields
-	m.lastErrors = errors
 	m.lastConfig = cfg
 	w.WriteHeader(http.StatusOK)
 	return nil
@@ -499,8 +496,17 @@ func TestHandleCreate_ValidationError(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, renderer.formCalled, "should render form with validation errors")
-	assert.NotNil(t, renderer.lastErrors, "should pass validation errors to renderer")
-	assert.True(t, renderer.lastErrors.HasField("Name"), "should have error on Name field")
+
+	// Errors are now on the BoundField, not passed separately.
+	var nameField *forms.BoundField
+	for i := range renderer.lastFields {
+		if renderer.lastFields[i].Name == "Name" {
+			nameField = &renderer.lastFields[i]
+			break
+		}
+	}
+	require.NotNil(t, nameField, "should have a Name field")
+	assert.NotEmpty(t, nameField.Errors, "should have error on Name field")
 }
 
 func TestHandleUpdate_ValidationError(t *testing.T) {
@@ -524,8 +530,17 @@ func TestHandleUpdate_ValidationError(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, renderer.formCalled, "should render form with validation errors")
-	assert.NotNil(t, renderer.lastErrors, "should pass validation errors to renderer")
-	assert.True(t, renderer.lastErrors.HasField("Name"), "should have error on Name field")
+
+	// Errors are now on the BoundField, not passed separately.
+	var nameField *forms.BoundField
+	for i := range renderer.lastFields {
+		if renderer.lastFields[i].Name == "Name" {
+			nameField = &renderer.lastFields[i]
+			break
+		}
+	}
+	require.NotNil(t, nameField, "should have a Name field")
+	assert.NotEmpty(t, nameField.Errors, "should have error on Name field")
 }
 
 func TestHandleUpdate_NotFound(t *testing.T) {
@@ -544,8 +559,8 @@ func TestHandleUpdate_NotFound(t *testing.T) {
 func TestHandleNew_FieldChoices(t *testing.T) {
 	_, renderer, ma := setupHandlerTest(t)
 	ma.FieldChoices = map[string]ChoicesFunc{
-		"Status": func(_ context.Context) ([]Choice, error) {
-			return []Choice{
+		"Status": func(_ context.Context) ([]forms.Choice, error) {
+			return []forms.Choice{
 				{Value: "active", Label: "Active"},
 				{Value: "inactive", Label: "Inactive"},
 			}, nil
@@ -560,7 +575,7 @@ func TestHandleNew_FieldChoices(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, renderer.formCalled)
 
-	var statusField *FormField
+	var statusField *forms.BoundField
 	for i := range renderer.lastFields {
 		if renderer.lastFields[i].Name == "Status" {
 			statusField = &renderer.lastFields[i]
@@ -576,8 +591,8 @@ func TestHandleNew_FieldChoices(t *testing.T) {
 func TestHandleDetail_FieldChoices(t *testing.T) {
 	db, renderer, ma := setupHandlerTest(t)
 	ma.FieldChoices = map[string]ChoicesFunc{
-		"Status": func(_ context.Context) ([]Choice, error) {
-			return []Choice{
+		"Status": func(_ context.Context) ([]forms.Choice, error) {
+			return []forms.Choice{
 				{Value: "active", Label: "Active"},
 				{Value: "inactive", Label: "Inactive"},
 			}, nil
@@ -596,7 +611,7 @@ func TestHandleDetail_FieldChoices(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, renderer.formCalled)
 
-	var statusField *FormField
+	var statusField *forms.BoundField
 	for i := range renderer.lastFields {
 		if renderer.lastFields[i].Name == "Status" {
 			statusField = &renderer.lastFields[i]
@@ -611,8 +626,8 @@ func TestHandleDetail_FieldChoices(t *testing.T) {
 func TestHandleCreate_FieldChoicesOnValidationError(t *testing.T) {
 	_, renderer, ma := setupValidatedHandlerTest(t)
 	ma.FieldChoices = map[string]ChoicesFunc{
-		"Name": func(_ context.Context) ([]Choice, error) {
-			return []Choice{{Value: "a", Label: "A"}}, nil
+		"Name": func(_ context.Context) ([]forms.Choice, error) {
+			return []forms.Choice{{Value: "a", Label: "A"}}, nil
 		},
 	}
 
@@ -626,7 +641,7 @@ func TestHandleCreate_FieldChoicesOnValidationError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.True(t, renderer.formCalled)
-	var nameField *FormField
+	var nameField *forms.BoundField
 	for i := range renderer.lastFields {
 		if renderer.lastFields[i].Name == "Name" {
 			nameField = &renderer.lastFields[i]
