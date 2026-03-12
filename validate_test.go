@@ -194,6 +194,116 @@ func TestValidationErrorTranslate(t *testing.T) {
 	assert.Equal(t, "Age muss mindestens 18 sein", ve.Errors[1].Message)
 }
 
+func TestFieldErrorMessageNewTags(t *testing.T) {
+	tests := []struct {
+		tag      string
+		validate string
+		value    any
+		wantSub  string // substring that must appear in the message
+	}{
+		{tag: "http_url", validate: "http_url", value: "not-a-url", wantSub: "valid HTTP URL"},
+		{tag: "uri", validate: "uri", value: "://bad", wantSub: "valid URI"},
+		{tag: "alpha", validate: "alpha", value: "abc123", wantSub: "letters only"},
+		{tag: "alphanum", validate: "alphanum", value: "abc!@#", wantSub: "letters and numbers only"},
+		{tag: "alphaunicode", validate: "alphaunicode", value: "abc123", wantSub: "letters only"},
+		{tag: "alphanumunicode", validate: "alphanumunicode", value: "abc!@#", wantSub: "letters and numbers only"},
+		{tag: "numeric", validate: "numeric", value: "abc", wantSub: "valid number"},
+		{tag: "number", validate: "number", value: "abc", wantSub: "valid number"},
+		{tag: "boolean", validate: "boolean", value: "maybe", wantSub: "valid boolean"},
+		{tag: "uuid", validate: "uuid", value: "not-a-uuid", wantSub: "valid UUID"},
+		{tag: "uuid4", validate: "uuid4", value: "not-a-uuid", wantSub: "valid UUID"},
+		{tag: "unique", validate: "unique", value: []string{"a", "a"}, wantSub: "unique values"},
+		{tag: "ip", validate: "ip", value: "not-an-ip", wantSub: "valid IP address"},
+		{tag: "ipv4", validate: "ipv4", value: "not-an-ip", wantSub: "valid IPv4 address"},
+		{tag: "contains", validate: "contains=foo", value: "bar", wantSub: "must contain"},
+		{tag: "startswith", validate: "startswith=foo", value: "bar", wantSub: "must start with"},
+		{tag: "endswith", validate: "endswith=foo", value: "bar", wantSub: "must end with"},
+		{tag: "lowercase", validate: "lowercase", value: "ABC", wantSub: "lowercase"},
+		{tag: "uppercase", validate: "uppercase", value: "abc", wantSub: "uppercase"},
+		{tag: "gt", validate: "gt=5", value: 3, wantSub: "greater than"},
+		{tag: "lt", validate: "lt=5", value: 10, wantSub: "less than"},
+		{tag: "eq", validate: "eq=5", value: 3, wantSub: "equal to"},
+		{tag: "ne", validate: "ne=5", value: 5, wantSub: "must not equal"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.tag, func(t *testing.T) {
+			// Build a dynamic struct with the validate tag.
+			err := structValidator.Var(tt.value, tt.validate)
+			require.Error(t, err)
+
+			ve := toValidationError(err)
+			var valErr *ValidationError
+			require.ErrorAs(t, ve, &valErr)
+			require.Len(t, valErr.Errors, 1)
+
+			msg := valErr.Errors[0].Message
+			assert.Contains(t, msg, tt.wantSub, "tag %q: message %q should contain %q", tt.tag, msg, tt.wantSub)
+			// Must NOT be the generic fallback.
+			assert.NotContains(t, msg, "failed", "tag %q: message %q should not be the generic fallback", tt.tag, msg)
+		})
+	}
+}
+
+func TestFieldErrorMessageOneofTag(t *testing.T) {
+	type oneofForm struct {
+		Color string `validate:"oneof=red green blue"`
+	}
+	err := Validate(oneofForm{Color: "yellow"})
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve)
+	require.Len(t, ve.Errors, 1)
+	assert.Contains(t, ve.Errors[0].Message, "must be one of")
+}
+
+func TestFieldErrorMessageEqfieldTag(t *testing.T) {
+	type passwordForm struct {
+		Password string `validate:"required"`
+		Confirm  string `validate:"required,eqfield=Password"`
+	}
+	err := Validate(passwordForm{Password: "abc", Confirm: "xyz"})
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve)
+	// Find the eqfield error.
+	var found bool
+	for _, fe := range ve.Errors {
+		if fe.Tag == "eqfield" {
+			assert.Contains(t, fe.Message, "must match")
+			found = true
+		}
+	}
+	assert.True(t, found)
+}
+
+func TestFieldErrorMessageNefieldTag(t *testing.T) {
+	type diffForm struct {
+		A string `validate:"required"`
+		B string `validate:"required,nefield=A"`
+	}
+	err := Validate(diffForm{A: "same", B: "same"})
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve)
+	var found bool
+	for _, fe := range ve.Errors {
+		if fe.Tag == "nefield" {
+			assert.Contains(t, fe.Message, "must differ")
+			found = true
+		}
+	}
+	assert.True(t, found)
+}
+
+func TestFieldErrorMessageDatetimeTag(t *testing.T) {
+	type dateForm struct {
+		Date string `validate:"datetime=2006-01-02"`
+	}
+	err := Validate(dateForm{Date: "not-a-date"})
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve)
+	require.Len(t, ve.Errors, 1)
+	assert.Contains(t, ve.Errors[0].Message, "valid date/time")
+}
+
 func TestValidationErrorTranslatePreservesUnknownTags(t *testing.T) {
 	ve := &ValidationError{
 		Errors: []FieldError{

@@ -316,6 +316,51 @@ func TestWithExcludeFromModel(t *testing.T) {
 	assert.Equal(t, "secret", f.Instance().Password)
 }
 
+func TestFieldsAutoTranslatesErrors(t *testing.T) {
+	// Create a mock translate function that simulates i18n.TData.
+	mockTranslate := func(_ context.Context, key string, data map[string]any) string {
+		if key == "validation-required" {
+			return data["Field"].(string) + " ist erforderlich"
+		}
+		if key == "validation-email" {
+			return data["Field"].(string) + " muss eine gültige E-Mail-Adresse sein"
+		}
+		return key
+	}
+
+	f := New(WithTranslateFunc[loginForm](mockTranslate))
+	r := postRequest(url.Values{
+		"email":    {""},
+		"password": {""},
+	})
+
+	f.Bind(r)
+	fields := f.Fields()
+
+	emailField := fields[0]
+	require.NotEmpty(t, emailField.Errors)
+	assert.Equal(t, "email ist erforderlich", emailField.Errors[0])
+
+	passwordField := fields[1]
+	require.NotEmpty(t, passwordField.Errors)
+	assert.Equal(t, "password ist erforderlich", passwordField.Errors[0])
+}
+
+func TestFieldsWithoutTranslateFuncUsesEnglishFallback(t *testing.T) {
+	f := New[loginForm]()
+	r := postRequest(url.Values{
+		"email":    {""},
+		"password": {""},
+	})
+
+	f.Bind(r)
+	fields := f.Fields()
+
+	emailField := fields[0]
+	require.NotEmpty(t, emailField.Errors)
+	assert.Equal(t, "email is required", emailField.Errors[0])
+}
+
 // postRequest creates a form POST request for testing.
 func postRequest(values url.Values) *http.Request {
 	body := values.Encode()

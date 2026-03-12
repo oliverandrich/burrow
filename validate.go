@@ -120,25 +120,55 @@ func toValidationError(err error) error {
 	return &ValidationError{Errors: fields}
 }
 
+// fieldOnlyMessages maps tags to format strings with only the field name placeholder.
+var fieldOnlyMessages = map[string]string{
+	"required":        "%s is required",
+	"email":           "%s must be a valid email address",
+	"url":             "%s must be a valid URL",
+	"http_url":        "%s must be a valid HTTP URL",
+	"uri":             "%s must be a valid URI",
+	"alpha":           "%s must contain letters only",
+	"alphaunicode":    "%s must contain letters only",
+	"alphanum":        "%s must contain letters and numbers only",
+	"alphanumunicode": "%s must contain letters and numbers only",
+	"numeric":         "%s must be a valid number",
+	"number":          "%s must be a valid number",
+	"boolean":         "%s must be a valid boolean",
+	"uuid":            "%s must be a valid UUID",
+	"uuid4":           "%s must be a valid UUID",
+	"unique":          "%s must contain unique values",
+	"datetime":        "%s must be a valid date/time",
+	"ip":              "%s must be a valid IP address",
+	"ipv4":            "%s must be a valid IPv4 address",
+	"lowercase":       "%s must be lowercase",
+	"uppercase":       "%s must be uppercase",
+}
+
+// fieldParamMessages maps tags to format strings with field and param placeholders.
+var fieldParamMessages = map[string]string{
+	"min":        "%s must be at least %s",
+	"max":        "%s must be at most %s",
+	"gte":        "%s must be greater than or equal to %s",
+	"lte":        "%s must be less than or equal to %s",
+	"len":        "%s must be exactly %s characters",
+	"oneof":      "%s must be one of %s",
+	"contains":   "%s must contain %s",
+	"startswith": "%s must start with %s",
+	"endswith":   "%s must end with %s",
+	"gt":         "%s must be greater than %s",
+	"lt":         "%s must be less than %s",
+	"eq":         "%s must be equal to %s",
+	"ne":         "%s must not equal %s",
+	"eqfield":    "%s must match %s",
+	"nefield":    "%s must differ from %s",
+}
+
 func fieldErrorMessage(fe validator.FieldError) string {
-	switch fe.Tag() {
-	case "required":
-		return fmt.Sprintf("%s is required", fe.Field())
-	case "email":
-		return fmt.Sprintf("%s must be a valid email address", fe.Field())
-	case "min":
-		return fmt.Sprintf("%s must be at least %s", fe.Field(), fe.Param())
-	case "max":
-		return fmt.Sprintf("%s must be at most %s", fe.Field(), fe.Param())
-	case "gte":
-		return fmt.Sprintf("%s must be greater than or equal to %s", fe.Field(), fe.Param())
-	case "lte":
-		return fmt.Sprintf("%s must be less than or equal to %s", fe.Field(), fe.Param())
-	case "len":
-		return fmt.Sprintf("%s must be exactly %s characters", fe.Field(), fe.Param())
-	case "url":
-		return fmt.Sprintf("%s must be a valid URL", fe.Field())
-	default:
-		return fmt.Sprintf("%s failed %s validation", fe.Field(), fe.Tag())
+	if msg, ok := fieldOnlyMessages[fe.Tag()]; ok {
+		return fmt.Sprintf(msg, fe.Field())
 	}
+	if msg, ok := fieldParamMessages[fe.Tag()]; ok {
+		return fmt.Sprintf(msg, fe.Field(), fe.Param())
+	}
+	return fmt.Sprintf("%s failed %s validation", fe.Field(), fe.Tag())
 }

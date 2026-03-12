@@ -2,12 +2,17 @@ package forms
 
 import "context"
 
+// TranslateFunc translates a message key with template data for a given context.
+// Compatible with i18n.TData.
+type TranslateFunc func(context.Context, string, map[string]any) string
+
 // formConfig holds configuration for a Form, populated by Option functions.
 type formConfig[T any] struct {
-	initial   map[string]any
-	choices   map[string][]Choice
-	choiceFns map[string]func(context.Context) ([]Choice, error)
-	exclude   map[string]struct{}
+	initial     map[string]any
+	choices     map[string][]Choice
+	choiceFns   map[string]func(context.Context) ([]Choice, error)
+	exclude     map[string]struct{}
+	translateFn TranslateFunc
 }
 
 // Option configures a Form during construction.
@@ -37,6 +42,14 @@ func WithChoicesFunc[T any](field string, fn func(context.Context) ([]Choice, er
 			cfg.choiceFns = make(map[string]func(context.Context) ([]Choice, error))
 		}
 		cfg.choiceFns[field] = fn
+	}
+}
+
+// WithTranslateFunc sets a translation function for validation error messages.
+// Pass i18n.TData to auto-translate errors using the request's locale.
+func WithTranslateFunc[T any](fn TranslateFunc) Option[T] {
+	return func(cfg *formConfig[T]) {
+		cfg.translateFn = fn
 	}
 }
 

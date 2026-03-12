@@ -1,6 +1,7 @@
 package forms
 
 import (
+	"context"
 	"errors"
 	"maps"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 type Form[T any] struct { //nolint:govet // fieldalignment: readability over optimization
 	instance *T
 	config   formConfig[T]
+	ctx      context.Context
 	errs     *burrow.ValidationError
 	nonField []string
 	bound    bool
@@ -54,6 +56,7 @@ func FromModel[T any](instance *T, opts ...Option[T]) *Form[T] {
 // and runs any Cleanable.Clean method. Returns true if the form is valid.
 func (f *Form[T]) Bind(r *http.Request) bool {
 	f.bound = true
+	f.ctx = r.Context()
 	f.errs = nil
 	f.nonField = nil
 
@@ -112,8 +115,9 @@ func (f *Form[T]) NonFieldErrors() []string {
 }
 
 // Fields returns all visible BoundFields in struct field order.
+// If a TranslateFunc was configured, validation errors are auto-translated.
 func (f *Form[T]) Fields() []BoundField {
-	return extractFields(f.instance, f.errs, f.choices, f.config.exclude)
+	return extractFields(f.ctx, f.config.translateFn, f.instance, f.errs, f.choices, f.config.exclude)
 }
 
 // Field returns a single BoundField by Go struct field name.
