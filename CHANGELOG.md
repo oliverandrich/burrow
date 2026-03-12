@@ -6,7 +6,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Breaking Changes
 
-- **`LayoutFunc` removed**: The `LayoutFunc` type and `SetLayout(fn LayoutFunc)` are gone. Layouts are now template name strings: call `srv.SetLayout("myapp/layout")` with a template name, and `RenderTemplate` wraps content automatically. Layout templates receive the rendered fragment as `.Content` and access dynamic data (navigation, user, etc.) via template functions instead of Go code passing data maps. See the [Layouts & Rendering guide](docs/guide/layouts.md).
+- **`LayoutFunc` removed**: The `LayoutFunc` type and `SetLayout(fn LayoutFunc)` are gone. Layouts are now template name strings: call `srv.SetLayout("myapp/layout")` with a template name, and `RenderTemplate` wraps content automatically. Layout templates receive the rendered fragment as `.Content` and access dynamic data (navigation, user, etc.) via template functions instead of Go code passing data maps. See the [Layouts & Rendering guide](guide/layouts.md).
 - **ModelAdmin migrated to `forms` package**: `Renderer[T].Form()` now takes `[]forms.BoundField` instead of `[]FormField` and `*ValidationError` (errors are on each `BoundField`). `FormField`, `Choice`, `AutoFields`, `PopulateFromForm` removed from modeladmin — use `forms.FromModel`, `forms.BoundField`, `forms.Choice` instead. `ChoicesFunc` and `FilterDef.Choices` now use `forms.Choice`.
 
 ### Added
