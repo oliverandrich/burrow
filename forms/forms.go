@@ -115,9 +115,9 @@ func (f *Form[T]) NonFieldErrors() []string {
 }
 
 // Fields returns all visible BoundFields in struct field order.
-// If a TranslateFunc was configured, validation errors are auto-translated.
+// Validation errors are auto-translated via i18n.TData.
 func (f *Form[T]) Fields() []BoundField {
-	return extractFields(f.ctx, f.config.translateFn, f.instance, f.errs, f.choices, f.config.exclude)
+	return extractFields(f.ctx, f.instance, f.errs, f.choices, f.config.exclude)
 }
 
 // Field returns a single BoundField by Go struct field name.

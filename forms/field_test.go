@@ -27,7 +27,7 @@ func TestExtractFieldsBasic(t *testing.T) {
 		Views:   42,
 	}
 
-	fields := extractFields(noCtx, nil, instance, nil, nil, nil)
+	fields := extractFields(noCtx, instance, nil, nil, nil)
 
 	require.Len(t, fields, 4) // Hidden is skipped
 
@@ -63,7 +63,7 @@ func TestExtractFieldsWithErrors(t *testing.T) {
 		},
 	}
 
-	fields := extractFields(noCtx, nil, instance, ve, nil, nil)
+	fields := extractFields(noCtx, instance, ve, nil, nil)
 
 	require.Len(t, fields, 4)
 	assert.Equal(t, []string{"title is required", "title must be at least 3"}, fields[0].Errors)
@@ -79,7 +79,7 @@ func TestExtractFieldsWithDynamicChoices(t *testing.T) {
 		},
 	}
 
-	fields := extractFields(noCtx, nil, instance, nil, choices, nil)
+	fields := extractFields(noCtx, instance, nil, choices, nil)
 
 	// Views should be overridden to select with dynamic choices.
 	viewsField := fields[3]
@@ -99,7 +99,7 @@ type formWithEmbedded struct {
 
 func TestExtractFieldsSkipsEmbedded(t *testing.T) {
 	instance := &formWithEmbedded{Name: "test"}
-	fields := extractFields(noCtx, nil, instance, nil, nil, nil)
+	fields := extractFields(noCtx, instance, nil, nil, nil)
 	require.Len(t, fields, 1)
 	assert.Equal(t, "Name", fields[0].Name)
 }
@@ -111,7 +111,7 @@ type formWithUnexported struct {
 
 func TestExtractFieldsSkipsUnexported(t *testing.T) {
 	instance := &formWithUnexported{Name: "test"}
-	fields := extractFields(noCtx, nil, instance, nil, nil, nil)
+	fields := extractFields(noCtx, instance, nil, nil, nil)
 	require.Len(t, fields, 1)
 	assert.Equal(t, "Name", fields[0].Name)
 }
@@ -125,7 +125,7 @@ func TestExtractFieldsWithExclude(t *testing.T) {
 	}
 
 	exclude := map[string]struct{}{"Title": {}, "Views": {}}
-	fields := extractFields(noCtx, nil, instance, nil, nil, exclude)
+	fields := extractFields(noCtx, instance, nil, nil, exclude)
 
 	require.Len(t, fields, 2) // Only Content and Status remain
 	assert.Equal(t, "Content", fields[0].Name)
@@ -138,7 +138,7 @@ func TestExtractFieldsWithNilExclude(t *testing.T) {
 	}
 
 	// nil exclude should return all fields (same as before).
-	fields := extractFields(noCtx, nil, instance, nil, nil, nil)
+	fields := extractFields(noCtx, instance, nil, nil, nil)
 	require.Len(t, fields, 4)
 }
 

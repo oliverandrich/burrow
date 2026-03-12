@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 // BoundField provides field metadata for template rendering.
@@ -30,10 +31,10 @@ type Choice struct {
 // extractFields builds a slice of BoundField from a struct instance,
 // merging validation errors and dynamic choices. Fields in the exclude set
 // (keyed by Go struct field name) are omitted.
-func extractFields[T any](ctx context.Context, translateFn TranslateFunc, instance *T, validationErr *burrow.ValidationError, choices map[string][]Choice, exclude map[string]struct{}) []BoundField {
-	// Auto-translate validation errors if a translate function is configured.
-	if validationErr != nil && translateFn != nil && ctx != nil {
-		validationErr.Translate(ctx, translateFn)
+func extractFields[T any](ctx context.Context, instance *T, validationErr *burrow.ValidationError, choices map[string][]Choice, exclude map[string]struct{}) []BoundField {
+	// Auto-translate validation errors using i18n.TData.
+	if validationErr != nil && ctx != nil {
+		validationErr.Translate(ctx, i18n.TData)
 	}
 
 	v := reflect.ValueOf(instance).Elem()
