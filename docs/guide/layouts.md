@@ -178,10 +178,10 @@ The corresponding template file (`bootstrap/layout`):
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ .Title }}</title>
-    <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
+    {{ template "bootstrap/css" . }}
     {{ template "bootstrap/theme_script" . }}
-    <script defer src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
-    <script defer src="{{ staticURL "htmx/htmx.min.js" }}"></script>
+    {{ template "bootstrap/js" . }}
+    {{ template "htmx/js" . }}
 </head>
 <body>
     <main class="container py-4">

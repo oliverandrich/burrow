@@ -19,7 +19,7 @@ srv := burrow.NewServer(
 The htmx app embeds `htmx.min.js` and serves it via the `staticfiles` app under the `"htmx"` prefix. It also provides a `htmx/config` template with sensible defaults. Include both in your layout template:
 
 ```html
-<script src="{{ staticURL "htmx/htmx.min.js" }}" defer></script>
+{{ template "htmx/js" . }}
 {{ template "htmx/config" . }}
 ```
 

@@ -32,6 +32,21 @@ func TestDependencies(t *testing.T) {
 	assert.Equal(t, []string{"staticfiles"}, app.Dependencies())
 }
 
+func TestTemplateFSContainsExpectedFiles(t *testing.T) {
+	app := New()
+	fsys := app.TemplateFS()
+	require.NotNil(t, fsys)
+
+	for _, name := range []string{
+		"config.html",
+		"js.html",
+	} {
+		f, err := fsys.Open(name)
+		require.NoError(t, err, "expected %s to exist in template FS", name)
+		_ = f.Close()
+	}
+}
+
 func TestStaticFS(t *testing.T) {
 	app := New()
 	prefix, fsys := app.StaticFS()

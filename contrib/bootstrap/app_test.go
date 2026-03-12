@@ -69,6 +69,8 @@ func TestTemplateFS(t *testing.T) {
 		"theme_script.html",
 		"theme_switcher.html",
 		"pagination.html",
+		"css.html",
+		"js.html",
 	} {
 		f, err := fsys.Open(name)
 		require.NoError(t, err, "expected %s to exist in template FS", name)

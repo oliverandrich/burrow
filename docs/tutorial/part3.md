@@ -271,7 +271,8 @@ Create `internal/pages/templates/app/layout.html`:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ if .Title }}{{ .Title }} — {{ end }}Polls</title>
-    <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
+    {{ template "bootstrap/css" . }}
+    {{ template "bootstrap/js" . }}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg bg-body-tertiary mb-4">
@@ -291,13 +292,12 @@ Create `internal/pages/templates/app/layout.html`:
     <main class="container">
         {{ .Content }}
     </main>
-    <script src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
 </body>
 </html>
 {{- end }}
 ```
 
-The `{{ staticURL }}` function is provided by the `staticfiles` contrib app — it resolves filenames to content-hashed URLs for cache busting.
+The `{{ template "bootstrap/css" }}` and `{{ template "bootstrap/js" }}` calls include the Bootstrap stylesheet and JavaScript bundle. These are reusable templates provided by the `bootstrap` contrib app — internally they use `staticURL` to generate content-hashed URLs for cache busting.
 
 ### The Homepage Template
 

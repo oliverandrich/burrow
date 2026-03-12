@@ -58,7 +58,7 @@ An auth layout is simply a template name string referring to a template in the g
 <head>
     <meta charset="utf-8">
     <title>{{ .Title }}</title>
-    <link rel="stylesheet" href="{{ staticURL "bootstrap/bootstrap.min.css" }}">
+    {{ template "bootstrap/css" . }}
 </head>
 <body class="d-flex align-items-center min-vh-100">
     <div class="container" style="max-width: 480px;">

@@ -15,10 +15,10 @@ In `internal/pages/templates/app/layout.html`, add the htmx script before the cl
 ```
 
 ```html
-    <script src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
-    <script src="{{ staticURL "htmx/htmx.min.js" }}"></script>
-</body>
+    {{ template "htmx/js" . }}
 ```
+
+Add it in the `<head>` alongside the existing `bootstrap/css` and `bootstrap/js` templates.
 
 This makes all links and forms use HTMX automatically — navigating via AJAX and swapping just the `<body>` content. Burrow's `RenderTemplate()` detects the `HX-Request` header and returns only the fragment (no layout wrapping), making this work seamlessly.
 
