@@ -115,7 +115,12 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 	f := forms.New[Note](noteFormOpts()...)
 	if !f.Bind(r) {
-		return h.renderFormError(w, r, f.Fields(), f.NonFieldErrors(), "notes-new-title", "/notes")
+		return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "notes/form", map[string]any{
+			"Fields":         f.Fields(),
+			"NonFieldErrors": f.NonFieldErrors(),
+			"TitleKey":       "notes-new-title",
+			"Action":         "/notes",
+		})
 	}
 
 	note := f.Instance()
@@ -198,7 +203,12 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 
 	f := forms.FromModel(note, noteFormOpts()...)
 	if !f.Bind(r) {
-		return h.renderFormError(w, r, f.Fields(), f.NonFieldErrors(), "notes-edit-title", action)
+		return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "notes/form", map[string]any{
+			"Fields":         f.Fields(),
+			"NonFieldErrors": f.NonFieldErrors(),
+			"TitleKey":       "notes-edit-title",
+			"Action":         action,
+		})
 	}
 
 	updated := f.Instance()
@@ -269,30 +279,4 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 		return execErr
 	}
 	return burrow.Render(w, r, http.StatusOK, content)
-}
-
-// renderFormError re-renders the form with validation errors.
-// HTMX requests get a 200 fragment (so HTMX swaps it into #note-form).
-// Non-HTMX requests get a 422 page wrapped in the layout.
-func (h *Handlers) renderFormError(w http.ResponseWriter, r *http.Request, fields []forms.BoundField, nonFieldErrors []string, titleKey, action string) error {
-	data := map[string]any{
-		"Fields":         fields,
-		"NonFieldErrors": nonFieldErrors,
-		"TitleKey":       titleKey,
-		"Action":         action,
-	}
-
-	if htmx.Request(r).IsHTMX() {
-		exec := burrow.TemplateExecutorFromContext(r.Context())
-		if exec == nil {
-			return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
-		}
-		content, err := exec(r, "notes/form", data)
-		if err != nil {
-			return err
-		}
-		return burrow.Render(w, r, http.StatusOK, content)
-	}
-
-	return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "notes/form", data)
 }

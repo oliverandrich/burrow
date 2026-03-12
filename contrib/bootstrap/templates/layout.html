@@ -9,6 +9,7 @@
     {{ template "bootstrap/theme_script" . }}
     <script defer src="{{ staticURL "bootstrap/bootstrap.bundle.min.js" }}"></script>
     <script defer src="{{ staticURL "htmx/htmx.min.js" }}"></script>
+    {{ template "htmx/config" . }}
 </head>
 <body>
     <main class="container py-4">

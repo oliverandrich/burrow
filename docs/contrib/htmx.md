@@ -16,11 +16,17 @@ srv := burrow.NewServer(
 )
 ```
 
-The htmx app embeds `htmx.min.js` and serves it via the `staticfiles` app under the `"htmx"` prefix. Include it in your layout template:
+The htmx app embeds `htmx.min.js` and serves it via the `staticfiles` app under the `"htmx"` prefix. It also provides a `htmx/config` template with sensible defaults. Include both in your layout template:
 
 ```html
 <script src="{{ staticURL "htmx/htmx.min.js" }}" defer></script>
+{{ template "htmx/config" . }}
 ```
+
+The `htmx/config` template renders a `<meta>` tag that configures htmx to swap `422 Unprocessable Entity` responses. This is the correct HTTP status for form validation errors, and allows handlers to return 422 consistently for both htmx and non-htmx requests.
+
+!!! note "Included in the Bootstrap layout"
+    If you use the `bootstrap` app, `htmx/config` is already included in the default layout.
 
 ## Request Detection
 
@@ -95,4 +101,5 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
 | `HasStaticFiles` | Contributes embedded `htmx.min.js` under `"htmx"` prefix |
+| `HasTemplates` | Contributes `htmx/config` template with response handling config |
 | `HasDependencies` | Requires `staticfiles` |

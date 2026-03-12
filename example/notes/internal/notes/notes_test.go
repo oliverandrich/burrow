@@ -511,8 +511,8 @@ func TestCreateNoteValidationErrorHTMX(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
-	// HTMX gets 200 so the response is swapped into #note-form.
-	assert.Equal(t, http.StatusOK, rec.Code)
+	// HTMX gets 422 — htmx/config enables swapping on 422.
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "notes-new-title")
 	assert.Contains(t, body, `action="/notes"`)
@@ -773,8 +773,8 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
-	// HTMX gets 200 so the response is swapped.
-	assert.Equal(t, http.StatusOK, rec.Code)
+	// HTMX gets 422 — htmx/config enables swapping on 422.
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "notes-edit-title")
 	assert.Contains(t, body, "is-invalid")

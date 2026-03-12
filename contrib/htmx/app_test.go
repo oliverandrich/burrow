@@ -12,6 +12,7 @@ import (
 var (
 	_ burrow.App             = (*App)(nil)
 	_ burrow.HasStaticFiles  = (*App)(nil)
+	_ burrow.HasTemplates    = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
 )
 

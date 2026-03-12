@@ -12,6 +12,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **`forms` package** — generic, type-safe form handling with `Form[T]`, `BoundField`, `Choice`, struct tag-driven field extraction (`form`, `verbose_name`, `widget`, `choices`, `help_text`, `validate`), request binding via `burrow.Bind`, cross-field validation via `Cleanable` interface, and dynamic choices via `ChoiceProvider`/`WithChoicesFunc`
 - `forms.WithExclude` option — excludes fields by Go struct field name from form rendering
+- **`contrib/htmx` config template** — `htmx/config` template configures htmx to swap `422 Unprocessable Entity` responses, enabling consistent status codes for form validation errors across htmx and non-htmx requests
 
 ## 0.3.0 — 2026-03-11
 
