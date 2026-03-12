@@ -2,6 +2,17 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Breaking Changes
+
+- **ModelAdmin migrated to `forms` package**: `Renderer[T].Form()` now takes `[]forms.BoundField` instead of `[]FormField` and `*ValidationError` (errors are on each `BoundField`). `FormField`, `Choice`, `AutoFields`, `PopulateFromForm` removed from modeladmin — use `forms.FromModel`, `forms.BoundField`, `forms.Choice` instead. `ChoicesFunc` and `FilterDef.Choices` now use `forms.Choice`.
+
+### Added
+
+- **`forms` package** — generic, type-safe form handling with `Form[T]`, `BoundField`, `Choice`, struct tag-driven field extraction (`form`, `verbose_name`, `widget`, `choices`, `help_text`, `validate`), request binding via `burrow.Bind`, cross-field validation via `Cleanable` interface, and dynamic choices via `ChoiceProvider`/`WithChoicesFunc`
+- `forms.WithExclude` option — excludes fields by Go struct field name from form rendering
+
 ## 0.3.0 — 2026-03-11
 
 ### Breaking Changes
