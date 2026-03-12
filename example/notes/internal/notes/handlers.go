@@ -9,7 +9,16 @@ import (
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow/forms"
+	"github.com/oliverandrich/burrow/i18n"
 )
+
+// noteFormOpts returns the common form options for the Note form.
+func noteFormOpts() []forms.Option[Note] {
+	return []forms.Option[Note]{
+		forms.WithExclude[Note]("ID", "UserID", "CreatedAt", "DeletedAt"),
+	}
+}
 
 // Handlers holds the notes HTTP handlers.
 type Handlers struct {
@@ -79,6 +88,24 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list_page", data)
 }
 
+// New renders the empty create form.
+// HTMX: returns the form fragment for inline insertion.
+// Non-HTMX: returns the form wrapped in the layout.
+func (h *Handlers) New(w http.ResponseWriter, r *http.Request) error {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+	}
+
+	f := forms.New[Note](noteFormOpts()...)
+	data := map[string]any{
+		"Fields":   f.Fields(),
+		"TitleKey": "notes-new-title",
+		"Action":   "/notes",
+	}
+	return burrow.RenderTemplate(w, r, http.StatusOK, "notes/form", data)
+}
+
 // Create adds a new note for the authenticated user.
 func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 	user := auth.UserFromContext(r.Context())
@@ -86,26 +113,23 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}
 
-	title := r.FormValue("title") //nolint:gosec // G120: body size limited by server-level RequestSize middleware
-	if title == "" {
-		return burrow.NewHTTPError(http.StatusBadRequest, "title is required")
+	f := forms.New[Note](noteFormOpts()...)
+	if !f.Bind(r) {
+		return h.renderFormError(w, r, f.Fields(), f.NonFieldErrors(), "notes-new-title", "/notes")
 	}
 
-	note := &Note{
-		UserID:  user.ID,
-		Title:   title,
-		Content: r.FormValue("content"), //nolint:gosec // G120: body size limited by server-level RequestSize middleware
-	}
+	note := f.Instance()
+	note.UserID = user.ID
 
 	if err := h.repo.Create(r.Context(), note); err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to create note")
 	}
 
-	if err := messages.AddSuccess(w, r, "Note created."); err != nil {
+	if err := messages.AddSuccess(w, r, i18n.T(r.Context(), "notes-created")); err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	// HTMX: return only the new card (prepended via hx-swap="afterbegin") with OOB alerts.
+	// HTMX: prepend new card via OOB + clear the form.
 	if htmx.Request(r).IsHTMX() {
 		exec := burrow.TemplateExecutorFromContext(r.Context())
 		if exec == nil {
@@ -116,8 +140,91 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 			"Note":     note,
 			"Messages": messages.Get(r.Context()),
 		}
-
 		content, err := exec(r, "notes/create_response", data)
+		if err != nil {
+			return err
+		}
+		return burrow.Render(w, r, http.StatusOK, content)
+	}
+
+	http.Redirect(w, r, "/notes", http.StatusSeeOther)
+	return nil
+}
+
+// Edit renders the edit form pre-filled with an existing note.
+func (h *Handlers) Edit(w http.ResponseWriter, r *http.Request) error {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+	}
+
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusBadRequest, "invalid note id")
+	}
+
+	note, err := h.repo.GetByID(r.Context(), id, user.ID)
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusNotFound, "note not found")
+	}
+
+	f := forms.FromModel(note, noteFormOpts()...)
+	data := map[string]any{
+		"Fields":   f.Fields(),
+		"TitleKey": "notes-edit-title",
+		"Action":   "/notes/" + strconv.FormatInt(note.ID, 10),
+	}
+	return burrow.RenderTemplate(w, r, http.StatusOK, "notes/form", data)
+}
+
+// Update binds, validates, and updates an existing note.
+func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+	}
+
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusBadRequest, "invalid note id")
+	}
+
+	note, err := h.repo.GetByID(r.Context(), id, user.ID)
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusNotFound, "note not found")
+	}
+
+	action := "/notes/" + strconv.FormatInt(note.ID, 10)
+
+	f := forms.FromModel(note, noteFormOpts()...)
+	if !f.Bind(r) {
+		return h.renderFormError(w, r, f.Fields(), f.NonFieldErrors(), "notes-edit-title", action)
+	}
+
+	updated := f.Instance()
+	updated.ID = note.ID
+	updated.UserID = note.UserID
+
+	if err := h.repo.Update(r.Context(), updated); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to update note")
+	}
+
+	if err := messages.AddSuccess(w, r, i18n.T(r.Context(), "notes-updated")); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
+	}
+
+	// HTMX: replace existing card via OOB + clear the form.
+	if htmx.Request(r).IsHTMX() {
+		exec := burrow.TemplateExecutorFromContext(r.Context())
+		if exec == nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
+		}
+
+		data := map[string]any{
+			"Note":     updated,
+			"Messages": messages.Get(r.Context()),
+		}
+		content, err := exec(r, "notes/update_response", data)
 		if err != nil {
 			return err
 		}
@@ -144,7 +251,7 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete note")
 	}
 
-	if err := messages.AddSuccess(w, r, "Note deleted."); err != nil {
+	if err := messages.AddSuccess(w, r, i18n.T(r.Context(), "notes-deleted")); err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
@@ -162,4 +269,30 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 		return execErr
 	}
 	return burrow.Render(w, r, http.StatusOK, content)
+}
+
+// renderFormError re-renders the form with validation errors.
+// HTMX requests get a 200 fragment (so HTMX swaps it into #note-form).
+// Non-HTMX requests get a 422 page wrapped in the layout.
+func (h *Handlers) renderFormError(w http.ResponseWriter, r *http.Request, fields []forms.BoundField, nonFieldErrors []string, titleKey, action string) error {
+	data := map[string]any{
+		"Fields":         fields,
+		"NonFieldErrors": nonFieldErrors,
+		"TitleKey":       titleKey,
+		"Action":         action,
+	}
+
+	if htmx.Request(r).IsHTMX() {
+		exec := burrow.TemplateExecutorFromContext(r.Context())
+		if exec == nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "no template executor")
+		}
+		content, err := exec(r, "notes/form", data)
+		if err != nil {
+			return err
+		}
+		return burrow.Render(w, r, http.StatusOK, content)
+	}
+
+	return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "notes/form", data)
 }

@@ -1,30 +1,14 @@
 {{ define "notes/list_page" -}}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">{{ t "notes-title" }}</h1>
+    <a href="/notes/new" class="btn btn-primary"
+        hx-get="/notes/new"
+        hx-target="#note-form"
+        hx-swap="innerHTML">
+        <span class="me-1">{{ iconPlusLg }}</span>{{ t "notes-add-button" }}
+    </a>
 </div>
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">{{ t "notes-new-title" }}</h5>
-        <form method="post" action="/notes"
-            hx-post="/notes"
-            hx-target="#notes-grid"
-            hx-swap="afterbegin"
-            hx-on::after-request="if(event.detail.successful) this.reset()">
-            <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
-            <div class="mb-3">
-                <label for="title" class="form-label">{{ t "notes-label-title" }}</label>
-                <input type="text" class="form-control" id="title" name="title" required>
-            </div>
-            <div class="mb-3">
-                <label for="content" class="form-label">{{ t "notes-label-content" }}</label>
-                <textarea class="form-control" id="content" name="content" rows="3"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">
-                <span class="me-1">{{ iconPlusLg }}</span>{{ t "notes-add-button" }}
-            </button>
-        </form>
-    </div>
-</div>
+<div id="note-form"></div>
 <form method="get" action="/notes" class="mb-4"
     hx-get="/notes"
     hx-target="#notes-list"
@@ -66,23 +50,33 @@
 
 {{ define "notes/note_card" -}}
 <div class="col-md-6 col-lg-4" id="note-{{ itoa .ID }}">
-    <div class="card h-100">
-        <div class="card-body">
-            <h5 class="card-title">{{ .Title }}</h5>
-            {{ if .Content -}}
-            <p class="card-text">{{ .Content }}</p>
-            {{- end }}
-        </div>
-        <div class="card-footer bg-transparent border-top-0 text-end">
-            <button class="btn btn-sm btn-outline-danger"
-                hx-delete="/notes/{{ itoa .ID }}"
-                hx-target="#note-{{ itoa .ID }}"
-                hx-swap="outerHTML swap:0.3s"
-                hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
-                hx-confirm="{{ t "notes-delete-confirm" }}">
-                <span class="me-1">{{ iconTrash }}</span>{{ t "notes-delete-button" }}
-            </button>
-        </div>
+{{ template "notes/note_card_inner" . }}
+</div>
+{{- end }}
+
+{{ define "notes/note_card_inner" -}}
+<div class="card h-100">
+    <div class="card-body">
+        <h5 class="card-title">{{ .Title }}</h5>
+        {{ if .Content -}}
+        <p class="card-text">{{ .Content }}</p>
+        {{- end }}
+    </div>
+    <div class="card-footer bg-transparent border-top-0 text-end">
+        <a href="/notes/{{ itoa .ID }}/edit" class="btn btn-sm btn-outline-secondary me-1"
+            hx-get="/notes/{{ itoa .ID }}/edit"
+            hx-target="#note-form"
+            hx-swap="innerHTML">
+            <span class="me-1">{{ iconPencil }}</span>{{ t "notes-edit-button" }}
+        </a>
+        <button class="btn btn-sm btn-outline-danger"
+            hx-delete="/notes/{{ itoa .ID }}"
+            hx-target="#note-{{ itoa .ID }}"
+            hx-swap="outerHTML swap:0.3s"
+            hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
+            hx-confirm="{{ t "notes-delete-confirm" }}">
+            <span class="me-1">{{ iconTrash }}</span>{{ t "notes-delete-button" }}
+        </button>
     </div>
 </div>
 {{- end }}
@@ -102,6 +96,17 @@
 {{- end }}
 
 {{ define "notes/create_response" -}}
+<div id="note-form" hx-swap-oob="innerHTML"></div>
+<div id="notes-grid" hx-swap-oob="afterbegin">
 {{ template "notes/note_card" .Note }}
+</div>
+{{ template "app/alerts_oob" . }}
+{{- end }}
+
+{{ define "notes/update_response" -}}
+<div id="note-form" hx-swap-oob="innerHTML"></div>
+<div class="col-md-6 col-lg-4" id="note-{{ itoa .Note.ID }}" hx-swap-oob="outerHTML">
+{{ template "notes/note_card_inner" .Note }}
+</div>
 {{ template "app/alerts_oob" . }}
 {{- end }}

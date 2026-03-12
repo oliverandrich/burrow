@@ -93,6 +93,25 @@ func (r *Repository) SearchByUserID(ctx context.Context, userID int64, query str
 	return notes, burrow.CursorResult(lastID, hasMore), nil
 }
 
+// GetByID returns a single note by ID, scoped to the given user.
+func (r *Repository) GetByID(ctx context.Context, noteID, userID int64) (*Note, error) {
+	note := new(Note)
+	if err := r.db.NewSelect().Model(note).
+		Where("id = ? AND user_id = ?", noteID, userID).
+		Scan(ctx); err != nil {
+		return nil, fmt.Errorf("get note %d: %w", noteID, err)
+	}
+	return note, nil
+}
+
+// Update updates an existing note.
+func (r *Repository) Update(ctx context.Context, note *Note) error {
+	if _, err := r.db.NewUpdate().Model(note).WherePK().Exec(ctx); err != nil {
+		return fmt.Errorf("update note %d: %w", note.ID, err)
+	}
+	return nil
+}
+
 // Delete soft-deletes a note owned by the given user.
 func (r *Repository) Delete(ctx context.Context, noteID, userID int64) error {
 	if _, err := r.db.NewDelete().Model((*Note)(nil)).

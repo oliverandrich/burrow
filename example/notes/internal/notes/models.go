@@ -12,8 +12,8 @@ type Note struct { //nolint:govet // fieldalignment: readability over optimizati
 
 	ID        int64     `bun:",pk,autoincrement" json:"id" verbose:"ID"`
 	UserID    int64     `bun:",notnull" json:"user_id" form:"-" verbose:"User ID"`
-	Title     string    `bun:",notnull" json:"title" verbose:"Title"`
-	Content   string    `bun:",notnull,default:''" json:"content" verbose:"Content" form:"widget=textarea"`
+	Title     string    `bun:",notnull" json:"title" verbose:"Title" form:"title" validate:"required"`
+	Content   string    `bun:",notnull,default:''" json:"content" verbose:"Content" form:"content" widget:"textarea"`
 	CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" verbose:"Created at"`
 	DeletedAt time.Time `bun:",soft_delete,nullzero" json:"-" form:"-"`
 }

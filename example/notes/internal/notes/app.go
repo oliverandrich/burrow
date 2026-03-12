@@ -87,6 +87,7 @@ func (a *App) TemplateFS() fs.FS {
 func (a *App) FuncMap() template.FuncMap {
 	return template.FuncMap{
 		"iconPlusLg":      func(class ...string) template.HTML { return bsicons.PlusLg(class...) },
+		"iconPencil":      func(class ...string) template.HTML { return bsicons.Pencil(class...) },
 		"iconJournalText": func(class ...string) template.HTML { return bsicons.JournalText(class...) },
 	}
 }
@@ -132,7 +133,10 @@ func (a *App) Routes(r chi.Router) {
 	r.Route("/notes", func(r chi.Router) {
 		r.Use(auth.RequireAuth())
 		r.Get("/", burrow.Handle(h.List))
+		r.Get("/new", burrow.Handle(h.New))
 		r.Post("/", burrow.Handle(h.Create))
+		r.Get("/{id}/edit", burrow.Handle(h.Edit))
+		r.Post("/{id}", burrow.Handle(h.Update))
 		r.Delete("/{id}", burrow.Handle(h.Delete))
 	})
 }
