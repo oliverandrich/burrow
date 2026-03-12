@@ -42,6 +42,11 @@ Apps that need icons in templates register them via `HasFuncMap`. For example, t
 {{- end }}
 ```
 
+!!! tip "Register once, use everywhere"
+    Template functions are global — once any app registers an icon function, it is available in **all** templates. If another app (e.g., `admin`) already registers `iconPersonCircle`, your app can use it directly in templates without re-registering it. Registering the same name twice causes a startup panic.
+
+    When registering your own icon functions, prefix them with your app name to avoid collisions (e.g., `notesIconStar` instead of `iconStar`).
+
 ### NavItems
 
 Use icons in navigation items:

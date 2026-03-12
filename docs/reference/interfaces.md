@@ -190,6 +190,11 @@ type HasFuncMap interface {
 
 Returns a static `template.FuncMap` added at parse time. Functions are available globally in all templates. The framework panics if two apps register the same function name.
 
+!!! tip "Functions are global — don't register twice"
+    Once an app registers a function, it is available in **all** templates across all apps. If your app depends on another app that already registers a function (e.g., icon functions), use it directly in your templates — do not re-register it in your own `FuncMap()`. Duplicate registration causes a panic.
+
+    To avoid name collisions, prefix custom functions with your app name (e.g., `notesFormatDate` instead of `formatDate`). This is especially important for icon functions where a collision would silently swap one icon for another.
+
 ```go
 func (a *App) FuncMap() template.FuncMap {
     return template.FuncMap{
