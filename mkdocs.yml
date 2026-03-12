@@ -121,6 +121,7 @@ nav:
       - Server & Registry: reference/server.md
       - Configuration Reference: reference/configuration.md
       - Template Functions: reference/template-functions.md
+      - Reusable Templates: reference/reusable-templates.md
       - Context Helpers: reference/context-helpers.md
   - Contributing: contributing.md
   - Changelog: changelog.md

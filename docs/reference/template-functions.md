@@ -79,35 +79,6 @@ Provided by the framework itself. Always available.
 | `pageLimit` | Static | `{{ pageLimit .Page }}` | Derives the per-page size from a `PageResult`. |
 | `pageNumbers` | Static | `{{ range pageNumbers .Current .Total }}` | Generates a slice of page numbers for pagination controls. |
 
-## Reusable Asset Templates
-
-Contrib apps provide named templates for common asset includes. Use these in your layout `<head>` instead of hardcoding `staticURL` calls:
-
-### bootstrap
-
-| Template | Output |
-|----------|--------|
-| `{{ template "bootstrap/css" . }}` | `<link>` tag for Bootstrap CSS |
-| `{{ template "bootstrap/js" . }}` | `<script defer>` tag for Bootstrap JS bundle |
-
-### htmx
-
-| Template | Output |
-|----------|--------|
-| `{{ template "htmx/js" . }}` | `<script defer>` tag for htmx JS |
-| `{{ template "htmx/config" . }}` | `<meta>` tag with htmx response handling config |
-
-**Example layout head:**
-
-```html
-<head>
-    {{ template "bootstrap/css" . }}
-    {{ template "bootstrap/js" . }}
-    {{ template "htmx/js" . }}
-    {{ template "htmx/config" . }}
-</head>
-```
-
 ## How It Works
 
 At startup, the framework:
