@@ -164,35 +164,7 @@ func (a *App) NavItems() []burrow.NavItem {
 }
 ```
 
-Items with `AdminOnly: true` are only visible to admin users. To make this work, your layout function needs to filter nav items based on the current user. Update the `Layout()` function in `internal/pages/pages.go`:
-
-```go
-layoutData := map[string]any{
-    "Content":  content,
-    "NavItems": visibleNavItems(r.Context()),
-    "Messages": messages.Get(r.Context()),
-    "User":     auth.UserFromContext(r.Context()),
-}
-```
-
-And add a helper function that filters nav items:
-
-```go
-func visibleNavItems(ctx context.Context) []burrow.NavItem {
-    user := auth.UserFromContext(ctx)
-    var items []burrow.NavItem
-    for _, item := range burrow.NavItems(ctx) {
-        if item.AdminOnly && (user == nil || !user.IsAdmin()) {
-            continue
-        }
-        if item.AuthOnly && user == nil {
-            continue
-        }
-        items = append(items, item)
-    }
-    return items
-}
-```
+Items with `AdminOnly: true` are automatically hidden from non-admin users. The `navLinks` template function handles the filtering — the `auth` middleware injects an `AuthChecker` into the context, and `navLinks` reads it to decide which items to show. No manual filtering code needed.
 
 ## Run It
 

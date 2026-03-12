@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"context"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +19,6 @@ var (
 	_ burrow.App             = (*App)(nil)
 	_ burrow.HasRoutes       = (*App)(nil)
 	_ burrow.HasNavItems     = (*App)(nil)
-	_ burrow.HasMiddleware   = (*App)(nil)
 	_ burrow.HasTranslations = (*App)(nil)
 	_ burrow.HasTemplates    = (*App)(nil)
 	_ burrow.HasFuncMap      = (*App)(nil)
@@ -51,139 +48,42 @@ func TestTranslationFS(t *testing.T) {
 	assert.GreaterOrEqual(t, len(matches), 2, "expected at least en and de translation files")
 }
 
-func TestMiddleware_InjectsRequestPath(t *testing.T) {
-	app := New()
-	mws := app.Middleware()
-	require.Len(t, mws, 1)
-
-	var captured string
-	handler := mws[0](http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		captured, _ = r.Context().Value(ctxKeyRequestPath{}).(string)
-	}))
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	handler.ServeHTTP(httptest.NewRecorder(), req)
-
-	assert.Equal(t, "/notes", captured)
-}
-
-func TestVisibleNavItems_FiltersAuthOnly(t *testing.T) {
-	ctx := context.Background()
-	ctx = burrow.WithNavItems(ctx, []burrow.NavItem{
-		{Label: "Home", URL: "/", Position: 1},
-		{Label: "Notes", URL: "/notes", AuthOnly: true, Position: 2},
-	})
-
-	items := visibleNavItems(ctx)
-
-	assert.Len(t, items, 1)
-	assert.Equal(t, "Home", items[0].Label)
-}
-
-func TestVisibleNavItems_ShowsAuthOnlyWhenAuthenticated(t *testing.T) {
-	ctx := context.Background()
-	ctx = burrow.WithNavItems(ctx, []burrow.NavItem{
-		{Label: "Home", URL: "/", Position: 1},
-		{Label: "Notes", URL: "/notes", AuthOnly: true, Position: 2},
-	})
-	ctx = auth.WithUser(ctx, &auth.User{ID: 1, Username: "test"})
-
-	items := visibleNavItems(ctx)
-
-	assert.Len(t, items, 2)
-}
-
-func TestVisibleNavItems_FiltersAdminOnly(t *testing.T) {
-	ctx := context.Background()
-	ctx = burrow.WithNavItems(ctx, []burrow.NavItem{
-		{Label: "Admin", URL: "/admin", AdminOnly: true},
-	})
-	ctx = auth.WithUser(ctx, &auth.User{ID: 1, Username: "test", Role: "user"})
-
-	items := visibleNavItems(ctx)
-
-	assert.Empty(t, items)
-}
-
-func TestVisibleNavItems_ShowsAdminOnlyForAdmins(t *testing.T) {
-	ctx := context.Background()
-	ctx = burrow.WithNavItems(ctx, []burrow.NavItem{
-		{Label: "Admin", URL: "/admin", AdminOnly: true},
-	})
-	ctx = auth.WithUser(ctx, &auth.User{ID: 1, Username: "admin", Role: "admin"})
-
-	items := visibleNavItems(ctx)
-
-	assert.Len(t, items, 1)
-}
-
-func TestNavLinkClass_ActiveOnExactMatch(t *testing.T) {
-	assert.Equal(t, "nav-link active", navLinkClass("/", "/"))
-}
-
-func TestNavLinkClass_HomeNotActiveOnSubpath(t *testing.T) {
-	assert.Equal(t, "nav-link", navLinkClass("/notes", "/"))
-}
-
-func TestNavLinkClass_PrefixMatch(t *testing.T) {
-	assert.Equal(t, "nav-link active", navLinkClass("/notes/1", "/notes"))
-}
-
-func TestNavLinkClass_NoMatch(t *testing.T) {
-	assert.Equal(t, "nav-link", navLinkClass("/settings", "/notes"))
-}
-
-func TestNavLinkClass_EmptyCurrentPath(t *testing.T) {
-	assert.Equal(t, "nav-link", navLinkClass("", "/notes"))
-}
-
 func TestHome_UsesRenderTemplate(t *testing.T) {
 	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		if name == "test-layout" {
+			return template.HTML("<layout>" + string(data["Content"].(template.HTML)) + "</layout>"), nil
+		}
 		return template.HTML("<p>" + name + "</p>"), nil
 	})
 
 	t.Run("normal request wraps in layout", func(t *testing.T) {
-		layoutCalled := false
-		layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, data map[string]any) error {
-			layoutCalled = true
-			assert.Equal(t, "Home", data["Title"])
-			return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
-		})
-
 		ctx := burrow.WithTemplateExecutor(t.Context(), exec)
-		ctx = burrow.WithLayout(ctx, layout)
+		ctx = burrow.WithLayout(ctx, "test-layout")
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		w := httptest.NewRecorder()
 
 		err := home(w, req)
 		require.NoError(t, err)
-		assert.True(t, layoutCalled)
 		assert.Contains(t, w.Body.String(), "<layout>")
 	})
 
 	t.Run("HTMX request returns fragment only", func(t *testing.T) {
-		layoutCalled := false
-		layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
-			layoutCalled = true
-			return burrow.HTML(w, code, string(content))
-		})
-
 		ctx := burrow.WithTemplateExecutor(t.Context(), exec)
-		ctx = burrow.WithLayout(ctx, layout)
+		ctx = burrow.WithLayout(ctx, "test-layout")
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		req.Header.Set("HX-Request", "true")
 		w := httptest.NewRecorder()
 
 		err := home(w, req)
 		require.NoError(t, err)
-		assert.False(t, layoutCalled)
 		assert.Contains(t, w.Body.String(), "pages/home")
+		assert.NotContains(t, w.Body.String(), "<layout>")
 	})
 }
 
-func TestLayout_ReturnsNonNil(t *testing.T) {
-	fn := Layout()
-	assert.NotNil(t, fn)
+func TestLayout_ReturnsTemplateName(t *testing.T) {
+	name := Layout()
+	assert.Equal(t, "app/layout", name)
 }
 
 func TestLogo_ReturnsNonEmpty(t *testing.T) {
@@ -249,18 +149,18 @@ func TestFuncMap_IconFunctionsReturnSVG(t *testing.T) {
 func TestRoutes_RegistersHomeRoute(t *testing.T) {
 	app := New()
 
-	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		if name == "test-layout" {
+			return template.HTML(string(data["Content"].(template.HTML))), nil
+		}
 		return template.HTML("<p>" + name + "</p>"), nil
-	})
-	layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
-		return burrow.HTML(w, code, string(content))
 	})
 
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := burrow.WithTemplateExecutor(r.Context(), exec)
-			ctx = burrow.WithLayout(ctx, layout)
+			ctx = burrow.WithLayout(ctx, "test-layout")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
@@ -272,90 +172,4 @@ func TestRoutes_RegistersHomeRoute(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "pages/home")
-}
-
-func TestLayout_NoExecutorFallback(t *testing.T) {
-	fn := Layout()
-
-	// Without a template executor, Layout should fall back to rendering content directly.
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	err := fn(rec, req, http.StatusOK, "<p>hello</p>", nil)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "<p>hello</p>")
-}
-
-func TestLayout_WithExecutorRendersLayout(t *testing.T) {
-	fn := Layout()
-
-	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
-		assert.Equal(t, "app/layout", name)
-		// Verify expected keys are present.
-		assert.Contains(t, data, "Content")
-		assert.Contains(t, data, "NavItems")
-		assert.Contains(t, data, "User")
-		assert.Contains(t, data, "Messages")
-		assert.Contains(t, data, "Title")
-		return template.HTML("<layout>" + string(data["Content"].(template.HTML)) + "</layout>"), nil
-	})
-
-	ctx := burrow.WithTemplateExecutor(t.Context(), exec)
-	ctx = burrow.WithNavItems(ctx, []burrow.NavItem{
-		{Label: "Home", URL: "/", Position: 1},
-	})
-	ctx = context.WithValue(ctx, ctxKeyRequestPath{}, "/")
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	err := fn(rec, req, http.StatusOK, "<p>content</p>", map[string]any{"Title": "Test"})
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "<layout>")
-	assert.Contains(t, rec.Body.String(), "<p>content</p>")
-}
-
-func TestLayout_MergesExistingData(t *testing.T) {
-	fn := Layout()
-
-	exec := burrow.TemplateExecutor(func(_ *http.Request, _ string, data map[string]any) (template.HTML, error) {
-		// Custom key should be preserved.
-		assert.Equal(t, "bar", data["Foo"])
-		// Title should default to "" when not provided.
-		assert.Empty(t, data["Title"])
-		return "<ok>", nil
-	})
-
-	ctx := burrow.WithTemplateExecutor(t.Context(), exec)
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	err := fn(rec, req, http.StatusOK, "", map[string]any{"Foo": "bar"})
-	require.NoError(t, err)
-}
-
-func TestLayout_NavItemsActiveClass(t *testing.T) {
-	fn := Layout()
-
-	var capturedNavItems []navItemData
-	exec := burrow.TemplateExecutor(func(_ *http.Request, _ string, data map[string]any) (template.HTML, error) {
-		capturedNavItems = data["NavItems"].([]navItemData)
-		return "<ok>", nil
-	})
-
-	ctx := burrow.WithTemplateExecutor(t.Context(), exec)
-	ctx = burrow.WithNavItems(ctx, []burrow.NavItem{
-		{Label: "Home", URL: "/", Position: 1},
-		{Label: "Notes", URL: "/notes", Position: 2},
-	})
-	ctx = context.WithValue(ctx, ctxKeyRequestPath{}, "/notes")
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/notes", nil)
-	rec := httptest.NewRecorder()
-
-	err := fn(rec, req, http.StatusOK, "", nil)
-	require.NoError(t, err)
-	require.Len(t, capturedNavItems, 2)
-	assert.Equal(t, "nav-link", capturedNavItems[0].LinkClass)        // Home not active
-	assert.Equal(t, "nav-link active", capturedNavItems[1].LinkClass) // Notes active
 }

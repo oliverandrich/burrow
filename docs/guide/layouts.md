@@ -46,26 +46,22 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 
 1. Executes the named template with the provided data, producing an HTML fragment
 2. If the request has an `HX-Request: true` header (htmx), returns the fragment directly — no layout wrapping
-3. Otherwise, passes the fragment to the layout function (if set) which wraps it in the full HTML shell
+3. Otherwise, renders the layout template (if set), passing the fragment as `.Content` along with the original data
 4. If no layout is set, returns the fragment as-is
 
 This means the same handler automatically supports both full page loads and htmx partial updates.
 
-## Layout Functions
+## Layout Templates
 
-A `LayoutFunc` receives the rendered page fragment and wraps it:
+A layout is a **template name** (a string) that refers to a template in the global template set. The layout template receives the rendered page fragment as `.Content` along with the original data map.
 
-```go
-type LayoutFunc func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error
-```
+When `RenderTemplate` wraps content in a layout, it:
 
-| Parameter | Description |
-|-----------|-------------|
-| `w` | HTTP response writer |
-| `r` | HTTP request (for reading context values) |
-| `code` | HTTP status code |
-| `content` | The rendered template fragment as `template.HTML` |
-| `data` | The same data map passed to `RenderTemplate` |
+1. Renders the content template to produce an HTML fragment
+2. Clones the data map and adds a `Content` key with the rendered fragment
+3. Renders the layout template with the combined data
+
+Layout templates access dynamic data (navigation, current user, messages, etc.) via **template functions** — not via data map entries injected by Go code. The framework provides core functions like `navLinks` (filtered, active-state-aware navigation), while contrib apps add request-scoped functions via `HasRequestFuncMap` (e.g., `currentUser`, `csrfToken`).
 
 ## Setting the App Layout
 
@@ -85,7 +81,7 @@ The `bootstrap` app injects its layout via middleware only when no layout is alr
 **Using `SetLayout()` explicitly:**
 
 ```go
-srv.SetLayout(appLayout())
+srv.SetLayout("myapp/layout")
 ```
 
 When `SetLayout()` is called, it takes precedence over design system middleware like `bootstrap`.
@@ -94,60 +90,33 @@ If neither approach is used, content renders unwrapped.
 
 ## Setting the Auth Layout
 
-Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. By default, `auth.New()` uses a built-in minimal auth layout (`DefaultAuthLayout()`) that renders a minimal HTML shell with Bootstrap CSS but no navigation. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. By default, `auth.New()` uses a built-in layout template name (`DefaultAuthLayout()` returns `"auth/layout"`) that renders a minimal HTML shell with Bootstrap CSS but no navigation. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
-To override the auth layout with a custom one, use `auth.WithAuthLayout()`:
+To override the auth layout with a custom template name, use `auth.WithAuthLayout()`:
 
 ```go
 auth.New(
-    auth.WithAuthLayout(myCustomAuthLayout),
+    auth.WithAuthLayout("myapp/auth-layout"),
 )
 ```
 
 ## Setting the Admin Layout
 
-The admin layout is owned by the `admin` package. By default, `admin.New()` uses a built-in layout and dashboard renderer. To override with a custom layout:
+The admin layout is owned by the `admin` package. By default, `admin.New()` uses a built-in layout template name (`DefaultLayout()` returns `"admin/layout"`) and dashboard renderer. To override with a custom template name:
 
 ```go
-admin.New(admin.WithLayout(myCustomLayout))
+admin.New(admin.WithLayout("myapp/admin-layout"))
 ```
 
-Pass `nil` for no admin layout.
+Pass an empty string for no admin layout.
 
 ## Writing a Custom Layout
 
-Layouts typically render another template from the global set. Use `burrow.TemplateExecutorFromContext()` to get a function that executes named templates:
-
-```go
-type TemplateExecutor func(r *http.Request, name string, data map[string]any) (template.HTML, error)
-```
-
-The executor is injected by the framework's template middleware and handles request-scoped FuncMap cloning automatically.
+A layout is simply a template in the global template set. Create a `.html` file in your app's `templates/` directory and set its name via `SetLayout()`.
 
 ### Example: Minimal Custom Layout
 
-Here's a complete example of a custom layout with a navbar and footer. First, the layout function:
-
-```go
-func appLayout() burrow.LayoutFunc {
-    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-        exec := burrow.TemplateExecutorFromContext(r.Context())
-
-        layoutData := maps.Clone(data)
-        layoutData["Content"] = content
-        layoutData["NavItems"] = burrow.NavItems(r.Context())
-
-        html, err := exec(r, "myapp/layout", layoutData)
-        if err != nil {
-            return err
-        }
-
-        return burrow.HTML(w, code, string(html))
-    }
-}
-```
-
-The corresponding template (`templates/layout.html` in your app):
+Create `templates/myapp/layout.html` in your app:
 
 ```html
 {{ define "myapp/layout" -}}
@@ -161,8 +130,10 @@ The corresponding template (`templates/layout.html` in your app):
 </head>
 <body>
     <nav>
-        {{ range .NavItems }}
-            <a href="{{ .URL }}">{{ .Label }}</a>
+        {{ range navLinks }}
+            <a href="{{ .URL }}"{{ if .IsActive }} class="active"{{ end }}>
+                {{ .Label }}
+            </a>
         {{ end }}
     </nav>
 
@@ -180,34 +151,20 @@ Wire it up in your server setup:
 
 ```go
 srv := burrow.NewServer(myapp.New(), /* ... */)
-srv.SetLayout(appLayout())
+srv.SetLayout("myapp/layout")
 ```
 
 Your app must implement `HasTemplates` so that `myapp/layout` is part of the global template set. See [Creating an App](creating-an-app.md#step-6-assemble-the-app) for how to provide template files.
 
+Note how dynamic data like navigation items is accessed via the `navLinks` template function (provided by the framework) rather than through data map entries. The `navLinks` function automatically filters items by auth state and computes active-link highlighting. The `.Content` key is the only data injected automatically by `RenderTemplate` — it contains the rendered page fragment.
+
 ### How the Bootstrap App Does It
 
-Here's how the built-in Bootstrap app implements the same pattern:
+The built-in Bootstrap app simply returns a template name:
 
 ```go
-func Layout() burrow.LayoutFunc {
-    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-        exec := burrow.TemplateExecutorFromContext(r.Context())
-
-        layoutData := make(map[string]any, len(data)+2)
-        maps.Copy(layoutData, data)
-        layoutData["Content"] = content
-        if _, ok := layoutData["Title"]; !ok {
-            layoutData["Title"] = ""
-        }
-
-        html, err := exec(r, "bootstrap/layout", layoutData)
-        if err != nil {
-            return err
-        }
-
-        return burrow.HTML(w, code, string(html))
-    }
+func Layout() string {
+    return "bootstrap/layout"
 }
 ```
 
@@ -242,26 +199,14 @@ The corresponding template file (`bootstrap/layout`):
 
 Layout templates receive data from two sources:
 
-- **Data map entries** (accessed with `.` prefix): `.Content`, `.Title` — these are values your layout function puts into the `layoutData` map before calling `exec()`. Custom layouts can add more (e.g., `.NavItems`, `.Messages`).
-- **FuncMap functions** (no `.` prefix): `{{ lang }}`, `{{ staticURL "..." }}`, `{{ csrfToken }}` — these are template functions registered by contrib apps
+- **Data map entries** (accessed with `.` prefix): `.Content`, `.Title` — `RenderTemplate` clones the handler's data map and adds `Content` (the rendered page fragment) before rendering the layout template. All data passed by the handler is available in the layout.
+- **Template functions** (no `.` prefix): `{{ lang }}`, `{{ staticURL "..." }}`, `{{ csrfToken }}`, `{{ navLinks }}`, `{{ currentUser }}`, `{{ messages }}` — these are template functions registered by the framework and contrib apps via `HasFuncMap` and `HasRequestFuncMap`
 
-The layout function is responsible for populating the data map. The Bootstrap layout copies all handler data and adds `Content`:
-
-```go
-layoutData := make(map[string]any, len(data)+2)
-maps.Copy(layoutData, data)       // copies Title and any other handler data
-layoutData["Content"] = content   // the rendered page fragment
-```
-
-If your custom layout needs navigation, add it yourself:
-
-```go
-layoutData["NavItems"] = burrow.NavItems(r.Context())
-```
+Dynamic data like navigation items, the current user, and flash messages is provided via **template functions**, not via data map entries. This keeps layouts simple — there is no Go layout function to write or maintain.
 
 ## Layout Unification
 
-The app layout, auth layout, and admin layout all use the same context key (`burrow.Layout(ctx)`). The framework sets the app layout globally via middleware, while the auth and admin route groups override it with their own layouts. This means any handler can always rely on `burrow.Layout(ctx)` returning the correct layout for the current request.
+The app layout, auth layout, and admin layout all use the same context key (`burrow.Layout(ctx)`). The framework sets the app layout globally via middleware, while the auth and admin route groups override it with their own layout template names. This means any handler can always rely on `burrow.Layout(ctx)` returning the correct layout template name for the current request.
 
 ## Available Context Values
 

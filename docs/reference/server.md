@@ -30,10 +30,10 @@ Creates a server and registers all given apps in order.
 #### SetLayout
 
 ```go
-func (s *Server) SetLayout(fn LayoutFunc)
+func (s *Server) SetLayout(name string)
 ```
 
-Configures the app layout function. Call before `Run()`.
+Configures the app layout template name. The name must refer to a template in the global template set (contributed by a `HasTemplates` app). Call before `Run()`.
 
 #### Registry
 
@@ -73,7 +73,7 @@ When `Run()` is called, the following happens in order:
 8. **Build templates** — collects `.html` files from all `HasTemplates` apps and template functions from all `HasFuncMap` apps, parses them into a single global `*template.Template`
 9. **Create router** — sets up Chi with core middleware (request logger, request ID, gzip, body limit)
 10. **Inject context** — injects nav items (from `HasNavItems`), layout, template executor, and locale into the request context via middleware
-11. **Register middleware** — applies middleware from all `HasMiddleware` apps (including request-scoped `HasRequestFuncMap` injection)
+11. **Register middleware** — applies middleware from all `HasMiddleware` apps and injects request-scoped template functions (core `navLinks`/`navItems` plus `HasRequestFuncMap` contributions)
 12. **Register routes** — calls `Routes()` on all `HasRoutes` apps
 13. **Start HTTP server** — listens on the configured address with graceful shutdown and zero-downtime restart via SIGHUP (see [Deployment Guide](../guide/deployment.md))
 
@@ -186,4 +186,4 @@ Calls `Seed()` on each `Seedable` app in order.
 func RenderTemplate(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error
 ```
 
-Renders a named template into the HTTP response. If the request has an `HX-Request` header (htmx), the fragment is returned directly. Otherwise, it is wrapped in the layout function from context (if set).
+Renders a named template into the HTTP response. If the request has an `HX-Request` header (htmx), the fragment is returned directly. Otherwise, it is wrapped in the layout template from context (if set).

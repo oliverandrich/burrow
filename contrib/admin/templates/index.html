@@ -2,8 +2,9 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0">{{ t "admin-dashboard-title" }}</h2>
 </div>
-{{ if .SidebarGroups -}}
-    {{- range .SidebarGroups }}
+{{- $sidebar := adminSidebar }}
+{{ if $sidebar -}}
+    {{- range $sidebar }}
     <h5 class="text-body-secondary mb-3">{{ .Label }}</h5>
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3 mb-4">
         {{- range .Items }}

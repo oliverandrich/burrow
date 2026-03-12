@@ -293,12 +293,7 @@ func TestListNotesHTMXNavReturnsFragment(t *testing.T) {
 	// HTMX nav request (no cursor) → should use RenderTemplate → fragment only.
 	req.Header.Set("HX-Request", "true")
 
-	layoutCalled := false
-	layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
-		layoutCalled = true
-		return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
-	})
-	ctx := burrow.WithLayout(req.Context(), layout)
+	ctx := burrow.WithLayout(req.Context(), "test-layout")
 	req = req.WithContext(ctx)
 
 	rec := httptest.NewRecorder()
@@ -306,7 +301,6 @@ func TestListNotesHTMXNavReturnsFragment(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.False(t, layoutCalled, "layout should not be called for HTMX nav request")
 	assert.Contains(t, rec.Body.String(), "Test")
 	assert.NotContains(t, rec.Body.String(), "<layout>")
 }
@@ -320,15 +314,18 @@ func TestListNotesNormalRequestUsesLayout(t *testing.T) {
 	h := NewHandlers(repo)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	req = requestWithUser(req, &auth.User{ID: 42})
-	req = injectTemplateExecutor(t, req)
 
 	layoutCalled := false
-	layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, data map[string]any) error {
-		layoutCalled = true
-		assert.Equal(t, "Notes", data["Title"])
-		return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
+	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		if name == "test-layout" {
+			layoutCalled = true
+			assert.Equal(t, "Notes", data["Title"])
+			return template.HTML("<layout>" + string(data["Content"].(template.HTML)) + "</layout>"), nil
+		}
+		return template.HTML("<rendered:" + name + ">"), nil
 	})
-	ctx := burrow.WithLayout(req.Context(), layout)
+	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
+	ctx = burrow.WithLayout(ctx, "test-layout")
 	req = req.WithContext(ctx)
 
 	rec := httptest.NewRecorder()

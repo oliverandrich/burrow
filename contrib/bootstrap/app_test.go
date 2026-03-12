@@ -126,7 +126,7 @@ func TestMiddlewareInjectsLayout(t *testing.T) {
 	mws := app.Middleware()
 	require.Len(t, mws, 1)
 
-	var got burrow.LayoutFunc
+	var got string
 	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got = burrow.Layout(r.Context())
 	})
@@ -137,7 +137,7 @@ func TestMiddlewareInjectsLayout(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
-	assert.NotNil(t, got, "middleware should inject layout when none is set")
+	assert.Equal(t, "bootstrap/layout", got, "middleware should inject layout when none is set")
 }
 
 func TestMiddlewareDoesNotOverride(t *testing.T) {
@@ -145,11 +145,7 @@ func TestMiddlewareDoesNotOverride(t *testing.T) {
 	mws := app.Middleware()
 	require.Len(t, mws, 1)
 
-	sentinel := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
-		return burrow.HTML(w, code, "sentinel:"+string(content))
-	})
-
-	var got burrow.LayoutFunc
+	var got string
 	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got = burrow.Layout(r.Context())
 	})
@@ -157,26 +153,13 @@ func TestMiddlewareDoesNotOverride(t *testing.T) {
 	handler := mws[0](inner)
 
 	req := newGetRequest()
-	req = req.WithContext(burrow.WithLayout(req.Context(), sentinel))
+	req = req.WithContext(burrow.WithLayout(req.Context(), "custom/layout"))
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
-	assert.NotNil(t, got, "layout should still be set")
-
-	// Verify it's the original sentinel, not bootstrap's layout.
-	rec := httptest.NewRecorder()
-	err := got(rec, newGetRequest(), http.StatusOK, "test", nil)
-	require.NoError(t, err)
-	assert.Equal(t, "sentinel:test", rec.Body.String())
+	assert.Equal(t, "custom/layout", got, "middleware should not override existing layout")
 }
 
-func TestLayoutWithoutExecutorFallsBack(t *testing.T) {
-	layout := Layout()
-
-	rec := httptest.NewRecorder()
-	req := newGetRequest()
-	// No template executor in context — should fall back to raw content.
-	err := layout(rec, req, http.StatusOK, "<p>hello</p>", nil)
-	require.NoError(t, err)
-	assert.Equal(t, "<p>hello</p>", rec.Body.String())
+func TestLayoutReturnsTemplateName(t *testing.T) {
+	assert.Equal(t, "bootstrap/layout", Layout())
 }

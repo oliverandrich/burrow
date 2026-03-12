@@ -2,11 +2,13 @@ package burrow
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 // baseFuncMap returns the default template functions available in all templates.
@@ -17,7 +19,67 @@ func baseFuncMap() template.FuncMap {
 		"safeAttr": func(s string) template.HTMLAttr { return template.HTMLAttr(s) }, //nolint:gosec // intentional
 		"itoa":     func(id int64) string { return strconv.FormatInt(id, 10) },
 		"lang":     func() string { return "en" },
+		"dict": func(pairs ...any) map[string]any {
+			m := make(map[string]any, len(pairs)/2)
+			for i := 0; i+1 < len(pairs); i += 2 {
+				if key, ok := pairs[i].(string); ok {
+					m[key] = pairs[i+1]
+				}
+			}
+			return m
+		},
 	}
+}
+
+// coreRequestFuncMap provides request-scoped template functions for core
+// framework values like navigation items.
+func coreRequestFuncMap(r *http.Request) template.FuncMap {
+	ctx := r.Context()
+	var requestPath string
+	if r.URL != nil {
+		requestPath = r.URL.Path
+	}
+	return template.FuncMap{
+		"navItems": func() []NavItem { return NavItems(ctx) },
+		"navLinks": func() []NavLink { return buildNavLinks(ctx, requestPath) },
+	}
+}
+
+// isActivePath reports whether requestPath matches itemURL for nav highlighting.
+// The root URL "/" only matches exactly; other URLs match by prefix.
+func isActivePath(requestPath, itemURL string) bool {
+	if requestPath == "" {
+		return false
+	}
+	if itemURL == "/" {
+		return requestPath == "/"
+	}
+	return strings.HasPrefix(requestPath, itemURL)
+}
+
+// buildNavLinks filters NavItems by auth state and computes active status,
+// returning template-ready NavLink values.
+func buildNavLinks(ctx context.Context, requestPath string) []NavLink {
+	items := NavItems(ctx)
+	authenticated := isAuthenticated(ctx)
+	admin := isAdmin(ctx)
+
+	var links []NavLink
+	for _, item := range items {
+		if item.AuthOnly && !authenticated {
+			continue
+		}
+		if item.AdminOnly && !admin {
+			continue
+		}
+		links = append(links, NavLink{
+			Label:    item.Label,
+			URL:      item.URL,
+			Icon:     item.Icon,
+			IsActive: isActivePath(requestPath, item.URL),
+		})
+	}
+	return links
 }
 
 // buildTemplates parses HTML templates from all HasTemplates apps into

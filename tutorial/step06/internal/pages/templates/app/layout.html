@@ -17,16 +17,16 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    {{ range .NavItems -}}
+                    {{ range navLinks -}}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ .URL }}">{{ .Label }}</a>
+                        <a class="nav-link{{ if .IsActive }} active{{ end }}" href="{{ .URL }}">{{ .Label }}</a>
                     </li>
                     {{ end -}}
                 </ul>
                 <ul class="navbar-nav">
-                    {{ if .User -}}
+                    {{ if currentUser -}}
                     <li class="nav-item">
-                        <span class="nav-link text-body-secondary">{{ .User.Email }}</span>
+                        <span class="nav-link text-body-secondary">{{ (currentUser).Email }}</span>
                     </li>
                     <li class="nav-item">
                         <form method="post" action="/auth/logout">
@@ -45,8 +45,8 @@
     </nav>
 
     <main class="container">
-        {{ if .Messages -}}
-        {{ range .Messages -}}
+        {{ if messages -}}
+        {{ range messages -}}
         <div class="alert alert-{{ .Level }} alert-dismissible fade show" role="alert">
             {{ .Text }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

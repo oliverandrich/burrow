@@ -52,20 +52,16 @@ func TestNavItemsMissing(t *testing.T) {
 }
 
 func TestLayoutContext(t *testing.T) {
-	layout := LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, content template.HTML, _ map[string]any) error {
-		return nil
-	})
-
 	ctx := context.Background()
-	ctx = WithLayout(ctx, layout)
+	ctx = WithLayout(ctx, "app/layout")
 
 	got := Layout(ctx)
-	assert.NotNil(t, got)
+	assert.Equal(t, "app/layout", got)
 }
 
 func TestLayoutMissing(t *testing.T) {
 	ctx := context.Background()
-	assert.Nil(t, Layout(ctx))
+	assert.Empty(t, Layout(ctx))
 }
 
 func TestTemplateExecutorContext(t *testing.T) {
@@ -88,4 +84,37 @@ func TestTemplateExecutorContext(t *testing.T) {
 func TestTemplateExecutorMissing(t *testing.T) {
 	ctx := context.Background()
 	assert.Nil(t, TemplateExecutorFromContext(ctx))
+}
+
+func TestWithAuthChecker(t *testing.T) {
+	ctx := context.Background()
+	checker := AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsAdmin:         func() bool { return false },
+	}
+
+	ctx = WithAuthChecker(ctx, checker)
+
+	assert.True(t, isAuthenticated(ctx))
+	assert.False(t, isAdmin(ctx))
+}
+
+func TestAuthCheckerAdmin(t *testing.T) {
+	ctx := context.Background()
+	checker := AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsAdmin:         func() bool { return true },
+	}
+
+	ctx = WithAuthChecker(ctx, checker)
+
+	assert.True(t, isAuthenticated(ctx))
+	assert.True(t, isAdmin(ctx))
+}
+
+func TestAuthCheckerMissing(t *testing.T) {
+	ctx := context.Background()
+
+	assert.False(t, isAuthenticated(ctx))
+	assert.False(t, isAdmin(ctx))
 }

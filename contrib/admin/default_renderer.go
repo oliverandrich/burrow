@@ -1,41 +1,15 @@
 package admin
 
 import (
-	"html/template"
-	"maps"
 	"net/http"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
-// DefaultLayout returns a LayoutFunc that renders page content inside the
-// admin/layout template with a Bootstrap 5 sidebar and htmx.
-func DefaultLayout() burrow.LayoutFunc {
-	return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		ctx := r.Context()
-		exec := burrow.TemplateExecutorFromContext(ctx)
-		if exec == nil {
-			return burrow.HTML(w, code, string(content))
-		}
-
-		sidebar := PrepareSidebar(ctx, NavGroupsFromContext(ctx))
-
-		layoutData := make(map[string]any, len(data)+4)
-		maps.Copy(layoutData, data)
-		layoutData["Content"] = content
-		if _, ok := layoutData["Title"]; !ok {
-			layoutData["Title"] = ""
-		}
-		layoutData["SidebarGroups"] = sidebar
-		layoutData["ThemeSwitcherData"] = map[string]any{"Dropup": true}
-
-		html, err := exec(r, "admin/layout", layoutData)
-		if err != nil {
-			return err
-		}
-		return burrow.HTML(w, code, string(html))
-	}
+// DefaultLayout returns the template name for the built-in admin layout.
+func DefaultLayout() string {
+	return "admin/layout"
 }
 
 // DefaultDashboardRenderer returns a DashboardRenderer that uses the built-in
@@ -48,12 +22,8 @@ func DefaultDashboardRenderer() DashboardRenderer {
 type defaultDashboardRenderer struct{}
 
 func (d *defaultDashboardRenderer) DashboardPage(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	sidebar := PrepareSidebar(ctx, NavGroupsFromContext(ctx))
-
 	data := map[string]any{
-		"Title":         i18n.T(ctx, "admin-sidebar-title"),
-		"SidebarGroups": sidebar,
+		"Title": i18n.T(r.Context(), "admin-sidebar-title"),
 	}
 	return burrow.RenderTemplate(w, r, http.StatusOK, "admin/index", data)
 }

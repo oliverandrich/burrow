@@ -18,6 +18,13 @@ Provided by the framework itself. Always available.
 | `safeAttr` | `{{ safeAttr .Attr }}` | Mark a string as safe HTML attribute |
 | `itoa` | `{{ itoa .ID }}` | Convert `int64` to string |
 
+**Navigation (request-scoped, provided by the framework):**
+
+| Function | Example | Description |
+|----------|---------|-------------|
+| `navItems` | `{{ range navItems }}` | Raw `[]NavItem` from all `HasNavItems` apps. No filtering or active state. |
+| `navLinks` | `{{ range navLinks }}` | Filtered `[]NavLink` with `IsActive` computed from the request path. Hides `AuthOnly`/`AdminOnly` items based on the `AuthChecker` in context. |
+
 **i18n (request-scoped, provided by the core `i18n` sub-package):**
 
 | Function | Example | Description |

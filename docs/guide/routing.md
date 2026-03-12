@@ -37,7 +37,7 @@ flowchart TD
     style Q fill:#fde8e8,color:#333
 ```
 
-**Core middleware** includes request logging, request ID generation, response compression, and body size limiting. **App middleware** is contributed by apps via `HasMiddleware` and runs in registration order. Steps marked with **\*** only run when configured — Layout Injection requires a `LayoutFunc` (via `SetLayout()` or a design system app like `bootstrap`), and Template Middleware requires at least one `HasTemplates` app.
+**Core middleware** includes request logging, request ID generation, response compression, and body size limiting. **App middleware** is contributed by apps via `HasMiddleware` and runs in registration order. Steps marked with **\*** only run when configured — Layout Injection requires a layout template name (via `SetLayout()` or a design system app like `bootstrap`), and Template Middleware requires at least one `HasTemplates` app.
 
 ## Handlers
 

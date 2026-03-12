@@ -18,10 +18,10 @@ srv := burrow.NewServer(
 )
 ```
 
-`admin.New()` uses built-in defaults for the layout and dashboard renderer. Use options to override with custom implementations:
+`admin.New()` uses built-in defaults for the layout template and dashboard renderer. Use options to override:
 
 ```go
-admin.New(admin.WithLayout(myCustomLayout), admin.WithDashboardRenderer(myCustomDashboard))
+admin.New(admin.WithLayout("myapp/admin-layout"), admin.WithDashboardRenderer(myCustomDashboard))
 ```
 
 The admin app discovers admin views from other apps via the `HasAdmin` interface. Any app that implements `HasAdmin` gets its routes mounted under `/admin` with auth protection.

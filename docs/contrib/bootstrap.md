@@ -25,24 +25,24 @@ The `staticfiles` app must be registered to serve the embedded CSS and JS.
 
 ## Layout
 
-`Layout()` returns a `LayoutFunc` that renders a base HTML page with Bootstrap CSS, Bootstrap JS bundle (includes Popper), and htmx:
+`Layout()` returns the layout template name (`"bootstrap/layout"`) for a base HTML page with Bootstrap CSS, Bootstrap JS bundle (includes Popper), and htmx:
 
 ```go
-bootstrap.Layout() // returns burrow.LayoutFunc
+bootstrap.Layout() // returns "bootstrap/layout"
 ```
 
-The layout function:
+The layout template:
 
-1. Receives the rendered page fragment as `template.HTML`
-2. Executes the `"bootstrap/layout"` template, passing the fragment as `.Content`
-3. Includes navigation from context, CSRF meta tag, and theme switcher
+1. Receives the rendered page fragment as `.Content` (injected automatically by `RenderTemplate`)
+2. Includes CSRF meta tag and theme switcher
+3. Accesses dynamic data (navigation via `navLinks`, current user, etc.) via template functions from the framework and `HasRequestFuncMap` apps
 
 ## Middleware Behaviour
 
 The bootstrap middleware injects its layout **only when no layout is already set** in the request context:
 
-- `srv.SetLayout(custom)` is called — custom layout wins, bootstrap skips
-- `srv.SetLayout()` is NOT called — bootstrap layout takes effect
+- `srv.SetLayout("custom/layout")` is called — custom layout wins, bootstrap skips
+- `srv.SetLayout()` is NOT called — bootstrap layout (`"bootstrap/layout"`) takes effect
 - Admin `/admin` route group always overrides unconditionally
 
 This makes bootstrap batteries-included by default without fighting custom layouts.

@@ -50,9 +50,9 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
-                {{ range .NavItems -}}
+                {{ range navLinks -}}
                 <li class="nav-item">
-                    <a class="{{ .LinkClass }}" href="{{ .URL }}"
+                    <a class="nav-link{{ if .IsActive }} active{{ end }}" href="{{ .URL }}"
                         hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
                         {{ if .Icon }}<span class="me-1">{{ .Icon }}</span>{{ end }}
                         {{ .Label }}
@@ -71,15 +71,15 @@
 
 {{ define "app/user_menu" -}}
 <ul class="navbar-nav">
-    {{ if .User -}}
+    {{ with currentUser -}}
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button"
             data-bs-toggle="dropdown" aria-expanded="false">
             <span class="me-1">{{ iconPersonCircle }}</span>
-            {{ .User.Username }}
+            {{ .Username }}
         </a>
         <ul class="dropdown-menu dropdown-menu-end">
-            {{ if .User.IsAdmin -}}
+            {{ if .IsAdmin -}}
             <li>
                 <a class="dropdown-item" href="/admin">
                     <span class="me-2">{{ iconGear }}</span>{{ t "layout-admin" }}
@@ -109,7 +109,7 @@
 
 {{ define "app/alerts" -}}
 <div id="alerts">
-    {{ range .Messages -}}
+    {{ range messages -}}
     <div class="alert alert-{{ alertClass .Level }} alert-dismissible fade show" role="alert">
         {{ .Text }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -120,7 +120,7 @@
 
 {{ define "app/alerts_oob" -}}
 <div id="alerts" hx-swap-oob="innerHTML">
-    {{ range .Messages -}}
+    {{ range messages -}}
     <div class="alert alert-{{ alertClass .Level }} alert-dismissible fade show" role="alert">
         {{ .Text }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>

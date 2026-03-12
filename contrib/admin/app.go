@@ -28,17 +28,17 @@ type DashboardRenderer interface {
 
 // App implements the admin coordinator contrib app.
 type App struct {
-	registry  *burrow.Registry
-	layout    burrow.LayoutFunc
 	dashboard DashboardRenderer
+	registry  *burrow.Registry
+	layout    string
 }
 
 // Option configures the admin app.
 type Option func(*App)
 
-// WithLayout sets the layout for admin pages.
-func WithLayout(fn burrow.LayoutFunc) Option {
-	return func(a *App) { a.layout = fn }
+// WithLayout sets the layout template name for admin pages.
+func WithLayout(layout string) Option {
+	return func(a *App) { a.layout = layout }
 }
 
 // WithDashboardRenderer sets the dashboard page renderer.
@@ -112,6 +112,16 @@ func (a *App) FuncMap() template.FuncMap {
 	}
 }
 
+// RequestFuncMap returns request-scoped template functions for the admin sidebar.
+func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
+	ctx := r.Context()
+	return template.FuncMap{
+		"adminSidebar": func() []SidebarGroup {
+			return PrepareSidebar(ctx, NavGroupsFromContext(ctx))
+		},
+	}
+}
+
 // Routes creates the /admin group with auth middleware and delegates
 // to all HasAdmin apps.
 func (a *App) Routes(r chi.Router) {
@@ -127,7 +137,7 @@ func (a *App) Routes(r chi.Router) {
 		r.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				ctx := r.Context()
-				if a.layout != nil {
+				if a.layout != "" {
 					ctx = burrow.WithLayout(ctx, a.layout)
 				}
 				ctx = WithNavGroups(ctx, groups)

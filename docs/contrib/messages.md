@@ -68,22 +68,14 @@ for _, msg := range msgs {
 
 ### In Layout Templates
 
-Messages are not injected into templates automatically — your layout function must pass them into the template data. Call `messages.Get(r.Context())` in your `LayoutFunc` and add the result to the data map:
-
-```go
-layoutData["Messages"] = messages.Get(r.Context())
-```
-
-Then render them in your layout template. Note that the `error` level must be mapped to Bootstrap's `danger` class:
+Messages are available in layout templates via the `messages` template function (provided by the messages contrib app via `HasRequestFuncMap`). Note that the `error` level must be mapped to Bootstrap's `danger` class:
 
 ```html
-{{ if .Messages -}}
-{{ range .Messages -}}
+{{ range messages -}}
 <div class="alert alert-{{ if eq .Level "error" }}danger{{ else }}{{ .Level }}{{ end }} alert-dismissible fade show" role="alert">
     {{ .Text }}
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
-{{ end -}}
 {{ end -}}
 ```
 

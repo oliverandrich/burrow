@@ -43,7 +43,7 @@ type App struct {
 	invitesAdmin  *modeladmin.ModelAdmin[Invite]
 	renderer      Renderer
 	emailService  EmailService
-	authLayout    burrow.LayoutFunc
+	authLayout    string
 	cancelCleanup context.CancelFunc
 	config        *Config
 	globalConfig  *burrow.Config
@@ -70,12 +70,12 @@ func WithRenderer(r Renderer) Option {
 	return func(a *App) { a.renderer = r }
 }
 
-// WithAuthLayout sets an optional layout for public (unauthenticated) auth pages.
-// When set, pages like login, register, and recovery use this layout instead
-// of the global app layout. Authenticated routes (credentials, recovery codes)
+// WithAuthLayout sets an optional layout template name for public (unauthenticated)
+// auth pages. When set, pages like login, register, and recovery use this layout
+// instead of the global app layout. Authenticated routes (credentials, recovery codes)
 // continue to use the global layout.
-func WithAuthLayout(fn burrow.LayoutFunc) Option {
-	return func(a *App) { a.authLayout = fn }
+func WithAuthLayout(name string) Option {
+	return func(a *App) { a.authLayout = name }
 }
 
 // WithLogoComponent sets an optional logo HTML rendered above auth page content.
@@ -377,6 +377,8 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 }
 
 // authMiddleware loads the user from the session and sets it in the request context.
+// It also injects a burrow.AuthChecker so the core navLinks template function
+// can filter AuthOnly/AdminOnly items without importing this package.
 func (a *App) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := session.GetInt64(r, "user_id")
@@ -392,6 +394,10 @@ func (a *App) authMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := WithUser(r.Context(), user)
+		ctx = burrow.WithAuthChecker(ctx, burrow.AuthChecker{
+			IsAuthenticated: func() bool { return true },
+			IsAdmin:         func() bool { return user.IsAdmin() },
+		})
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -403,7 +409,7 @@ func (a *App) Routes(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
 		// Public routes — use auth layout and logo if set.
 		r.Group(func(r chi.Router) {
-			if a.authLayout != nil {
+			if a.authLayout != "" {
 				r.Use(authLayoutMiddleware(a.authLayout))
 			}
 			if a.logo != "" {
@@ -445,10 +451,10 @@ func (a *App) Routes(r chi.Router) {
 }
 
 // authLayoutMiddleware overrides the layout in context for auth pages.
-func authLayoutMiddleware(fn burrow.LayoutFunc) func(http.Handler) http.Handler {
+func authLayoutMiddleware(name string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := burrow.WithLayout(r.Context(), fn)
+			ctx := burrow.WithLayout(r.Context(), name)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

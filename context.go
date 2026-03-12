@@ -11,16 +11,21 @@ import (
 // middleware and used by RenderTemplate.
 type TemplateExecutor func(r *http.Request, name string, data map[string]any) (template.HTML, error)
 
-// LayoutFunc wraps page content in a layout template.
-// The layout reads framework values (nav items, user, locale, CSRF)
-// from the request context via helper functions.
-type LayoutFunc func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error
+// AuthChecker provides authentication and authorization checks via closures.
+// This allows the core framework to filter nav items by auth state without
+// importing contrib/auth. Auth apps inject an AuthChecker into the context;
+// the framework reads it when building NavLinks.
+type AuthChecker struct {
+	IsAuthenticated func() bool
+	IsAdmin         func() bool
+}
 
 // Context key types for framework-provided values.
 type (
 	ctxKeyLayout           struct{}
 	ctxKeyNavItems         struct{}
 	ctxKeyTemplateExecutor struct{}
+	ctxKeyAuthChecker      struct{}
 )
 
 // WithContextValue returns a new context with the given key-value pair.
@@ -40,17 +45,17 @@ func ContextValue[T any](ctx context.Context, key any) (T, bool) {
 	return val, ok
 }
 
-// WithLayout stores the app layout function in the context.
-func WithLayout(ctx context.Context, fn LayoutFunc) context.Context {
-	return context.WithValue(ctx, ctxKeyLayout{}, fn)
+// WithLayout stores the layout template name in the context.
+func WithLayout(ctx context.Context, name string) context.Context {
+	return context.WithValue(ctx, ctxKeyLayout{}, name)
 }
 
-// Layout retrieves the app layout function from the context.
-func Layout(ctx context.Context) LayoutFunc {
-	if fn, ok := ctx.Value(ctxKeyLayout{}).(LayoutFunc); ok {
-		return fn
+// Layout retrieves the layout template name from the context.
+func Layout(ctx context.Context) string {
+	if name, ok := ctx.Value(ctxKeyLayout{}).(string); ok {
+		return name
 	}
-	return nil
+	return ""
 }
 
 // WithNavItems stores navigation items in the context.
@@ -77,4 +82,36 @@ func TemplateExecutorFromContext(ctx context.Context) TemplateExecutor {
 		return exec
 	}
 	return nil
+}
+
+// WithAuthChecker stores an AuthChecker in the context. This is typically
+// called by auth middleware to make authentication state available to the
+// core template functions without an import cycle.
+func WithAuthChecker(ctx context.Context, checker AuthChecker) context.Context {
+	return context.WithValue(ctx, ctxKeyAuthChecker{}, checker)
+}
+
+// AuthCheckerContextKey returns the context key used for AuthChecker storage.
+// This is intended for testing: use ContextValue with this key to inspect
+// the AuthChecker set by middleware.
+func AuthCheckerContextKey() any {
+	return ctxKeyAuthChecker{}
+}
+
+// isAuthenticated returns true if the AuthChecker in context reports
+// authentication. Returns false if no AuthChecker is set.
+func isAuthenticated(ctx context.Context) bool {
+	if checker, ok := ctx.Value(ctxKeyAuthChecker{}).(AuthChecker); ok {
+		return checker.IsAuthenticated()
+	}
+	return false
+}
+
+// isAdmin returns true if the AuthChecker in context reports admin status.
+// Returns false if no AuthChecker is set.
+func isAdmin(ctx context.Context) bool {
+	if checker, ok := ctx.Value(ctxKeyAuthChecker{}).(AuthChecker); ok {
+		return checker.IsAdmin()
+	}
+	return false
 }

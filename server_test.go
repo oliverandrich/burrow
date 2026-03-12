@@ -3,7 +3,6 @@ package burrow
 import (
 	"context"
 	"errors"
-	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -127,23 +126,15 @@ func TestServerBootstrapSeedError(t *testing.T) {
 func TestSetLayout(t *testing.T) {
 	s := NewServer(&minimalApp{})
 
-	layout := LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, content template.HTML, _ map[string]any) error {
-		return nil
-	})
-
-	s.SetLayout(layout)
-	assert.NotNil(t, s.layout)
+	s.SetLayout("app/layout")
+	assert.Equal(t, "app/layout", s.layout)
 }
 
 func TestLayoutMiddleware(t *testing.T) {
-	layout := LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, _ template.HTML, _ map[string]any) error {
-		return nil
-	})
-
 	r := chi.NewRouter()
-	r.Use(layoutMiddleware(layout))
+	r.Use(layoutMiddleware("test/layout"))
 
-	var got LayoutFunc
+	var got string
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 		got = Layout(r.Context())
 		w.WriteHeader(http.StatusOK)
@@ -154,7 +145,7 @@ func TestLayoutMiddleware(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.NotNil(t, got, "layout should be set in context")
+	assert.Equal(t, "test/layout", got, "layout should be set in context")
 }
 
 func TestNavItemsMiddleware(t *testing.T) {

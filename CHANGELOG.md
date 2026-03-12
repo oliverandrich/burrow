@@ -6,10 +6,13 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Breaking Changes
 
+- **`LayoutFunc` removed**: The `LayoutFunc` type and `SetLayout(fn LayoutFunc)` are gone. Layouts are now template name strings: call `srv.SetLayout("myapp/layout")` with a template name, and `RenderTemplate` wraps content automatically. Layout templates receive the rendered fragment as `.Content` and access dynamic data (navigation, user, etc.) via template functions instead of Go code passing data maps. See the [Layouts & Rendering guide](docs/guide/layouts.md).
 - **ModelAdmin migrated to `forms` package**: `Renderer[T].Form()` now takes `[]forms.BoundField` instead of `[]FormField` and `*ValidationError` (errors are on each `BoundField`). `FormField`, `Choice`, `AutoFields`, `PopulateFromForm` removed from modeladmin — use `forms.FromModel`, `forms.BoundField`, `forms.Choice` instead. `ChoicesFunc` and `FilterDef.Choices` now use `forms.Choice`.
 
 ### Added
 
+- **`NavLink` type and `navLinks` template function** — core framework now provides filtered, template-ready navigation with automatic `AuthOnly`/`AdminOnly` filtering and active-state highlighting. Apps only need to implement `HasNavItems`; no manual filtering or `RequestFuncMap` required for navigation.
+- **`AuthChecker` context type** — allows core framework to read auth state without importing `contrib/auth`. The `auth` middleware injects it automatically. Custom auth systems can use `burrow.WithAuthChecker()`.
 - **`forms` package** — generic, type-safe form handling with `Form[T]`, `BoundField`, `Choice`, struct tag-driven field extraction (`form`, `verbose_name`, `widget`, `choices`, `help_text`, `validate`), request binding via `burrow.Bind`, cross-field validation via `Cleanable` interface, and dynamic choices via `ChoiceProvider`/`WithChoicesFunc`
 - `forms.WithExclude` option — excludes fields by Go struct field name from form rendering
 - **`contrib/htmx` config template** — `htmx/config` template configures htmx to swap `422 Unprocessable Entity` responses, enabling consistent status codes for form validation errors across htmx and non-htmx requests

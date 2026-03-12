@@ -32,7 +32,7 @@ import (
 //  4. Start with [Server.Run] (opens DB, migrates, bootstraps, serves HTTP)
 type Server struct { //nolint:govet // fieldalignment: readability over optimization
 	registry                *Registry
-	layout                  LayoutFunc
+	layout                  string
 	templates               *template.Template
 	requestFuncMapProviders []func(r *http.Request) template.FuncMap
 	i18nBundle              *i18n.Bundle
@@ -138,9 +138,9 @@ func sortApps(apps []App) []App {
 	return sorted
 }
 
-// SetLayout configures the app layout function.
-func (s *Server) SetLayout(fn LayoutFunc) {
-	s.layout = fn
+// SetLayout configures the layout template name used for all pages.
+func (s *Server) SetLayout(name string) {
+	s.layout = name
 }
 
 // Registry returns the server's app registry.
@@ -212,8 +212,9 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	// Register i18n request func map provider (lang, t, tData, tPlural).
+	// Register core request func map providers.
 	s.requestFuncMapProviders = append(s.requestFuncMapProviders, s.i18nBundle.RequestFuncMap)
+	s.requestFuncMapProviders = append(s.requestFuncMapProviders, coreRequestFuncMap)
 
 	if err := s.buildTemplates(); err != nil {
 		return fmt.Errorf("build templates: %w", err)
@@ -224,7 +225,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	r.Use(s.i18nBundle.LocaleMiddleware())
 	navItems := s.registry.AllNavItems()
 	r.Use(navItemsMiddleware(navItems))
-	if s.layout != nil {
+	if s.layout != "" {
 		r.Use(layoutMiddleware(s.layout))
 	}
 	if s.templates != nil {
@@ -342,10 +343,10 @@ func withTxLock(dsn string) string {
 	}
 }
 
-func layoutMiddleware(fn LayoutFunc) func(http.Handler) http.Handler {
+func layoutMiddleware(name string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := WithLayout(r.Context(), fn)
+			ctx := WithLayout(r.Context(), name)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

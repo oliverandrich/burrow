@@ -229,10 +229,17 @@ func TestDefaultRendererLoginPageWithoutLogo(t *testing.T) {
 func TestDefaultRendererWithLayout(t *testing.T) {
 	r := DefaultRenderer()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
-	ctx := burrow.WithLayout(req.Context(), func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		return burrow.HTML(w, code, "<layout-wrapper>"+string(content)+"</layout-wrapper>")
-	})
-	ctx = burrow.WithTemplateExecutor(ctx, rendererTestExecutor())
+
+	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		if name == "test-layout" {
+			content, _ := data["Content"].(template.HTML)
+			return template.HTML("<layout-wrapper>" + string(content) + "</layout-wrapper>"), nil //nolint:gosec // test
+		}
+		return rendererTestExecutor()(nil, name, data)
+	}
+
+	ctx := burrow.WithLayout(req.Context(), "test-layout")
+	ctx = burrow.WithTemplateExecutor(ctx, exec)
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -293,40 +300,8 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 
 // --- DefaultAuthLayout tests ---
 
-func TestDefaultAuthLayoutWithoutExecutor(t *testing.T) {
-	layout := DefaultAuthLayout()
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	err := layout(rec, req, http.StatusOK, "<p>content</p>", nil)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "<p>content</p>")
-}
-
-func TestDefaultAuthLayoutWithExecutor(t *testing.T) {
-	layout := DefaultAuthLayout()
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	req = withRendererTestExecutor(req)
-	rec := httptest.NewRecorder()
-
-	err := layout(rec, req, http.StatusOK, "<p>test content</p>", map[string]any{})
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
-}
-
-func TestDefaultAuthLayoutWithTitle(t *testing.T) {
-	layout := DefaultAuthLayout()
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	req = withRendererTestExecutor(req)
-	rec := httptest.NewRecorder()
-
-	err := layout(rec, req, http.StatusOK, "<p>content</p>", map[string]any{"Title": "My Title"})
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
+func TestDefaultAuthLayout(t *testing.T) {
+	assert.Equal(t, "auth/layout", DefaultAuthLayout())
 }
 
 // --- renderCentered/renderCard without executor ---

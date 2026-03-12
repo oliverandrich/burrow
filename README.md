@@ -152,30 +152,24 @@ Apps can optionally implement additional interfaces:
 
 ### Layouts
 
-The app layout wraps user-facing pages:
+Layouts are template name strings. The app layout wraps user-facing pages:
 
 ```go
-srv.SetLayout(appLayout)
+srv.SetLayout("myapp/layout")
 ```
 
 The admin layout is owned by the admin package:
 
 ```go
-admin.New(admin.WithLayout(layout), admin.WithDashboardRenderer(dashboardRenderer))
+admin.New(admin.WithLayout("custom/admin-layout"))
 ```
 
-A `LayoutFunc` receives the response writer, request, status code, rendered content, and template data:
+`RenderTemplate` renders page content, then wraps it in the layout template with `.Content` set to the rendered fragment. Layout templates access dynamic data via template functions:
 
-```go
-type LayoutFunc func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error
-```
-
-Layouts access framework values from the request context:
-
-```go
-burrow.NavItems(ctx)    // Navigation items from all apps
-burrow.Layout(ctx)      // App layout function
-csrf.Token(ctx)         // CSRF token for forms
+```html
+{{ range navLinks }}...{{ end }}  {{/* filtered nav with active state */}}
+{{ if currentUser }}...{{ end }}  {{/* authenticated user */}}
+{{ csrfToken }}                   {{/* CSRF token for forms */}}
 ```
 
 ### Configuration

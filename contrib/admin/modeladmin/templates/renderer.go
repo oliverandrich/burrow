@@ -169,15 +169,29 @@ func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Reques
 	return d.Detail(w, r, item, cfg)
 }
 
-// renderWithLayout wraps content in the layout from context, or renders bare content.
-// For HTMX requests, it skips the layout and returns the content fragment directly.
+// renderWithLayout wraps pre-rendered content in the layout template from context.
+// For HTMX requests, it returns the content fragment directly.
 func renderWithLayout(w http.ResponseWriter, r *http.Request, title string, content template.HTML) error {
 	if htmx.Request(r).IsHTMX() {
 		return burrow.HTML(w, http.StatusOK, string(content))
 	}
-	lay := burrow.Layout(r.Context())
-	if lay != nil {
-		return lay(w, r, http.StatusOK, content, map[string]any{"Title": title})
+
+	layoutTmpl := burrow.Layout(r.Context())
+	if layoutTmpl == "" {
+		return burrow.HTML(w, http.StatusOK, string(content))
 	}
-	return burrow.HTML(w, http.StatusOK, string(content))
+
+	exec := burrow.TemplateExecutorFromContext(r.Context())
+	if exec == nil {
+		return burrow.HTML(w, http.StatusOK, string(content))
+	}
+
+	html, err := exec(r, layoutTmpl, map[string]any{
+		"Title":   title,
+		"Content": content,
+	})
+	if err != nil {
+		return fmt.Errorf("burrow: execute layout template %q: %w", layoutTmpl, err)
+	}
+	return burrow.HTML(w, http.StatusOK, string(html))
 }

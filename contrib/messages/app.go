@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"html/template"
 	"net/http"
 
 	"github.com/oliverandrich/burrow"
@@ -22,6 +23,14 @@ func (a *App) Dependencies() []string { return []string{"session"} }
 
 func (a *App) Middleware() []func(http.Handler) http.Handler {
 	return []func(http.Handler) http.Handler{flashMiddleware}
+}
+
+// RequestFuncMap returns request-scoped template functions for flash messages.
+func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
+	ctx := r.Context()
+	return template.FuncMap{
+		"messages": func() []Message { return Get(ctx) },
+	}
 }
 
 // flashMiddleware creates a mutable message store seeded from any messages

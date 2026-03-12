@@ -206,7 +206,6 @@ package pages
 
 import (
     "embed"
-    "html/template"
     "io/fs"
     "net/http"
 
@@ -244,34 +243,13 @@ func (a *App) Routes(r chi.Router) {
 }
 ```
 
-### The Layout Function
+### The Layout Name
 
-Still in `internal/pages/pages.go`, add the `Layout()` function. It wraps every page in a consistent HTML shell:
+Still in `internal/pages/pages.go`, add the `Layout()` function. It returns the template name for the layout:
 
 ```go
-func Layout() burrow.LayoutFunc {
-    return func(w http.ResponseWriter, r *http.Request, code int,
-        content template.HTML, data map[string]any) error {
-
-        exec := burrow.TemplateExecutorFromContext(r.Context())
-        if exec == nil {
-            return burrow.HTML(w, code, string(content))
-        }
-
-        layoutData := map[string]any{
-            "Content":  content,
-            "NavItems": burrow.NavItems(r.Context()),
-        }
-        if title, ok := data["Title"]; ok {
-            layoutData["Title"] = title
-        }
-
-        rendered, err := exec(r, "app/layout", layoutData)
-        if err != nil {
-            return err
-        }
-        return burrow.HTML(w, code, string(rendered))
-    }
+func Layout() string {
+    return "app/layout"
 }
 ```
 
@@ -279,7 +257,7 @@ When `RenderTemplate()` is called:
 
 1. It executes the named template (e.g. `"polls/list"`) to produce an HTML fragment
 2. It checks if the request is an HTMX request — if so, it returns the fragment directly
-3. Otherwise, it calls the `LayoutFunc` which wraps the fragment in the full page layout
+3. Otherwise, it renders the layout template, passing the fragment as `.Content`
 
 ### The Layout Template
 
@@ -301,9 +279,9 @@ Create `internal/pages/templates/app/layout.html`:
             <a class="navbar-brand" href="/">Polls</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav">
-                    {{ range .NavItems -}}
+                    {{ range navLinks -}}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ .URL }}">{{ .Label }}</a>
+                        <a class="nav-link{{ if .IsActive }} active{{ end }}" href="{{ .URL }}">{{ .Label }}</a>
                     </li>
                     {{ end -}}
                 </ul>
@@ -423,7 +401,7 @@ Open `http://localhost:8080` — you'll see the Bootstrap-styled homepage. Click
 
 - **`HasTemplates`** — apps contribute `.html` template files to the global template set
 - **`RenderTemplate()`** — renders a named template, automatically wrapping in a layout for normal requests and returning fragments for HTMX requests
-- **`LayoutFunc`** — wraps page content in a full HTML document with navigation, scripts, and styles
+- **Layout templates** — wrap page content in a full HTML document with navigation (via `navLinks` template function), scripts, and styles
 - **`staticfiles`** and **`bootstrap`** — contrib apps handle CSS/JS assets with cache busting
 
 ## Next

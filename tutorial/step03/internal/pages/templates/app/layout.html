@@ -17,9 +17,9 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
-                    {{ range .NavItems -}}
+                    {{ range navLinks -}}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ .URL }}">{{ .Label }}</a>
+                        <a class="nav-link{{ if .IsActive }} active{{ end }}" href="{{ .URL }}">{{ .Label }}</a>
                     </li>
                     {{ end -}}
                 </ul>

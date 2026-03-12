@@ -9,7 +9,6 @@ import (
 	"embed"
 	"html/template"
 	"io/fs"
-	"maps"
 	"net/http"
 
 	"github.com/oliverandrich/burrow"
@@ -66,7 +65,7 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 	return []func(http.Handler) http.Handler{
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if burrow.Layout(r.Context()) == nil {
+				if burrow.Layout(r.Context()) == "" {
 					ctx := burrow.WithLayout(r.Context(), Layout())
 					r = r.WithContext(ctx)
 				}
@@ -76,26 +75,7 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 	}
 }
 
-// Layout returns a LayoutFunc that renders page content inside the
-// bootstrap/layout template.
-func Layout() burrow.LayoutFunc {
-	return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		exec := burrow.TemplateExecutorFromContext(r.Context())
-		if exec == nil {
-			return burrow.HTML(w, code, string(content))
-		}
-
-		layoutData := make(map[string]any, len(data)+2)
-		maps.Copy(layoutData, data)
-		layoutData["Content"] = content
-		if _, ok := layoutData["Title"]; !ok {
-			layoutData["Title"] = ""
-		}
-
-		html, err := exec(r, "bootstrap/layout", layoutData)
-		if err != nil {
-			return err
-		}
-		return burrow.HTML(w, code, string(html))
-	}
+// Layout returns the template name for the bootstrap layout.
+func Layout() string {
+	return "bootstrap/layout"
 }

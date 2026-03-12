@@ -102,7 +102,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, statusCode int, name
 Executes a named template and writes the result. Applies automatic layout and HTMX logic:
 
 - **HTMX request** (`HX-Request` header) — renders the fragment only, no layout wrapping
-- **Normal request with layout** — wraps the fragment in the layout function from context
+- **Normal request with layout** — renders the layout template from context, passing the fragment as `.Content`
 - **Normal request without layout** — renders the fragment only
 
 ```go
@@ -191,11 +191,11 @@ type FieldError struct {
 ### Layout
 
 ```go
-func WithLayout(ctx context.Context, fn LayoutFunc) context.Context
-func Layout(ctx context.Context) LayoutFunc
+func WithLayout(ctx context.Context, name string) context.Context
+func Layout(ctx context.Context) string
 ```
 
-Gets or sets the layout function in the request context. The framework sets this automatically via middleware. Used by `RenderTemplate` to wrap content.
+Gets or sets the layout template name in the request context. The framework sets this automatically via middleware. Used by `RenderTemplate` to wrap content in the named layout template.
 
 ### NavItems
 
@@ -205,6 +205,19 @@ func NavItems(ctx context.Context) []NavItem
 ```
 
 Gets or sets navigation items in the request context. The framework collects items from all `HasNavItems` apps and injects them via middleware.
+
+### AuthChecker
+
+```go
+type AuthChecker struct {
+    IsAuthenticated func() bool
+    IsAdmin         func() bool
+}
+
+func WithAuthChecker(ctx context.Context, checker AuthChecker) context.Context
+```
+
+Stores authentication state in the context via closures, allowing the core `navLinks` template function to filter `AuthOnly`/`AdminOnly` items without importing `contrib/auth`. The `auth` contrib app injects this automatically. When no `AuthChecker` is set, `AuthOnly` and `AdminOnly` items are hidden.
 
 ### TemplateExecutor
 
@@ -260,13 +273,7 @@ Returns `true` if the host is a localhost address (`""`, `localhost`, `127.0.0.1
 
 ## Layout
 
-### LayoutFunc
-
-```go
-type LayoutFunc func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error
-```
-
-Wraps rendered template content in an HTML shell. Receives the response writer, request, status code, pre-rendered content, and template data.
+Layouts are template name strings. Use `SetLayout("myapp/layout")` to set the layout template name. `RenderTemplate` renders the content template, then renders the layout template with `.Content` set to the rendered fragment.
 
 See [Layouts & Rendering](../guide/layouts.md) for details on implementing layouts.
 
@@ -287,3 +294,16 @@ type NavItem struct {
 ```
 
 See [Navigation](../guide/navigation.md) for positioning and ordering.
+
+### NavLink
+
+```go
+type NavLink struct {
+    Label    string
+    URL      string
+    Icon     template.HTML
+    IsActive bool
+}
+```
+
+Template-ready navigation item returned by the `navLinks` template function. `IsActive` is `true` when the current request path matches the item's URL (prefix match, with exact match for `/`). See [Navigation](../guide/navigation.md) for usage.

@@ -34,3 +34,13 @@ type NavItem struct { //nolint:govet // fieldalignment: readability over optimiz
 	AuthOnly  bool
 	AdminOnly bool
 }
+
+// NavLink is a template-ready navigation item with pre-computed active state.
+// It is produced by the navLinks template function from the registered NavItems,
+// filtered by the current user's authentication/authorization state.
+type NavLink struct {
+	Label    string
+	URL      string
+	Icon     template.HTML
+	IsActive bool
+}

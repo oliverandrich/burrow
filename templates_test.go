@@ -1,6 +1,7 @@
 package burrow
 
 import (
+	"context"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -221,6 +222,133 @@ func TestExecuteTemplateNotFound(t *testing.T) {
 	_, err = s.executeTemplate(r, "myapp/nonexistent", nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nonexistent")
+}
+
+func TestIsActivePath(t *testing.T) {
+	tests := []struct {
+		name        string
+		requestPath string
+		itemURL     string
+		want        bool
+	}{
+		{"exact root match", "/", "/", true},
+		{"root not active on subpath", "/notes", "/", false},
+		{"prefix match", "/notes/1", "/notes", true},
+		{"exact match", "/notes", "/notes", true},
+		{"no match", "/settings", "/notes", false},
+		{"empty request path", "", "/notes", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isActivePath(tt.requestPath, tt.itemURL))
+		})
+	}
+}
+
+func TestBuildNavLinks_PublicItems(t *testing.T) {
+	ctx := context.Background()
+	items := []NavItem{
+		{Label: "Home", URL: "/", Position: 1},
+		{Label: "About", URL: "/about", Position: 2},
+	}
+	ctx = WithNavItems(ctx, items)
+
+	links := buildNavLinks(ctx, "/about")
+
+	require.Len(t, links, 2)
+	assert.Equal(t, "Home", links[0].Label)
+	assert.False(t, links[0].IsActive)
+	assert.Equal(t, "About", links[1].Label)
+	assert.True(t, links[1].IsActive)
+}
+
+func TestBuildNavLinks_FiltersAuthOnly(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Home", URL: "/"},
+		{Label: "Notes", URL: "/notes", AuthOnly: true},
+	})
+
+	links := buildNavLinks(ctx, "/")
+
+	require.Len(t, links, 1)
+	assert.Equal(t, "Home", links[0].Label)
+}
+
+func TestBuildNavLinks_ShowsAuthOnlyWhenAuthenticated(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Home", URL: "/"},
+		{Label: "Notes", URL: "/notes", AuthOnly: true},
+	})
+	ctx = WithAuthChecker(ctx, AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsAdmin:         func() bool { return false },
+	})
+
+	links := buildNavLinks(ctx, "/")
+
+	require.Len(t, links, 2)
+}
+
+func TestBuildNavLinks_FiltersAdminOnly(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Admin", URL: "/admin", AdminOnly: true},
+	})
+	ctx = WithAuthChecker(ctx, AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsAdmin:         func() bool { return false },
+	})
+
+	links := buildNavLinks(ctx, "/")
+
+	assert.Empty(t, links)
+}
+
+func TestBuildNavLinks_ShowsAdminOnlyForAdmins(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Admin", URL: "/admin", AdminOnly: true},
+	})
+	ctx = WithAuthChecker(ctx, AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsAdmin:         func() bool { return true },
+	})
+
+	links := buildNavLinks(ctx, "/")
+
+	require.Len(t, links, 1)
+	assert.Equal(t, "Admin", links[0].Label)
+}
+
+func TestBuildNavLinks_PreservesIcon(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Home", URL: "/", Icon: "<svg>icon</svg>"},
+	})
+
+	links := buildNavLinks(ctx, "/")
+
+	require.Len(t, links, 1)
+	assert.Equal(t, template.HTML("<svg>icon</svg>"), links[0].Icon)
+}
+
+func TestCoreRequestFuncMap_NavLinks(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Home", URL: "/", Position: 1},
+	})
+	r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+
+	fm := coreRequestFuncMap(r)
+
+	navLinksFn, ok := fm["navLinks"].(func() []NavLink)
+	require.True(t, ok)
+	links := navLinksFn()
+	require.Len(t, links, 1)
+	assert.Equal(t, "Home", links[0].Label)
+	assert.True(t, links[0].IsActive)
 }
 
 func TestTemplateMiddleware(t *testing.T) {

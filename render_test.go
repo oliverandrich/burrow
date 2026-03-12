@@ -55,16 +55,16 @@ func TestRenderTemplateFragment(t *testing.T) {
 }
 
 func TestRenderTemplateWithLayout(t *testing.T) {
-	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		if name == "test-layout" {
+			return template.HTML("<html><body>" + string(data["Content"].(template.HTML)) + "</body></html>"), nil
+		}
 		return template.HTML("<p>content</p>"), nil
-	})
-	layout := LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
-		return HTML(w, code, "<html><body>"+string(content)+"</body></html>")
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	ctx := WithTemplateExecutor(req.Context(), exec)
-	ctx = WithLayout(ctx, layout)
+	ctx = WithLayout(ctx, "test-layout")
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -77,40 +77,34 @@ func TestRenderTemplateHTMXSkipsLayout(t *testing.T) {
 	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>fragment</p>"), nil
 	})
-	layoutCalled := false
-	layout := LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
-		layoutCalled = true
-		return HTML(w, code, "<html>"+string(content)+"</html>")
-	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set("HX-Request", "true")
 	ctx := WithTemplateExecutor(req.Context(), exec)
-	ctx = WithLayout(ctx, layout)
+	ctx = WithLayout(ctx, "test-layout")
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
 	err := RenderTemplate(rec, req, http.StatusOK, "partial", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "<p>fragment</p>", rec.Body.String())
-	assert.False(t, layoutCalled, "layout should not be called for HTMX requests")
 }
 
 func TestRenderTemplateBoostedRequestAppliesLayout(t *testing.T) {
-	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
-		return template.HTML("<p>content</p>"), nil
-	})
 	layoutCalled := false
-	layout := LayoutFunc(func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
-		layoutCalled = true
-		return HTML(w, code, "<html>"+string(content)+"</html>")
+	exec := TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		if name == "test-layout" {
+			layoutCalled = true
+			return template.HTML("<html>" + string(data["Content"].(template.HTML)) + "</html>"), nil
+		}
+		return template.HTML("<p>content</p>"), nil
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set("HX-Request", "true")
 	req.Header.Set("HX-Boosted", "true")
 	ctx := WithTemplateExecutor(req.Context(), exec)
-	ctx = WithLayout(ctx, layout)
+	ctx = WithLayout(ctx, "test-layout")
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 

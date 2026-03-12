@@ -22,21 +22,38 @@ func WithNavItems(ctx context.Context, items []NavItem) context.Context
 
 Stores navigation items in the context. Used internally by the framework.
 
+### WithAuthChecker
+
+```go
+func WithAuthChecker(ctx context.Context, checker AuthChecker) context.Context
+```
+
+Stores an `AuthChecker` in the context. The `auth` contrib app calls this automatically in its middleware. The core `navLinks` template function reads it to filter `AuthOnly`/`AdminOnly` nav items. When no `AuthChecker` is set, those items are hidden.
+
+```go
+type AuthChecker struct {
+    IsAuthenticated func() bool
+    IsAdmin         func() bool
+}
+```
+
+Only needed when using a custom auth system instead of the `auth` contrib app.
+
 ### Layout
 
 ```go
-func Layout(ctx context.Context) LayoutFunc
+func Layout(ctx context.Context) string
 ```
 
-Returns the app layout function from the context. Returns `nil` if no layout is set.
+Returns the app layout template name from the context. Returns `""` if no layout is set.
 
 ### WithLayout
 
 ```go
-func WithLayout(ctx context.Context, fn LayoutFunc) context.Context
+func WithLayout(ctx context.Context, name string) context.Context
 ```
 
-Stores the app layout function in the context. Used internally by the framework middleware.
+Stores the app layout template name in the context. Used internally by the framework middleware.
 
 ### Generic Helpers
 
@@ -84,7 +101,7 @@ func WithRequestPath(ctx context.Context, path string) context.Context
 Stores the current request path in the context. Used internally by the admin route middleware.
 
 !!! note
-    The admin layout is injected via `burrow.WithLayout(ctx, layout)` inside the `/admin` route group — there is no separate `admin.Layout` or `admin.WithLayout` helper.
+    The admin layout template name is injected via `burrow.WithLayout(ctx, "admin/layout")` inside the `/admin` route group — there is no separate `admin.Layout` or `admin.WithLayout` helper.
 
 ## CSRF Helpers
 

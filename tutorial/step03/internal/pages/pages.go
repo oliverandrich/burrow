@@ -3,7 +3,6 @@ package pages
 
 import (
 	"embed"
-	"html/template"
 	"io/fs"
 	"net/http"
 
@@ -42,26 +41,7 @@ func (a *App) Routes(r chi.Router) {
 	}))
 }
 
-// Layout returns a LayoutFunc that wraps content in the app layout template.
-func Layout() burrow.LayoutFunc {
-	return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		exec := burrow.TemplateExecutorFromContext(r.Context())
-		if exec == nil {
-			return burrow.HTML(w, code, string(content))
-		}
-
-		layoutData := map[string]any{
-			"Content":  content,
-			"NavItems": burrow.NavItems(r.Context()),
-		}
-		if title, ok := data["Title"]; ok {
-			layoutData["Title"] = title
-		}
-
-		rendered, err := exec(r, "app/layout", layoutData)
-		if err != nil {
-			return err
-		}
-		return burrow.HTML(w, code, string(rendered))
-	}
+// Layout returns the template name for the app layout.
+func Layout() string {
+	return "app/layout"
 }

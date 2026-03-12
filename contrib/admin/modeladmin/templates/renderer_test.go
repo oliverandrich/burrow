@@ -23,37 +23,36 @@ type testItem struct { //nolint:govet // fieldalignment: test struct
 }
 
 func TestRenderWithLayout_SkipsLayoutForHTMX(t *testing.T) {
-	// Set up a layout that wraps content in a marker.
-	layoutCalled := false
-	layout := func(w http.ResponseWriter, _ *http.Request, code int, content template.HTML, _ map[string]any) error {
-		layoutCalled = true
-		return burrow.HTML(w, code, "<layout>"+string(content)+"</layout>")
-	}
+	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		if name == "test-layout" {
+			content, _ := data["Content"].(template.HTML)
+			return template.HTML("<layout>" + string(content) + "</layout>"), nil //nolint:gosec // test
+		}
+		return "", nil
+	})
 
 	content := template.HTML("<p>fragment</p>")
 
 	t.Run("normal request uses layout", func(t *testing.T) {
-		layoutCalled = false
-		ctx := burrow.WithLayout(context.Background(), layout)
+		ctx := burrow.WithLayout(context.Background(), "test-layout")
+		ctx = burrow.WithTemplateExecutor(ctx, exec)
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/admin/items", nil)
 		w := httptest.NewRecorder()
 
 		err := renderWithLayout(w, req, "Items", content)
 		require.NoError(t, err)
-		assert.True(t, layoutCalled)
 		assert.Contains(t, w.Body.String(), "<layout>")
 	})
 
 	t.Run("HTMX request skips layout", func(t *testing.T) {
-		layoutCalled = false
-		ctx := burrow.WithLayout(context.Background(), layout)
+		ctx := burrow.WithLayout(context.Background(), "test-layout")
+		ctx = burrow.WithTemplateExecutor(ctx, exec)
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/admin/items", nil)
 		req.Header.Set("HX-Request", "true")
 		w := httptest.NewRecorder()
 
 		err := renderWithLayout(w, req, "Items", content)
 		require.NoError(t, err)
-		assert.False(t, layoutCalled)
 		assert.Contains(t, w.Body.String(), "<p>fragment</p>")
 		assert.NotContains(t, w.Body.String(), "<layout>")
 	})

@@ -13,7 +13,7 @@ Burrow shares Django's "batteries-included" philosophy but takes a Go-idiomatic 
 | `ForeignKey` / `ManyToManyField` | Bun struct fields + `.Relation()` eager loading |
 | `forms.Form` | Struct with `form` + `validate` tags, `burrow.Bind()` |
 | `django.template` | `html/template` with `{{ define }}` blocks |
-| `{% extends %}` / `{% block %}` | `LayoutFunc` wrapping |
+| `{% extends %}` / `{% block %}` | Layout templates with `.Content` wrapping |
 | `templatetags` | `HasFuncMap` / `HasRequestFuncMap` |
 | `manage.py` commands | `urfave/cli` commands via `HasCLICommands` |
 | `migrations` | Embedded `.up.sql` files via `Migratable` |
@@ -178,7 +178,7 @@ This is the biggest mental model shift from Django. Four key differences:
 
 ### No Template Inheritance
 
-Django uses `{% extends "base.html" %}` with `{% block content %}` to build pages from a base template. Burrow doesn't have template inheritance at all. Instead, a `LayoutFunc` — a Go function — wraps your rendered content in an HTML shell:
+Django uses `{% extends "base.html" %}` with `{% block content %}` to build pages from a base template. Burrow doesn't have template inheritance at all. Instead, a **layout template** wraps your rendered content in an HTML shell:
 
 === "Django"
 
@@ -209,13 +209,13 @@ Django uses `{% extends "base.html" %}` with `{% block content %}` to build page
     {{- end }}
     ```
 
-    The layout is a Go function set once on the server — not declared in each template:
+    The layout is a template name set once on the server — not declared in each template:
 
     ```go
-    srv.SetLayout(myLayout())
+    srv.SetLayout("myapp/layout")
     ```
 
-Templates only define their own content. The layout function receives the **entire rendered page as a single HTML fragment** and wraps it — unlike Django's blocks, you can't inject content into multiple slots. If you need reusable parts within a page, use `{{ template "name" . }}` calls (similar to Django's `{% include %}`). See [Layouts & Rendering](../guide/layouts.md) for details.
+Templates only define their own content. `RenderTemplate` renders the page template, then renders the layout template with `.Content` set to the rendered fragment — unlike Django's blocks, you can't inject content into multiple slots. Dynamic data (navigation, current user, etc.) is accessed via template functions like `navLinks`, `currentUser`, `csrfToken`. If you need reusable parts within a page, use `{{ template "name" . }}` calls (similar to Django's `{% include %}`). See [Layouts & Rendering](../guide/layouts.md) for details.
 
 ### Named Blocks Instead of Includes
 

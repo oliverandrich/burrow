@@ -1,38 +1,15 @@
 package auth
 
 import (
-	"html/template"
-	"maps"
 	"net/http"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
-// DefaultAuthLayout returns a minimal HTML layout for unauthenticated auth pages.
-// It renders a clean page with Bootstrap CSS but no navbar or navigation.
-// This is used as the default for auth.New(); pass a custom layout via
-// WithAuthLayout() to override.
-func DefaultAuthLayout() burrow.LayoutFunc {
-	return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		exec := burrow.TemplateExecutorFromContext(r.Context())
-		if exec == nil {
-			return burrow.HTML(w, code, string(content))
-		}
-
-		layoutData := make(map[string]any, len(data)+2)
-		maps.Copy(layoutData, data)
-		layoutData["Content"] = content
-		if _, ok := layoutData["Title"]; !ok {
-			layoutData["Title"] = ""
-		}
-
-		html, err := exec(r, "auth/layout", layoutData)
-		if err != nil {
-			return err
-		}
-		return burrow.HTML(w, code, string(html))
-	}
+// DefaultAuthLayout returns the template name for the built-in auth layout.
+func DefaultAuthLayout() string {
+	return "auth/layout"
 }
 
 // DefaultRenderer returns the default Renderer that uses the built-in HTML

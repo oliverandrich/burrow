@@ -211,41 +211,27 @@ func TestListNotes(t *testing.T) {
 
     t.Run("full page includes layout", func(t *testing.T) {
         req := setup(t)
-
-        layoutCalled := false
-        layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request,
-            code int, content template.HTML, _ map[string]any) error {
-            layoutCalled = true
-            return burrow.HTML(w, code, string(content))
-        })
-        ctx := burrow.WithLayout(req.Context(), layout)
+        ctx := burrow.WithLayout(req.Context(), "test-layout")
         req = req.WithContext(ctx)
 
         rec := httptest.NewRecorder()
         err := h.List(rec, req)
 
         require.NoError(t, err)
-        assert.True(t, layoutCalled, "layout should wrap full page requests")
+        assert.Contains(t, rec.Body.String(), "<html")
     })
 
     t.Run("htmx returns fragment only", func(t *testing.T) {
         req := setup(t)
         req.Header.Set("HX-Request", "true")
-
-        layoutCalled := false
-        layout := burrow.LayoutFunc(func(w http.ResponseWriter, _ *http.Request,
-            code int, content template.HTML, _ map[string]any) error {
-            layoutCalled = true
-            return burrow.HTML(w, code, string(content))
-        })
-        ctx := burrow.WithLayout(req.Context(), layout)
+        ctx := burrow.WithLayout(req.Context(), "test-layout")
         req = req.WithContext(ctx)
 
         rec := httptest.NewRecorder()
         err := h.List(rec, req)
 
         require.NoError(t, err)
-        assert.False(t, layoutCalled, "HTMX requests should skip the layout")
+        assert.NotContains(t, rec.Body.String(), "<html")
         assert.Contains(t, rec.Body.String(), "Test")
     })
 }

@@ -1319,16 +1319,13 @@ func TestActivateUserSuccess(t *testing.T) {
 // --- WithAuthLayout option tests ---
 
 func TestWithAuthLayoutOption(t *testing.T) {
-	testLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		return burrow.HTML(w, code, string(content))
-	})
-	app := New(WithAuthLayout(testLayout))
-	assert.NotNil(t, app.authLayout, "authLayout should be set via WithAuthLayout option")
+	app := New(WithAuthLayout("test/layout"))
+	assert.Equal(t, "test/layout", app.authLayout, "authLayout should be set via WithAuthLayout option")
 }
 
 func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 	// Set up a mock renderer that captures the layout from context.
-	var capturedLayout burrow.LayoutFunc
+	var capturedLayout string
 	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
 	app := &App{
@@ -1336,20 +1333,12 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
 	}
 
-	authLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		return burrow.HTML(w, code, string(content))
-	})
-	app.authLayout = authLayout
-
-	// Set up a global layout that should be overridden on public routes.
-	globalLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		return burrow.HTML(w, code, string(content))
-	})
+	app.authLayout = "auth/layout"
 
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := burrow.WithLayout(r.Context(), globalLayout)
+			ctx := burrow.WithLayout(r.Context(), "global/layout")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
@@ -1361,7 +1350,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	// The captured layout should be the auth layout, not the global one.
-	require.NotNil(t, *mockR.capturedLayout, "layout should be set in context")
+	assert.Equal(t, "auth/layout", *mockR.capturedLayout, "layout should be the auth layout")
 }
 
 func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
@@ -1369,7 +1358,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	repo := NewRepository(db)
 
 	// Set up a mock renderer that captures the layout from context.
-	var capturedLayout burrow.LayoutFunc
+	var capturedLayout string
 	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
 	app := &App{
@@ -1378,15 +1367,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 		handlers: NewHandlers(repo, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
 	}
 
-	authLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		return burrow.HTML(w, code, string(content))
-	})
-	app.authLayout = authLayout
-
-	// Set up a global layout.
-	globalLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		return burrow.HTML(w, code, string(content))
-	})
+	app.authLayout = "auth/layout"
 
 	// Create a user so the credentials handler can look up credentials.
 	user, err := repo.CreateUser(context.Background(), "alice", "Alice")
@@ -1395,7 +1376,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := burrow.WithLayout(r.Context(), globalLayout)
+			ctx := burrow.WithLayout(r.Context(), "global/layout")
 			// Inject the user so RequireAuth passes.
 			ctx = WithUser(ctx, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -1409,12 +1390,12 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	// The captured layout should be the global layout, not the auth layout.
-	require.NotNil(t, *mockR.capturedLayout, "layout should be set in context")
+	assert.Equal(t, "global/layout", *mockR.capturedLayout, "layout should be the global layout")
 }
 
 func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 	// When no auth layout is set, public routes should keep the global layout.
-	var capturedLayout burrow.LayoutFunc
+	var capturedLayout string
 	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
 	app := &App{
@@ -1423,14 +1404,10 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 	}
 	// No SetAuthLayout call.
 
-	globalLayout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		return burrow.HTML(w, code, string(content))
-	})
-
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := burrow.WithLayout(r.Context(), globalLayout)
+			ctx := burrow.WithLayout(r.Context(), "global/layout")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
@@ -1441,12 +1418,12 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	require.NotNil(t, *mockR.capturedLayout, "global layout should be preserved when no auth layout is set")
+	assert.Equal(t, "global/layout", *mockR.capturedLayout, "global layout should be preserved when no auth layout is set")
 }
 
 // layoutCapturingRenderer is a mock Renderer that captures the layout from context.
 type layoutCapturingRenderer struct {
-	capturedLayout *burrow.LayoutFunc
+	capturedLayout *string
 }
 
 func (m *layoutCapturingRenderer) LoginPage(w http.ResponseWriter, r *http.Request, _ string) error {
@@ -1692,6 +1669,73 @@ func TestAuthMiddlewareWithValidUser(t *testing.T) {
 	assert.Equal(t, "alice", gotUser.Username)
 }
 
+func TestAuthMiddlewareSetsAuthChecker(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	user, err := repo.CreateUser(context.Background(), "bob", "Bob")
+	require.NoError(t, err)
+
+	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+
+	t.Run("regular user sets authenticated checker", func(t *testing.T) {
+		var gotChecker burrow.AuthChecker
+		var hasChecker bool
+		handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotChecker, hasChecker = burrow.ContextValue[burrow.AuthChecker](r.Context(), burrow.AuthCheckerContextKey())
+			w.WriteHeader(http.StatusOK)
+		}))
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+		req = session.Inject(req, map[string]any{"user_id": user.ID})
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		require.True(t, hasChecker, "AuthChecker should be set in context")
+		assert.True(t, gotChecker.IsAuthenticated(), "should report authenticated")
+		assert.False(t, gotChecker.IsAdmin(), "regular user should not be admin")
+	})
+
+	t.Run("admin user sets admin checker", func(t *testing.T) {
+		require.NoError(t, repo.SetUserRole(context.Background(), user.ID, RoleAdmin))
+
+		var gotChecker burrow.AuthChecker
+		var hasChecker bool
+		handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotChecker, hasChecker = burrow.ContextValue[burrow.AuthChecker](r.Context(), burrow.AuthCheckerContextKey())
+			w.WriteHeader(http.StatusOK)
+		}))
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+		req = session.Inject(req, map[string]any{"user_id": user.ID})
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		require.True(t, hasChecker, "AuthChecker should be set in context")
+		assert.True(t, gotChecker.IsAuthenticated(), "should report authenticated")
+		assert.True(t, gotChecker.IsAdmin(), "admin user should report admin")
+	})
+}
+
+func TestAuthMiddlewareNoAuthCheckerWhenUnauthenticated(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+
+	var hasChecker bool
+	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, hasChecker = burrow.ContextValue[burrow.AuthChecker](r.Context(), burrow.AuthCheckerContextKey())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.False(t, hasChecker, "no AuthChecker should be set for unauthenticated requests")
+}
+
 func TestAuthMiddlewareWithInactiveUser(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
@@ -1796,21 +1840,18 @@ func TestNewWithMultipleOptions(t *testing.T) {
 	r := &mockRenderer{}
 	logo := template.HTML(`<span>Logo</span>`)
 	emailSvc := &mockEmailService{}
-	layout := burrow.LayoutFunc(func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-		return nil
-	})
 
 	app := New(
 		WithRenderer(r),
 		WithLogoComponent(logo),
 		WithEmailService(emailSvc),
-		WithAuthLayout(layout),
+		WithAuthLayout("custom/auth-layout"),
 	)
 
 	assert.Equal(t, r, app.renderer)
 	assert.Equal(t, logo, app.logo)
 	assert.Equal(t, emailSvc, app.emailService)
-	assert.NotNil(t, app.authLayout)
+	assert.Equal(t, "custom/auth-layout", app.authLayout)
 }
 
 func TestDependencies(t *testing.T) {

@@ -49,9 +49,10 @@
                     <span class="fs-5 fw-semibold">{{ t "admin-sidebar-title" }}</span>
                 </a>
                 <div class="flex-grow-1">
-                    {{- if .SidebarGroups }}
+                    {{- $sidebar := adminSidebar }}
+                    {{- if $sidebar }}
                     <nav>
-                        {{- range .SidebarGroups }}
+                        {{- range $sidebar }}
                         <div class="mb-1">
                             <button
                                 class="btn btn-sm d-inline-flex align-items-center fw-semibold text-body-emphasis bg-transparent border-0 rounded px-2 py-1"
@@ -104,7 +105,7 @@
                         </ul>
                     </div>
                     {{ end }}
-                    {{ template "bootstrap/theme_switcher" .ThemeSwitcherData }}
+                    {{ template "bootstrap/theme_switcher" (dict "Dropup" true) }}
                 </div>
             </div>
         </div>

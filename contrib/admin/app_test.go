@@ -16,12 +16,13 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ burrow.App             = (*App)(nil)
-	_ burrow.HasRoutes       = (*App)(nil)
-	_ burrow.HasDependencies = (*App)(nil)
-	_ burrow.HasTemplates    = (*App)(nil)
-	_ burrow.HasFuncMap      = (*App)(nil)
-	_ burrow.HasTranslations = (*App)(nil)
+	_ burrow.App               = (*App)(nil)
+	_ burrow.HasRoutes         = (*App)(nil)
+	_ burrow.HasDependencies   = (*App)(nil)
+	_ burrow.HasTemplates      = (*App)(nil)
+	_ burrow.HasFuncMap        = (*App)(nil)
+	_ burrow.HasTranslations   = (*App)(nil)
+	_ burrow.HasRequestFuncMap = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -182,17 +183,13 @@ func TestRoutesNoRegistryNoPanic(t *testing.T) {
 }
 
 func TestNewWithLayout(t *testing.T) {
-	layout := burrow.LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, content template.HTML, _ map[string]any) error {
-		return nil
-	})
-
-	app := New(WithLayout(layout))
-	assert.NotNil(t, app.layout)
+	app := New(WithLayout("custom/layout"))
+	assert.Equal(t, "custom/layout", app.layout)
 }
 
 func TestNewSetsDefaultLayout(t *testing.T) {
 	app := New()
-	assert.NotNil(t, app.layout, "New() should set a default layout")
+	assert.Equal(t, "admin/layout", app.layout, "New() should set a default layout")
 }
 
 func TestNewSetsDefaultDashboardRenderer(t *testing.T) {
@@ -246,7 +243,7 @@ func TestIndexPageUsesDefaultDashboardRenderer(t *testing.T) {
 
 // layoutCheckApp captures burrow.Layout from context inside the /admin group.
 type layoutCheckApp struct {
-	gotLayout burrow.LayoutFunc
+	gotLayout string
 }
 
 func (a *layoutCheckApp) Name() string                       { return "layout-check" }
@@ -260,10 +257,6 @@ func (a *layoutCheckApp) AdminRoutes(r chi.Router) {
 func (a *layoutCheckApp) AdminNavItems() []burrow.NavItem { return nil }
 
 func TestRoutesInjectLayoutInGroup(t *testing.T) {
-	layout := burrow.LayoutFunc(func(_ http.ResponseWriter, _ *http.Request, _ int, content template.HTML, _ map[string]any) error {
-		return nil
-	})
-
 	registry := burrow.NewRegistry()
 	registry.Add(session.New())
 	authApp := auth.New()
@@ -273,7 +266,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 	checker := &layoutCheckApp{}
 	registry.Add(checker)
 
-	app := New(WithLayout(layout))
+	app := New(WithLayout("custom/admin-layout"))
 	registry.Add(app)
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
@@ -292,7 +285,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 	r.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.NotNil(t, checker.gotLayout, "admin layout should be set in context inside /admin route group")
+	assert.Equal(t, "custom/admin-layout", checker.gotLayout, "admin layout should be set in context inside /admin route group")
 }
 
 func TestBuildNavGroups(t *testing.T) {
@@ -375,4 +368,13 @@ func TestRoutesInjectNavGroups(t *testing.T) {
 		names = append(names, g.AppName)
 	}
 	assert.Contains(t, names, "nav-groups-check")
+}
+
+func TestRequestFuncMap(t *testing.T) {
+	app := New()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
+
+	fm := app.RequestFuncMap(req)
+
+	assert.Contains(t, fm, "adminSidebar")
 }

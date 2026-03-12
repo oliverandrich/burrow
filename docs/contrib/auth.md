@@ -27,7 +27,7 @@ srv := burrow.NewServer(
 // With custom renderer and layout.
 auth.New(
     auth.WithRenderer(myCustomRenderer),
-    auth.WithAuthLayout(myCustomAuthLayout),
+    auth.WithAuthLayout("myapp/auth-layout"),
 )
 ```
 
@@ -41,26 +41,15 @@ The auth app ships HTML templates via `HasTemplates`. These templates use the gl
 
 Public auth pages (login, register, recovery, email verification) use a separate layout — typically a minimal page without the full app navigation. This avoids showing the navbar to unauthenticated users. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
-By default, `auth.New()` uses a built-in layout (`DefaultAuthLayout()`) that renders the `auth/layout` template with Bootstrap CSS. Override it with `auth.WithAuthLayout()`:
+By default, `auth.New()` uses a built-in layout template name (`DefaultAuthLayout()` returns `"auth/layout"`) that renders a minimal page with Bootstrap CSS. Override it with `auth.WithAuthLayout()`:
 
 ```go
 auth.New(
-    auth.WithAuthLayout(myAuthLayout()),
+    auth.WithAuthLayout("myapp/auth-layout"),
 )
 ```
 
-An auth layout is a regular `burrow.LayoutFunc`. It receives the rendered page content and wraps it in your HTML shell:
-
-```go
-func myAuthLayout() burrow.LayoutFunc {
-    return func(w http.ResponseWriter, r *http.Request, code int, content template.HTML, data map[string]any) error {
-        data["Content"] = content
-        return burrow.RenderTemplate(w, r, code, "myapp/auth-layout", data)
-    }
-}
-```
-
-With a corresponding template:
+An auth layout is simply a template name string referring to a template in the global template set:
 
 ```html
 {{ define "myapp/auth-layout" -}}
@@ -80,7 +69,7 @@ With a corresponding template:
 {{- end }}
 ```
 
-See [Layouts & Rendering](../guide/layouts.md) for more details on the `LayoutFunc` signature and how layouts work.
+See [Layouts & Rendering](../guide/layouts.md) for more details on how layouts work.
 
 ## Models
 
