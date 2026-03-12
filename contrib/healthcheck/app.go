@@ -1,8 +1,8 @@
-// Package healthcheck provides a minimal health check app for burrow.
+// Package healthcheck provides liveness and readiness probes for burrow.
 //
-// It registers a GET /healthz endpoint that returns a JSON response with
-// the server and database status. The response has HTTP 200 when healthy
-// and HTTP 503 when the database ping fails.
+// It registers two endpoints:
+//   - GET /healthz/live — always returns 200 (liveness probe)
+//   - GET /healthz/ready — database ping + all ReadinessChecker apps (200/503)
 package healthcheck
 
 import (
@@ -17,35 +17,65 @@ import (
 func New() *App { return &App{} }
 
 // App implements the burrow.App and burrow.HasRoutes interfaces.
-// It registers a /healthz endpoint that returns the server and database status.
+// It registers liveness and readiness endpoints.
 type App struct {
-	db *bun.DB
+	db       *bun.DB
+	registry *burrow.Registry
 }
 
 func (a *App) Name() string { return "healthcheck" }
 
 func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.db = cfg.DB
+	a.registry = cfg.Registry
 	return nil
 }
 
 func (a *App) Routes(r chi.Router) {
-	r.Get("/healthz", burrow.Handle(a.health))
+	r.Get("/healthz/live", burrow.Handle(a.liveness))
+	r.Get("/healthz/ready", burrow.Handle(a.readiness))
 }
 
-func (a *App) health(w http.ResponseWriter, r *http.Request) error {
+func (a *App) liveness(w http.ResponseWriter, _ *http.Request) error {
+	return burrow.JSON(w, http.StatusOK, map[string]string{
+		"status": "ok",
+	})
+}
+
+func (a *App) readiness(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	allOK := true
+
 	dbStatus := "ok"
-	if err := a.db.PingContext(r.Context()); err != nil {
+	if err := a.db.PingContext(ctx); err != nil {
 		dbStatus = err.Error()
+		allOK = false
 	}
 
-	status := http.StatusOK
-	if dbStatus != "ok" {
-		status = http.StatusServiceUnavailable
+	checks := make(map[string]string)
+	for _, app := range a.registry.Apps() {
+		checker, ok := app.(burrow.ReadinessChecker)
+		if !ok {
+			continue
+		}
+		if err := checker.ReadinessCheck(ctx); err != nil {
+			checks[app.Name()] = err.Error()
+			allOK = false
+		} else {
+			checks[app.Name()] = "ok"
+		}
 	}
 
-	return burrow.JSON(w, status, map[string]string{
-		"status":   "ok",
+	overallStatus := "ok"
+	httpStatus := http.StatusOK
+	if !allOK {
+		overallStatus = "unavailable"
+		httpStatus = http.StatusServiceUnavailable
+	}
+
+	return burrow.JSON(w, httpStatus, map[string]any{
+		"status":   overallStatus,
 		"database": dbStatus,
+		"checks":   checks,
 	})
 }

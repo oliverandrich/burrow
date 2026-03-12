@@ -87,6 +87,13 @@ type HasShutdown interface {
 	Shutdown(ctx context.Context) error
 }
 
+// ReadinessChecker is implemented by apps that contribute to the
+// readiness probe. ReadinessCheck returns nil when the app is ready
+// to serve traffic, or an error describing what is not ready.
+type ReadinessChecker interface {
+	ReadinessCheck(ctx context.Context) error
+}
+
 // HasTemplates is implemented by apps that provide HTML template files.
 // The returned fs.FS should contain .html files with {{ define "appname/..." }}
 // blocks. Templates are parsed once at boot time into the global template set.

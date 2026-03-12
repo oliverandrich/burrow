@@ -87,6 +87,9 @@ func (r *Registry) Add(app App) {
 	if _, ok := app.(HasShutdown); ok {
 		caps = append(caps, "shutdown")
 	}
+	if _, ok := app.(ReadinessChecker); ok {
+		caps = append(caps, "readiness")
+	}
 	if _, ok := app.(HasTemplates); ok {
 		caps = append(caps, "templates")
 	}

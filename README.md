@@ -106,7 +106,7 @@ contrib/        Reusable apps
   bootstrap/    Bootstrap 5 CSS/JS/htmx assets, theme switcher, layout
   bsicons/      Bootstrap Icons as inline SVG template functions
   csrf/         CSRF protection
-  healthcheck/  /healthz endpoint
+  healthcheck/  Liveness and readiness probes
   htmx/         htmx static asset + request/response helpers
   i18n/         Locale detection and translations
   jobs/         SQLite-backed background job queue

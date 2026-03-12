@@ -32,7 +32,7 @@ Burrow is designed for server-rendered web applications, not API-only services.
 - [Messages](https://burrow.someonewho.codes/contrib/messages/): Flash messages
 - [Rate Limiting](https://burrow.someonewho.codes/contrib/ratelimit/): Per-client token bucket rate limiting
 - [Static Files](https://burrow.someonewho.codes/contrib/staticfiles/): Content-hashed static file serving
-- [Healthcheck](https://burrow.someonewho.codes/contrib/healthcheck/): /healthz endpoint
+- [Healthcheck](https://burrow.someonewho.codes/contrib/healthcheck/): Liveness and readiness probes
 
 ## Reference
 

@@ -129,6 +129,6 @@
 //   - uploads — pluggable file upload storage
 //   - messages — flash messages via session storage
 //   - ratelimit — per-client token bucket rate limiting
-//   - healthcheck — /healthz endpoint
+//   - healthcheck — liveness and readiness probes
 //   - staticfiles — static file serving with content-hashed URLs
 package burrow

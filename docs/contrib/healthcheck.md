@@ -1,6 +1,6 @@
 # Healthcheck
 
-A minimal health check endpoint that reports server and database status.
+Liveness and readiness probes for monitoring and orchestration.
 
 **Package:** `github.com/oliverandrich/burrow/contrib/healthcheck`
 
@@ -15,42 +15,64 @@ srv := burrow.NewServer(
 )
 ```
 
-## Endpoint
+## Endpoints
 
-### GET /healthz
+### GET /healthz/live
 
-Returns the server and database status as JSON.
+Liveness probe. Always returns 200 OK — confirms the process is running.
 
-**Healthy response** (200 OK):
+```json
+{
+    "status": "ok"
+}
+```
+
+### GET /healthz/ready
+
+Readiness probe. Pings the database and runs `ReadinessCheck` on all registered apps that implement [`ReadinessChecker`](../reference/interfaces.md#readinesschecker). Returns 200 if everything passes, 503 if any check fails.
+
+**All ready** (200 OK):
 
 ```json
 {
     "status": "ok",
-    "database": "ok"
+    "database": "ok",
+    "checks": {
+        "cache": "ok"
+    }
 }
 ```
 
-**Unhealthy response** (503 Service Unavailable):
+**Not ready** (503 Service Unavailable):
 
 ```json
 {
-    "status": "ok",
-    "database": "connection refused"
+    "status": "unavailable",
+    "database": "ok",
+    "checks": {
+        "cache": "ok",
+        "queue": "queue down"
+    }
 }
 ```
 
-The endpoint pings the database to check connectivity. If the ping fails, it returns 503 with the error message in the `database` field.
+Apps that do not implement `ReadinessChecker` are not included in `checks`.
 
 ## Usage
 
 ```bash
-curl http://localhost:8080/healthz
+# Kubernetes liveness probe
+curl http://localhost:8080/healthz/live
+
+# Kubernetes readiness probe
+curl http://localhost:8080/healthz/ready
 ```
 
-Use this endpoint for:
+Use these endpoints for:
 
-- Load balancer health checks
-- Kubernetes liveness/readiness probes
+- Load balancer health checks (`/healthz/ready`)
+- Kubernetes liveness probes (`/healthz/live`)
+- Kubernetes readiness probes (`/healthz/ready`)
 - Monitoring systems
 
 ## Interfaces Implemented
@@ -58,4 +80,4 @@ Use this endpoint for:
 | Interface | Description |
 |-----------|-------------|
 | `burrow.App` | Required: `Name()`, `Register()` |
-| `HasRoutes` | `/healthz` endpoint |
+| `HasRoutes` | `/healthz/live`, `/healthz/ready` endpoints |

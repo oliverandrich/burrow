@@ -68,7 +68,7 @@ func main() {
 go mod tidy
 go run main.go
 # time=... level=INFO msg="starting server" host=localhost port=8080 ...
-# Visit http://localhost:8080/healthz → "ok"
+# Visit http://localhost:8080/healthz/live → "ok"
 ```
 
 See [Quick Start](quickstart.md) for a more complete example.

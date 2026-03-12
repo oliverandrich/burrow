@@ -420,3 +420,22 @@ func (a *App) Shutdown(_ context.Context) error {
     return nil
 }
 ```
+
+### ReadinessChecker
+
+```go
+type ReadinessChecker interface {
+    ReadinessCheck(ctx context.Context) error
+}
+```
+
+Contributes to the readiness probe at `/healthz/ready` (provided by the [healthcheck](../contrib/healthcheck.md) app). Return `nil` when the app is ready to serve traffic, or an error describing what is not ready. The healthcheck app iterates all registered `ReadinessChecker` apps and reports their status.
+
+```go
+func (a *App) ReadinessCheck(ctx context.Context) error {
+    if err := a.pool.Ping(ctx); err != nil {
+        return fmt.Errorf("connection pool: %w", err)
+    }
+    return nil
+}
+```
