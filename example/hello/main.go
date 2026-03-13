@@ -27,6 +27,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/bootstrap"
+	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	"github.com/urfave/cli/v3"
 )
@@ -63,7 +64,8 @@ func main() {
 	// registered first (e.g. bootstrap depends on staticfiles).
 	srv := burrow.NewServer(
 		staticApp,       // Static file serving with content-hashed URLs
-		bootstrap.New(), // Bootstrap 5 CSS/JS, htmx, and dark mode theme switcher
+		htmx.New(),      // HTMX request detection and response helpers
+		bootstrap.New(), // Bootstrap 5 CSS/JS, and dark mode theme switcher
 		hello,           // Our custom app (defined below)
 	)
 
