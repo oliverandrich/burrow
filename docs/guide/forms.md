@@ -134,6 +134,16 @@ forms.WithInitial[NoteForm](map[string]any{
 
 Particularly useful with dedicated form structs to populate edit forms from an existing record (see [Creating Forms](#using-a-dedicated-form-struct)).
 
+### WithReadOnly
+
+Marks fields as read-only. Read-only fields appear in `Fields()` but are not editable — templates should render them with the `disabled` attribute. On `Bind()`, their values are preserved from the original instance (not overwritten by the request), and validation errors for these fields are stripped automatically.
+
+```go
+forms.WithReadOnly[Note]("CreatedAt", "UpdatedAt")
+```
+
+Read-only overrides `form:"-"` — a field tagged with `form:"-"` is normally hidden, but `WithReadOnly` forces it to appear. This is useful when the same model is used in different contexts (e.g. a user-facing form hides the field, but an admin form shows it as read-only).
+
 ### WithChoices
 
 Provides static choices for a select field. Use the Go struct field name:
@@ -222,6 +232,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 | `Type` | `string` | HTML input type (`text`, `textarea`, `select`, etc.) |
 | `Value` | `any` | Current field value |
 | `Required` | `bool` | Whether the field is required |
+| `ReadOnly` | `bool` | Whether the field is read-only (render as disabled) |
 | `Choices` | `[]Choice` | Options for select fields |
 | `Errors` | `[]string` | Validation errors for this field |
 

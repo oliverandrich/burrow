@@ -70,6 +70,10 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	// EmptyMessageKey is the i18n key for the empty-list message.
 	// Translated via i18n.T at request time.
 	EmptyMessageKey string
+	// ReadOnlyFields lists struct field names (by Go name) to render as
+	// plain text in forms. Read-only fields cannot be modified by the user;
+	// their values are preserved from the model instance.
+	ReadOnlyFields []string
 	// ListDisplay defines computed columns for the list view.
 	// Keys are column names (which can also appear in ListFields).
 	// The function receives an item and returns pre-rendered HTML.
@@ -222,6 +226,11 @@ func (ma *ModelAdmin[T]) formOptions(ctx context.Context) ([]forms.Option[T], er
 	// Exclude autoincrement PKs.
 	if excluded := bunAutoIncrementPKs[T](); len(excluded) > 0 {
 		opts = append(opts, forms.WithExclude[T](excluded...))
+	}
+
+	// Mark read-only fields.
+	if len(ma.ReadOnlyFields) > 0 {
+		opts = append(opts, forms.WithReadOnly[T](ma.ReadOnlyFields...))
 	}
 
 	// Eagerly resolve FieldChoices to static choices.

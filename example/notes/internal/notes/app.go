@@ -54,6 +54,7 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		CanDelete:         true,
 		ListFields:        []string{"ID", "Title", "Content", "User", "CreatedAt"},
 		Relations:         []string{"User"},
+		ReadOnlyFields:    []string{"User", "CreatedAt"},
 		SearchFields:      []string{"title", "content"},
 		OrderBy:           "n.created_at DESC, n.id DESC",
 	}

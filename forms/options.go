@@ -8,6 +8,7 @@ type formConfig[T any] struct {
 	choices   map[string][]Choice
 	choiceFns map[string]func(context.Context) ([]Choice, error)
 	exclude   map[string]struct{}
+	readOnly  map[string]struct{}
 }
 
 // Option configures a Form during construction.
@@ -48,6 +49,19 @@ func WithExclude[T any](fields ...string) Option[T] {
 		}
 		for _, f := range fields {
 			cfg.exclude[f] = struct{}{}
+		}
+	}
+}
+
+// WithReadOnly marks named fields (by Go struct field name) as read-only.
+// Read-only fields are rendered as plain text instead of input elements.
+func WithReadOnly[T any](fields ...string) Option[T] {
+	return func(cfg *formConfig[T]) {
+		if cfg.readOnly == nil {
+			cfg.readOnly = make(map[string]struct{}, len(fields))
+		}
+		for _, f := range fields {
+			cfg.readOnly[f] = struct{}{}
 		}
 	}
 }

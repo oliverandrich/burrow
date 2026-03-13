@@ -333,6 +333,52 @@ func TestFieldsAutoTranslatesWithI18nByDefault(t *testing.T) {
 	assert.Equal(t, "email is required", emailField.Errors[0])
 }
 
+func TestWithReadOnlyMarksBoundField(t *testing.T) {
+	f := New(WithReadOnly[loginForm]("Password"))
+
+	fields := f.Fields()
+	require.Len(t, fields, 2)
+	assert.False(t, fields[0].ReadOnly) // Email
+	assert.True(t, fields[1].ReadOnly)  // Password
+}
+
+type skippedFieldForm struct {
+	Name   string `form:"name" validate:"required"`
+	Secret string `form:"-"`
+}
+
+func TestWithReadOnlyOverridesFormSkip(t *testing.T) {
+	f := FromModel(&skippedFieldForm{Name: "Alice", Secret: "hidden"}, WithReadOnly[skippedFieldForm]("Secret"))
+
+	fields := f.Fields()
+	require.Len(t, fields, 2)
+	assert.Equal(t, "Name", fields[0].Name)
+	assert.False(t, fields[0].ReadOnly)
+	assert.Equal(t, "Secret", fields[1].Name)
+	assert.True(t, fields[1].ReadOnly)
+	assert.Equal(t, "hidden", fields[1].Value)
+}
+
+func TestWithReadOnlyPreservesValueOnBind(t *testing.T) {
+	existing := &loginForm{
+		Email:    "old@example.com",
+		Password: "original-secret",
+	}
+	f := FromModel(existing, WithReadOnly[loginForm]("Password"))
+
+	// POST sends a new email but no password (read-only fields have no input).
+	r := postRequest(url.Values{
+		"email":    {"new@example.com"},
+		"password": {""},
+	})
+	valid := f.Bind(r)
+
+	assert.True(t, valid)
+	assert.Equal(t, "new@example.com", f.Instance().Email)
+	// Password should be restored to the original value.
+	assert.Equal(t, "original-secret", f.Instance().Password)
+}
+
 // postRequest creates a form POST request for testing.
 func postRequest(values url.Values) *http.Request {
 	body := values.Encode()

@@ -17,6 +17,6 @@ type Note struct { //nolint:govet // fieldalignment: readability over optimizati
 	User      *auth.User `bun:"rel:belongs-to,join:user_id=id" json:"-" form:"-" verbose:"User"`
 	Title     string     `bun:",notnull" json:"title" verbose:"Title" form:"title" validate:"required"`
 	Content   string     `bun:",notnull,default:''" json:"content" verbose:"Content" form:"content" widget:"textarea"`
-	CreatedAt time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" verbose:"Created at"`
+	CreatedAt time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" verbose:"Created at"`
 	DeletedAt time.Time  `bun:",soft_delete,nullzero" json:"-" form:"-"`
 }

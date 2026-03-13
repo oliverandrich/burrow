@@ -9,6 +9,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **ModelAdmin: `fmt.Stringer` support in list views** — when a list field value implements `fmt.Stringer` (e.g. an eager-loaded FK relation), the list view renders `String()` instead of the raw struct
 - **ModelAdmin: computed list columns (`ListDisplay`)** — new `ListDisplay map[string]func(T) template.HTML` field on `ModelAdmin[T]` allows custom computed columns in list views that are not direct struct fields
 - **`auth.User` implements `fmt.Stringer`** — returns the user's `Name` if set, otherwise falls back to `Username`
+- **ModelAdmin: read-only fields (`ReadOnlyFields`)** — new `ReadOnlyFields []string` field on `ModelAdmin[T]` renders specified fields as plain text in create/edit forms; values are preserved from the model instance and cannot be modified by the user
+- **Forms: `WithReadOnly` option** — new `forms.WithReadOnly[T](fields...)` option marks fields as read-only; read-only fields skip validation and restore their original value after bind
 
 ### Fixed
 

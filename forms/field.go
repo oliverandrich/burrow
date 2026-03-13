@@ -17,6 +17,7 @@ type BoundField struct { //nolint:govet // fieldalignment: readability over opti
 	Type     string   // "text", "number", "textarea", "select", "checkbox", "date", "email", "hidden"
 	Value    any      // current value
 	Required bool     // from validate:"required"
+	ReadOnly bool     // render as plain text, not editable
 	Choices  []Choice // static or dynamic
 	Errors   []string // field-specific error messages
 }
@@ -31,7 +32,7 @@ type Choice struct {
 // extractFields builds a slice of BoundField from a struct instance,
 // merging validation errors and dynamic choices. Fields in the exclude set
 // (keyed by Go struct field name) are omitted.
-func extractFields[T any](ctx context.Context, instance *T, validationErr *burrow.ValidationError, choices map[string][]Choice, exclude map[string]struct{}) []BoundField {
+func extractFields[T any](ctx context.Context, instance *T, validationErr *burrow.ValidationError, choices map[string][]Choice, exclude, readOnly map[string]struct{}) []BoundField {
 	// Auto-translate validation errors using i18n.TData.
 	if validationErr != nil && ctx != nil {
 		validationErr.Translate(ctx, i18n.TData)
@@ -47,12 +48,16 @@ func extractFields[T any](ctx context.Context, instance *T, validationErr *burro
 			continue
 		}
 		if isSkipped(sf) {
-			continue
+			// ReadOnly overrides form:"-" — the field is shown but not editable.
+			if _, ok := readOnly[sf.Name]; !ok {
+				continue
+			}
 		}
 		if _, ok := exclude[sf.Name]; ok {
 			continue
 		}
 
+		_, isReadOnly := readOnly[sf.Name]
 		bf := BoundField{
 			Name:     sf.Name,
 			FormName: fieldFormName(sf),
@@ -60,6 +65,7 @@ func extractFields[T any](ctx context.Context, instance *T, validationErr *burro
 			HelpText: parseHelpText(sf),
 			Value:    v.Field(i).Interface(),
 			Required: hasRequiredValidation(sf),
+			ReadOnly: isReadOnly,
 		}
 
 		// Determine type: widget tag > choices > inferred from Go type.

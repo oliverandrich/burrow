@@ -136,6 +136,23 @@ The key in the map is the Go struct field name (not the database column). The fu
 
 Unlike `form:"choices=a|b|c"` which defines static options, `FieldChoices` loads options dynamically — ideal for foreign keys and any field whose options come from the database.
 
+### Read-Only Fields
+
+Use `ReadOnlyFields` to display certain fields as non-editable plain text in create/edit forms. This is useful for fields set by the system (e.g. timestamps, computed values) that users should see but not modify:
+
+```go
+ma := &modeladmin.ModelAdmin[Article]{
+    // ...
+    ReadOnlyFields: []string{"CreatedAt", "UpdatedAt"},
+}
+```
+
+Read-only fields are rendered as normal form controls with the `disabled` attribute, keeping the visual consistency of the form. Since disabled inputs don't submit values, the original model value is preserved — there is no risk of the value being blanked out by the POST.
+
+Under the hood, this uses `forms.WithReadOnly`, which also strips validation errors for read-only fields so that `validate` tags on the struct don't cause false failures.
+
+`ReadOnlyFields` overrides `form:"-"` — a field normally hidden from forms will appear as read-only in the admin. This lets you keep a field hidden in user-facing forms while showing it in the admin panel (e.g. an eager-loaded relation like `User`).
+
 ### Foreign Key Labels via `fmt.Stringer`
 
 When a list field points to an eager-loaded relation (e.g. `User` instead of `UserID`), the list view checks if the value implements `fmt.Stringer`. If it does, `String()` is called and the result is displayed instead of the raw struct.

@@ -60,6 +60,9 @@ func (f *Form[T]) Bind(r *http.Request) bool {
 	f.errs = nil
 	f.nonField = nil
 
+	// Save read-only field values before decoding overwrites them.
+	saved := f.saveReadOnlyFields()
+
 	// Decode + validate via burrow.Bind.
 	if err := burrow.Bind(r, f.instance); err != nil {
 		var ve *burrow.ValidationError
@@ -90,6 +93,10 @@ func (f *Form[T]) Bind(r *http.Request) bool {
 		}
 	}
 
+	// Restore read-only field values and strip their validation errors.
+	f.restoreReadOnlyFields(saved)
+	f.stripReadOnlyErrors()
+
 	f.valid = f.errs == nil && len(f.nonField) == 0
 	return f.valid
 }
@@ -117,7 +124,7 @@ func (f *Form[T]) NonFieldErrors() []string {
 // Fields returns all visible BoundFields in struct field order.
 // Validation errors are auto-translated via i18n.TData.
 func (f *Form[T]) Fields() []BoundField {
-	return extractFields(f.ctx, f.instance, f.errs, f.choices, f.config.exclude)
+	return extractFields(f.ctx, f.instance, f.errs, f.choices, f.config.exclude, f.config.readOnly)
 }
 
 // Field returns a single BoundField by Go struct field name.
@@ -179,6 +186,67 @@ func (f *Form[T]) mergeCleanErrors(err error) {
 		}
 	} else {
 		f.nonField = append(f.nonField, err.Error())
+	}
+}
+
+// saveReadOnlyFields captures the current values of read-only fields.
+func (f *Form[T]) saveReadOnlyFields() map[string]any {
+	if len(f.config.readOnly) == 0 {
+		return nil
+	}
+	v := reflect.ValueOf(f.instance).Elem()
+	t := v.Type()
+	saved := make(map[string]any, len(f.config.readOnly))
+	for i := range t.NumField() {
+		sf := t.Field(i)
+		if _, ok := f.config.readOnly[sf.Name]; ok {
+			saved[sf.Name] = v.Field(i).Interface()
+		}
+	}
+	return saved
+}
+
+// restoreReadOnlyFields restores saved values to read-only fields.
+func (f *Form[T]) restoreReadOnlyFields(saved map[string]any) {
+	if len(saved) == 0 {
+		return
+	}
+	v := reflect.ValueOf(f.instance).Elem()
+	t := v.Type()
+	for i := range t.NumField() {
+		sf := t.Field(i)
+		if val, ok := saved[sf.Name]; ok {
+			v.Field(i).Set(reflect.ValueOf(val))
+		}
+	}
+}
+
+// stripReadOnlyErrors removes validation errors for read-only fields,
+// since their values are not submitted by the form.
+func (f *Form[T]) stripReadOnlyErrors() {
+	if len(f.config.readOnly) == 0 || f.errs == nil {
+		return
+	}
+	// Build a set of form names for read-only fields.
+	roFormNames := make(map[string]struct{}, len(f.config.readOnly))
+	t := reflect.TypeFor[T]()
+	for i := range t.NumField() {
+		sf := t.Field(i)
+		if _, ok := f.config.readOnly[sf.Name]; ok {
+			roFormNames[fieldFormName(sf)] = struct{}{}
+		}
+	}
+	// Filter out errors for read-only fields.
+	filtered := f.errs.Errors[:0]
+	for _, fe := range f.errs.Errors {
+		if _, ok := roFormNames[fe.Field]; !ok {
+			filtered = append(filtered, fe)
+		}
+	}
+	if len(filtered) == 0 {
+		f.errs = nil
+	} else {
+		f.errs.Errors = filtered
 	}
 }
 
