@@ -18,6 +18,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Fix timing attack on recovery code validation** — `ValidateAndUseRecoveryCode` now always iterates all codes to prevent timing side-channel that revealed code position via early return
 - **Fix user enumeration via registration endpoint** — `RegisterBegin` now returns HTTP 200 for both new and existing accounts, preventing attackers from probing which usernames or emails are registered
 - **Verify WebAuthn sign count to detect cloned credentials** — login now rejects authentication attempts where the sign count does not increase, indicating a potentially cloned authenticator; software authenticators (always 0) are unaffected
+- **Fix invite token race condition** — `MarkInviteUsed` now uses `WHERE used_at IS NULL` to ensure only the first concurrent registration consumes an invite; subsequent attempts fail atomically
+- **Hide CSRF failure reasons from clients** — custom error handler returns generic "Forbidden" instead of detailed failure reasons; failure details are logged server-side via slog
 
 ## 0.4.0 — 2026-03-13
 

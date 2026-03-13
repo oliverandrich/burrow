@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -442,15 +443,29 @@ func (r *Repository) ListInvites(ctx context.Context) ([]Invite, error) {
 	return invites, nil
 }
 
-// MarkInviteUsed marks an invite as used by the given user.
+// ErrInviteAlreadyUsed is returned when an invite has already been consumed.
+var ErrInviteAlreadyUsed = errors.New("invite already used")
+
+// MarkInviteUsed atomically marks an invite as used by the given user.
+// The WHERE used_at IS NULL clause ensures only the first caller succeeds,
+// preventing a race condition where two registrations consume the same invite.
 func (r *Repository) MarkInviteUsed(ctx context.Context, inviteID, userID int64) error {
 	now := time.Now()
-	if _, err := r.db.NewUpdate().Model((*Invite)(nil)).
+	res, err := r.db.NewUpdate().Model((*Invite)(nil)).
 		Set("used_at = ?", now).
 		Set("used_by = ?", userID).
 		Where("id = ?", inviteID).
-		Exec(ctx); err != nil {
+		Where("used_at IS NULL").
+		Exec(ctx)
+	if err != nil {
 		return fmt.Errorf("mark invite %d as used: %w", inviteID, err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("mark invite %d rows affected: %w", inviteID, err)
+	}
+	if rows == 0 {
+		return ErrInviteAlreadyUsed
 	}
 	return nil
 }

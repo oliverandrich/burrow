@@ -183,10 +183,12 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 		slog.Info("first user registered as admin", "user_id", user.ID) //nolint:gosec // G706: user_id is safe
 	}
 
-	// Mark invite as used.
+	// Mark invite as used. If the invite was already consumed by a concurrent
+	// request, abort registration and let the cleanup defer delete the user.
 	if validInvite != nil {
 		if markErr := h.repo.MarkInviteUsed(ctx, validInvite.ID, user.ID); markErr != nil {
-			slog.Error("failed to mark invite as used", "invite_id", validInvite.ID) //nolint:gosec // G706: invite_id is int
+			slog.Error("failed to mark invite as used", "invite_id", validInvite.ID, "error", markErr) //nolint:gosec // G706: invite_id is int
+			return errorJSON(w, http.StatusConflict, "registration failed")
 		}
 	}
 

@@ -513,6 +513,32 @@ func TestInviteMarkUsed(t *testing.T) {
 	assert.False(t, got.IsValid())
 }
 
+func TestInviteMarkUsedTwiceFails(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	alice, err := repo.CreateUser(ctx, "alice", "")
+	require.NoError(t, err)
+	bob, err := repo.CreateUser(ctx, "bob", "")
+	require.NoError(t, err)
+
+	invite := &Invite{
+		Email:     "shared@example.com",
+		TokenHash: "shared-hash",
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	}
+	require.NoError(t, repo.CreateInvite(ctx, invite))
+
+	// First use succeeds.
+	err = repo.MarkInviteUsed(ctx, invite.ID, alice.ID)
+	require.NoError(t, err)
+
+	// Second use fails — invite already consumed.
+	err = repo.MarkInviteUsed(ctx, invite.ID, bob.ID)
+	assert.ErrorIs(t, err, ErrInviteAlreadyUsed)
+}
+
 func TestInviteExpired(t *testing.T) {
 	invite := &Invite{
 		ExpiresAt: time.Now().Add(-time.Hour),
