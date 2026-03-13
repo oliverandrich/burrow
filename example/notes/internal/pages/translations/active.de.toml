@@ -7,7 +7,7 @@ layout-sign-in = "Anmelden"
 
 # Startseite
 home-title = "Willkommen bei Burrow"
-home-subtitle = "Ein Go-Webframework basierend auf chi, Bun/SQLite und Templ."
+home-subtitle = "Ein Go-Webframework basierend auf chi, Bun/SQLite und html/template."
 home-card-passkey-title = "Passkey-Authentifizierung"
 home-card-passkey-text = "WebAuthn-basierte Authentifizierung mit Wiederherstellungscodes und E-Mail-Verifizierung — ohne Passwörter."
 home-card-contrib-title = "Contrib-Apps"
