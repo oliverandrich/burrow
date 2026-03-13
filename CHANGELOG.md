@@ -10,6 +10,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Security
 
+- **Fix rate limit bypass via X-Forwarded-For spoofing** — ratelimit now uses only `X-Real-IP` when `--ratelimit-trust-proxy` is enabled; `X-Forwarded-For` is no longer used because its multi-value format is trivially spoofed
 - **Fix timing attack on recovery code validation** — `ValidateAndUseRecoveryCode` now always iterates all codes to prevent timing side-channel that revealed code position via early return
 
 ## 0.4.0 — 2026-03-13

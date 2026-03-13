@@ -68,7 +68,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 		},
 		&cli.BoolFlag{
 			Name:    "ratelimit-trust-proxy",
-			Usage:   "Use X-Forwarded-For/X-Real-IP for client IP extraction",
+			Usage:   "Use X-Real-IP header for client IP extraction",
 			Sources: burrow.FlagSources(configSource, "RATELIMIT_TRUST_PROXY", "ratelimit.trust_proxy"),
 		},
 	}

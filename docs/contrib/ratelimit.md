@@ -43,7 +43,21 @@ Idle client entries are automatically cleaned up at the configured interval.
 
 ## Client Identification
 
-By default, the client IP is extracted from `RemoteAddr`. When `--ratelimit-trust-proxy` is enabled, the middleware checks `X-Forwarded-For` and `X-Real-IP` headers first.
+By default, the client IP is extracted from `RemoteAddr`. When `--ratelimit-trust-proxy` is enabled, the middleware uses the `X-Real-IP` header instead.
+
+Configure your reverse proxy to set `X-Real-IP` to the actual client IP:
+
+```nginx
+# nginx
+proxy_set_header X-Real-IP $remote_addr;
+```
+
+```
+# Caddy (sets X-Real-IP automatically)
+```
+
+!!! warning
+    Without `--ratelimit-trust-proxy`, all traffic behind a reverse proxy appears to come from the proxy's IP — effectively rate limiting all clients as one. With the flag enabled but no `X-Real-IP` header set, the middleware falls back to `RemoteAddr`.
 
 Override with `WithKeyFunc()` for custom identification (e.g., by API key or authenticated user).
 
@@ -66,7 +80,7 @@ This is useful in custom `OnLimited` handlers.
 | `--ratelimit-rate` | `RATELIMIT_RATE` | `10` | Requests per second (token refill rate) |
 | `--ratelimit-burst` | `RATELIMIT_BURST` | `20` | Maximum burst size (bucket capacity) |
 | `--ratelimit-cleanup-interval` | `RATELIMIT_CLEANUP_INTERVAL` | `1m` | Interval for sweeping expired entries |
-| `--ratelimit-trust-proxy` | `RATELIMIT_TRUST_PROXY` | `false` | Use `X-Forwarded-For`/`X-Real-IP` for client IP |
+| `--ratelimit-trust-proxy` | `RATELIMIT_TRUST_PROXY` | `false` | Use `X-Real-IP` header for client IP |
 
 ## Graceful Shutdown
 

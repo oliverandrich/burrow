@@ -91,7 +91,7 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--ratelimit-rate` | `RATELIMIT_RATE` | `10` | Requests per second (token refill rate) |
 | `--ratelimit-burst` | `RATELIMIT_BURST` | `20` | Maximum burst size (bucket capacity) |
 | `--ratelimit-cleanup-interval` | `RATELIMIT_CLEANUP_INTERVAL` | `1m` | Interval for sweeping expired entries |
-| `--ratelimit-trust-proxy` | `RATELIMIT_TRUST_PROXY` | `false` | Use X-Forwarded-For/X-Real-IP for client IP |
+| `--ratelimit-trust-proxy` | `RATELIMIT_TRUST_PROXY` | `false` | Use X-Real-IP header for client IP |
 
 ### Secure
 

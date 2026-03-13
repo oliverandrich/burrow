@@ -138,10 +138,10 @@ func TestMiddleware_TrustProxy(t *testing.T) {
 
 	handler := a.Middleware()[0](inner)
 
-	// First request from proxy with X-Forwarded-For.
+	// First request from proxy with X-Real-IP.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:1234"
-	req.Header.Set("X-Forwarded-For", "203.0.113.1")
+	req.Header.Set("X-Real-IP", "203.0.113.1")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
@@ -149,7 +149,7 @@ func TestMiddleware_TrustProxy(t *testing.T) {
 	// Second request from same real IP — should be denied.
 	req = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:1234"
-	req.Header.Set("X-Forwarded-For", "203.0.113.1")
+	req.Header.Set("X-Real-IP", "203.0.113.1")
 	rr = httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusTooManyRequests, rr.Code)

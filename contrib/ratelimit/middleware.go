@@ -28,13 +28,12 @@ func (a *App) rateLimitMiddleware(next http.Handler) http.Handler {
 }
 
 // defaultKeyFunc extracts the client IP from the request.
-// If trustProxy is true, it checks X-Forwarded-For and X-Real-IP first.
+// If trustProxy is true, it uses the X-Real-IP header set by the reverse proxy.
+// X-Forwarded-For is intentionally not used because it can contain multiple
+// comma-separated values that are trivially spoofed to bypass rate limiting.
 func defaultKeyFunc(trustProxy bool) func(*http.Request) string {
 	return func(r *http.Request) string {
 		if trustProxy {
-			if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-				return xff
-			}
 			if xri := r.Header.Get("X-Real-IP"); xri != "" {
 				return xri
 			}
