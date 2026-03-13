@@ -11,8 +11,9 @@ type ChoiceProvider interface {
 }
 
 // Cleanable may be implemented by form structs for cross-field validation.
-// Clean is called after per-field validation passes. It may return a
+// Clean is called after per-field validation passes. The context carries
+// request-scoped data (e.g. i18n localizer). It may return a
 // *burrow.ValidationError to report field-level or non-field errors.
 type Cleanable interface {
-	Clean() error
+	Clean(ctx context.Context) error
 }

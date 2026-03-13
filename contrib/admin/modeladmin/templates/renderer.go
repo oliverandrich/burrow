@@ -169,7 +169,22 @@ func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *
 }
 
 func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Request, item *T, cfg modeladmin.RenderConfig) error {
-	return d.Detail(w, r, item, cfg)
+	itemAny := any(*item)
+	ctx := r.Context()
+	t := func(key string) string { return i18n.T(ctx, key) }
+	data := map[string]any{
+		"Item":          itemAny,
+		"IDValue":       fmt.Sprintf("%v", modeladmin.FieldValue(itemAny, cfg.IDField)),
+		"Cfg":           cfg,
+		"CSRFToken":     csrf.Token(ctx),
+		"Messages":      messages.Get(ctx),
+		"DeleteImpacts": cfg.DeleteImpacts,
+	}
+	content, err := executeTemplate("modeladmin/confirm_delete", t, data)
+	if err != nil {
+		return err
+	}
+	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
 }
 
 // renderWithLayout wraps pre-rendered content in the layout template from context.

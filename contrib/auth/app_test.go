@@ -98,6 +98,7 @@ func openTestDB(t *testing.T) *bun.DB {
 		"migrations/001_initial_schema.up.sql",
 		"migrations/002_invite_label.up.sql",
 		"migrations/003_user_is_active.up.sql",
+		"migrations/004_drop_soft_delete.up.sql",
 	} {
 		data, err := fs.ReadFile(migrationFS, mig)
 		require.NoError(t, err)
@@ -746,13 +747,7 @@ func stubTemplateExecutor() burrow.TemplateExecutor {
 	}
 }
 
-func TestAdminUserDetailHandler(t *testing.T) {
-	app, repo := newTestApp(t)
-	ctx := context.Background()
-
-	user, err := repo.CreateUser(ctx, "alice", "Alice")
-	require.NoError(t, err)
-
+func adminUserRouter(app *App) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -760,26 +755,8 @@ func TestAdminUserDetailHandler(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(rctx))
 		})
 	})
-	router.Get("/admin/users/{id}", burrow.Handle(app.handleUserDetail))
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/admin/users/%d", user.ID), nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-}
-
-func TestAdminUserDetailNotFound(t *testing.T) {
-	app, _ := newTestApp(t)
-
-	router := chi.NewRouter()
-	router.Get("/admin/users/{id}", burrow.Handle(app.handleUserDetail))
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users/999", nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusNotFound, rec.Code)
+	app.AdminRoutes(router)
+	return router
 }
 
 func TestAdminUpdateUser(t *testing.T) {
@@ -789,17 +766,16 @@ func TestAdminUpdateUser(t *testing.T) {
 	user, err := repo.CreateUser(ctx, "alice", "")
 	require.NoError(t, err)
 
-	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
+	router := adminUserRouter(app)
 
 	body := strings.NewReader("name=Alice+Wonder&bio=Hello+World&email=alice%40example.com&role=admin")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/users/%d", user.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "/admin/users", rec.Header().Get("Location"), "default save redirects to user list")
+	assert.Equal(t, "/admin/users", rec.Header().Get("Location"))
 
 	got, err := repo.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
@@ -817,56 +793,24 @@ func TestAdminUpdateUserContinueEditing(t *testing.T) {
 	user, err := repo.CreateUser(ctx, "alice", "")
 	require.NoError(t, err)
 
-	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
+	router := adminUserRouter(app)
 
 	body := strings.NewReader("name=Alice&role=user&_continue=1")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/users/%d", user.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, fmt.Sprintf("/admin/users/%d", user.ID), rec.Header().Get("Location"), "continue redirects back to detail page")
-}
-
-func TestAdminUpdateUserClearsOptionalFields(t *testing.T) {
-	app, repo := newTestApp(t)
-	ctx := context.Background()
-
-	email := "alice@example.com"
-	user, err := repo.CreateUser(ctx, "alice", "Alice")
-	require.NoError(t, err)
-	user.Bio = "Old bio"
-	user.Email = &email
-	require.NoError(t, repo.UpdateUser(ctx, user))
-
-	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
-
-	body := strings.NewReader("name=&bio=&email=&role=user")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusSeeOther, rec.Code)
-
-	got, err := repo.GetUserByID(ctx, user.ID)
-	require.NoError(t, err)
-	assert.Empty(t, got.Name)
-	assert.Empty(t, got.Bio)
-	assert.Nil(t, got.Email)
+	assert.Equal(t, fmt.Sprintf("/admin/users/%d", user.ID), rec.Header().Get("Location"))
 }
 
 func TestAdminUpdateUserNotFound(t *testing.T) {
 	app, _ := newTestApp(t)
-
-	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
+	router := adminUserRouter(app)
 
 	body := strings.NewReader("name=Test&role=user")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/999", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/999", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -882,16 +826,16 @@ func TestAdminUpdateUserLastAdminDemotion(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, admin.ID, RoleAdmin))
 
-	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
+	router := adminUserRouter(app)
 
 	body := strings.NewReader("name=Admin&role=user")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", admin.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/users/%d", admin.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusBadRequest, rec.Code, "should reject demotion of last admin")
+	// WithCleanFunc returns a validation error, which re-renders the form (200 OK).
+	assert.Equal(t, http.StatusOK, rec.Code, "should reject demotion of last admin")
 
 	got, err := repo.GetUserByID(ctx, admin.ID)
 	require.NoError(t, err)
@@ -910,11 +854,10 @@ func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, admin2.ID, RoleAdmin))
 
-	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
+	router := adminUserRouter(app)
 
 	body := strings.NewReader("name=Admin2&role=user")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", admin2.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/users/%d", admin2.ID), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -924,25 +867,6 @@ func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
 	got, err := repo.GetUserByID(ctx, admin2.ID)
 	require.NoError(t, err)
 	assert.Equal(t, RoleUser, got.Role)
-}
-
-func TestAdminUpdateUserInvalidRole(t *testing.T) {
-	app, repo := newTestApp(t)
-	ctx := context.Background()
-
-	user, err := repo.CreateUser(ctx, "alice", "")
-	require.NoError(t, err)
-
-	router := chi.NewRouter()
-	router.Post("/admin/users/{id}", burrow.Handle(app.handleUpdateUser))
-
-	body := strings.NewReader("name=Alice&role=superadmin")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d", user.ID), body)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 // --- Admin invite handler tests ---
@@ -1064,126 +988,51 @@ func TestDeleteUser(t *testing.T) {
 	err = repo.DeleteUser(ctx, user.ID)
 	require.NoError(t, err)
 
-	// Soft-deleted user should not appear in ListUsers.
+	// Deleted user should not appear in ListUsers.
 	users, err := repo.ListUsers(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, users)
 
-	// GetUserByID should also not find the soft-deleted user.
+	// GetUserByID should also not find the deleted user.
 	_, err = repo.GetUserByID(ctx, user.ID)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrNotFound)
-}
-
-// deleteUserRouter creates a chi router with the handleDeleteUser handler
-// and the given user injected into the request context.
-func deleteUserRouter(app *App, user *User) *chi.Mux {
-	router := chi.NewRouter()
-	router.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rctx := WithUser(r.Context(), user)
-			next.ServeHTTP(w, r.WithContext(rctx))
-		})
-	})
-	router.Delete("/admin/users/{id}", burrow.Handle(app.handleDeleteUser))
-	return router
 }
 
 func TestAdminDeleteUserSuccess(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
-	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	_, err := repo.CreateUser(ctx, "admin", "Admin")
 	require.NoError(t, err)
-	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
 
 	target, err := repo.CreateUser(ctx, "alice", "Alice")
 	require.NoError(t, err)
 
-	router := deleteUserRouter(app, adminUser)
+	router := adminUserRouter(app)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/admin/users/%d", target.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/users/%d", target.ID), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "/admin/users", rec.Header().Get("HX-Redirect"))
 
-	// Verify user was soft-deleted.
+	// Verify user was deleted.
 	users, err := repo.ListUsers(ctx)
 	require.NoError(t, err)
-	assert.Len(t, users, 1, "only the admin should remain")
-	assert.Equal(t, "admin", users[0].Username)
-}
-
-func TestAdminDeleteUserInvalidID(t *testing.T) {
-	app, _ := newTestApp(t)
-	router := deleteUserRouter(app, &User{ID: 1, Role: RoleAdmin})
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/users/invalid", nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Len(t, users, 1, "only the other user should remain")
 }
 
 func TestAdminDeleteUserNotFound(t *testing.T) {
 	app, _ := newTestApp(t)
-	router := deleteUserRouter(app, &User{ID: 1, Role: RoleAdmin})
+	router := adminUserRouter(app)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/users/999", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/users/999", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-func TestAdminDeleteUserSelf(t *testing.T) {
-	app, repo := newTestApp(t)
-	ctx := context.Background()
-
-	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
-	require.NoError(t, err)
-	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
-
-	router := deleteUserRouter(app, adminUser)
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/admin/users/%d", adminUser.ID), nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-
-	// Verify user was NOT deleted.
-	users, err := repo.ListUsers(ctx)
-	require.NoError(t, err)
-	assert.Len(t, users, 1)
-}
-
-func TestAdminDeleteUserLastAdmin(t *testing.T) {
-	app, repo := newTestApp(t)
-	ctx := context.Background()
-
-	// Create the only admin and a regular user.
-	onlyAdmin, err := repo.CreateUser(ctx, "onlyadmin", "Only Admin")
-	require.NoError(t, err)
-	require.NoError(t, repo.SetUserRole(ctx, onlyAdmin.ID, RoleAdmin))
-
-	otherUser, err := repo.CreateUser(ctx, "other", "Other")
-	require.NoError(t, err)
-
-	// Another user tries to delete the last admin — must be rejected.
-	router := deleteUserRouter(app, otherUser)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/admin/users/%d", onlyAdmin.ID), nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusBadRequest, rec.Code, "deleting the last admin should be rejected")
-
-	// Verify the admin was NOT deleted.
-	users, err := repo.ListUsers(ctx)
-	require.NoError(t, err)
-	assert.Len(t, users, 2, "both users should still exist")
 }
 
 // --- PurgeOrphanedUsers tests ---
@@ -1321,28 +1170,6 @@ func TestDeactivateUserSuccess(t *testing.T) {
 	updated, err := repo.GetUserByID(ctx, target.ID)
 	require.NoError(t, err)
 	assert.False(t, updated.IsActive)
-}
-
-func TestDeactivateUserSelf(t *testing.T) {
-	_, repo := newTestApp(t)
-	ctx := context.Background()
-
-	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
-	require.NoError(t, err)
-	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
-
-	router := userActionRouter(deactivateUserHandler(repo), adminUser)
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/deactivate", adminUser.ID), nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-
-	// User should still be active.
-	updated, err := repo.GetUserByID(ctx, adminUser.ID)
-	require.NoError(t, err)
-	assert.True(t, updated.IsActive)
 }
 
 func TestActivateUserSuccess(t *testing.T) {
@@ -1648,13 +1475,6 @@ func TestFuncMap(t *testing.T) {
 	assert.Equal(t, "My Key", credNameFunc(Credential{Name: "My Key"}))
 	assert.Equal(t, "Passkey", credNameFunc(Credential{Name: ""}))
 
-	// Test emailValue function.
-	emailValueFunc, ok := fm["emailValue"].(func(*User) string)
-	require.True(t, ok)
-	email := "alice@example.com"
-	assert.Equal(t, "alice@example.com", emailValueFunc(&User{Email: &email}))
-	assert.Empty(t, emailValueFunc(&User{}))
-
 	// Test deref function.
 	derefFunc, ok := fm["deref"].(func(*string) string)
 	require.True(t, ok)
@@ -1860,22 +1680,6 @@ func TestCredNameWithName(t *testing.T) {
 
 func TestCredNameWithoutName(t *testing.T) {
 	assert.Equal(t, "Passkey", credName(Credential{Name: ""}))
-}
-
-func TestRequestFuncMapAdminEditFlags(t *testing.T) {
-	app := &App{}
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	ctx := withAdminEditFlags(req.Context(), true, true)
-	req = req.WithContext(ctx)
-
-	fm := app.RequestFuncMap(req)
-
-	isSelfFunc := fm["isAdminEditSelf"].(func() bool)
-	assert.True(t, isSelfFunc())
-
-	isLastAdminFunc := fm["isAdminEditLastAdmin"].(func() bool)
-	assert.True(t, isLastAdminFunc())
 }
 
 func TestRequestFuncMapAuthLogo(t *testing.T) {

@@ -1,0 +1,41 @@
+{{ define "modeladmin/confirm_delete" -}}
+{{ template "modeladmin/alerts" . }}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">{{ T "modeladmin-confirm-delete-title" }}</h2>
+</div>
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}" hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">{{ .Cfg.DisplayPluralName }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}" hx-get="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}" hx-target="main" hx-push-url="true">{{ .IDValue }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ T "modeladmin-delete" }}</li>
+    </ol>
+</nav>
+<div class="card mb-4">
+    <div class="card-body">
+        <p class="mb-0">{{ T "modeladmin-delete-confirm" }}</p>
+        {{- if .DeleteImpacts }}
+        <hr>
+        <p class="fw-semibold mb-2">{{ T "modeladmin-cascade-warning" }}</p>
+        <ul class="mb-0">
+            {{- range .DeleteImpacts }}
+            <li>{{ printf "%d × %s" .Count (T .DisplayName) }}</li>
+            {{- end }}
+        </ul>
+        {{- end }}
+    </div>
+</div>
+<div class="d-flex gap-2">
+    <a href="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}" class="btn btn-secondary" hx-get="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}" hx-target="main" hx-push-url="true">
+        {{ T "modeladmin-cancel" }}
+    </a>
+    <button
+        type="button"
+        class="btn btn-danger"
+        hx-delete="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}"
+        hx-headers='{"X-CSRF-Token":"{{ .CSRFToken }}"}'
+    >
+        {{ T "modeladmin-delete" }}
+    </button>
+</div>
+{{- end }}

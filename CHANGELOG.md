@@ -4,6 +4,12 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Forms: `Cleanable.Clean()` signature changed** — `Clean() error` is now `Clean(ctx context.Context) error`; existing implementations must add the `context.Context` parameter
+- **Auth: `isAdminEditSelf` and `isAdminEditLastAdmin` template functions removed** — the custom user admin detail page is replaced by generic ModelAdmin forms; `IsAdminEditSelf()`, `IsAdminEditLastAdmin()`, and `emailValue` are no longer available
+- **Auth: `User` model form tags changed** — `Email`, `Username`, `IsActive`, `Name`, `Bio`, and `Role` now have explicit `form` tags instead of `form:"-"`; code that relied on these fields being excluded from forms must use `WithExclude` or `WithReadOnly`
+
 ### Added
 
 - **ModelAdmin: `fmt.Stringer` support in list views** — when a list field value implements `fmt.Stringer` (e.g. an eager-loaded FK relation), the list view renders `String()` instead of the raw struct
@@ -11,10 +17,20 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **`auth.User` implements `fmt.Stringer`** — returns the user's `Name` if set, otherwise falls back to `Username`
 - **ModelAdmin: read-only fields (`ReadOnlyFields`)** — new `ReadOnlyFields []string` field on `ModelAdmin[T]` renders specified fields as plain text in create/edit forms; values are preserved from the model instance and cannot be modified by the user
 - **ModelAdmin: CSV/JSON export (`CanExport`)** — new `CanExport bool` field on `ModelAdmin[T]` adds export dropdown to list views; exports respect current filters, search, and sorting; downloads as `{slug}-{date}.csv` or `.json`
+- **ModelAdmin: delete confirmation page with cascade impact** — when `CanDelete` is true, the delete button now navigates to a dedicated confirmation page instead of using an inline `hx-confirm` dialog; ON DELETE CASCADE foreign keys are auto-detected at boot time via SQLite PRAGMAs, and affected row counts are shown on the confirmation page
 - **Forms: `WithReadOnly` option** — new `forms.WithReadOnly[T](fields...)` option marks fields as read-only; read-only fields skip validation and restore their original value after bind
+- **Forms: `Clean(ctx)` and `WithCleanFunc`** — `Cleanable.Clean()` now receives a `context.Context` for request-scoped data; new `WithCleanFunc[T]` option adds closure-based cross-field validation for logic that needs external dependencies (DB, repo); both run after per-field validation and errors are merged
+- **ModelAdmin: `FormOptions`** — new `FormOptions []forms.Option[T]` field on `ModelAdmin[T]` allows passing additional form options (e.g. `WithCleanFunc`) to create/edit forms
+- **Auth: user admin uses generic ModelAdmin** — user detail/edit/delete now use ModelAdmin with `WithCleanFunc` for last-admin demotion protection; custom handlers, `isAdminEditSelf`/`isAdminEditLastAdmin` context helpers, and custom template removed
+- **Auth: `authtest` package** — new `contrib/auth/authtest` package provides `NewDB` (in-memory DB with auth migrations) and `CreateUser` (with functional options) for tests that depend on the auth app
+
+### Removed
+
+- **Auth: soft-delete removed from all models** — `deleted_at` columns and `bun:",soft_delete"` tags removed from User, Credential, RecoveryCode, EmailVerificationToken, and Invite; all deletes are now permanent; includes migration `004_drop_soft_delete`
 
 ### Fixed
 
+- **SQLite PRAGMAs now applied per-connection** — per-connection PRAGMAs (foreign_keys, busy_timeout, synchronous, etc.) are now set via `_pragma` DSN parameters instead of one-shot `db.Exec()` calls, ensuring they are active on every connection in the pool; this fixes `ON DELETE CASCADE` not firing when a different pool connection handled the DELETE
 - **ModelAdmin: ambiguous column name with relations** — `getItem` and list queries now qualify column names with the table alias to prevent SQLite "ambiguous column name" errors when eager-loading relations that share column names (e.g. `id`, `created_at`)
 
 ## 0.4.1 — 2026-03-13

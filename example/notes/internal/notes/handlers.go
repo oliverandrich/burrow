@@ -16,7 +16,7 @@ import (
 // noteFormOpts returns the common form options for the Note form.
 func noteFormOpts() []forms.Option[Note] {
 	return []forms.Option[Note]{
-		forms.WithExclude[Note]("ID", "UserID", "CreatedAt", "DeletedAt"),
+		forms.WithExclude[Note]("ID", "UserID", "CreatedAt"),
 	}
 }
 

@@ -33,11 +33,6 @@ type Choice struct {
 // merging validation errors and dynamic choices. Fields in the exclude set
 // (keyed by Go struct field name) are omitted.
 func extractFields[T any](ctx context.Context, instance *T, validationErr *burrow.ValidationError, choices map[string][]Choice, exclude, readOnly map[string]struct{}) []BoundField {
-	// Auto-translate validation errors using i18n.TData.
-	if validationErr != nil && ctx != nil {
-		validationErr.Translate(ctx, i18n.TData)
-	}
-
 	v := reflect.ValueOf(instance).Elem()
 	t := v.Type()
 
@@ -63,7 +58,7 @@ func extractFields[T any](ctx context.Context, instance *T, validationErr *burro
 			FormName: fieldFormName(sf),
 			Label:    parseLabel(sf),
 			HelpText: parseHelpText(sf),
-			Value:    v.Field(i).Interface(),
+			Value:    fieldValue(v.Field(i)),
 			Required: hasRequiredValidation(sf),
 			ReadOnly: isReadOnly,
 		}
@@ -86,9 +81,9 @@ func extractFields[T any](ctx context.Context, instance *T, validationErr *burro
 			}
 		}
 
-		// Collect field errors.
+		// Collect field errors and translate any i18n keys.
 		if validationErr != nil {
-			bf.Errors = fieldErrors(validationErr, bf.FormName)
+			bf.Errors = fieldErrors(ctx, validationErr, bf.FormName)
 		}
 
 		fields = append(fields, bf)
@@ -97,13 +92,43 @@ func extractFields[T any](ctx context.Context, instance *T, validationErr *burro
 	return fields
 }
 
-// fieldErrors returns error messages for a specific field from a ValidationError.
-func fieldErrors(ve *burrow.ValidationError, formName string) []string {
+// fieldValue returns the value for template rendering, dereferencing pointers.
+func fieldValue(fv reflect.Value) any {
+	if fv.Kind() == reflect.Pointer {
+		if fv.IsNil() {
+			return nil
+		}
+		return fv.Elem().Interface()
+	}
+	return fv.Interface()
+}
+
+// fieldErrors returns translated error messages for a specific field.
+// Tag-based errors (from validation) are translated via "validation-{tag}" keys
+// with template data. Custom messages (from Clean/WithCleanFunc) are translated
+// as plain i18n keys.
+func fieldErrors(ctx context.Context, ve *burrow.ValidationError, formName string) []string {
 	var errs []string
 	for _, fe := range ve.Errors {
-		if fe.Field == formName {
-			errs = append(errs, fe.Message)
+		if fe.Field != formName {
+			continue
+		}
+		if fe.Tag != "" {
+			errs = append(errs, translateTagError(ctx, fe))
+		} else {
+			errs = append(errs, i18n.T(ctx, fe.Message))
 		}
 	}
 	return errs
+}
+
+// translateTagError translates a validation-tag-based error using i18n.TData.
+func translateTagError(ctx context.Context, fe burrow.FieldError) string {
+	key := "validation-" + fe.Tag
+	data := map[string]any{"Field": fe.Field, "Param": fe.Param}
+	translated := i18n.TData(ctx, key, data)
+	if translated != key {
+		return translated
+	}
+	return fe.Message
 }

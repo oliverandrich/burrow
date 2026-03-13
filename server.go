@@ -287,6 +287,7 @@ func openDB(dsn string) (*bun.DB, error) {
 	}
 
 	dsn = withTxLock(dsn)
+	dsn = withPerConnPragmas(dsn)
 
 	sqldb, err := sql.Open(sqliteshim.ShimName, dsn)
 	if err != nil {
@@ -299,27 +300,46 @@ func openDB(dsn string) (*bun.DB, error) {
 
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 
-	pragmas := []struct {
+	// Per-database PRAGMAs only need to run once (they persist in the DB file).
+	dbPragmas := []struct {
 		sql    string
 		errMsg string
 	}{
 		{"PRAGMA journal_mode=WAL", "set WAL mode"},
-		{"PRAGMA synchronous=NORMAL", "set synchronous"},
-		{"PRAGMA foreign_keys=ON", "enable foreign keys"},
-		{"PRAGMA busy_timeout=5000", "set busy timeout"},
-		{"PRAGMA temp_store=MEMORY", "set temp store"},
-		{"PRAGMA mmap_size=134217728", "set mmap size"},
 		{"PRAGMA journal_size_limit=27103364", "set journal size limit"},
-		{"PRAGMA cache_size=2000", "set cache size"},
 	}
 
-	for _, p := range pragmas {
+	for _, p := range dbPragmas {
 		if _, err := db.Exec(p.sql); err != nil {
 			return nil, fmt.Errorf("%s: %w", p.errMsg, err)
 		}
 	}
 
 	return db, nil
+}
+
+// withPerConnPragmas appends per-connection PRAGMAs to the DSN via _pragma
+// parameters. Unlike db.Exec(), _pragma parameters are applied to every new
+// connection the pool creates, ensuring settings like foreign_keys=ON are
+// always active.
+func withPerConnPragmas(dsn string) string {
+	pragmas := []string{
+		"_pragma=foreign_keys(1)",
+		"_pragma=synchronous(normal)",
+		"_pragma=busy_timeout(5000)",
+		"_pragma=temp_store(memory)",
+		"_pragma=mmap_size(134217728)",
+		"_pragma=cache_size(2000)",
+	}
+
+	for _, p := range pragmas {
+		if strings.Contains(dsn, "?") {
+			dsn += "&" + p
+		} else {
+			dsn += "?" + p
+		}
+	}
+	return dsn
 }
 
 // withTxLock ensures the DSN uses IMMEDIATE transaction mode.

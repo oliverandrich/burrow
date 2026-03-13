@@ -98,7 +98,7 @@ func TestUpdateCredentialSignCount(t *testing.T) {
 	assert.Equal(t, uint32(42), creds[0].SignCount)
 }
 
-func TestForceDeleteUser(t *testing.T) {
+func TestDeleteUserByID(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -106,10 +106,9 @@ func TestForceDeleteUser(t *testing.T) {
 	user, err := repo.CreateUser(ctx, "orphan", "")
 	require.NoError(t, err)
 
-	err = repo.forceDeleteUser(ctx, user.ID)
+	err = repo.DeleteUser(ctx, user.ID)
 	require.NoError(t, err)
 
-	// User should be completely gone (not soft-deleted).
 	_, err = repo.GetUserByID(ctx, user.ID)
 	require.Error(t, err)
 }

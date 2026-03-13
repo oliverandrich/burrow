@@ -19,19 +19,18 @@ const (
 // User represents an authenticated user with WebAuthn credentials.
 type User struct {
 	bun.BaseModel   `bun:"table:users,alias:u"`
-	DeletedAt       time.Time    `bun:",soft_delete,nullzero" json:"-" form:"-"`
 	UpdatedAt       time.Time    `bun:",nullzero" json:"updated_at" form:"-"`
 	CreatedAt       time.Time    `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" verbose:"Created at"`
 	EmailVerifiedAt *time.Time   `json:"email_verified_at,omitempty" form:"-"`
-	Email           *string      `bun:",unique" json:"email,omitempty" form:"-" verbose:"Email"`
-	Name            string       `bun:",nullzero" json:"name,omitempty" verbose:"Name"`
-	Bio             string       `bun:",nullzero" json:"bio,omitempty"`
-	Role            string       `bun:",notnull,default:'user'" json:"role" verbose:"Role"`
-	Username        string       `bun:",unique,notnull" json:"username" form:"-" verbose:"Username"`
+	Email           *string      `bun:",unique" json:"email,omitempty" form:"email" verbose:"Email"`
+	Name            string       `bun:",nullzero" json:"name,omitempty" form:"name" verbose:"Name"`
+	Bio             string       `bun:",nullzero" json:"bio,omitempty" form:"bio" verbose:"Bio"`
+	Role            string       `bun:",notnull,default:'user'" json:"role" form:"role" verbose:"Role"`
+	Username        string       `bun:",unique,notnull" json:"username" form:"username" verbose:"Username"`
 	Credentials     []Credential `bun:"rel:has-many,join:id=user_id" json:"credentials,omitempty" form:"-"`
 	ID              int64        `bun:",pk,autoincrement" json:"id" verbose:"ID"`
 	EmailVerified   bool         `bun:",notnull,default:false" json:"email_verified" form:"-"`
-	IsActive        bool         `bun:",notnull,default:true" json:"is_active" form:"-" verbose:"Active"`
+	IsActive        bool         `bun:",notnull,default:true" json:"is_active" form:"is_active" verbose:"Active"`
 }
 
 // String returns the user's display name (Name if set, otherwise Username).
@@ -78,7 +77,6 @@ func (u *User) WebAuthnIcon() string { return "" }
 // Credential stores a WebAuthn credential for a user.
 type Credential struct {
 	bun.BaseModel   `bun:"table:credentials,alias:c"`
-	DeletedAt       time.Time `bun:",soft_delete,nullzero" json:"-"`
 	CreatedAt       time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
 	AttestationType string    `json:"-"`
 	Transports      string    `json:"-"`
@@ -147,7 +145,6 @@ func TransportsFromWebAuthn(transports []protocol.AuthenticatorTransport) string
 type RecoveryCode struct {
 	bun.BaseModel `bun:"table:recovery_codes,alias:rc"`
 	CreatedAt     time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	DeletedAt     time.Time  `bun:",soft_delete,nullzero" json:"-"`
 	UsedAt        *time.Time `json:"used_at,omitempty"`
 	CodeHash      string     `bun:",notnull" json:"-"`
 	ID            int64      `bun:",pk,autoincrement" json:"id"`
@@ -160,7 +157,6 @@ type EmailVerificationToken struct {
 	bun.BaseModel `bun:"table:email_verification_tokens,alias:evt"`
 	ExpiresAt     time.Time `bun:",notnull" json:"expires_at"`
 	CreatedAt     time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	DeletedAt     time.Time `bun:",soft_delete,nullzero" json:"-"`
 	TokenHash     string    `bun:",unique,notnull" json:"-"`
 	ID            int64     `bun:",pk,autoincrement" json:"id"`
 	UserID        int64     `bun:",notnull" json:"user_id"`
@@ -171,7 +167,6 @@ type Invite struct {
 	bun.BaseModel `bun:"table:invites,alias:inv"`
 	ExpiresAt     time.Time  `bun:",notnull" json:"expires_at" form:"-" verbose:"Expires at"`
 	CreatedAt     time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" verbose:"Created at"`
-	DeletedAt     time.Time  `bun:",soft_delete,nullzero" json:"-" form:"-"`
 	UsedAt        *time.Time `json:"used_at,omitempty" form:"-"`
 	UsedBy        *int64     `json:"used_by,omitempty" form:"-"`
 	CreatedBy     *int64     `json:"created_by,omitempty" form:"-"`

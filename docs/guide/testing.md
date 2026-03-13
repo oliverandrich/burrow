@@ -515,11 +515,72 @@ _, err = tmpl.Parse(`{{ define "app/alerts_oob" }}{{ end }}`)
 require.NoError(t, err)
 ```
 
+## Test Helpers (`authtest`)
+
+The `contrib/auth/authtest` package provides shared helpers for tests that depend on the auth app — following the convention of `net/http/httptest`.
+
+### Database with Auth Migrations
+
+`authtest.NewDB` returns an in-memory SQLite database with all auth migrations already applied:
+
+```go
+import "github.com/oliverandrich/burrow/contrib/auth/authtest"
+
+func testDB(t *testing.T) *bun.DB {
+    t.Helper()
+    db := authtest.NewDB(t)
+
+    // Run your app's own migrations on top.
+    app := New()
+    err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+    require.NoError(t, err)
+    return db
+}
+```
+
+### Creating Test Users
+
+`authtest.CreateUser` inserts a user with sensible defaults (unique username, role `"user"`, active). Use functional options to override:
+
+```go
+// Default user — unique username auto-generated.
+user := authtest.CreateUser(t, db)
+
+// Fully customised user.
+admin := authtest.CreateUser(t, db,
+    authtest.WithID(1),
+    authtest.WithUsername("admin"),
+    authtest.WithEmail("admin@example.com"),
+    authtest.WithName("Admin"),
+    authtest.WithRole("admin"),
+)
+```
+
+Available options: `WithID`, `WithUsername`, `WithEmail`, `WithName`, `WithRole`, `WithActive`.
+
+### Testing with Authentication
+
+Inject a user into the request context with `auth.WithUser`:
+
+```go
+req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
+ctx := auth.WithUser(req.Context(), &auth.User{ID: 42, Role: auth.RoleUser})
+req = req.WithContext(ctx)
+```
+
+Use `session.Inject` when your handler reads or writes session data:
+
+```go
+req = session.Inject(req, map[string]any{})
+```
+
 ## Summary
 
 | What to test | Key tools |
 |---|---|
 | Database queries | `sql.Open(sqliteshim.ShimName, ":memory:")`, `RunAppMigrations` |
+| Auth test DB | `authtest.NewDB(t)` — in-memory DB with auth migrations |
+| Test users | `authtest.CreateUser(t, db, ...options)` |
 | Handlers | `httptest.NewRecorder`, `httptest.NewRequestWithContext(t.Context(), ...)` |
 | Auth context | `auth.WithUser(ctx, user)`, `session.Inject(req, values)` |
 | HTMX responses | `req.Header.Set("HX-Request", "true")`, check `hx-swap-oob` |

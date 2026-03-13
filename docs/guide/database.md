@@ -16,7 +16,7 @@ Burrow uses [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), a pure 
 
 ## How It Works
 
-At startup, Burrow opens the SQLite database using the DSN (Data Source Name — the file path or connection string, e.g., `app.db` or `./data/production.db`) and configures it with production-ready defaults inspired by [dj-lite](https://github.com/adamghill/dj-lite/):
+At startup, Burrow opens the SQLite database using the DSN (Data Source Name — the file path or connection string, e.g., `app.db` or `./data/production.db`) and configures it with production-ready defaults inspired by [dj-lite](https://github.com/adamghill/dj-lite/). Per-connection PRAGMAs are set via `_pragma` DSN parameters so they apply to every connection in the pool:
 
 | PRAGMA | Value | Purpose |
 |---|---|---|
@@ -86,7 +86,6 @@ type Note struct {
     Title         string    `bun:",notnull"`
     Content       string    `bun:",notnull,default:''"`
     CreatedAt     time.Time `bun:",nullzero,notnull,default:current_timestamp"`
-    DeletedAt     time.Time `bun:",soft_delete,nullzero"`
 }
 ```
 
@@ -100,7 +99,6 @@ Common struct tags:
 | `bun:",unique"` | Unique constraint |
 | `bun:",nullzero"` | Treat Go zero values as SQL NULL |
 | `bun:",default:value"` | SQL default value |
-| `bun:",soft_delete,nullzero"` | Soft delete — queries automatically filter deleted rows |
 | `bun:"rel:has-many,join:id=user_id"` | One-to-many relationship |
 
 ### Queries
@@ -132,11 +130,8 @@ _, err := db.NewUpdate().Model((*Note)(nil)).
     Where("id = ?", id).
     Exec(ctx)
 
-// Soft delete (sets deleted_at)
+// Delete
 _, err := db.NewDelete().Model((*Note)(nil)).Where("id = ?", id).Exec(ctx)
-
-// Hard delete (bypasses soft delete)
-_, err := db.NewDelete().Model((*Note)(nil)).Where("id = ?", id).ForceDelete().Exec(ctx)
 
 // Count
 count, err := db.NewSelect().Model((*Note)(nil)).Where("user_id = ?", userID).Count(ctx)

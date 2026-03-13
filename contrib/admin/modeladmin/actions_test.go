@@ -94,7 +94,7 @@ func TestBuildItemActions_Empty(t *testing.T) {
 }
 
 func TestRowAction_RouteMounting(t *testing.T) {
-	sqldb, err := sql.Open("sqlite", ":memory:")
+	sqldb, err := sql.Open("sqlite", "file::memory:?_pragma=foreign_keys(1)")
 	require.NoError(t, err)
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 	t.Cleanup(func() { db.Close() })
@@ -140,7 +140,7 @@ func TestRowAction_RouteMounting(t *testing.T) {
 }
 
 func TestRowAction_DeleteMethod(t *testing.T) {
-	sqldb, err := sql.Open("sqlite", ":memory:")
+	sqldb, err := sql.Open("sqlite", "file::memory:?_pragma=foreign_keys(1)")
 	require.NoError(t, err)
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 	t.Cleanup(func() { db.Close() })

@@ -87,7 +87,14 @@ func (f *Form[T]) Bind(r *http.Request) bool {
 	// Run cross-field validation if the struct implements Cleanable.
 	if f.errs == nil {
 		if c, ok := any(f.instance).(Cleanable); ok {
-			if err := c.Clean(); err != nil {
+			if err := c.Clean(f.ctx); err != nil {
+				f.mergeCleanErrors(err)
+			}
+		}
+
+		// Run clean function from WithCleanFunc option.
+		if f.config.cleanFn != nil {
+			if err := f.config.cleanFn(f.ctx, f.instance); err != nil {
 				f.mergeCleanErrors(err)
 			}
 		}

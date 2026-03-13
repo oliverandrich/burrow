@@ -224,6 +224,17 @@ When enabled, an "Export" dropdown appears next to the "New" button. Exports res
 
 Files are downloaded as `{slug}-{date}.csv` or `{slug}-{date}.json`. Column headers use the Go struct field names from `ListFields`. Computed columns (`ListDisplay`) are skipped in exports since they produce HTML, not plain text.
 
+### Delete Confirmation
+
+When `CanDelete` is true, clicking the delete button navigates to a dedicated confirmation page (`GET /{slug}/{id}/delete`) instead of showing an inline browser confirm dialog. This gives users a clear chance to review what they're about to delete.
+
+**Cascade impact detection** is automatic: at boot time, ModelAdmin introspects SQLite foreign keys to find tables with `ON DELETE CASCADE` referencing the model's table. When cascades exist, the confirmation page shows how many related rows will also be deleted (e.g., "5 × comments", "2 × attachments").
+
+- No configuration needed — cascade detection works out of the box
+- Only `ON DELETE CASCADE` foreign keys are detected; `SET NULL`, `RESTRICT`, etc. are ignored
+- If no cascades exist, the confirmation page shows a simple "Are you sure?" message
+- The actual deletion still uses `DELETE /{slug}/{id}` (unchanged)
+
 ### Features
 
 - **List view** with configurable columns, ordering, and offset pagination

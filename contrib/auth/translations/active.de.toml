@@ -75,6 +75,7 @@ Users = "Benutzer"
 admin-users-action-deactivate = "Deaktivieren"
 admin-users-action-activate = "Aktivieren"
 admin-users-deactivate-confirm = "Möchten Sie diesen Benutzer wirklich deaktivieren? Der Benutzer kann sich dann nicht mehr anmelden."
+admin-user-cannot-demote-last = "Der letzte Administrator kann nicht herabgestuft werden"
 
 # Admin: Benutzerdetails
 admin-user-detail-info = "Benutzerinformationen"
@@ -122,6 +123,11 @@ admin-invites-revoke = "Widerrufen"
 admin-invites-revoke-confirm = "Diese Einladung widerrufen?"
 admin-invites-existing-title = "Bestehende Einladungen"
 admin-invites-none = "Keine Einladungen gefunden."
+
+# Admin: Kaskadierte Anzeigenamen (für Lösch-Bestätigungsseite)
+auth-cascade-credentials = "Anmeldedaten"
+auth-cascade-recovery-codes = "Wiederherstellungscodes"
+auth-cascade-email-verification-tokens = "E-Mail-Verifizierungstoken"
 
 # Admin-Seitenleiste
 admin-sidebar-title = "Admin"

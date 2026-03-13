@@ -42,15 +42,15 @@
     {{- end }}
     {{- end }}
     {{- if .Cfg.CanDelete }}
-    <button
-        type="button"
+    <a
+        href="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}/delete"
         class="btn btn-outline-danger ms-auto"
-        hx-delete="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}"
-        hx-headers='{"X-CSRF-Token":"{{ .CSRFToken }}"}'
-        hx-confirm="{{ T "modeladmin-delete-confirm" }}"
+        hx-get="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}/delete"
+        hx-target="main"
+        hx-push-url="true"
     >
-        Delete
-    </button>
+        {{ T "modeladmin-delete" }}
+    </a>
     {{- end }}
 </div>
 {{- end }}

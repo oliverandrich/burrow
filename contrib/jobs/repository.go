@@ -112,7 +112,6 @@ func (r *Repository) DeleteCompleted(ctx context.Context, olderThan time.Duratio
 	cutoff := time.Now().Add(-olderThan)
 	res, err := r.db.NewDelete().Model((*Job)(nil)).
 		Where("status = ? AND completed_at < ?", StatusCompleted, cutoff).
-		ForceDelete().
 		Exec(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("delete completed jobs: %w", err)
@@ -161,11 +160,10 @@ func (r *Repository) ListPaged(ctx context.Context, pr burrow.PageRequest, statu
 	return jobs, burrow.OffsetResult(pr, totalCount), nil
 }
 
-// Delete hard-deletes a job by ID (any status).
+// Delete deletes a job by ID (any status).
 func (r *Repository) Delete(ctx context.Context, id int64) error {
 	res, err := r.db.NewDelete().Model((*Job)(nil)).
 		Where("id = ?", id).
-		ForceDelete().
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("delete job %d: %w", id, err)

@@ -169,7 +169,7 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	registered := false
 	defer func() {
 		if !registered {
-			if delErr := h.repo.forceDeleteUser(ctx, user.ID); delErr != nil {
+			if delErr := h.repo.DeleteUser(ctx, user.ID); delErr != nil {
 				slog.Error("failed to clean up orphaned user", "user_id", user.ID, "error", delErr) //nolint:gosec // G706: user_id is int64
 			}
 		}

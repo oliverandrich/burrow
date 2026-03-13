@@ -112,6 +112,11 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.globalConfig = cfg.Config
 	a.withLocale = cfg.WithLocale
 
+	// Register display names for internal tables (used on cascade-delete confirmation pages).
+	modeladmin.RegisterTableDisplayName("credentials", "auth-cascade-credentials")
+	modeladmin.RegisterTableDisplayName("recovery_codes", "auth-cascade-recovery-codes")
+	modeladmin.RegisterTableDisplayName("email_verification_tokens", "auth-cascade-email-verification-tokens")
+
 	a.usersAdmin = &modeladmin.ModelAdmin[User]{
 		Slug:              "users",
 		DisplayName:       "User",
@@ -119,10 +124,46 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		DB:                cfg.DB,
 		Renderer:          matpl.DefaultRenderer[User](),
 		CanCreate:         false,
-		CanEdit:           false,
-		CanDelete:         false,
+		CanEdit:           true,
+		CanDelete:         true,
 		ListFields:        []string{"ID", "Username", "Name", "Email", "Role", "IsActive", "CreatedAt"},
 		OrderBy:           "id DESC",
+		ReadOnlyFields:    []string{"Username", "IsActive", "CreatedAt"},
+		FieldChoices: map[string]modeladmin.ChoicesFunc{
+			"Role": func(_ context.Context) ([]forms.Choice, error) {
+				return []forms.Choice{
+					{Value: RoleUser, Label: "User"},
+					{Value: RoleAdmin, Label: "Admin"},
+				}, nil
+			},
+		},
+		FormOptions: []forms.Option[User]{
+			forms.WithCleanFunc(func(ctx context.Context, u *User) error {
+				if u.Role == RoleAdmin || u.ID == 0 {
+					return nil
+				}
+				// Check if this user is currently an admin being demoted.
+				current, err := a.repo.GetUserByID(ctx, u.ID)
+				if err != nil {
+					return err
+				}
+				if current.Role != RoleAdmin {
+					return nil // Not currently admin, no demotion check needed.
+				}
+				adminCount, err := a.repo.CountAdminUsers(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to count admins: %w", err)
+				}
+				if adminCount <= 1 {
+					return &burrow.ValidationError{
+						Errors: []burrow.FieldError{
+							{Field: "role", Message: "admin-user-cannot-demote-last"},
+						},
+					}
+				}
+				return nil
+			}),
+		},
 		Filters: []modeladmin.FilterDef{
 			{Field: "role", Label: "Role", LabelKey: "admin-users-role", Type: "select", Choices: roleChoices()},
 		},
@@ -145,15 +186,6 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 				Class:    "btn-outline-success",
 				Handler:  activateUserHandler(a.repo),
 				ShowWhen: isActivatable,
-			},
-			{
-				Slug:    "delete",
-				Label:   "modeladmin-delete",
-				Icon:    bsicons.Trash(),
-				Method:  "DELETE",
-				Class:   "btn-outline-danger",
-				Confirm: "admin-user-detail-delete-confirm",
-				Handler: a.handleDeleteUser,
 			},
 		},
 		EmptyMessageKey: "admin-users-none",
@@ -349,12 +381,6 @@ func (a *App) TemplateFS() fs.FS {
 func (a *App) FuncMap() template.FuncMap {
 	return template.FuncMap{
 		"credName": credName,
-		"emailValue": func(user *User) string {
-			if user.Email != nil {
-				return *user.Email
-			}
-			return ""
-		},
 		"deref": func(s *string) string {
 			if s != nil {
 				return *s
@@ -368,11 +394,9 @@ func (a *App) FuncMap() template.FuncMap {
 func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
 	ctx := r.Context()
 	return template.FuncMap{
-		"currentUser":          func() *User { return UserFromContext(ctx) },
-		"isAuthenticated":      func() bool { return IsAuthenticated(ctx) },
-		"isAdminEditSelf":      func() bool { return IsAdminEditSelf(ctx) },
-		"isAdminEditLastAdmin": func() bool { return IsAdminEditLastAdmin(ctx) },
-		"authLogo":             func() template.HTML { return LogoFromContext(ctx) },
+		"currentUser":     func() *User { return UserFromContext(ctx) },
+		"isAuthenticated": func() bool { return IsAuthenticated(ctx) },
+		"authLogo":        func() template.HTML { return LogoFromContext(ctx) },
 	}
 }
 
@@ -477,14 +501,7 @@ func authLogoMiddleware(logo template.HTML) func(http.Handler) http.Handler {
 // AdminRoutes registers admin routes for user and invite management.
 // The router is expected to already have auth middleware applied.
 func (a *App) AdminRoutes(r chi.Router) {
-	r.Route("/users", func(r chi.Router) {
-		r.Get("/", burrow.Handle(a.usersAdmin.HandleList))
-		r.Get("/{id}", burrow.Handle(a.handleUserDetail))
-		r.Post("/{id}", burrow.Handle(a.handleUpdateUser))
-		r.Delete("/{id}", burrow.Handle(a.handleDeleteUser))
-		r.Post("/{id}/deactivate", burrow.Handle(deactivateUserHandler(a.repo)))
-		r.Post("/{id}/activate", burrow.Handle(activateUserHandler(a.repo)))
-	})
+	a.usersAdmin.Routes(r)
 	r.Route("/invites", func(r chi.Router) {
 		r.Get("/", burrow.Handle(a.invitesAdmin.HandleList))
 		r.Get("/new", burrow.Handle(a.invitesAdmin.HandleNew))

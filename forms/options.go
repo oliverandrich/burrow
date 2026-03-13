@@ -9,6 +9,7 @@ type formConfig[T any] struct {
 	choiceFns map[string]func(context.Context) ([]Choice, error)
 	exclude   map[string]struct{}
 	readOnly  map[string]struct{}
+	cleanFn   func(context.Context, *T) error
 }
 
 // Option configures a Form during construction.
@@ -50,6 +51,16 @@ func WithExclude[T any](fields ...string) Option[T] {
 		for _, f := range fields {
 			cfg.exclude[f] = struct{}{}
 		}
+	}
+}
+
+// WithCleanFunc sets a closure-based clean function for cross-field validation
+// that needs external dependencies (e.g. database access). The function runs
+// after per-field validation and Clean() (if implemented). It may return a
+// *burrow.ValidationError for field-level errors or a plain error for non-field errors.
+func WithCleanFunc[T any](fn func(context.Context, *T) error) Option[T] {
+	return func(cfg *formConfig[T]) {
+		cfg.cleanFn = fn
 	}
 }
 

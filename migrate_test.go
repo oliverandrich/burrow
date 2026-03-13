@@ -17,7 +17,7 @@ import (
 
 func testDB(t *testing.T) *bun.DB {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, ":memory:")
+	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
 	require.NoError(t, err)
 	t.Cleanup(func() { sqldb.Close() })
 	db := bun.NewDB(sqldb, sqlitedialect.New())

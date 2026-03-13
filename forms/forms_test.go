@@ -132,7 +132,7 @@ type cleanableForm struct {
 	End   string `form:"end" validate:"required"`
 }
 
-func (f *cleanableForm) Clean() error {
+func (f *cleanableForm) Clean(_ context.Context) error {
 	if f.Start != "" && f.End != "" && f.Start > f.End {
 		return &burrow.ValidationError{
 			Errors: []burrow.FieldError{
@@ -246,7 +246,7 @@ type nonFieldCleanForm struct {
 	A string `form:"a" validate:"required"`
 }
 
-func (f *nonFieldCleanForm) Clean() error {
+func (f *nonFieldCleanForm) Clean(_ context.Context) error {
 	return &burrow.ValidationError{
 		Errors: []burrow.FieldError{
 			{Field: "", Message: "something is globally wrong"},
@@ -377,6 +377,65 @@ func TestWithReadOnlyPreservesValueOnBind(t *testing.T) {
 	assert.Equal(t, "new@example.com", f.Instance().Email)
 	// Password should be restored to the original value.
 	assert.Equal(t, "original-secret", f.Instance().Password)
+}
+
+type simpleForm struct {
+	Name string `form:"name" validate:"required"`
+}
+
+func TestWithCleanFunc(t *testing.T) {
+	f := New(WithCleanFunc[simpleForm](func(_ context.Context, s *simpleForm) error {
+		if s.Name == "forbidden" {
+			return &burrow.ValidationError{
+				Errors: []burrow.FieldError{
+					{Field: "name", Message: "this name is forbidden"},
+				},
+			}
+		}
+		return nil
+	}))
+	r := postRequest(url.Values{"name": {"forbidden"}})
+
+	valid := f.Bind(r)
+
+	assert.False(t, valid)
+	require.NotNil(t, f.Errors())
+	assert.True(t, f.Errors().HasField("name"))
+}
+
+func TestWithCleanFuncNonField(t *testing.T) {
+	f := New(WithCleanFunc[simpleForm](func(_ context.Context, _ *simpleForm) error {
+		return &burrow.ValidationError{
+			Errors: []burrow.FieldError{
+				{Field: "", Message: "global clean func error"},
+			},
+		}
+	}))
+	r := postRequest(url.Values{"name": {"hello"}})
+
+	f.Bind(r)
+
+	nfe := f.NonFieldErrors()
+	require.Len(t, nfe, 1)
+	assert.Equal(t, "global clean func error", nfe[0])
+}
+
+func TestWithCleanFuncAndClean(t *testing.T) {
+	f := New(WithCleanFunc[nonFieldCleanForm](func(_ context.Context, _ *nonFieldCleanForm) error {
+		return &burrow.ValidationError{
+			Errors: []burrow.FieldError{
+				{Field: "", Message: "clean func error too"},
+			},
+		}
+	}))
+	r := postRequest(url.Values{"a": {"hello"}})
+
+	f.Bind(r)
+
+	nfe := f.NonFieldErrors()
+	require.Len(t, nfe, 2)
+	assert.Equal(t, "something is globally wrong", nfe[0])
+	assert.Equal(t, "clean func error too", nfe[1])
 }
 
 // postRequest creates a form POST request for testing.

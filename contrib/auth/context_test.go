@@ -41,21 +41,3 @@ func TestWithLogo(t *testing.T) {
 	got := LogoFromContext(ctx)
 	assert.Equal(t, logo, got)
 }
-
-func TestAdminEditFlags(t *testing.T) {
-	ctx := context.Background()
-
-	// Defaults to false when not set.
-	assert.False(t, IsAdminEditSelf(ctx))
-	assert.False(t, IsAdminEditLastAdmin(ctx))
-
-	// Set flags.
-	ctx = withAdminEditFlags(ctx, true, true)
-	assert.True(t, IsAdminEditSelf(ctx))
-	assert.True(t, IsAdminEditLastAdmin(ctx))
-
-	// Different values.
-	ctx = withAdminEditFlags(context.Background(), false, true)
-	assert.False(t, IsAdminEditSelf(ctx))
-	assert.True(t, IsAdminEditLastAdmin(ctx))
-}

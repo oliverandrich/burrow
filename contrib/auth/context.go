@@ -44,29 +44,3 @@ func LogoFromContext(ctx context.Context) template.HTML {
 	logo, _ := ctx.Value(ctxKeyLogo{}).(template.HTML)
 	return logo
 }
-
-// Admin edit flags — set by UserDetail handler, read by templates.
-
-type ctxKeyAdminEditFlags struct{}
-
-type adminEditFlags struct {
-	isSelf      bool
-	isLastAdmin bool
-}
-
-// withAdminEditFlags returns a context with admin edit UI flags set.
-func withAdminEditFlags(ctx context.Context, isSelf, isLastAdmin bool) context.Context {
-	return context.WithValue(ctx, ctxKeyAdminEditFlags{}, adminEditFlags{isSelf: isSelf, isLastAdmin: isLastAdmin})
-}
-
-// IsAdminEditSelf reports whether the admin is viewing their own user detail page.
-func IsAdminEditSelf(ctx context.Context) bool {
-	f, _ := ctx.Value(ctxKeyAdminEditFlags{}).(adminEditFlags)
-	return f.isSelf
-}
-
-// IsAdminEditLastAdmin reports whether the viewed user is the only remaining admin.
-func IsAdminEditLastAdmin(ctx context.Context) bool {
-	f, _ := ctx.Value(ctxKeyAdminEditFlags{}).(adminEditFlags)
-	return f.isLastAdmin
-}

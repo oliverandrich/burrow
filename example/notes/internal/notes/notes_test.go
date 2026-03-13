@@ -2,7 +2,6 @@ package notes
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -14,13 +13,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
+	"github.com/oliverandrich/burrow/contrib/auth/authtest"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
 // Compile-time interface assertions.
@@ -70,21 +68,17 @@ func TestMigrationFS(t *testing.T) {
 
 func openTestDB(t *testing.T) *bun.DB {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?cache=shared&_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	t.Cleanup(func() { sqldb.Close() })
 
-	db := bun.NewDB(sqldb, sqlitedialect.New())
+	db := authtest.NewDB(t)
 
-	// Run auth migrations first (notes has a belongs_to relation to users).
-	authApp := auth.New()
-	err = burrow.RunAppMigrations(t.Context(), db, authApp.Name(), authApp.MigrationFS())
-	require.NoError(t, err)
-
-	// Run notes migration.
+	// Run notes migrations on top of auth.
 	app := New()
-	err = burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+	err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
 	require.NoError(t, err)
+
+	// Create default test users (tests use UserID 1 and 42 throughout).
+	authtest.CreateUser(t, db, authtest.WithID(1), authtest.WithUsername("defaultuser"))
+	authtest.CreateUser(t, db, authtest.WithID(42), authtest.WithUsername("testuser"))
 
 	return db
 }
@@ -198,15 +192,6 @@ func TestUpdateNote(t *testing.T) {
 
 // --- Handler tests ---
 
-// requestWithUser creates a request with the given user set in the context.
-func requestWithUser(req *http.Request, user *auth.User) *http.Request {
-	if user != nil {
-		ctx := auth.WithUser(req.Context(), user)
-		return req.WithContext(ctx)
-	}
-	return req
-}
-
 // testTemplateExecutor builds a real template executor from the notes templates
 // plus a minimal app/alerts_oob stub for handler tests.
 func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
@@ -271,7 +256,7 @@ func TestListNotesHandler(t *testing.T) {
 
 	h := NewHandlers(repo)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 
@@ -293,7 +278,7 @@ func TestListNotesHTMXNavReturnsFragment(t *testing.T) {
 
 	h := NewHandlers(repo)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
 	// HTMX nav request (no cursor) → should use RenderTemplate → fragment only.
 	req.Header.Set("HX-Request", "true")
@@ -318,7 +303,7 @@ func TestListNotesNormalRequestUsesLayout(t *testing.T) {
 
 	h := NewHandlers(repo)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 
 	layoutCalled := false
 	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
@@ -366,7 +351,7 @@ func TestNewNoteHandler(t *testing.T) {
 
 	h := NewHandlers(repo)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/new", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
 	// HTMX request: returns form fragment for inline insertion.
 	req.Header.Set("HX-Request", "true")
@@ -429,7 +414,7 @@ func TestCreateNoteHTMX(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -469,7 +454,7 @@ func TestCreateNoteNonHTMX(t *testing.T) {
 	form := strings.NewReader("title=My+Note&content=Some+content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -509,7 +494,7 @@ func TestCreateNoteValidationErrorHTMX(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -550,7 +535,7 @@ func TestCreateNoteValidationErrorNonHTMX(t *testing.T) {
 	form := strings.NewReader("title=&content=Some+content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -599,7 +584,7 @@ func TestEditNoteHTMX(t *testing.T) {
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/notes/%d/edit", note.ID), nil)
 	req.Header.Set("HX-Request", "true")
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -647,7 +632,7 @@ func TestEditNoteNotFound(t *testing.T) {
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/999/edit", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -687,7 +672,7 @@ func TestUpdateNoteHTMX(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/notes/%d", note.ID), form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -730,7 +715,7 @@ func TestUpdateNoteNonHTMX(t *testing.T) {
 	form := strings.NewReader("title=Updated&content=New+content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/notes/%d", note.ID), form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -771,7 +756,7 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/notes/%d", note.ID), form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -825,7 +810,7 @@ func TestUpdateNoteNotFound(t *testing.T) {
 	form := strings.NewReader("title=Test&content=Content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes/999", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -863,7 +848,7 @@ func TestDeleteNoteHandler(t *testing.T) {
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/1", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -907,7 +892,7 @@ func TestDeleteNoteInvalidID(t *testing.T) {
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/abc", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -916,19 +901,11 @@ func TestDeleteNoteInvalidID(t *testing.T) {
 
 // --- ModelAdmin integration tests ---
 
-func createTestUser(t *testing.T, db *bun.DB, id int64, username string) {
-	t.Helper()
-	user := &auth.User{ID: id, Username: username, Role: "user"}
-	_, err := db.NewInsert().Model(user).Exec(t.Context())
-	require.NoError(t, err)
-}
-
 func TestModelAdminRoutes_List(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	createTestUser(t, db, 42, "testuser")
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Admin View", Content: "Visible", UserID: 42}))
 
 	app := New()
@@ -950,7 +927,6 @@ func TestModelAdminRoutes_Delete(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	createTestUser(t, db, 42, "testuser")
 	note := &Note{Title: "Delete Me", Content: "Bye", UserID: 42}
 	require.NoError(t, repo.Create(ctx, note))
 
@@ -1049,7 +1025,7 @@ func TestListNotesHTMXScrollReturnsFragment(t *testing.T) {
 	h := NewHandlers(repo)
 	// HTMX request with cursor → triggers the infinite scroll branch.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?cursor=9999&limit=10", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
 	req.Header.Set("HX-Request", "true")
 
@@ -1109,6 +1085,8 @@ func TestSearchByUserID(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
+
+	authtest.CreateUser(t, db, authtest.WithID(2), authtest.WithUsername("otheruser"))
 
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Golang Tutorial", Content: "Learn Go basics", UserID: 1}))
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Python Guide", Content: "Learn Python", UserID: 1}))
@@ -1179,7 +1157,7 @@ func TestListNotesHandlerWithSearch(t *testing.T) {
 
 	h := NewHandlers(repo)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?q=Searchable", nil)
-	req = requestWithUser(req, &auth.User{ID: 42})
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 

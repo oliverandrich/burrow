@@ -69,6 +69,7 @@ Users = "Users"
 admin-users-action-deactivate = "Deactivate"
 admin-users-action-activate = "Activate"
 admin-users-deactivate-confirm = "Are you sure you want to deactivate this user? They will no longer be able to log in."
+admin-user-cannot-demote-last = "Cannot demote the last admin"
 
 # Admin: User detail
 admin-user-detail-info = "User Information"
@@ -114,6 +115,11 @@ admin-invites-revoke = "Revoke"
 admin-invites-revoke-confirm = "Revoke this invite?"
 admin-invites-existing-title = "Existing Invites"
 admin-invites-none = "No invites found."
+
+# Admin: Cascade display names (for delete confirmation page)
+auth-cascade-credentials = "Credentials"
+auth-cascade-recovery-codes = "Recovery Codes"
+auth-cascade-email-verification-tokens = "Email Verification Tokens"
 
 # Admin sidebar
 admin-sidebar-title = "Admin"

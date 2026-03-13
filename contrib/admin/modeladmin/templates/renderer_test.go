@@ -445,7 +445,37 @@ func TestDefaultRenderer_ConfirmDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
 	body := w.Body.String()
-	assert.Contains(t, body, "ToDelete")
+	assert.Contains(t, body, "modeladmin-confirm-delete-title")
+	assert.Contains(t, body, "modeladmin-delete-confirm")
+	assert.Contains(t, body, `hx-delete="/admin/items/7"`)
+	assert.Contains(t, body, "modeladmin-cancel")
+}
+
+func TestDefaultRenderer_ConfirmDelete_WithImpacts(t *testing.T) {
+	r := DefaultRenderer[testItem]()
+	item := &testItem{ID: 3, Name: "Parent"}
+	cfg := modeladmin.RenderConfig{
+		Slug:              "items",
+		DisplayName:       "Item",
+		DisplayPluralName: "Items",
+		ListFields:        []string{"ID", "Name"},
+		ListFieldLabels:   []string{"ID", "Name"},
+		IDField:           "ID",
+		DeleteImpacts: []modeladmin.CascadeImpact{
+			{Table: "children", DisplayName: "Child Records", Count: 5},
+			{Table: "comments", DisplayName: "Comments", Count: 12},
+		},
+	}
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items/3/delete", nil)
+	w := httptest.NewRecorder()
+
+	err := r.ConfirmDelete(w, req, item, cfg)
+	require.NoError(t, err)
+	body := w.Body.String()
+	assert.Contains(t, body, "modeladmin-cascade-warning")
+	assert.Contains(t, body, "5 × Child Records")
+	assert.Contains(t, body, "12 × Comments")
 }
 
 // --- executeTemplate error path ---

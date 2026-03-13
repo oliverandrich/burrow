@@ -24,18 +24,15 @@ var _ Renderer = (*defaultRenderer)(nil)
 // rendererTestExecutor creates a TemplateExecutor for testing with stub functions.
 func rendererTestExecutor() burrow.TemplateExecutor {
 	funcMap := template.FuncMap{
-		"t":                    func(key string) string { return key },
-		"csrfToken":            func() string { return "test-csrf-token" },
-		"staticURL":            func(name string) string { return "/static/" + name },
-		"authLogo":             func() template.HTML { return "" },
-		"currentUser":          func() *User { return nil },
-		"isAuthenticated":      func() bool { return false },
-		"isAdminEditSelf":      func() bool { return false },
-		"isAdminEditLastAdmin": func() bool { return false },
-		"lang":                 func() string { return "en" },
-		"itoa":                 func(id int64) string { return template.HTMLEscapeString(fmt.Sprintf("%d", id)) },
-		"credName":             credName,
-		"emailValue":           func(user *User) string { return "" },
+		"t":               func(key string) string { return key },
+		"csrfToken":       func() string { return "test-csrf-token" },
+		"staticURL":       func(name string) string { return "/static/" + name },
+		"authLogo":        func() template.HTML { return "" },
+		"currentUser":     func() *User { return nil },
+		"isAuthenticated": func() bool { return false },
+		"lang":            func() string { return "en" },
+		"itoa":            func(id int64) string { return template.HTMLEscapeString(fmt.Sprintf("%d", id)) },
+		"credName":        credName,
 		"deref": func(s *string) string {
 			if s != nil {
 				return *s
@@ -256,18 +253,15 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
 	funcMap := template.FuncMap{
-		"t":                    func(key string) string { return key },
-		"csrfToken":            func() string { return "test-csrf-token-value" },
-		"staticURL":            func(name string) string { return "/static/" + name },
-		"authLogo":             func() template.HTML { return "" },
-		"currentUser":          func() *User { return nil },
-		"isAuthenticated":      func() bool { return false },
-		"isAdminEditSelf":      func() bool { return false },
-		"isAdminEditLastAdmin": func() bool { return false },
-		"lang":                 func() string { return "en" },
-		"itoa":                 func(id int64) string { return fmt.Sprintf("%d", id) },
-		"credName":             credName,
-		"emailValue":           func(user *User) string { return "" },
+		"t":               func(key string) string { return key },
+		"csrfToken":       func() string { return "test-csrf-token-value" },
+		"staticURL":       func(name string) string { return "/static/" + name },
+		"authLogo":        func() template.HTML { return "" },
+		"currentUser":     func() *User { return nil },
+		"isAuthenticated": func() bool { return false },
+		"lang":            func() string { return "en" },
+		"itoa":            func(id int64) string { return fmt.Sprintf("%d", id) },
+		"credName":        credName,
 		"deref": func(s *string) string {
 			if s != nil {
 				return *s
@@ -332,18 +326,15 @@ func TestDefaultRendererRegisterPageWithoutExecutor(t *testing.T) {
 // rendererTestExecutorWithLogo creates an executor where authLogo returns the given HTML.
 func rendererTestExecutorWithLogo(logoHTML template.HTML) burrow.TemplateExecutor {
 	funcMap := template.FuncMap{
-		"t":                    func(key string) string { return key },
-		"csrfToken":            func() string { return "test-csrf-token" },
-		"staticURL":            func(name string) string { return "/static/" + name },
-		"authLogo":             func() template.HTML { return logoHTML },
-		"currentUser":          func() *User { return nil },
-		"isAuthenticated":      func() bool { return false },
-		"isAdminEditSelf":      func() bool { return false },
-		"isAdminEditLastAdmin": func() bool { return false },
-		"lang":                 func() string { return "en" },
-		"itoa":                 func(id int64) string { return fmt.Sprintf("%d", id) },
-		"credName":             credName,
-		"emailValue":           func(user *User) string { return "" },
+		"t":               func(key string) string { return key },
+		"csrfToken":       func() string { return "test-csrf-token" },
+		"staticURL":       func(name string) string { return "/static/" + name },
+		"authLogo":        func() template.HTML { return logoHTML },
+		"currentUser":     func() *User { return nil },
+		"isAuthenticated": func() bool { return false },
+		"lang":            func() string { return "en" },
+		"itoa":            func(id int64) string { return fmt.Sprintf("%d", id) },
+		"credName":        credName,
 		"deref": func(s *string) string {
 			if s != nil {
 				return *s

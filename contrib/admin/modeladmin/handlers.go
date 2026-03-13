@@ -185,6 +185,41 @@ func (ma *ModelAdmin[T]) HandleUpdate(w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
+// HandleConfirmDelete renders the delete confirmation page.
+// Exported so apps can mount ModelAdmin confirm-delete views alongside custom handlers.
+func (ma *ModelAdmin[T]) HandleConfirmDelete(w http.ResponseWriter, r *http.Request) error {
+	if !ma.CanDelete {
+		return burrow.NewHTTPError(http.StatusForbidden, "delete not allowed")
+	}
+
+	id := ma.idFromRequest(r)
+	if id == "" {
+		return burrow.NewHTTPError(http.StatusBadRequest, "missing id")
+	}
+
+	item, err := getItem[T](r.Context(), ma.DB, id, ma.Relations)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return burrow.NewHTTPError(http.StatusNotFound, "item not found")
+		}
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get item")
+	}
+
+	cfg := ma.renderConfig()
+	ma.translateRenderConfig(&cfg, r)
+
+	if len(ma.cascades) > 0 {
+		impacts, err := countCascadeImpacts(r.Context(), ma.DB, ma.cascades, id)
+		if err != nil {
+			slog.Error("failed to count cascade impacts", "error", err, "slug", ma.Slug, "id", id) //nolint:gosec // slug is developer-set, id is from URL param
+		} else {
+			cfg.DeleteImpacts = impacts
+		}
+	}
+
+	return ma.Renderer.ConfirmDelete(w, r, item, cfg)
+}
+
 // HandleDelete deletes an item by ID.
 // Exported so apps can mount ModelAdmin delete alongside custom handlers.
 func (ma *ModelAdmin[T]) HandleDelete(w http.ResponseWriter, r *http.Request) error {

@@ -76,6 +76,10 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	ReadOnlyFields []string
 	// CanExport enables CSV/JSON export of the list view. Default: false.
 	CanExport bool
+	// FormOptions holds additional forms.Option[T] applied when building
+	// create/edit forms. Use this to pass WithCleanFunc or other options
+	// that need external dependencies captured at configuration time.
+	FormOptions []forms.Option[T]
 	// ListDisplay defines computed columns for the list view.
 	// Keys are column names (which can also appear in ListFields).
 	// The function receives an item and returns pre-rendered HTML.
@@ -84,6 +88,10 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	// ftsTable is the detected FTS5 table name (e.g. "notes_fts").
 	// Set automatically in Routes() if a {tablename}_fts table exists.
 	ftsTable string
+
+	// cascades holds detected ON DELETE CASCADE foreign keys referencing this model's table.
+	// Set automatically in Routes() via detectCascades.
+	cascades []cascadeRef
 }
 
 // idFromRequest returns the ID from the URL, using IDFunc if set.
@@ -144,6 +152,7 @@ type RenderConfig struct { //nolint:govet // fieldalignment: readability over op
 	ItemActionSets    [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
 	EmptyMessage      string
 	ComputedColumns   map[string]func(any) template.HTML // field → render function
+	DeleteImpacts     []CascadeImpact                    // cascade-delete impact counts (confirm-delete page)
 }
 
 // computedColumns type-erases ListDisplay into a map usable by columnHTML.
@@ -245,6 +254,9 @@ func (ma *ModelAdmin[T]) formOptions(ctx context.Context) ([]forms.Option[T], er
 		}
 		opts = append(opts, forms.WithChoices[T](field, choices))
 	}
+
+	// Append user-provided form options.
+	opts = append(opts, ma.FormOptions...)
 
 	return opts, nil
 }

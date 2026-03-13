@@ -373,9 +373,11 @@ func (a *Article) FieldChoices(ctx context.Context, field string) ([]forms.Choic
 
 ## Cross-Field Validation
 
-Implement the `Cleanable` interface for validation that spans multiple fields. Like `ChoiceProvider`, define `Clean()` on whatever struct you use as the form type parameter.
+There are two mechanisms for cross-field validation: `Clean(ctx)` on the struct itself, and `WithCleanFunc` as a form option. Use whichever fits your needs — or both.
 
-**On a dedicated form struct:**
+### Clean(ctx) — struct-level validation
+
+Implement the `Cleanable` interface for validation that only needs the struct's own data. The context carries request-scoped data (e.g. i18n localizer). Like `ChoiceProvider`, define `Clean()` on whatever struct you use as the form type parameter:
 
 ```go
 type EventForm struct {
@@ -383,7 +385,7 @@ type EventForm struct {
     End   time.Time `form:"end"   validate:"required" verbose:"End date"`
 }
 
-func (f *EventForm) Clean() error {
+func (f *EventForm) Clean(ctx context.Context) error {
     if !f.End.After(f.Start) {
         return &burrow.ValidationError{
             Errors: []burrow.FieldError{
@@ -395,31 +397,39 @@ func (f *EventForm) Clean() error {
 }
 ```
 
-**On a model used directly:**
+### WithCleanFunc — closure-based validation
+
+Use `WithCleanFunc` when validation needs external dependencies like a database or repository. The closure captures dependencies at form creation time:
 
 ```go
-type Event struct {
-    ID    int64     `bun:",pk,autoincrement" form:"-"`
-    Start time.Time `bun:",notnull" form:"start" validate:"required" verbose:"Start date"`
-    End   time.Time `bun:",notnull" form:"end"   validate:"required" verbose:"End date"`
-}
-
-func (e *Event) Clean() error {
-    if !e.End.After(e.Start) {
-        return &burrow.ValidationError{
-            Errors: []burrow.FieldError{
-                {Field: "end", Message: "End date must be after start date"},
-            },
+f := forms.New[UserForm](
+    forms.WithCleanFunc(func(ctx context.Context, u *UserForm) error {
+        if u.Role != "admin" {
+            lastAdmin, _ := repo.IsLastAdmin(ctx, u.ID)
+            if lastAdmin {
+                return &burrow.ValidationError{
+                    Errors: []burrow.FieldError{
+                        {Field: "role", Message: "Cannot demote the last admin"},
+                    },
+                }
+            }
         }
-    }
-    return nil
-}
+        return nil
+    }),
+)
 ```
 
-`Clean()` is called only after all per-field validations pass. Errors returned from `Clean()` are merged into the form's error state:
+### How they work together
+
+Both mechanisms run only after all per-field validations pass. `Clean(ctx)` runs first, then `WithCleanFunc`. Both can return errors, and all errors are merged:
 
 - Field-level errors (with a `Field` value) appear on the corresponding `BoundField.Errors`
 - Non-field errors (empty `Field`) are accessible via `f.NonFieldErrors()`
+
+| Mechanism | Use when | Dependencies |
+|-----------|----------|-------------|
+| `Clean(ctx)` | Logic needs only the struct's own fields | None (self-contained) |
+| `WithCleanFunc` | Logic needs external state (DB, repo, services) | Captured via closure |
 
 ## Complete Example
 

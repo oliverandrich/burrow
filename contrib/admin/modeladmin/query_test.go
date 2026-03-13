@@ -24,7 +24,7 @@ type testItem struct { //nolint:govet // fieldalignment: test struct
 
 func setupTestDB(t *testing.T) *bun.DB {
 	t.Helper()
-	sqldb, err := sql.Open("sqlite", ":memory:")
+	sqldb, err := sql.Open("sqlite", "file::memory:?_pragma=foreign_keys(1)")
 	require.NoError(t, err)
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 	t.Cleanup(func() { db.Close() })

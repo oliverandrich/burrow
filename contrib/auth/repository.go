@@ -148,7 +148,7 @@ func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error
 	return count > 0, nil
 }
 
-// ListUsers returns all non-deleted users ordered by ID ascending.
+// ListUsers returns all users ordered by ID ascending.
 func (r *Repository) ListUsers(ctx context.Context) ([]User, error) {
 	var users []User
 	if err := r.db.NewSelect().Model(&users).Order("id ASC").Scan(ctx); err != nil {
@@ -157,7 +157,7 @@ func (r *Repository) ListUsers(ctx context.Context) ([]User, error) {
 	return users, nil
 }
 
-// CountUsers returns the total number of non-deleted users.
+// CountUsers returns the total number of users.
 func (r *Repository) CountUsers(ctx context.Context) (int, error) {
 	count, err := r.db.NewSelect().Model((*User)(nil)).Count(ctx)
 	if err != nil {
@@ -175,7 +175,7 @@ func (r *Repository) CountAdminUsers(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// DeleteUser soft-deletes a user by ID.
+// DeleteUser permanently deletes a user by ID.
 func (r *Repository) DeleteUser(ctx context.Context, id int64) error {
 	if _, err := r.db.NewDelete().Model((*User)(nil)).
 		Where("id = ?", id).Exec(ctx); err != nil {
@@ -184,19 +184,7 @@ func (r *Repository) DeleteUser(ctx context.Context, id int64) error {
 	return nil
 }
 
-// forceDeleteUser permanently deletes a user by ID, bypassing soft-delete.
-// Used to clean up users from abandoned registration flows.
-func (r *Repository) forceDeleteUser(ctx context.Context, id int64) error {
-	if _, err := r.db.NewDelete().Model((*User)(nil)).
-		Where("id = ?", id).
-		ForceDelete().
-		Exec(ctx); err != nil {
-		return fmt.Errorf("force delete user %d: %w", id, err)
-	}
-	return nil
-}
-
-// PurgeOrphanedUsers hard-deletes users with zero credentials that were
+// PurgeOrphanedUsers deletes users with zero credentials that were
 // created more than the given duration ago. These are leftover from abandoned
 // WebAuthn registration flows where the client never called RegisterFinish.
 func (r *Repository) PurgeOrphanedUsers(ctx context.Context, olderThan time.Duration) (int, error) {
@@ -204,7 +192,6 @@ func (r *Repository) PurgeOrphanedUsers(ctx context.Context, olderThan time.Dura
 	res, err := r.db.NewDelete().Model((*User)(nil)).
 		Where("created_at < ?", cutoff).
 		Where("id NOT IN (?)", r.db.NewSelect().Model((*Credential)(nil)).ColumnExpr("DISTINCT user_id")).
-		ForceDelete().
 		Exec(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("purge orphaned users: %w", err)
@@ -243,7 +230,7 @@ func (r *Repository) UpdateCredentialSignCount(ctx context.Context, credentialID
 	return nil
 }
 
-// DeleteCredential soft-deletes a credential.
+// DeleteCredential deletes a credential.
 func (r *Repository) DeleteCredential(ctx context.Context, credID, userID int64) error {
 	if _, err := r.db.NewDelete().Model((*Credential)(nil)).
 		Where("id = ? AND user_id = ?", credID, userID).
@@ -310,11 +297,10 @@ func (r *Repository) MarkRecoveryCodeUsed(ctx context.Context, codeID int64) err
 	return nil
 }
 
-// DeleteRecoveryCodes hard-deletes all recovery codes for a user.
+// DeleteRecoveryCodes deletes all recovery codes for a user.
 func (r *Repository) DeleteRecoveryCodes(ctx context.Context, userID int64) error {
 	if _, err := r.db.NewDelete().Model((*RecoveryCode)(nil)).
 		Where("user_id = ?", userID).
-		ForceDelete().
 		Exec(ctx); err != nil {
 		return fmt.Errorf("delete recovery codes for user %d: %w", userID, err)
 	}
@@ -382,33 +368,30 @@ func (r *Repository) GetEmailVerificationToken(ctx context.Context, tokenHash st
 	return &token, nil
 }
 
-// DeleteEmailVerificationToken hard-deletes a token.
+// DeleteEmailVerificationToken deletes a token.
 func (r *Repository) DeleteEmailVerificationToken(ctx context.Context, tokenID int64) error {
 	if _, err := r.db.NewDelete().Model((*EmailVerificationToken)(nil)).
 		Where("id = ?", tokenID).
-		ForceDelete().
 		Exec(ctx); err != nil {
 		return fmt.Errorf("delete email verification token %d: %w", tokenID, err)
 	}
 	return nil
 }
 
-// DeleteUserEmailVerificationTokens hard-deletes all tokens for a user.
+// DeleteUserEmailVerificationTokens deletes all tokens for a user.
 func (r *Repository) DeleteUserEmailVerificationTokens(ctx context.Context, userID int64) error {
 	if _, err := r.db.NewDelete().Model((*EmailVerificationToken)(nil)).
 		Where("user_id = ?", userID).
-		ForceDelete().
 		Exec(ctx); err != nil {
 		return fmt.Errorf("delete email verification tokens for user %d: %w", userID, err)
 	}
 	return nil
 }
 
-// DeleteExpiredEmailVerificationTokens hard-deletes expired tokens.
+// DeleteExpiredEmailVerificationTokens deletes expired tokens.
 func (r *Repository) DeleteExpiredEmailVerificationTokens(ctx context.Context) error {
 	if _, err := r.db.NewDelete().Model((*EmailVerificationToken)(nil)).
 		Where("expires_at < ?", time.Now()).
-		ForceDelete().
 		Exec(ctx); err != nil {
 		return fmt.Errorf("delete expired email verification tokens: %w", err)
 	}
@@ -470,11 +453,10 @@ func (r *Repository) MarkInviteUsed(ctx context.Context, inviteID, userID int64)
 	return nil
 }
 
-// DeleteInvite hard-deletes an invite (revoke).
+// DeleteInvite deletes an invite (revoke).
 func (r *Repository) DeleteInvite(ctx context.Context, inviteID int64) error {
 	if _, err := r.db.NewDelete().Model((*Invite)(nil)).
 		Where("id = ?", inviteID).
-		ForceDelete().
 		Exec(ctx); err != nil {
 		return fmt.Errorf("delete invite %d: %w", inviteID, err)
 	}

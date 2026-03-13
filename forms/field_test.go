@@ -151,12 +151,38 @@ func TestFieldErrorsHelper(t *testing.T) {
 		},
 	}
 
-	errs := fieldErrors(ve, "email")
+	errs := fieldErrors(noCtx, ve, "email")
 	assert.Equal(t, []string{"invalid email", "too long"}, errs)
 
-	errs = fieldErrors(ve, "name")
+	errs = fieldErrors(noCtx, ve, "name")
 	assert.Equal(t, []string{"required"}, errs)
 
-	errs = fieldErrors(ve, "missing")
+	errs = fieldErrors(noCtx, ve, "missing")
 	assert.Nil(t, errs)
+}
+
+type formWithPointer struct {
+	Email *string `form:"email" verbose_name:"Email"`
+	Name  string  `form:"name" verbose_name:"Name"`
+}
+
+func TestExtractFieldsDereferencesPointer(t *testing.T) {
+	email := "test@example.com"
+	instance := &formWithPointer{Email: &email, Name: "Alice"}
+
+	fields := extractFields(noCtx, instance, nil, nil, nil, nil)
+
+	require.Len(t, fields, 2)
+	assert.Equal(t, "test@example.com", fields[0].Value)
+	assert.Equal(t, "Alice", fields[1].Value)
+}
+
+func TestExtractFieldsNilPointerValue(t *testing.T) {
+	instance := &formWithPointer{Email: nil, Name: "Bob"}
+
+	fields := extractFields(noCtx, instance, nil, nil, nil, nil)
+
+	require.Len(t, fields, 2)
+	assert.Nil(t, fields[0].Value)
+	assert.Equal(t, "Bob", fields[1].Value)
 }

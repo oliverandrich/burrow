@@ -5,14 +5,34 @@ import (
 	"github.com/oliverandrich/burrow"
 )
 
+// Init runs boot-time detection (FTS5, cascade foreign keys) for this ModelAdmin.
+// Called automatically by Routes(). Call manually when registering routes without Routes().
+func (ma *ModelAdmin[T]) Init() {
+	tbl := tableName[T]()
+
+	// Register table → display name for cascade impact labels.
+	RegisterTableDisplayName(tbl, ma.DisplayPluralName)
+
+	if ma.DB == nil {
+		return
+	}
+
+	// Auto-detect FTS5 table at boot time.
+	if tbl != "" && len(ma.SearchFields) > 0 {
+		ma.ftsTable = detectFTS(ma.DB, tbl)
+	}
+
+	// Auto-detect ON DELETE CASCADE foreign keys at boot time.
+	if tbl != "" && ma.CanDelete {
+		ma.cascades = detectCascades(ma.DB, tbl)
+	}
+}
+
 // Routes mounts all CRUD routes for this ModelAdmin on the given router.
 // Routes are mounted under /{slug} so the caller should mount this
 // within the /admin route group.
 func (ma *ModelAdmin[T]) Routes(r chi.Router) {
-	// Auto-detect FTS5 table at boot time.
-	if tbl := tableName[T](); tbl != "" && len(ma.SearchFields) > 0 {
-		ma.ftsTable = detectFTS(ma.DB, tbl)
-	}
+	ma.Init()
 
 	r.Route("/"+ma.Slug, func(r chi.Router) {
 		r.Get("/", burrow.Handle(ma.HandleList))
@@ -34,6 +54,7 @@ func (ma *ModelAdmin[T]) Routes(r chi.Router) {
 		}
 
 		if ma.CanDelete {
+			r.Get("/{id}/delete", burrow.Handle(ma.HandleConfirmDelete))
 			r.Delete("/{id}", burrow.Handle(ma.HandleDelete))
 		}
 

@@ -35,14 +35,12 @@ type Note struct {
     Title     string    `bun:",notnull" json:"title"`
     Content   string    `bun:",notnull,default:''" json:"content"`
     CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-    DeletedAt time.Time `bun:",soft_delete,nullzero" json:"-"`
 }
 ```
 
 Key points:
 
 - `bun.BaseModel` with table name and alias
-- `bun:",soft_delete,nullzero"` on `DeletedAt` enables soft-delete
 - JSON tags control API serialisation
 
 ## Step 2: Write the Migration
@@ -55,8 +53,7 @@ CREATE TABLE IF NOT EXISTS notes (
     user_id INTEGER NOT NULL,
     title TEXT NOT NULL,
     content TEXT NOT NULL DEFAULT '',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at DATETIME
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes (user_id);
