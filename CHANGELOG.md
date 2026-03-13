@@ -4,6 +4,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Changed
+
+- Add secret key configuration section to deployment guide covering `SESSION_HASH_KEY`, `SESSION_BLOCK_KEY`, and `CSRF_KEY`
+
 ### Security
 
 - **Fix timing attack on recovery code validation** — `ValidateAndUseRecoveryCode` now always iterates all codes to prevent timing side-channel that revealed code position via early return

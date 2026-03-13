@@ -14,6 +14,28 @@ All three options support graceful shutdown. Bare metal and systemd also support
 
 For TLS, the server handles ACME certificates, manual certs, or self-signed certs natively — no reverse proxy needed. See the [TLS guide](tls.md) for details.
 
+## Secret Keys
+
+Burrow auto-generates random keys for session signing and CSRF protection when none are configured. This is convenient during development, but **sessions and CSRF tokens will not survive a server restart** because the keys are only held in memory.
+
+For production, always set these environment variables (or their CLI/TOML equivalents):
+
+```bash
+# Generate keys (32 bytes, hex-encoded)
+export SESSION_HASH_KEY=$(openssl rand -hex 32)
+export SESSION_BLOCK_KEY=$(openssl rand -hex 32)  # optional, enables session encryption
+export CSRF_KEY=$(openssl rand -hex 32)
+```
+
+| Variable | Purpose | If missing |
+|----------|---------|------------|
+| `SESSION_HASH_KEY` | Signs session cookies (HMAC) | Auto-generated; sessions lost on restart |
+| `SESSION_BLOCK_KEY` | Encrypts session cookies (AES) | Sessions are signed but not encrypted |
+| `CSRF_KEY` | Signs CSRF tokens | Auto-generated; tokens invalid on restart |
+
+!!! warning
+    Without persistent keys, every server restart silently logs out all users and invalidates all pending forms. The server logs a warning when keys are auto-generated — treat this as a deployment misconfiguration in production.
+
 ## Bare Metal / VPS
 
 For a simple standalone deployment without a process manager:
@@ -46,6 +68,8 @@ After=network.target
 [Service]
 Type=forking
 PIDFile=/run/myapp/server.pid
+Environment=SESSION_HASH_KEY=<your-key>
+Environment=CSRF_KEY=<your-key>
 ExecStart=/usr/local/bin/server --pid-file /run/myapp/server.pid
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
@@ -87,6 +111,7 @@ RUN CGO_ENABLED=0 go build -o /server ./cmd/server
 FROM gcr.io/distroless/static-debian12
 COPY --from=builder /server /server
 EXPOSE 8080
+# Set SESSION_HASH_KEY and CSRF_KEY via docker run -e or compose environment
 ENTRYPOINT ["/server"]
 ```
 
