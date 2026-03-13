@@ -34,6 +34,14 @@ type User struct {
 	IsActive        bool         `bun:",notnull,default:true" json:"is_active" form:"-" verbose:"Active"`
 }
 
+// String returns the user's display name (Name if set, otherwise Username).
+func (u User) String() string {
+	if u.Name != "" {
+		return u.Name
+	}
+	return u.Username
+}
+
 // IsAdmin returns true if the user has the admin role.
 func (u *User) IsAdmin() bool { return u.Role == RoleAdmin }
 

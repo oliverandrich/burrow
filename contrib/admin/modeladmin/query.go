@@ -68,7 +68,7 @@ func listItems[T any](ctx context.Context, db *bun.DB, opts listOpts, pr burrow.
 // getItem fetches a single item by primary key.
 func getItem[T any](ctx context.Context, db *bun.DB, id string, relations []string) (*T, error) {
 	item := new(T)
-	q := db.NewSelect().Model(item).Where("id = ?", id)
+	q := db.NewSelect().Model(item).Where("?TableAlias.id = ?", id)
 
 	for _, rel := range relations {
 		q = q.Relation(rel)

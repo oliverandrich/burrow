@@ -136,6 +136,62 @@ The key in the map is the Go struct field name (not the database column). The fu
 
 Unlike `form:"choices=a|b|c"` which defines static options, `FieldChoices` loads options dynamically — ideal for foreign keys and any field whose options come from the database.
 
+### Foreign Key Labels via `fmt.Stringer`
+
+When a list field points to an eager-loaded relation (e.g. `User` instead of `UserID`), the list view checks if the value implements `fmt.Stringer`. If it does, `String()` is called and the result is displayed instead of the raw struct.
+
+```go
+// 1. Implement fmt.Stringer on the related model:
+func (u User) String() string {
+    if u.Name != "" {
+        return u.Name
+    }
+    return u.Username
+}
+
+// 2. Add a belongs-to relation on the model:
+type Note struct {
+    bun.BaseModel `bun:"table:notes,alias:n"`
+    UserID int64      `bun:",notnull"`
+    User   *auth.User `bun:"rel:belongs-to,join:user_id=id" form:"-" verbose:"User"`
+    // ...
+}
+
+// 3. Configure ModelAdmin to show the relation and eager-load it:
+ma := &modeladmin.ModelAdmin[Note]{
+    ListFields: []string{"ID", "Title", "User", "CreatedAt"},
+    Relations:  []string{"User"},
+    OrderBy:    "n.created_at DESC", // qualify with table alias when using relations
+    // ...
+}
+```
+
+The list view now shows the user's name instead of a numeric ID. The `User` field must be in `Relations` so Bun eager-loads it.
+
+!!! note
+    When using `Relations`, qualify ambiguous column names in `OrderBy` with the table alias (e.g. `n.created_at` instead of `created_at`), since joined tables may share column names like `id` or `created_at`.
+
+### Computed List Columns (`ListDisplay`)
+
+For columns that aren't direct struct fields — like derived values, counts, or formatted badges — use `ListDisplay`:
+
+```go
+ma := &modeladmin.ModelAdmin[Question]{
+    ListFields: []string{"ID", "Text", "ChoiceCount", "PublishedAt"},
+    Relations:  []string{"Choices"},
+    ListDisplay: map[string]func(Question) template.HTML{
+        "ChoiceCount": func(q Question) template.HTML {
+            return template.HTML(fmt.Sprintf("<span>%d choices</span>", len(q.Choices)))
+        },
+    },
+    // ...
+}
+```
+
+Computed columns can be mixed freely with regular fields in `ListFields`. They take priority — if a computed column has the same name as a struct field, the computed function is called instead of reading the field value.
+
+Computed columns are not sortable since they have no database column.
+
 ### Features
 
 - **List view** with configurable columns, ordering, and offset pagination

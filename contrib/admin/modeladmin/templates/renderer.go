@@ -85,9 +85,10 @@ func executeTemplate(name string, t func(string) string, data map[string]any) (t
 	if err != nil {
 		return "", fmt.Errorf("clone templates: %w", err)
 	}
+	computedCols, _ := data["ComputedColumns"].(map[string]func(any) template.HTML)
 	tmpl = tmpl.Funcs(template.FuncMap{
 		"T":           t,
-		"columnValue": modeladmin.ColumnValueFunc(t),
+		"columnValue": modeladmin.ColumnValueFunc(t, computedCols),
 	})
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
@@ -112,11 +113,12 @@ func (d *defaultRenderer[T]) List(w http.ResponseWriter, r *http.Request, items 
 	ctx := r.Context()
 	t := func(key string) string { return i18n.T(ctx, key) }
 	data := map[string]any{
-		"Items":     anyItems,
-		"Page":      page,
-		"Cfg":       cfg,
-		"CSRFToken": csrf.Token(ctx),
-		"Messages":  messages.Get(ctx),
+		"Items":           anyItems,
+		"Page":            page,
+		"Cfg":             cfg,
+		"CSRFToken":       csrf.Token(ctx),
+		"Messages":        messages.Get(ctx),
+		"ComputedColumns": cfg.ComputedColumns,
 	}
 	content, err := executeTemplate("modeladmin/list", t, data)
 	if err != nil {

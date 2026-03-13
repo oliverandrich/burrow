@@ -2,6 +2,18 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+
+- **ModelAdmin: `fmt.Stringer` support in list views** — when a list field value implements `fmt.Stringer` (e.g. an eager-loaded FK relation), the list view renders `String()` instead of the raw struct
+- **ModelAdmin: computed list columns (`ListDisplay`)** — new `ListDisplay map[string]func(T) template.HTML` field on `ModelAdmin[T]` allows custom computed columns in list views that are not direct struct fields
+- **`auth.User` implements `fmt.Stringer`** — returns the user's `Name` if set, otherwise falls back to `Username`
+
+### Fixed
+
+- **ModelAdmin: ambiguous column name with relations** — `getItem` and list queries now qualify column names with the table alias to prevent SQLite "ambiguous column name" errors when eager-loading relations that share column names (e.g. `id`, `created_at`)
+
 ## 0.4.1 — 2026-03-13
 
 ### Added

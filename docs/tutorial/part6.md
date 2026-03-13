@@ -30,7 +30,7 @@ The admin app:
 
 ## Prepare the Models
 
-In `internal/polls/polls.go`, add `verbose` struct tags to both models so ModelAdmin knows how to label columns. Also add `form:"-"` to the `Choices` relation on `Question` — ModelAdmin cannot handle nested relations, so we exclude it from the form:
+In `internal/polls/polls.go`, add `verbose` struct tags to both models so ModelAdmin knows how to label columns. Also add `form:"-"` to the `Choices` relation on `Question` and the `Question` relation on `Choice` — ModelAdmin cannot handle nested relations in forms, so we exclude them:
 
 ```go
 type Question struct {
@@ -43,6 +43,9 @@ type Question struct {
     Choices []Choice `bun:"rel:has-many,join:id=question_id" form:"-"`
 }
 
+// String returns the question text for display in admin list views (e.g. as FK label).
+func (q Question) String() string { return q.Text }
+
 type Choice struct {
     bun.BaseModel `bun:"table:choices,alias:c"`
 
@@ -51,9 +54,11 @@ type Choice struct {
     Text       string `bun:",notnull" verbose:"Choice"`
     Votes      int    `bun:",notnull,default:0" verbose:"Votes"`
 
-    Question *Question `bun:"rel:belongs-to,join:question_id=id" form:"-"`
+    Question *Question `bun:"rel:belongs-to,join:question_id=id" form:"-" verbose:"Question"`
 }
 ```
+
+The `String()` method on `Question` tells ModelAdmin how to display a question when it appears as a foreign key in list views. Any type that implements `fmt.Stringer` is rendered using its `String()` result instead of the raw struct.
 
 ## Set Up ModelAdmin
 
@@ -104,8 +109,9 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
         CanCreate:         true,
         CanEdit:           true,
         CanDelete:         true,
-        ListFields:        []string{"ID", "QuestionID", "Text", "Votes"},
-        OrderBy:           "question_id, id",
+        ListFields:        []string{"ID", "Question", "Text", "Votes"},
+        Relations:         []string{"Question"},
+        OrderBy:           "c.question_id, c.id",
         FieldChoices: map[string]modeladmin.ChoicesFunc{
             "QuestionID": func(ctx context.Context) ([]modeladmin.Choice, error) {
                 var questions []Question
@@ -185,7 +191,9 @@ Visit `/admin/` to see the dashboard. Click "Questions" in the sidebar to create
 
 - **`admin.New()`** — coordinates the admin panel with built-in default layout and dashboard
 - **`ModelAdmin`** — generic CRUD views for any Bun model, configured declaratively
-- **`FieldChoices`** — dynamic select dropdowns for foreign key fields, loaded from the database at request time
+- **`fmt.Stringer` for FK labels** — implement `String()` on related models to display human-readable labels instead of raw IDs in list views
+- **`Relations`** — eager-load Bun relations so list views can display related model data
+- **`FieldChoices`** — dynamic select dropdowns for foreign key fields in forms, loaded from the database at request time
 - **`HasAdmin`** — interface for apps to contribute admin routes and navigation
 - **`verbose` struct tags** — provide human-readable column labels for the admin UI
 - **`form:"-"`** — excludes fields (like relations) from the admin form

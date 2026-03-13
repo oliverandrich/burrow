@@ -84,7 +84,7 @@ type Note struct {
     bun.BaseModel `bun:"table:notes"`
     ID       int64  `bun:",pk,autoincrement"`
     AuthorID int64  `bun:",notnull"`
-    Author   *User  `bun:"rel:belongs_to,join:author_id=id"`
+    Author   *User  `bun:"rel:belongs-to,join:author_id=id"`
 }
 
 // Eager-load the Author relation
@@ -356,7 +356,7 @@ Key philosophical differences from Django:
 - **Compile-time safety** — type errors are caught at build time, not at runtime when a user hits a page.
 - **Single binary deployment** — no virtualenv, no pip, no process manager, no external database server.
 - **SQLite by default** — no PostgreSQL/MySQL abstraction layer. One database engine, optimized for it.
-- **No admin auto-generation** — Django introspects your models and auto-generates CRUD forms, list views, and search. Burrow's `ModelAdmin` requires you to manually specify which fields are displayed, editable, and searchable — more work, but fully explicit.
+- **No admin auto-generation** — Django introspects your models and auto-generates CRUD forms, list views, and search. Burrow's `ModelAdmin` requires you to manually specify which fields are displayed, editable, and searchable — more work, but fully explicit. Django's `__str__` maps to Go's `fmt.Stringer` interface — implement `String()` on your models and `ModelAdmin` uses it to display FK labels in list views.
 - **Context instead of thread-locals** — `context.Context` replaces Django's `request.user` magic and thread-local storage. Values flow explicitly through the call chain.
 - **No signals** — Django dispatches `post_save`, `pre_delete`, etc. automatically via the ORM. Burrow has no automatic lifecycle hooks — you call functions explicitly in your handlers or services. Use `Registry.Get()` for cross-app communication.
 - **No built-in permission system** — Django has model-level permissions and `@permission_required`. Burrow provides authentication middleware (`auth.RequireAuth()`) but authorization logic is your responsibility — write middleware or handler checks.

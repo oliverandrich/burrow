@@ -114,6 +114,23 @@ func TestNewCredentialFromWebAuthn(t *testing.T) {
 	assert.Equal(t, []byte("aaguid"), cred.AAGUID)
 }
 
+func TestUserString(t *testing.T) {
+	t.Run("with name", func(t *testing.T) {
+		u := User{Name: "Alice Smith", Username: "alice"}
+		assert.Equal(t, "Alice Smith", u.String())
+	})
+
+	t.Run("without name falls back to username", func(t *testing.T) {
+		u := User{Username: "bob"}
+		assert.Equal(t, "bob", u.String())
+	})
+
+	t.Run("empty name falls back to username", func(t *testing.T) {
+		u := User{Name: "", Username: "charlie"}
+		assert.Equal(t, "charlie", u.String())
+	})
+}
+
 func TestTransportsFromWebAuthn(t *testing.T) {
 	result := TransportsFromWebAuthn([]protocol.AuthenticatorTransport{"usb", "nfc", "ble"})
 	assert.Equal(t, "usb,nfc,ble", result)

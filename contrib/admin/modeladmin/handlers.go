@@ -41,6 +41,7 @@ func (ma *ModelAdmin[T]) HandleList(w http.ResponseWriter, r *http.Request) erro
 	cfg := ma.renderConfig()
 	ma.translateRenderConfig(&cfg, r)
 	cfg.Filters = buildActiveFilters(ma.Filters, r)
+	cfg.ComputedColumns = ma.computedColumns()
 	if cfg.HasRowActions {
 		cfg.ItemActionSets = make([][]RenderAction, len(items))
 		for i, item := range items {

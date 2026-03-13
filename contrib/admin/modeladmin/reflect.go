@@ -95,7 +95,13 @@ func FieldValue(item any, field string) any {
 }
 
 // columnHTML renders the value of a struct field as safe HTML.
-func columnHTML(item any, field string, t func(string) string) template.HTML {
+// computed maps field names to functions that produce custom HTML.
+func columnHTML(item any, field string, t func(string) string, computed map[string]func(any) template.HTML) template.HTML {
+	// Check computed columns first — they take priority over struct fields.
+	if fn, ok := computed[field]; ok {
+		return fn(item)
+	}
+
 	v := reflect.ValueOf(item)
 	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
@@ -135,6 +141,11 @@ func columnHTML(item any, field string, t func(string) string) template.HTML {
 			return "<span>-</span>"
 		}
 		return template.HTML("<span>" + tm.Format("2006-01-02 15:04") + "</span>") //nolint:gosec // time format is safe
+	}
+
+	// Use fmt.Stringer if available (e.g. eager-loaded FK relations).
+	if s, ok := val.(fmt.Stringer); ok {
+		return template.HTML("<span>" + html.EscapeString(s.String()) + "</span>") //nolint:gosec // value is escaped
 	}
 
 	return template.HTML("<span>" + html.EscapeString(fmt.Sprintf("%v", val)) + "</span>") //nolint:gosec // value is escaped

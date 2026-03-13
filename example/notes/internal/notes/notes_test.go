@@ -76,6 +76,11 @@ func openTestDB(t *testing.T) *bun.DB {
 
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 
+	// Run auth migrations first (notes has a belongs_to relation to users).
+	authApp := auth.New()
+	err = burrow.RunAppMigrations(t.Context(), db, authApp.Name(), authApp.MigrationFS())
+	require.NoError(t, err)
+
 	// Run notes migration.
 	app := New()
 	err = burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
@@ -911,11 +916,19 @@ func TestDeleteNoteInvalidID(t *testing.T) {
 
 // --- ModelAdmin integration tests ---
 
+func createTestUser(t *testing.T, db *bun.DB, id int64, username string) {
+	t.Helper()
+	user := &auth.User{ID: id, Username: username, Role: "user"}
+	_, err := db.NewInsert().Model(user).Exec(t.Context())
+	require.NoError(t, err)
+}
+
 func TestModelAdminRoutes_List(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
+	createTestUser(t, db, 42, "testuser")
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Admin View", Content: "Visible", UserID: 42}))
 
 	app := New()
@@ -937,6 +950,7 @@ func TestModelAdminRoutes_Delete(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
+	createTestUser(t, db, 42, "testuser")
 	note := &Note{Title: "Delete Me", Content: "Bye", UserID: 42}
 	require.NoError(t, repo.Create(ctx, note))
 

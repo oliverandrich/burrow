@@ -70,6 +70,10 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	// EmptyMessageKey is the i18n key for the empty-list message.
 	// Translated via i18n.T at request time.
 	EmptyMessageKey string
+	// ListDisplay defines computed columns for the list view.
+	// Keys are column names (which can also appear in ListFields).
+	// The function receives an item and returns pre-rendered HTML.
+	ListDisplay map[string]func(T) template.HTML
 
 	// ftsTable is the detected FTS5 table name (e.g. "notes_fts").
 	// Set automatically in Routes() if a {tablename}_fts table exists.
@@ -132,6 +136,25 @@ type RenderConfig struct { //nolint:govet // fieldalignment: readability over op
 	HasRowActions     bool
 	ItemActionSets    [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
 	EmptyMessage      string
+	ComputedColumns   map[string]func(any) template.HTML // field → render function
+}
+
+// computedColumns type-erases ListDisplay into a map usable by columnHTML.
+func (ma *ModelAdmin[T]) computedColumns() map[string]func(any) template.HTML {
+	if len(ma.ListDisplay) == 0 {
+		return nil
+	}
+	m := make(map[string]func(any) template.HTML, len(ma.ListDisplay))
+	for name, fn := range ma.ListDisplay {
+		m[name] = func(item any) template.HTML {
+			typed, ok := item.(T) //nolint:errcheck // type is guaranteed by ModelAdmin[T]
+			if !ok {
+				return "<span>-</span>"
+			}
+			return fn(typed)
+		}
+	}
+	return m
 }
 
 // renderConfig returns the RenderConfig for this ModelAdmin.
@@ -235,13 +258,13 @@ func bunAutoIncrementPKs[T any]() []string {
 
 // ColumnValue extracts a display value for a list column from an item.
 func ColumnValue(item any, field string) template.HTML {
-	return columnHTML(item, field, nil)
+	return columnHTML(item, field, nil, nil)
 }
 
 // ColumnValueFunc returns a columnValue function that uses the given translator
-// for bool rendering (modeladmin-yes / modeladmin-no).
-func ColumnValueFunc(t func(string) string) func(any, string) template.HTML {
+// and computed column functions.
+func ColumnValueFunc(t func(string) string, computed map[string]func(any) template.HTML) func(any, string) template.HTML {
 	return func(item any, field string) template.HTML {
-		return columnHTML(item, field, t)
+		return columnHTML(item, field, t, computed)
 	}
 }

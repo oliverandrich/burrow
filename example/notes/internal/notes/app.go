@@ -52,9 +52,10 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		CanCreate:         true,
 		CanEdit:           true,
 		CanDelete:         true,
-		ListFields:        []string{"ID", "Title", "Content", "UserID", "CreatedAt"},
+		ListFields:        []string{"ID", "Title", "Content", "User", "CreatedAt"},
+		Relations:         []string{"User"},
 		SearchFields:      []string{"title", "content"},
-		OrderBy:           "created_at DESC, id DESC",
+		OrderBy:           "n.created_at DESC, n.id DESC",
 	}
 	a.notesAdmin.RowActions = []modeladmin.RowAction{
 		{
