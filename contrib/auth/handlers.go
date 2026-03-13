@@ -139,7 +139,7 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 			return errorJSONLog(w, http.StatusInternalServerError, "database error", err)
 		}
 		if exists {
-			return errorJSON(w, http.StatusConflict, "registration failed")
+			return errorJSON(w, http.StatusOK, "registration failed")
 		}
 		user, createErr = h.repo.CreateUserWithEmail(ctx, req.Email, req.Name)
 	} else {
@@ -151,7 +151,7 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 			return errorJSONLog(w, http.StatusInternalServerError, "database error", err)
 		}
 		if exists {
-			return errorJSON(w, http.StatusConflict, "registration failed")
+			return errorJSON(w, http.StatusOK, "registration failed")
 		}
 		user, createErr = h.repo.CreateUser(ctx, req.Username, req.Name)
 	}

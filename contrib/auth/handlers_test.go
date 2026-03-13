@@ -280,8 +280,9 @@ func TestRegisterBeginUsernameExists(t *testing.T) {
 	err = h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code, "must not reveal that username exists")
 	assert.Contains(t, rec.Body.String(), "registration failed")
+	assert.NotContains(t, rec.Body.String(), "publicKey", "must not start WebAuthn flow for existing user")
 }
 
 func TestRegisterBeginInvalidJSON(t *testing.T) {
@@ -343,7 +344,9 @@ func TestRegisterBeginEmailModeEmailExists(t *testing.T) {
 	err = h.RegisterBegin(rec, req)
 
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code, "must not reveal that email exists")
+	assert.Contains(t, rec.Body.String(), "registration failed")
+	assert.NotContains(t, rec.Body.String(), "publicKey", "must not start WebAuthn flow for existing user")
 }
 
 func TestRegisterBeginInviteOnlyNoToken(t *testing.T) {
