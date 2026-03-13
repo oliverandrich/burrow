@@ -76,6 +76,8 @@ func TestCSRFRejectsPostWithoutToken(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusForbidden, rr.Code)
+	body := rr.Body.String()
+	assert.Equal(t, "Forbidden\n", body, "error response must not reveal CSRF failure reason")
 }
 
 func TestCSRFAcceptsPostWithToken(t *testing.T) {

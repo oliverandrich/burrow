@@ -2,6 +2,7 @@ package csrf
 
 import (
 	"html/template"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -58,6 +59,10 @@ func (a *App) configure(keyHex string, secure bool) error {
 		gorillacsrf.Secure(secure),
 		gorillacsrf.SameSite(gorillacsrf.SameSiteLaxMode),
 		gorillacsrf.Path("/"),
+		gorillacsrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			slog.Warn("CSRF validation failed", "reason", gorillacsrf.FailureReason(r), "method", r.Method, "path", r.URL.Path) //nolint:gosec // G706: slog structured logging is safe
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		})),
 	)
 	return nil
 }
