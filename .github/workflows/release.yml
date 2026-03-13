@@ -18,10 +18,12 @@ jobs:
         id: changelog
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          # Extract the section between this version header and the next version header
-          NOTES=$(awk "/^## ${VERSION}/,/^## [0-9]/" CHANGELOG.md | sed '1d;$d' | sed '/^$/N;/^\n$/d')
-          # Write to file to preserve formatting
-          echo "$NOTES" > release-notes.md
+          # Extract content between this version header and the next ## header
+          awk "
+            /^## ${VERSION}/ { found=1; next }
+            found && /^## / { exit }
+            found { print }
+          " CHANGELOG.md > release-notes.md
 
       - name: Create GitHub Release
         run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
