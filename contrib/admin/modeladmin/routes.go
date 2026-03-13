@@ -17,6 +17,11 @@ func (ma *ModelAdmin[T]) Routes(r chi.Router) {
 	r.Route("/"+ma.Slug, func(r chi.Router) {
 		r.Get("/", burrow.Handle(ma.HandleList))
 
+		if ma.CanExport {
+			r.Get("/export.csv", burrow.Handle(ma.HandleExportCSV))
+			r.Get("/export.json", burrow.Handle(ma.HandleExportJSON))
+		}
+
 		if ma.CanCreate {
 			r.Get("/new", burrow.Handle(ma.HandleNew))
 			r.Post("/", burrow.Handle(ma.HandleCreate))

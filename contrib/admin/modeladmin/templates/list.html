@@ -5,11 +5,24 @@
         {{ .Cfg.DisplayPluralName }}
         <span class="badge text-bg-secondary fs-6 align-middle ms-2">{{ .Page.TotalCount }}</span>
     </h2>
-    {{- if .Cfg.CanCreate }}
-    <a href="/admin/{{ .Cfg.Slug }}/new" class="btn btn-primary">
-        {{ iconPlus }} {{ T "modeladmin-new" }}
-    </a>
-    {{- end }}
+    <div class="d-flex gap-2">
+        {{- if .Cfg.CanExport }}
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ T "modeladmin-export" }}
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/admin/{{ .Cfg.Slug }}/export.csv{{ if .Query }}?{{ .Query }}{{ end }}">{{ T "modeladmin-export-csv" }}</a></li>
+                <li><a class="dropdown-item" href="/admin/{{ .Cfg.Slug }}/export.json{{ if .Query }}?{{ .Query }}{{ end }}">{{ T "modeladmin-export-json" }}</a></li>
+            </ul>
+        </div>
+        {{- end }}
+        {{- if .Cfg.CanCreate }}
+        <a href="/admin/{{ .Cfg.Slug }}/new" class="btn btn-primary">
+            {{ iconPlus }} {{ T "modeladmin-new" }}
+        </a>
+        {{- end }}
+    </div>
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">

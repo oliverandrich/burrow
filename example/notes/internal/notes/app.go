@@ -52,6 +52,7 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		CanCreate:         true,
 		CanEdit:           true,
 		CanDelete:         true,
+		CanExport:         true,
 		ListFields:        []string{"ID", "Title", "Content", "User", "CreatedAt"},
 		Relations:         []string{"User"},
 		ReadOnlyFields:    []string{"User", "CreatedAt"},

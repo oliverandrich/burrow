@@ -209,6 +209,21 @@ Computed columns can be mixed freely with regular fields in `ListFields`. They t
 
 Computed columns are not sortable since they have no database column.
 
+### Export
+
+Enable CSV and JSON export of list views with `CanExport`:
+
+```go
+ma := &modeladmin.ModelAdmin[Note]{
+    // ...
+    CanExport: true,
+}
+```
+
+When enabled, an "Export" dropdown appears next to the "New" button. Exports respect the current search query, filters, and sort order — but skip pagination to return all matching rows.
+
+Files are downloaded as `{slug}-{date}.csv` or `{slug}-{date}.json`. Column headers use the Go struct field names from `ListFields`. Computed columns (`ListDisplay`) are skipped in exports since they produce HTML, not plain text.
+
 ### Features
 
 - **List view** with configurable columns, ordering, and offset pagination

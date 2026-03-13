@@ -65,6 +65,40 @@ func listItems[T any](ctx context.Context, db *bun.DB, opts listOpts, pr burrow.
 	return items, burrow.OffsetResult(pr, totalCount), nil
 }
 
+// allItems queries the database for all matching items without pagination.
+// It applies relations, search, filters, and sorting — same as listItems but
+// returns the full result set for export use cases.
+func allItems[T any](ctx context.Context, db *bun.DB, opts listOpts) ([]T, error) {
+	var items []T
+	q := db.NewSelect().Model(&items)
+
+	for _, rel := range opts.relations {
+		q = q.Relation(rel)
+	}
+
+	q = applySearch(q, db, opts.searchTerm, opts.searchFields, opts.ftsTable)
+
+	if opts.r != nil {
+		q = applyFilters(q, opts.r, opts.filters)
+	}
+
+	sortApplied := false
+	if opts.r != nil && len(opts.sortFields) > 0 {
+		before := q
+		q = applySort(q, opts.r, opts.sortFields)
+		sortApplied = q != before
+	}
+	if !sortApplied && opts.orderBy != "" {
+		q = q.OrderExpr(opts.orderBy)
+	}
+
+	if err := q.Scan(ctx); err != nil {
+		return nil, fmt.Errorf("export items: %w", err)
+	}
+
+	return items, nil
+}
+
 // getItem fetches a single item by primary key.
 func getItem[T any](ctx context.Context, db *bun.DB, id string, relations []string) (*T, error) {
 	item := new(T)

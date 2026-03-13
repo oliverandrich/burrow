@@ -94,6 +94,46 @@ func FieldValue(item any, field string) any {
 	return fv.Interface()
 }
 
+// columnText extracts a plain-text value from a struct field for export.
+// Unlike columnHTML it produces no HTML wrapping and ignores computed columns.
+func columnText(item any, field string) string {
+	v := reflect.ValueOf(item)
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+
+	fv := v.FieldByName(field)
+	if !fv.IsValid() {
+		return ""
+	}
+
+	val := fv.Interface()
+
+	if fv.Kind() == reflect.Pointer {
+		if fv.IsNil() {
+			return ""
+		}
+		val = fv.Elem().Interface()
+	}
+
+	if b, ok := val.(bool); ok {
+		return fmt.Sprintf("%t", b)
+	}
+
+	if tm, ok := val.(time.Time); ok {
+		if tm.IsZero() {
+			return ""
+		}
+		return tm.Format("2006-01-02 15:04")
+	}
+
+	if s, ok := val.(fmt.Stringer); ok {
+		return s.String()
+	}
+
+	return fmt.Sprintf("%v", val)
+}
+
 // columnHTML renders the value of a struct field as safe HTML.
 // computed maps field names to functions that produce custom HTML.
 func columnHTML(item any, field string, t func(string) string, computed map[string]func(any) template.HTML) template.HTML {

@@ -74,6 +74,8 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	// plain text in forms. Read-only fields cannot be modified by the user;
 	// their values are preserved from the model instance.
 	ReadOnlyFields []string
+	// CanExport enables CSV/JSON export of the list view. Default: false.
+	CanExport bool
 	// ListDisplay defines computed columns for the list view.
 	// Keys are column names (which can also appear in ListFields).
 	// The function receives an item and returns pre-rendered HTML.
@@ -132,6 +134,7 @@ type RenderConfig struct { //nolint:govet // fieldalignment: readability over op
 	CanCreate         bool
 	CanEdit           bool
 	CanDelete         bool
+	CanExport         bool
 	ListFields        []string // Go struct field names (for columnValue/fieldValue lookups)
 	ListFieldLabels   []string // translated column headers (parallel to ListFields)
 	IDField           string   // struct field name for the primary key (default: "ID")
@@ -182,6 +185,7 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 		CanCreate:         ma.CanCreate,
 		CanEdit:           ma.CanEdit,
 		CanDelete:         ma.CanDelete,
+		CanExport:         ma.CanExport,
 		ListFields:        ma.ListFields,
 		IDField:           idField,
 		RowActions:        renderActions,

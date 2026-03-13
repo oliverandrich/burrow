@@ -119,6 +119,7 @@ func (d *defaultRenderer[T]) List(w http.ResponseWriter, r *http.Request, items 
 		"CSRFToken":       csrf.Token(ctx),
 		"Messages":        messages.Get(ctx),
 		"ComputedColumns": cfg.ComputedColumns,
+		"Query":           r.URL.RawQuery,
 	}
 	content, err := executeTemplate("modeladmin/list", t, data)
 	if err != nil {
