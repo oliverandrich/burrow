@@ -17,6 +17,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Fix rate limit bypass via X-Forwarded-For spoofing** — ratelimit now uses only `X-Real-IP` when `--ratelimit-trust-proxy` is enabled; `X-Forwarded-For` is no longer used because its multi-value format is trivially spoofed
 - **Fix timing attack on recovery code validation** — `ValidateAndUseRecoveryCode` now always iterates all codes to prevent timing side-channel that revealed code position via early return
 - **Fix user enumeration via registration endpoint** — `RegisterBegin` now returns HTTP 200 for both new and existing accounts, preventing attackers from probing which usernames or emails are registered
+- **Verify WebAuthn sign count to detect cloned credentials** — login now rejects authentication attempts where the sign count does not increase, indicating a potentially cloned authenticator; software authenticators (always 0) are unaffected
 
 ## 0.4.0 — 2026-03-13
 

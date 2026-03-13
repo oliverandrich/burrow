@@ -1167,3 +1167,31 @@ func TestIsInviteOnlyNilConfig(t *testing.T) {
 	h := &Handlers{config: nil}
 	assert.False(t, h.IsInviteOnly())
 }
+
+func TestVerifySignCount(t *testing.T) {
+	tests := []struct {
+		name        string
+		stored      uint32
+		incoming    uint32
+		expectError bool
+	}{
+		{"both zero (software authenticator)", 0, 0, false},
+		{"normal increment", 5, 6, false},
+		{"large increment", 5, 100, false},
+		{"first use after registration", 0, 1, false},
+		{"same count (possible clone)", 5, 5, true},
+		{"decreased count (possible clone)", 5, 3, true},
+		{"incoming zero with stored nonzero (possible clone)", 5, 0, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := verifySignCount(tt.stored, tt.incoming)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

@@ -1,8 +1,11 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -337,6 +340,14 @@ func (h *Handlers) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 	if finishErr != nil {
 		slog.Error("failed to finish discoverable login", "error", finishErr)
 		return errorJSON(w, http.StatusUnauthorized, "login failed")
+	}
+
+	// Verify sign count to detect cloned credentials before updating.
+	if storedCount, ok := findStoredSignCount(foundUser.Credentials, credential.ID); ok {
+		if err := verifySignCount(storedCount, credential.Authenticator.SignCount); err != nil {
+			slog.Warn("possible cloned credential detected", "user_id", foundUser.ID, "error", err) //nolint:gosec // user_id is int64
+			return errorJSON(w, http.StatusForbidden, "credential verification failed")
+		}
 	}
 
 	if updateErr := h.repo.UpdateCredentialSignCount(r.Context(), credential.ID, credential.Authenticator.SignCount); updateErr != nil {
@@ -698,4 +709,32 @@ func errorJSONLog(w http.ResponseWriter, statusCode int, msg string, err error) 
 		slog.Error(msg, "error", err)
 	}
 	return burrow.JSON(w, statusCode, map[string]string{"error": msg})
+}
+
+// errSignCountRegressed indicates a possible cloned credential.
+var errSignCountRegressed = errors.New("sign count did not increase")
+
+// verifySignCount checks whether the incoming sign count from the authenticator
+// is consistent with the stored value. Software authenticators (e.g. 1Password,
+// iCloud Keychain) always report 0, so both-zero is accepted. A non-increasing
+// count when the stored value is nonzero indicates a possible cloned credential.
+func verifySignCount(stored, incoming uint32) error {
+	if stored == 0 && incoming == 0 {
+		return nil
+	}
+	if incoming > stored {
+		return nil
+	}
+	return fmt.Errorf("%w: stored=%d, incoming=%d", errSignCountRegressed, stored, incoming)
+}
+
+// findStoredSignCount looks up the stored sign count for a credential ID
+// from the user's preloaded credentials.
+func findStoredSignCount(credentials []Credential, credentialID []byte) (uint32, bool) {
+	for i := range credentials {
+		if bytes.Equal(credentials[i].CredentialID, credentialID) {
+			return credentials[i].SignCount, true
+		}
+	}
+	return 0, false
 }
