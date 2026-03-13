@@ -16,7 +16,7 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 
-	_ "modernc.org/sqlite"
+	"github.com/uptrace/bun/driver/sqliteshim"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/forms"
@@ -71,7 +71,7 @@ func (m *mockRenderer) ConfirmDelete(w http.ResponseWriter, r *http.Request, ite
 
 func setupHandlerTest(t *testing.T) (*bun.DB, *mockRenderer, *ModelAdmin[testItem]) {
 	t.Helper()
-	sqldb, err := sql.Open("sqlite", "file::memory:?_pragma=foreign_keys(1)")
+	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
 	require.NoError(t, err)
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 	t.Cleanup(func() { db.Close() })
@@ -455,7 +455,7 @@ func (m *mockValidatedRenderer) ConfirmDelete(w http.ResponseWriter, _ *http.Req
 
 func setupValidatedHandlerTest(t *testing.T) (*bun.DB, *mockValidatedRenderer, *ModelAdmin[validatedItem]) {
 	t.Helper()
-	sqldb, err := sql.Open("sqlite", "file::memory:?_pragma=foreign_keys(1)")
+	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
 	require.NoError(t, err)
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 	t.Cleanup(func() { db.Close() })

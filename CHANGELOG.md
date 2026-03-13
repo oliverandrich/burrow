@@ -32,6 +32,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **SQLite PRAGMAs now applied per-connection** — per-connection PRAGMAs (foreign_keys, busy_timeout, synchronous, etc.) are now set via `_pragma` DSN parameters instead of one-shot `db.Exec()` calls, ensuring they are active on every connection in the pool; this fixes `ON DELETE CASCADE` not firing when a different pool connection handled the DELETE
 - **ModelAdmin: ambiguous column name with relations** — `getItem` and list queries now qualify column names with the table alias to prevent SQLite "ambiguous column name" errors when eager-loading relations that share column names (e.g. `id`, `created_at`)
+- **Auth: invites FK missing ON DELETE** — `used_by` and `created_by` in the `invites` table now have `ON DELETE SET NULL`, preventing user deletion from failing due to FK constraint violations (migration `005_invites_fk_set_null`)
+- **Auth: swallowed errors in handlers** — `SetUserRole` (first-user admin promotion), `DeleteEmailVerificationToken`, and `DeleteUserEmailVerificationTokens` errors are now logged via `slog.Error` instead of silently discarded
 
 ## 0.4.1 — 2026-03-13
 

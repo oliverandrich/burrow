@@ -89,22 +89,13 @@ func openTestDB(t *testing.T) *bun.DB {
 	t.Helper()
 	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?cache=shared&_pragma=foreign_keys(1)")
 	require.NoError(t, err)
-	t.Cleanup(func() { sqldb.Close() })
+	t.Cleanup(func() { _ = sqldb.Close() })
 
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 
-	// Run the migrations manually (read from the raw embed.FS).
-	for _, mig := range []string{
-		"migrations/001_initial_schema.up.sql",
-		"migrations/002_invite_label.up.sql",
-		"migrations/003_user_is_active.up.sql",
-		"migrations/004_drop_soft_delete.up.sql",
-	} {
-		data, err := fs.ReadFile(migrationFS, mig)
-		require.NoError(t, err)
-		_, err = db.ExecContext(context.Background(), string(data))
-		require.NoError(t, err)
-	}
+	app := New()
+	err = burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+	require.NoError(t, err)
 
 	return db
 }

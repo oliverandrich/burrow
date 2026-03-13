@@ -13,7 +13,7 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 
-	_ "modernc.org/sqlite"
+	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
 // setupCascadeDB creates a schema with CASCADE and non-CASCADE foreign keys.
@@ -22,7 +22,7 @@ import (
 //	parents   <- friends  (ON DELETE SET NULL, no cascade)
 func setupCascadeDB(t *testing.T) *bun.DB {
 	t.Helper()
-	sqldb, err := sql.Open("sqlite", "file::memory:?_pragma=foreign_keys(1)")
+	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
 	require.NoError(t, err)
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 	t.Cleanup(func() { db.Close() })

@@ -178,7 +178,9 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	// Promote the first registered user to admin.
 	count, countErr := h.repo.CountUsers(ctx)
 	if countErr == nil && count == 1 {
-		_ = h.repo.SetUserRole(ctx, user.ID, RoleAdmin)
+		if roleErr := h.repo.SetUserRole(ctx, user.ID, RoleAdmin); roleErr != nil {
+			slog.Error("failed to promote first user to admin", "user_id", user.ID, "error", roleErr) //nolint:gosec // G706: user_id is int64
+		}
 		user.Role = RoleAdmin
 		slog.Info("first user registered as admin", "user_id", user.ID) //nolint:gosec // G706: user_id is safe
 	}
@@ -592,7 +594,9 @@ func (h *Handlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if time.Now().After(verificationToken.ExpiresAt) {
-		_ = h.repo.DeleteEmailVerificationToken(ctx, verificationToken.ID)
+		if delErr := h.repo.DeleteEmailVerificationToken(ctx, verificationToken.ID); delErr != nil {
+			slog.Error("failed to delete expired verification token", "token_id", verificationToken.ID, "error", delErr)
+		}
 		return h.renderer.VerifyEmailError(w, r, "token_expired")
 	}
 
@@ -601,7 +605,9 @@ func (h *Handlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 		return h.renderer.VerifyEmailError(w, r, "verification_failed")
 	}
 
-	_ = h.repo.DeleteUserEmailVerificationTokens(ctx, verificationToken.UserID)
+	if delErr := h.repo.DeleteUserEmailVerificationTokens(ctx, verificationToken.UserID); delErr != nil {
+		slog.Error("failed to delete verification tokens after verify", "user_id", verificationToken.UserID, "error", delErr)
+	}
 
 	user, err := h.repo.GetUserByID(ctx, verificationToken.UserID)
 	if err != nil {
@@ -646,7 +652,9 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 		return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	}
 
-	_ = h.repo.DeleteUserEmailVerificationTokens(ctx, user.ID)
+	if delErr := h.repo.DeleteUserEmailVerificationTokens(ctx, user.ID); delErr != nil {
+		slog.Error("failed to delete old verification tokens before resend", "user_id", user.ID, "error", delErr)
+	}
 
 	plainToken, tokenHash, expiresAt, tokenErr := GenerateToken()
 	if tokenErr != nil {

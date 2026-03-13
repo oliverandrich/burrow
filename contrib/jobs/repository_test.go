@@ -20,25 +20,10 @@ func testDB(t *testing.T) *bun.DB {
 	require.NoError(t, err)
 	sqldb.SetMaxOpenConns(1)
 	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 
-	// Run migration.
-	_, err = db.ExecContext(context.Background(), `
-		CREATE TABLE IF NOT EXISTS _jobs (
-			id           INTEGER PRIMARY KEY AUTOINCREMENT,
-			type         TEXT NOT NULL,
-			payload      TEXT NOT NULL DEFAULT '{}',
-			status       TEXT NOT NULL DEFAULT 'pending',
-			attempts     INTEGER NOT NULL DEFAULT 0,
-			max_retries  INTEGER NOT NULL DEFAULT 3,
-			run_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			locked_at    DATETIME,
-			completed_at DATETIME,
-			failed_at    DATETIME,
-			last_error   TEXT,
-			created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at   DATETIME
-		)`)
+	app := New()
+	err = burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
 	require.NoError(t, err)
 	return db
 }
