@@ -2,6 +2,8 @@ package ratelimit
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -87,21 +89,41 @@ func (a *App) Configure(cmd *cli.Command) error {
 	cleanupInterval := cmd.Duration("ratelimit-cleanup-interval")
 	maxClients := int(cmd.Int("ratelimit-max-clients"))
 
-	a.configureWithCleanup(rps, burst, trustProxy, cleanupInterval, maxClients)
-	return nil
+	return a.configureWithCleanup(rps, burst, trustProxy, cleanupInterval, maxClients)
 }
 
 // configure sets up the limiter with default cleanup interval.
 // Used by tests that don't need a cli.Command.
 func (a *App) configure(rps float64, burst int, trustProxy bool) {
-	a.configureWithCleanup(rps, burst, trustProxy, time.Minute, 0)
+	_ = a.configureWithCleanup(rps, burst, trustProxy, time.Minute, 0)
 }
 
-func (a *App) configureWithCleanup(rps float64, burst int, trustProxy bool, cleanupInterval time.Duration, maxClients int) {
+func (a *App) configureWithCleanup(rps float64, burst int, trustProxy bool, cleanupInterval time.Duration, maxClients int) error {
+	if err := validateConfig(rps, burst, cleanupInterval, maxClients); err != nil {
+		return err
+	}
 	if a.keyFunc == nil {
 		a.keyFunc = defaultKeyFunc(trustProxy)
 	}
 	a.limiter = NewLimiter(rps, burst, cleanupInterval, maxClients)
+	return nil
+}
+
+func validateConfig(rps float64, burst int, cleanupInterval time.Duration, maxClients int) error {
+	var errs []error
+	if rps <= 0 {
+		errs = append(errs, fmt.Errorf("ratelimit-rate must be positive, got %v", rps))
+	}
+	if burst <= 0 {
+		errs = append(errs, fmt.Errorf("ratelimit-burst must be positive, got %d", burst))
+	}
+	if cleanupInterval <= 0 {
+		errs = append(errs, fmt.Errorf("ratelimit-cleanup-interval must be positive, got %v", cleanupInterval))
+	}
+	if maxClients < 0 {
+		errs = append(errs, fmt.Errorf("ratelimit-max-clients must be non-negative, got %d", maxClients))
+	}
+	return errors.Join(errs...)
 }
 
 func (a *App) Middleware() []func(http.Handler) http.Handler {

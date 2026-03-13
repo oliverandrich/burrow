@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
@@ -241,6 +242,40 @@ func TestMiddleware_RetryAfterContext(t *testing.T) {
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 
 	assert.True(t, gotRetryAfter, "RetryAfter should be available in context")
+}
+
+func TestConfigureWithCleanup_InvalidValues(t *testing.T) {
+	tests := []struct {
+		name            string
+		rps             float64
+		burst           int
+		cleanupInterval time.Duration
+		maxClients      int
+	}{
+		{"zero rps", 0, 5, time.Minute, 0},
+		{"negative rps", -1, 5, time.Minute, 0},
+		{"zero burst", 10, 0, time.Minute, 0},
+		{"negative burst", 10, -1, time.Minute, 0},
+		{"zero cleanup interval", 10, 5, 0, 0},
+		{"negative cleanup interval", 10, 5, -time.Second, 0},
+		{"negative max clients", 10, 5, time.Minute, -1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := New()
+			err := a.configureWithCleanup(tt.rps, tt.burst, false, tt.cleanupInterval, tt.maxClients)
+			assert.Error(t, err)
+		})
+	}
+}
+
+func TestConfigureWithCleanup_ValidValues(t *testing.T) {
+	a := New()
+	err := a.configureWithCleanup(10, 5, false, time.Minute, 0)
+	require.NoError(t, err)
+	assert.NotNil(t, a.limiter)
+	a.Shutdown(t.Context())
 }
 
 func TestShutdown(t *testing.T) {
