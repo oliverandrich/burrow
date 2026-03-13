@@ -71,6 +71,12 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Usage:   "Use X-Real-IP header for client IP extraction",
 			Sources: burrow.FlagSources(configSource, "RATELIMIT_TRUST_PROXY", "ratelimit.trust_proxy"),
 		},
+		&cli.IntFlag{
+			Name:    "ratelimit-max-clients",
+			Value:   10000,
+			Usage:   "Maximum number of tracked clients (0 = unlimited)",
+			Sources: burrow.FlagSources(configSource, "RATELIMIT_MAX_CLIENTS", "ratelimit.max_clients"),
+		},
 	}
 }
 
@@ -79,22 +85,23 @@ func (a *App) Configure(cmd *cli.Command) error {
 	burst := int(cmd.Int("ratelimit-burst"))
 	trustProxy := cmd.Bool("ratelimit-trust-proxy")
 	cleanupInterval := cmd.Duration("ratelimit-cleanup-interval")
+	maxClients := int(cmd.Int("ratelimit-max-clients"))
 
-	a.configureWithCleanup(rps, burst, trustProxy, cleanupInterval)
+	a.configureWithCleanup(rps, burst, trustProxy, cleanupInterval, maxClients)
 	return nil
 }
 
 // configure sets up the limiter with default cleanup interval.
 // Used by tests that don't need a cli.Command.
 func (a *App) configure(rps float64, burst int, trustProxy bool) {
-	a.configureWithCleanup(rps, burst, trustProxy, time.Minute)
+	a.configureWithCleanup(rps, burst, trustProxy, time.Minute, 0)
 }
 
-func (a *App) configureWithCleanup(rps float64, burst int, trustProxy bool, cleanupInterval time.Duration) {
+func (a *App) configureWithCleanup(rps float64, burst int, trustProxy bool, cleanupInterval time.Duration, maxClients int) {
 	if a.keyFunc == nil {
 		a.keyFunc = defaultKeyFunc(trustProxy)
 	}
-	a.limiter = NewLimiter(rps, burst, cleanupInterval)
+	a.limiter = NewLimiter(rps, burst, cleanupInterval, maxClients)
 }
 
 func (a *App) Middleware() []func(http.Handler) http.Handler {

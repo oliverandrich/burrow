@@ -81,6 +81,7 @@ This is useful in custom `OnLimited` handlers.
 | `--ratelimit-burst` | `RATELIMIT_BURST` | `20` | Maximum burst size (bucket capacity) |
 | `--ratelimit-cleanup-interval` | `RATELIMIT_CLEANUP_INTERVAL` | `1m` | Interval for sweeping expired entries |
 | `--ratelimit-trust-proxy` | `RATELIMIT_TRUST_PROXY` | `false` | Use `X-Real-IP` header for client IP |
+| `--ratelimit-max-clients` | `RATELIMIT_MAX_CLIENTS` | `10000` | Maximum tracked clients (0 = unlimited) |
 
 ## Graceful Shutdown
 

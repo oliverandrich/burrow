@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestLimiter_AllowWithinBurst(t *testing.T) {
-	l := NewLimiter(10, 5, time.Minute)
+	l := NewLimiter(10, 5, time.Minute, 0)
 	defer l.Stop()
 
 	for i := range 5 {
@@ -20,7 +21,7 @@ func TestLimiter_AllowWithinBurst(t *testing.T) {
 }
 
 func TestLimiter_DenyAfterBurst(t *testing.T) {
-	l := NewLimiter(10, 3, time.Minute)
+	l := NewLimiter(10, 3, time.Minute, 0)
 	defer l.Stop()
 
 	for range 3 {
@@ -34,7 +35,7 @@ func TestLimiter_DenyAfterBurst(t *testing.T) {
 }
 
 func TestLimiter_IndependentKeys(t *testing.T) {
-	l := NewLimiter(10, 1, time.Minute)
+	l := NewLimiter(10, 1, time.Minute, 0)
 	defer l.Stop()
 
 	allowed, _ := l.Allow("client-a")
@@ -46,7 +47,7 @@ func TestLimiter_IndependentKeys(t *testing.T) {
 
 func TestLimiter_RefillOverTime(t *testing.T) {
 	// 100 req/s, burst 1 => refills 1 token in 10ms.
-	l := NewLimiter(100, 1, time.Minute)
+	l := NewLimiter(100, 1, time.Minute, 0)
 	defer l.Stop()
 
 	allowed, _ := l.Allow("client-a")
@@ -63,7 +64,7 @@ func TestLimiter_RefillOverTime(t *testing.T) {
 
 func TestLimiter_RetryAfterDuration(t *testing.T) {
 	// 1 req/s, burst 1.
-	l := NewLimiter(1, 1, time.Minute)
+	l := NewLimiter(1, 1, time.Minute, 0)
 	defer l.Stop()
 
 	allowed, _ := l.Allow("client-a")
@@ -76,7 +77,7 @@ func TestLimiter_RetryAfterDuration(t *testing.T) {
 }
 
 func TestLimiter_ConcurrentAccess(t *testing.T) {
-	l := NewLimiter(1000, 100, time.Minute)
+	l := NewLimiter(1000, 100, time.Minute, 0)
 	defer l.Stop()
 
 	var wg sync.WaitGroup
@@ -92,7 +93,7 @@ func TestLimiter_ConcurrentAccess(t *testing.T) {
 
 func TestLimiter_CleanupRemovesStaleEntries(t *testing.T) {
 	// 1000 req/s, burst 1, cleanup every 10ms.
-	l := NewLimiter(1000, 1, 10*time.Millisecond)
+	l := NewLimiter(1000, 1, 10*time.Millisecond, 0)
 	defer l.Stop()
 
 	l.Allow("stale-client")
@@ -108,7 +109,7 @@ func TestLimiter_CleanupRemovesStaleEntries(t *testing.T) {
 }
 
 func TestLimiter_ActiveEntriesNotCleaned(t *testing.T) {
-	l := NewLimiter(1000, 10, 10*time.Millisecond)
+	l := NewLimiter(1000, 10, 10*time.Millisecond, 0)
 	defer l.Stop()
 
 	// Keep using the key.
@@ -124,8 +125,50 @@ func TestLimiter_ActiveEntriesNotCleaned(t *testing.T) {
 	assert.True(t, exists, "active entry should not be cleaned up")
 }
 
+func TestLimiter_EvictsOldestWhenMaxClientsReached(t *testing.T) {
+	l := NewLimiter(10, 5, time.Minute, 3)
+	defer l.Stop()
+
+	// Fill up to max clients.
+	l.Allow("client-a")
+	time.Sleep(time.Millisecond)
+	l.Allow("client-b")
+	time.Sleep(time.Millisecond)
+	l.Allow("client-c")
+
+	l.mu.Lock()
+	assert.Len(t, l.buckets, 3)
+	l.mu.Unlock()
+
+	// Adding a 4th client should evict the oldest (client-a).
+	time.Sleep(time.Millisecond)
+	l.Allow("client-d")
+
+	l.mu.Lock()
+	assert.Len(t, l.buckets, 3)
+	_, hasA := l.buckets["client-a"]
+	_, hasD := l.buckets["client-d"]
+	l.mu.Unlock()
+
+	assert.False(t, hasA, "oldest client should be evicted")
+	assert.True(t, hasD, "new client should be present")
+}
+
+func TestLimiter_ZeroMaxClientsUnlimited(t *testing.T) {
+	l := NewLimiter(10, 5, time.Minute, 0)
+	defer l.Stop()
+
+	for i := range 100 {
+		l.Allow("client-" + strconv.Itoa(i))
+	}
+
+	l.mu.Lock()
+	assert.Len(t, l.buckets, 100)
+	l.mu.Unlock()
+}
+
 func TestLimiter_StopIsIdempotent(t *testing.T) {
-	l := NewLimiter(10, 5, time.Minute)
+	l := NewLimiter(10, 5, time.Minute, 0)
 	l.Stop()
 	l.Stop() // Should not panic.
 }

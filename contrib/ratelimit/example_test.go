@@ -10,7 +10,7 @@ import (
 
 func ExampleNewLimiter() {
 	// Allow 1 request per second with a burst of 2.
-	lim := ratelimit.NewLimiter(1, 2, time.Minute)
+	lim := ratelimit.NewLimiter(1, 2, time.Minute, 0)
 	defer lim.Stop()
 
 	// First two requests fit within the burst window.

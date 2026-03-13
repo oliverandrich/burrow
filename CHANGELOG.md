@@ -4,6 +4,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Added
+
+- **`--ratelimit-max-clients` flag** — caps the number of tracked client buckets (default 10,000) to prevent memory exhaustion; when the limit is reached, the oldest entry is evicted
+
 ### Changed
 
 - Add secret key configuration section to deployment guide covering `SESSION_HASH_KEY`, `SESSION_BLOCK_KEY`, and `CSRF_KEY`
