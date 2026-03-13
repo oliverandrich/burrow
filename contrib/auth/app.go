@@ -294,16 +294,16 @@ func (a *App) Configure(cmd *cli.Command) error {
 	// Create handlers with the stored email service (if any).
 	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config, a)
 
-	// Start background cleanup of orphaned users from abandoned registrations.
-	go a.cleanupOrphanedUsers(ctx)
+	// Start background cleanup of orphaned users and expired tokens.
+	go a.backgroundCleanup(ctx)
 
 	return nil
 }
 
-// cleanupOrphanedUsers periodically purges users with zero credentials that
-// were created more than 5 minutes ago. These are leftover from abandoned
-// WebAuthn registration flows.
-func (a *App) cleanupOrphanedUsers(ctx context.Context) {
+// backgroundCleanup periodically purges orphaned users and expired email
+// verification tokens. Orphaned users are leftover from abandoned WebAuthn
+// registration flows (no credentials after 5 minutes).
+func (a *App) backgroundCleanup(ctx context.Context) {
 	const (
 		interval = 5 * time.Minute
 		maxAge   = 5 * time.Minute
@@ -321,6 +321,10 @@ func (a *App) cleanupOrphanedUsers(ctx context.Context) {
 				slog.Error("failed to purge orphaned users", "error", err)
 			} else if purged > 0 {
 				slog.Info("purged orphaned users", "count", purged)
+			}
+
+			if err := a.repo.DeleteExpiredEmailVerificationTokens(ctx); err != nil {
+				slog.Error("failed to delete expired email verification tokens", "error", err)
 			}
 		}
 	}

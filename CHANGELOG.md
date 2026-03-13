@@ -7,6 +7,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Added
 
 - **`--ratelimit-max-clients` flag** — caps the number of tracked client buckets (default 10,000) to prevent memory exhaustion; when the limit is reached, the oldest entry is evicted
+- **Periodic cleanup of expired email verification tokens** — the auth background cleanup now also deletes expired tokens, preventing unbounded accumulation
 
 ### Changed
 

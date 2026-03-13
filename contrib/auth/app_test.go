@@ -2019,7 +2019,7 @@ func TestCleanupOrphanedUsersStopsOnCancel(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		app.cleanupOrphanedUsers(ctx)
+		app.backgroundCleanup(ctx)
 		close(done)
 	}()
 
@@ -2030,7 +2030,7 @@ func TestCleanupOrphanedUsersStopsOnCancel(t *testing.T) {
 	case <-done:
 		// Goroutine exited cleanly.
 	case <-time.After(2 * time.Second):
-		t.Fatal("cleanupOrphanedUsers did not stop within 2 seconds")
+		t.Fatal("backgroundCleanup did not stop within 2 seconds")
 	}
 }
 
