@@ -6,11 +6,47 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/forms"
 	"github.com/oliverandrich/burrow/i18n"
 )
+
+// HandleBulkAction processes a bulk action on selected items.
+func (ma *ModelAdmin[T]) HandleBulkAction(w http.ResponseWriter, r *http.Request) error {
+	slug := chi.URLParam(r, "action")
+
+	var action *BulkAction
+	for i := range ma.BulkActions {
+		if ma.BulkActions[i].Slug == slug {
+			action = &ma.BulkActions[i]
+			break
+		}
+	}
+	if action == nil {
+		return burrow.NewHTTPError(http.StatusNotFound, "unknown bulk action")
+	}
+
+	if err := r.ParseForm(); err != nil { //nolint:gosec // G120: body size limited by server-level RequestSize middleware
+		return burrow.NewHTTPError(http.StatusBadRequest, "invalid form data")
+	}
+	ids := r.Form["_selected"]
+	if len(ids) == 0 {
+		return burrow.NewHTTPError(http.StatusBadRequest, "no items selected")
+	}
+
+	if err := action.Handler(r.Context(), ma.DB, ids); err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "bulk action failed")
+	}
+
+	slog.Info("bulk action executed", "slug", ma.Slug, "action", slug, "count", len(ids)) //nolint:gosec // slug is developer-set
+	_ = messages.AddSuccess(w, r, i18n.TPlural(r.Context(), "modeladmin-bulk-success", len(ids)))
+	http.Redirect(w, r, "/admin/"+ma.Slug, http.StatusSeeOther)
+	return nil
+}
 
 // HandleList renders the paginated list view.
 // Exported so apps can mount ModelAdmin list views alongside custom handlers.

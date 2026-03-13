@@ -80,6 +80,8 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	// create/edit forms. Use this to pass WithCleanFunc or other options
 	// that need external dependencies captured at configuration time.
 	FormOptions []forms.Option[T]
+	// BulkActions defines bulk operations on multiple selected items.
+	BulkActions []BulkAction
 	// ListDisplay defines computed columns for the list view.
 	// Keys are column names (which can also appear in ListFields).
 	// The function receives an item and returns pre-rendered HTML.
@@ -150,6 +152,8 @@ type RenderConfig struct { //nolint:govet // fieldalignment: readability over op
 	RowActions        []RenderAction
 	HasRowActions     bool
 	ItemActionSets    [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
+	BulkActions       []RenderBulkAction
+	HasBulkActions    bool
 	EmptyMessage      string
 	ComputedColumns   map[string]func(any) template.HTML // field → render function
 	DeleteImpacts     []CascadeImpact                    // cascade-delete impact counts (confirm-delete page)
@@ -183,6 +187,10 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 	for _, a := range ma.RowActions {
 		renderActions = append(renderActions, a.toRenderAction())
 	}
+	renderBulkActions := make([]RenderBulkAction, 0, len(ma.BulkActions))
+	for _, a := range ma.BulkActions {
+		renderBulkActions = append(renderBulkActions, a.toRenderBulkAction())
+	}
 	emptyMsg := ma.EmptyMessage
 	if emptyMsg == "" {
 		emptyMsg = "No items found."
@@ -199,6 +207,8 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 		IDField:           idField,
 		RowActions:        renderActions,
 		HasRowActions:     len(renderActions) > 0,
+		BulkActions:       renderBulkActions,
+		HasBulkActions:    len(renderBulkActions) > 0,
 		EmptyMessage:      emptyMsg,
 	}
 }

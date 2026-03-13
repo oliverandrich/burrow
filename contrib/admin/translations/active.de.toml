@@ -18,3 +18,11 @@ modeladmin-export-json = "JSON"
 modeladmin-confirm-delete-title = "Löschen bestätigen"
 modeladmin-cascade-warning = "Die folgenden verknüpften Einträge werden ebenfalls gelöscht:"
 modeladmin-cancel = "Abbrechen"
+modeladmin-bulk-choose-action = "Aktion wählen"
+modeladmin-bulk-apply = "Ausführen"
+modeladmin-bulk-delete = "Ausgewählte löschen"
+modeladmin-bulk-delete-confirm = "Möchten Sie die ausgewählten Einträge wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+
+[modeladmin-bulk-success]
+one = "Aktion auf {{.Count}} Eintrag angewendet."
+other = "Aktion auf {{.Count}} Einträge angewendet."

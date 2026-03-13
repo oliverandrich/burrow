@@ -241,6 +241,7 @@ When `CanDelete` is true, clicking the delete button navigates to a dedicated co
 - **Search** across text fields
 - **Filters** with select dropdowns
 - **Row actions** (e.g., retry, cancel, delete) with optional confirmation dialogs
+- **Bulk actions** with checkbox selection (delete auto-registered when `CanDelete` is true)
 - **Create/edit forms** auto-generated from model struct tags (`verbose` for labels)
 - **i18n** — all labels are translatable via `LabelKey` fields and the i18n app
 - **HTMX** — list navigation uses `hx-get`/`hx-target` for partial updates
@@ -328,6 +329,46 @@ RowActions: []modeladmin.RowAction{
     },
 },
 ```
+
+### Bulk Actions
+
+Bulk actions let users select multiple items via checkboxes and apply an operation to all of them at once. When `CanDelete` is true, a "Delete selected" bulk action is automatically registered — no configuration needed.
+
+To add custom bulk actions:
+
+```go
+ma := &modeladmin.ModelAdmin[Note]{
+    // ...
+    CanDelete: true, // auto-adds DeleteBulkAction
+    BulkActions: []modeladmin.BulkAction{
+        {
+            Slug:  "archive",
+            Label: "admin-notes-bulk-archive", // i18n key
+            Handler: func(ctx context.Context, db *bun.DB, ids []string) error {
+                _, err := db.NewUpdate().Model((*Note)(nil)).
+                    Set("status = ?", "archived").
+                    Where("id IN (?)", bun.List(ids)).
+                    Exec(ctx)
+                return err
+            },
+        },
+    },
+}
+```
+
+The list view renders:
+
+- A **select-all checkbox** in the table header
+- **Per-row checkboxes** in the table body
+- A **toolbar** (hidden until items are selected) with an action dropdown, item count badge, and "Apply" button
+
+**`Confirm` field:** Set `Confirm` to an i18n key to show a `confirm()` dialog before executing the action — useful for destructive operations like delete.
+
+**Auto-registered delete:** When `CanDelete` is true and no bulk action with slug `"delete"` exists, `DeleteBulkAction[T]()` is added automatically during `Init()`. To customise the delete action, define your own `BulkAction` with `Slug: "delete"` — it won't be overwritten.
+
+**Handler signature:** `func(ctx context.Context, db *bun.DB, ids []string) error` — ModelAdmin owns the HTTP plumbing (parsing IDs, flash messages, redirect). Your handler only needs to perform the database operation.
+
+**Flash messages:** After a successful action, a localised success message is shown via `messages.AddSuccess` (e.g., "Aktion auf 3 Einträge angewendet.").
 
 ### Custom Renderer
 

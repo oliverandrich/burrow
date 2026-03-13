@@ -23,6 +23,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **ModelAdmin: `FormOptions`** — new `FormOptions []forms.Option[T]` field on `ModelAdmin[T]` allows passing additional form options (e.g. `WithCleanFunc`) to create/edit forms
 - **Auth: user admin uses generic ModelAdmin** — user detail/edit/delete now use ModelAdmin with `WithCleanFunc` for last-admin demotion protection; custom handlers, `isAdminEditSelf`/`isAdminEditLastAdmin` context helpers, and custom template removed
 - **Auth: `authtest` package** — new `contrib/auth/authtest` package provides `NewDB` (in-memory DB with auth migrations) and `CreateUser` (with functional options) for tests that depend on the auth app
+- **ModelAdmin: bulk actions (`BulkActions`)** — new `BulkActions []BulkAction` field on `ModelAdmin[T]` enables multi-select checkbox operations in list views; includes `DeleteBulkAction[T]()` convenience constructor for bulk delete; toolbar with action dropdown, select-all checkbox, and JS confirm for destructive actions
 
 ### Removed
 

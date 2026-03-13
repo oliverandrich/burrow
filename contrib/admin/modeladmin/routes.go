@@ -13,6 +13,11 @@ func (ma *ModelAdmin[T]) Init() {
 	// Register table → display name for cascade impact labels.
 	RegisterTableDisplayName(tbl, ma.DisplayPluralName)
 
+	// Auto-add DeleteBulkAction when CanDelete is true and no "delete" bulk action exists.
+	if ma.CanDelete && !ma.hasBulkAction("delete") {
+		ma.BulkActions = append(ma.BulkActions, DeleteBulkAction[T]())
+	}
+
 	if ma.DB == nil {
 		return
 	}
@@ -28,6 +33,16 @@ func (ma *ModelAdmin[T]) Init() {
 	}
 }
 
+// hasBulkAction returns true if a bulk action with the given slug is already configured.
+func (ma *ModelAdmin[T]) hasBulkAction(slug string) bool {
+	for _, a := range ma.BulkActions {
+		if a.Slug == slug {
+			return true
+		}
+	}
+	return false
+}
+
 // Routes mounts all CRUD routes for this ModelAdmin on the given router.
 // Routes are mounted under /{slug} so the caller should mount this
 // within the /admin route group.
@@ -36,6 +51,10 @@ func (ma *ModelAdmin[T]) Routes(r chi.Router) {
 
 	r.Route("/"+ma.Slug, func(r chi.Router) {
 		r.Get("/", burrow.Handle(ma.HandleList))
+
+		if len(ma.BulkActions) > 0 {
+			r.Post("/bulk/{action}", burrow.Handle(ma.HandleBulkAction))
+		}
 
 		if ma.CanExport {
 			r.Get("/export.csv", burrow.Handle(ma.HandleExportCSV))
