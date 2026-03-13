@@ -4,6 +4,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.4.0 — 2026-03-13
+
 ### Breaking Changes
 
 - **`/healthz` endpoint removed** — replaced by `/healthz/live` (liveness) and `/healthz/ready` (readiness). Update load balancer and monitoring configurations accordingly.
