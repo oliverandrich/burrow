@@ -367,6 +367,35 @@ func TestRecoveryCodes(t *testing.T) {
 	assert.False(t, valid)
 }
 
+func TestValidateRecoveryCodeMatchesLastCode(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	user, err := repo.CreateUser(ctx, "alice", "")
+	require.NoError(t, err)
+
+	// Create multiple codes — the target is the last one.
+	codes := []string{"decoy-aaa", "decoy-bbb", "target-ccc"}
+	hashes := make([]string, 0, len(codes))
+	for _, code := range codes {
+		hash, hashErr := bcrypt.GenerateFromPassword([]byte(code), bcrypt.MinCost)
+		require.NoError(t, hashErr)
+		hashes = append(hashes, string(hash))
+	}
+	require.NoError(t, repo.CreateRecoveryCodes(ctx, user.ID, hashes))
+
+	// Match the last code.
+	valid, err := repo.ValidateAndUseRecoveryCode(ctx, user.ID, "target-ccc")
+	require.NoError(t, err)
+	assert.True(t, valid)
+
+	// Only one code should be used; two remain.
+	count, err := repo.GetUnusedRecoveryCodeCount(ctx, user.ID)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), count)
+}
+
 func TestDeleteRecoveryCodes(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)

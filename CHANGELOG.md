@@ -4,6 +4,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Security
+
+- **Fix timing attack on recovery code validation** — `ValidateAndUseRecoveryCode` now always iterates all codes to prevent timing side-channel that revealed code position via early return
+
 ## 0.4.0 — 2026-03-13
 
 ### Breaking Changes

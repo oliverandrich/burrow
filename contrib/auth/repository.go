@@ -330,20 +330,31 @@ func (r *Repository) HasRecoveryCodes(ctx context.Context, userID int64) (bool, 
 }
 
 // ValidateAndUseRecoveryCode validates and marks a recovery code as used.
+// It always iterates all codes to prevent timing attacks that could reveal
+// which code position matched.
 func (r *Repository) ValidateAndUseRecoveryCode(ctx context.Context, userID int64, code string) (bool, error) {
 	codes, err := r.GetUnusedRecoveryCodes(ctx, userID)
 	if err != nil {
 		return false, err
 	}
+
+	var matchedID int64
+	found := false
 	for _, c := range codes {
 		if bcrypt.CompareHashAndPassword([]byte(c.CodeHash), []byte(code)) == nil {
-			if markErr := r.MarkRecoveryCodeUsed(ctx, c.ID); markErr != nil {
-				return false, markErr
-			}
-			return true, nil
+			matchedID = c.ID
+			found = true
+			// Continue iterating to prevent timing side-channel.
 		}
 	}
-	return false, nil
+
+	if !found {
+		return false, nil
+	}
+	if err := r.MarkRecoveryCodeUsed(ctx, matchedID); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // --- Email verification methods ---
