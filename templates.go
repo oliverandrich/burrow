@@ -87,49 +87,7 @@ func buildNavLinks(ctx context.Context, requestPath string) []NavLink {
 // apps are added at parse time. RequestFuncMap providers are collected
 // for per-request cloning.
 func (s *Server) buildTemplates() error {
-	var templateFSes []fs.FS
-	funcMap := baseFuncMap()
-	baseKeys := make(map[string]bool, len(funcMap))
-	for k := range funcMap {
-		baseKeys[k] = true
-	}
-
-	// Register stubs for any pre-registered request func map providers
-	// (e.g. the core i18n bundle, added before buildTemplates).
-	stubReq := &http.Request{}
-	for _, provider := range s.requestFuncMapProviders {
-		for k := range provider(stubReq) {
-			if _, exists := funcMap[k]; exists && !baseKeys[k] {
-				panic(fmt.Sprintf("burrow: duplicate template func %q registered by core provider", k))
-			}
-			funcMap[k] = func() string { return "" }
-		}
-	}
-
-	for _, app := range s.registry.Apps() {
-		if provider, ok := app.(HasFuncMap); ok {
-			for k, v := range provider.FuncMap() {
-				if _, exists := funcMap[k]; exists && !baseKeys[k] {
-					panic(fmt.Sprintf("burrow: duplicate template func %q registered by app %q", k, app.Name()))
-				}
-				funcMap[k] = v
-			}
-		}
-		if provider, ok := app.(HasRequestFuncMap); ok {
-			s.requestFuncMapProviders = append(s.requestFuncMapProviders, provider.RequestFuncMap)
-			// Register stub functions so templates can be parsed.
-			// The real implementations are injected per request via Clone()+Funcs().
-			for k := range provider.RequestFuncMap(stubReq) {
-				if _, exists := funcMap[k]; exists && !baseKeys[k] {
-					panic(fmt.Sprintf("burrow: duplicate template func %q registered by app %q", k, app.Name()))
-				}
-				funcMap[k] = func() string { return "" }
-			}
-		}
-		if provider, ok := app.(HasTemplates); ok {
-			templateFSes = append(templateFSes, provider.TemplateFS())
-		}
-	}
+	funcMap, templateFSes := s.collectFuncMap()
 
 	if len(templateFSes) == 0 {
 		return nil
@@ -138,30 +96,87 @@ func (s *Server) buildTemplates() error {
 	t := template.New("").Funcs(funcMap)
 
 	for _, fsys := range templateFSes {
-		err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				return nil
-			}
-			data, readErr := fs.ReadFile(fsys, path)
-			if readErr != nil {
-				return fmt.Errorf("read template %s: %w", path, readErr)
-			}
-			_, parseErr := t.Parse(string(data))
-			if parseErr != nil {
-				return fmt.Errorf("parse template %s: %w", path, parseErr)
-			}
-			return nil
-		})
-		if err != nil {
-			return fmt.Errorf("walk template fs: %w", err)
+		if err := parseTemplateFS(t, fsys); err != nil {
+			return err
 		}
 	}
 
 	s.templates = t
 	return nil
+}
+
+// collectFuncMap builds the combined template.FuncMap from all registered apps
+// and collects template file systems. It registers static FuncMap entries,
+// collects RequestFuncMap providers (with stub functions for parse-time), and
+// panics on duplicate function names across apps.
+func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
+	funcMap := baseFuncMap()
+	baseKeys := make(map[string]bool, len(funcMap))
+	for k := range funcMap {
+		baseKeys[k] = true
+	}
+
+	checkDuplicate := func(k, source string) {
+		if _, exists := funcMap[k]; exists && !baseKeys[k] {
+			panic(fmt.Sprintf("burrow: duplicate template func %q registered by %s", k, source))
+		}
+	}
+
+	// Register stubs for any pre-registered request func map providers
+	// (e.g. the core i18n bundle, added before buildTemplates).
+	stubReq := &http.Request{}
+	for _, provider := range s.requestFuncMapProviders {
+		for k := range provider(stubReq) {
+			checkDuplicate(k, "core provider")
+			funcMap[k] = func() string { return "" }
+		}
+	}
+
+	var templateFSes []fs.FS
+
+	for _, app := range s.registry.Apps() {
+		if provider, ok := app.(HasFuncMap); ok {
+			for k, v := range provider.FuncMap() {
+				checkDuplicate(k, fmt.Sprintf("app %q", app.Name()))
+				funcMap[k] = v
+			}
+		}
+		if provider, ok := app.(HasRequestFuncMap); ok {
+			s.requestFuncMapProviders = append(s.requestFuncMapProviders, provider.RequestFuncMap)
+			// Register stub functions so templates can be parsed.
+			// The real implementations are injected per request via Clone()+Funcs().
+			for k := range provider.RequestFuncMap(stubReq) {
+				checkDuplicate(k, fmt.Sprintf("app %q", app.Name()))
+				funcMap[k] = func() string { return "" }
+			}
+		}
+		if provider, ok := app.(HasTemplates); ok {
+			templateFSes = append(templateFSes, provider.TemplateFS())
+		}
+	}
+
+	return funcMap, templateFSes
+}
+
+// parseTemplateFS walks an fs.FS and parses all files as Go templates into t.
+func parseTemplateFS(t *template.Template, fsys fs.FS) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		data, readErr := fs.ReadFile(fsys, path)
+		if readErr != nil {
+			return fmt.Errorf("read template %s: %w", path, readErr)
+		}
+		_, parseErr := t.Parse(string(data))
+		if parseErr != nil {
+			return fmt.Errorf("parse template %s: %w", path, parseErr)
+		}
+		return nil
+	})
 }
 
 // executeTemplate runs a named template with the given data. If any
