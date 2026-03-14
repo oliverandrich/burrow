@@ -12,7 +12,7 @@ A single-file application (~150 lines) that serves a "Hello, World!" page with B
 
 - The `burrow.App` interface — `Name()`, `Register()`, and optional interfaces (`HasRoutes`, `HasTemplates`, `HasTranslations`, `HasFuncMap`)
 - Server setup with `burrow.NewServer()` and `srv.SetLayout()`
-- Rendering pages with `burrow.RenderTemplate()`
+- Rendering pages with `burrow.Render()`
 - Embedding templates and translations with `//go:embed`
 - CLI wiring with `urfave/cli`
 
@@ -52,7 +52,7 @@ A guided, seven-part tutorial that builds a survey/voting application from scrat
 |------|-------|--------------|
 | [Part 1](../tutorial/part1.md) | Setup & First View | Project scaffolding, `HandlerFunc`, server lifecycle |
 | [Part 2](../tutorial/part2.md) | Database & Models | `burrow.App` interface, Bun/SQLite, SQL migrations |
-| [Part 3](../tutorial/part3.md) | Templates & Layouts | `html/template`, layouts, `RenderTemplate` |
+| [Part 3](../tutorial/part3.md) | Templates & Layouts | `html/template`, layouts, `Render` |
 | [Part 4](../tutorial/part4.md) | Forms, CRUD & Validation | Form binding, CSRF, flash messages, validation errors |
 | [Part 5](../tutorial/part5.md) | Authentication | Auth middleware, user context, passkeys |
 | [Part 6](../tutorial/part6.md) | Admin Panel | `ModelAdmin`, `HasAdmin` interface, admin nav |

@@ -157,7 +157,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
     }
 
-    return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list", map[string]any{
+    return burrow.Render(w, r, http.StatusOK, "notes/list", map[string]any{
         "Notes": notes,
     })
 }

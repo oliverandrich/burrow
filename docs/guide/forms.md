@@ -188,7 +188,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
     if !f.Bind(r) {
         // Re-render form with errors
-        return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "myapp/form", map[string]any{
+        return burrow.Render(w, r, http.StatusUnprocessableEntity, "myapp/form", map[string]any{
             "Fields":         f.Fields(),
             "NonFieldErrors": f.NonFieldErrors(),
             "Action":         "/notes",

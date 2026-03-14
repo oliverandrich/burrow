@@ -6,7 +6,7 @@ In this part you'll add HTML templates, a Bootstrap-styled layout, and views tha
 
 ## How Templates Work in Burrow
 
-Burrow builds a **global template set** at startup by collecting templates from all apps that implement `HasTemplates`. Each template file uses `{{ define "appname/template" }}` to declare its name. When you call `RenderTemplate()`, it looks up the template by name, executes it, and wraps the result in a layout (if one is set).
+Burrow builds a **global template set** at startup by collecting templates from all apps that implement `HasTemplates`. Each template file uses `{{ define "appname/template" }}` to declare its name. When you call `Render()`, it looks up the template by name, executes it, and wraps the result in a layout (if one is set).
 
 ## Add Templates to the Polls App
 
@@ -145,7 +145,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
     if err != nil {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list questions")
     }
-    return burrow.RenderTemplate(w, r, http.StatusOK, "polls/list", map[string]any{
+    return burrow.Render(w, r, http.StatusOK, "polls/list", map[string]any{
         "Title":     "Polls",
         "Questions": questions,
     })
@@ -160,7 +160,7 @@ func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
     if err != nil {
         return burrow.NewHTTPError(http.StatusNotFound, "question not found")
     }
-    return burrow.RenderTemplate(w, r, http.StatusOK, "polls/detail", map[string]any{
+    return burrow.Render(w, r, http.StatusOK, "polls/detail", map[string]any{
         "Title":    question.Text,
         "Question": question,
     })
@@ -175,7 +175,7 @@ func (h *Handlers) Results(w http.ResponseWriter, r *http.Request) error {
     if err != nil {
         return burrow.NewHTTPError(http.StatusNotFound, "question not found")
     }
-    return burrow.RenderTemplate(w, r, http.StatusOK, "polls/results", map[string]any{
+    return burrow.Render(w, r, http.StatusOK, "polls/results", map[string]any{
         "Title":    fmt.Sprintf("Results: %s", question.Text),
         "Question": question,
     })
@@ -236,7 +236,7 @@ func (a *App) NavItems() []burrow.NavItem {
 
 func (a *App) Routes(r chi.Router) {
     r.Get("/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
-        return burrow.RenderTemplate(w, r, http.StatusOK, "pages/home", map[string]any{
+        return burrow.Render(w, r, http.StatusOK, "pages/home", map[string]any{
             "Title": "Welcome to Polls",
         })
     }))
@@ -253,7 +253,7 @@ func Layout() string {
 }
 ```
 
-When `RenderTemplate()` is called:
+When `Render()` is called:
 
 1. It executes the named template (e.g. `"polls/list"`) to produce an HTML fragment
 2. It checks if the request is an HTMX request — if so, it returns the fragment directly
@@ -400,7 +400,7 @@ Open `http://localhost:8080` — you'll see the Bootstrap-styled homepage. Click
 ## What You've Learnt
 
 - **`HasTemplates`** — apps contribute `.html` template files to the global template set
-- **`RenderTemplate()`** — renders a named template, automatically wrapping in a layout for normal requests and returning fragments for HTMX requests
+- **`Render()`** — renders a named template, automatically wrapping in a layout for normal requests and returning fragments for HTMX requests
 - **Layout templates** — wrap page content in a full HTML document with navigation (via `navLinks` template function), scripts, and styles
 - **`staticfiles`** and **`bootstrap`** — contrib apps handle CSS/JS assets with cache busting
 

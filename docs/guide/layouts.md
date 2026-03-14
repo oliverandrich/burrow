@@ -26,7 +26,7 @@ Templates use `{{ define "appname/templatename" }}` blocks to namespace themselv
 
 ## Rendering in Handlers
 
-Use `burrow.RenderTemplate()` to render a named template with data:
+Use `burrow.Render()` to render a named template with data:
 
 ```go
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
@@ -35,14 +35,14 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
         return err
     }
 
-    return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list", map[string]any{
+    return burrow.Render(w, r, http.StatusOK, "notes/list", map[string]any{
         "Title": "My Notes",
         "Notes": notes,
     })
 }
 ```
 
-`RenderTemplate` does the following:
+`Render` does the following:
 
 1. Executes the named template with the provided data, producing an HTML fragment
 2. If the request has an `HX-Request: true` header (htmx), returns the fragment directly — no layout wrapping
@@ -55,7 +55,7 @@ This means the same handler automatically supports both full page loads and htmx
 
 A layout is a **template name** (a string) that refers to a template in the global template set. The layout template receives the rendered page fragment as `.Content` along with the original data map.
 
-When `RenderTemplate` wraps content in a layout, it:
+When `Render` wraps content in a layout, it:
 
 1. Renders the content template to produce an HTML fragment
 2. Clones the data map and adds a `Content` key with the rendered fragment
@@ -156,7 +156,7 @@ srv.SetLayout("myapp/layout")
 
 Your app must implement `HasTemplates` so that `myapp/layout` is part of the global template set. See [Creating an App](creating-an-app.md#step-6-assemble-the-app) for how to provide template files.
 
-Note how dynamic data like navigation items is accessed via the `navLinks` template function (provided by the framework) rather than through data map entries. The `navLinks` function automatically filters items by auth state and computes active-link highlighting. The `.Content` key is the only data injected automatically by `RenderTemplate` — it contains the rendered page fragment.
+Note how dynamic data like navigation items is accessed via the `navLinks` template function (provided by the framework) rather than through data map entries. The `navLinks` function automatically filters items by auth state and computes active-link highlighting. The `.Content` key is the only data injected automatically by `Render` — it contains the rendered page fragment.
 
 ### How the Bootstrap App Does It
 
@@ -199,7 +199,7 @@ The corresponding template file (`bootstrap/layout`):
 
 Layout templates receive data from two sources:
 
-- **Data map entries** (accessed with `.` prefix): `.Content`, `.Title` — `RenderTemplate` clones the handler's data map and adds `Content` (the rendered page fragment) before rendering the layout template. All data passed by the handler is available in the layout.
+- **Data map entries** (accessed with `.` prefix): `.Content`, `.Title` — `Render` clones the handler's data map and adds `Content` (the rendered page fragment) before rendering the layout template. All data passed by the handler is available in the layout.
 - **Template functions** (no `.` prefix): `{{ lang }}`, `{{ staticURL "..." }}`, `{{ csrfToken }}`, `{{ navLinks }}`, `{{ currentUser }}`, `{{ messages }}` — these are template functions registered by the framework and contrib apps via `HasFuncMap` and `HasRequestFuncMap`
 
 Dynamic data like navigation items, the current user, and flash messages is provided via **template functions**, not via data map entries. This keeps layouts simple — there is no Go layout function to write or maintain.

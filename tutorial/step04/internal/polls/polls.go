@@ -104,7 +104,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list questions")
 	}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "polls/list", map[string]any{
+	return burrow.Render(w, r, http.StatusOK, "polls/list", map[string]any{
 		"Title":     "Polls",
 		"Questions": questions,
 	})
@@ -119,7 +119,7 @@ func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
 	}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "polls/detail", map[string]any{
+	return burrow.Render(w, r, http.StatusOK, "polls/detail", map[string]any{
 		"Title":    question.Text,
 		"Question": question,
 	})
@@ -167,7 +167,7 @@ func (h *Handlers) Results(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
 	}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "polls/results", map[string]any{
+	return burrow.Render(w, r, http.StatusOK, "polls/results", map[string]any{
 		"Title":    fmt.Sprintf("Results: %s", question.Text),
 		"Question": question,
 	})

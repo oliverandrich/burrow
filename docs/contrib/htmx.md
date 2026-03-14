@@ -49,16 +49,16 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 
     if hx.IsHTMX() {
         // Partial response — just the fragment
-        return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list-fragment", data)
+        return burrow.Render(w, r, http.StatusOK, "notes/list-fragment", data)
     }
 
     // Full page response
-    return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list", data)
+    return burrow.Render(w, r, http.StatusOK, "notes/list", data)
 }
 ```
 
 !!! tip "Automatic layout detection"
-    `burrow.RenderTemplate()` already skips layout wrapping when it detects an `HX-Request` header. You typically don't need to check `hx.IsHTMX()` manually unless you want to return completely different content for htmx requests.
+    `burrow.Render()` already skips layout wrapping when it detects an `HX-Request` header. You typically don't need to check `hx.IsHTMX()` manually unless you want to return completely different content for htmx requests.
 
 ### Available Request Methods
 

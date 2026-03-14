@@ -23,7 +23,7 @@ A survey/voting application where users can:
 |------|-------|-------------------|
 | [Part 1](part1.md) | Setup & First View | Project scaffolding, server lifecycle, HandlerFunc |
 | [Part 2](part2.md) | Database & Models | App interface, Bun/SQLite, migrations |
-| [Part 3](part3.md) | Templates & Layouts | Template system, layouts, RenderTemplate |
+| [Part 3](part3.md) | Templates & Layouts | Template system, layouts, Render |
 | [Part 4](part4.md) | Forms, CRUD & Validation | Form handling, CSRF, messages |
 | [Part 5](part5.md) | Authentication | Auth system, middleware, user context |
 | [Part 6](part6.md) | Admin Panel | ModelAdmin, HasAdmin interface |

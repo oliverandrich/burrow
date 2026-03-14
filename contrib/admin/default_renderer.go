@@ -25,5 +25,5 @@ func (d *defaultDashboardRenderer) DashboardPage(w http.ResponseWriter, r *http.
 	data := map[string]any{
 		"Title": i18n.T(r.Context(), "admin-sidebar-title"),
 	}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "admin/index", data)
+	return burrow.Render(w, r, http.StatusOK, "admin/index", data)
 }

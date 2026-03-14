@@ -10,6 +10,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Auth: `isAdminEditSelf` and `isAdminEditLastAdmin` template functions removed** — the custom user admin detail page is replaced by generic ModelAdmin forms; `IsAdminEditSelf()`, `IsAdminEditLastAdmin()`, and `emailValue` are no longer available
 - **Auth: `User` model form tags changed** — `Email`, `Username`, `IsActive`, `Name`, `Bio`, and `Role` now have explicit `form` tags instead of `form:"-"`; code that relied on these fields being excluded from forms must use `WithExclude` or `WithReadOnly`
 - **Pagination: cursor-based pagination removed** — `ApplyCursor()`, `TrimCursorResults()`, `CursorResult()`, `PageRequest.Cursor`, `PageResult.NextCursor`, and `PageResult.PrevCursor` have been removed; use `ApplyOffset()` + `OffsetResult()` for all pagination
+- **`Render()` renamed** — `RenderTemplate()` is now `Render()`; the old `Render(w, r, code, template.HTML)` raw-HTML wrapper has been removed (use `HTML()` directly); `RenderTemplate()` remains as a deprecated shim with `//go:fix inline` for automatic migration via `go fix` (Go 1.26+)
 
 ### Added
 

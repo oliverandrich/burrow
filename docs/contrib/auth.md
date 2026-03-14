@@ -33,7 +33,7 @@ auth.New(
 
 ## Default Templates
 
-The auth app ships HTML templates via `HasTemplates`. These templates use the global template set and are rendered with `burrow.RenderTemplate()`. The auth app also implements `HasRequestFuncMap` to provide `currentUser`, `isAuthenticated`, and other request-scoped functions available in all templates.
+The auth app ships HTML templates via `HasTemplates`. These templates use the global template set and are rendered with `burrow.Render()`. The auth app also implements `HasRequestFuncMap` to provide `currentUser`, `isAuthenticated`, and other request-scoped functions available in all templates.
 
 **Note:** When using default templates, register the `staticfiles` app so that `webauthn.js` is served. The auth app implements `HasStaticFiles` and contributes its assets under the `"auth"` prefix automatically.
 
@@ -209,7 +209,7 @@ The auth app uses a `Renderer` interface to render all user-facing HTML pages. E
 
 ### Default Renderer
 
-By default, `auth.New()` uses a built-in renderer that calls `burrow.RenderTemplate()` with the shipped `auth/*` templates. These templates use Bootstrap CSS and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.).
+By default, `auth.New()` uses a built-in renderer that calls `burrow.Render()` with the shipped `auth/*` templates. These templates use Bootstrap CSS and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.).
 
 For most applications, the default renderer works out of the box — you only need to override it if you want to fundamentally change how auth pages are rendered.
 
@@ -236,7 +236,7 @@ type Renderer interface {
 }
 ```
 
-Each method writes a complete HTTP response. You can use `burrow.RenderTemplate()` with your own template names, or write HTML directly — whatever fits your application.
+Each method writes a complete HTTP response. You can use `burrow.Render()` with your own template names, or write HTML directly — whatever fits your application.
 
 A minimal custom renderer might look like this:
 
@@ -244,7 +244,7 @@ A minimal custom renderer might look like this:
 type myRenderer struct{}
 
 func (r *myRenderer) LoginPage(w http.ResponseWriter, req *http.Request, loginRedirect string) error {
-    return burrow.RenderTemplate(w, req, http.StatusOK, "myapp/login", map[string]any{
+    return burrow.Render(w, req, http.StatusOK, "myapp/login", map[string]any{
         "LoginRedirect": loginRedirect,
     })
 }

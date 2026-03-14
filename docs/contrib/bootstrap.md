@@ -33,7 +33,7 @@ bootstrap.Layout() // returns "bootstrap/layout"
 
 The layout template:
 
-1. Receives the rendered page fragment as `.Content` (injected automatically by `RenderTemplate`)
+1. Receives the rendered page fragment as `.Content` (injected automatically by `Render`)
 2. Includes CSRF meta tag and theme switcher
 3. Accesses dynamic data (navigation via `navLinks`, current user, etc.) via template functions from the framework and `HasRequestFuncMap` apps
 

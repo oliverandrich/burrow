@@ -115,10 +115,10 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 
 	// For HTMX infinite scroll requests, return only the items fragment.
 	if htmx.Request(r).IsHTMX() && pr.Page > 1 {
-		return burrow.RenderTemplate(w, r, http.StatusOK, "polls/list_page", data)
+		return burrow.Render(w, r, http.StatusOK, "polls/list_page", data)
 	}
 
-	return burrow.RenderTemplate(w, r, http.StatusOK, "polls/list", data)
+	return burrow.Render(w, r, http.StatusOK, "polls/list", data)
 }
 
 func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
@@ -130,7 +130,7 @@ func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
 	}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "polls/detail", map[string]any{
+	return burrow.Render(w, r, http.StatusOK, "polls/detail", map[string]any{
 		"Title":    question.Text,
 		"Question": question,
 	})
@@ -187,7 +187,7 @@ func (h *Handlers) Results(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
 	}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "polls/results", map[string]any{
+	return burrow.Render(w, r, http.StatusOK, "polls/results", map[string]any{
 		"Title":    fmt.Sprintf("Results: %s", question.Text),
 		"Question": question,
 	})

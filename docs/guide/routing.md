@@ -16,7 +16,7 @@ flowchart TD
     F --> G[App Middleware]
     G --> H{Chi Router}
     H --> I[Handler]
-    I --> J{RenderTemplate?}
+    I --> J{Render?}
     J -- Yes --> K[Execute Template]
     K --> L{HX-Request?}
     L -- Yes --> M[Return Fragment]
@@ -207,7 +207,7 @@ burrow.HTML(w, http.StatusOK, "<h1>Hello!</h1>")
 burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 
 // Render a named template (with automatic layout wrapping)
-burrow.RenderTemplate(w, r, http.StatusOK, "notes/list", map[string]any{
+burrow.Render(w, r, http.StatusOK, "notes/list", map[string]any{
     "Notes": notes,
 })
 
@@ -215,7 +215,7 @@ burrow.RenderTemplate(w, r, http.StatusOK, "notes/list", map[string]any{
 http.Redirect(w, r, "/notes", http.StatusSeeOther)
 ```
 
-`RenderTemplate` applies layout logic automatically:
+`Render` applies layout logic automatically:
 
 - **HTMX request** (`HX-Request` header) — renders the template fragment only, no layout
 - **Normal request with layout** — wraps the fragment in the app layout

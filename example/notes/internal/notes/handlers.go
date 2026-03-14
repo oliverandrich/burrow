@@ -70,7 +70,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	return burrow.RenderTemplate(w, r, http.StatusOK, tmpl, data)
+	return burrow.Render(w, r, http.StatusOK, tmpl, data)
 }
 
 // New renders the empty create form.
@@ -88,7 +88,7 @@ func (h *Handlers) New(w http.ResponseWriter, r *http.Request) error {
 		"TitleKey": "notes-new-title",
 		"Action":   "/notes",
 	}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "notes/form", data)
+	return burrow.Render(w, r, http.StatusOK, "notes/form", data)
 }
 
 // Create adds a new note for the authenticated user.
@@ -100,7 +100,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 	f := forms.New[Note](noteFormOpts()...)
 	if !f.Bind(r) {
-		return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "notes/form", map[string]any{
+		return burrow.Render(w, r, http.StatusUnprocessableEntity, "notes/form", map[string]any{
 			"Fields":         f.Fields(),
 			"NonFieldErrors": f.NonFieldErrors(),
 			"TitleKey":       "notes-new-title",
@@ -121,7 +121,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 	// HTMX: prepend new card via OOB + clear the form.
 	if htmx.Request(r).IsHTMX() {
-		return burrow.RenderTemplate(w, r, http.StatusOK, "notes/create_response", map[string]any{
+		return burrow.Render(w, r, http.StatusOK, "notes/create_response", map[string]any{
 			"Note":     note,
 			"Messages": messages.Get(r.Context()),
 		})
@@ -154,7 +154,7 @@ func (h *Handlers) Edit(w http.ResponseWriter, r *http.Request) error {
 		"TitleKey": "notes-edit-title",
 		"Action":   "/notes/" + strconv.FormatInt(note.ID, 10),
 	}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "notes/form", data)
+	return burrow.Render(w, r, http.StatusOK, "notes/form", data)
 }
 
 // Update binds, validates, and updates an existing note.
@@ -178,7 +178,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 
 	f := forms.FromModel(note, noteFormOpts()...)
 	if !f.Bind(r) {
-		return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "notes/form", map[string]any{
+		return burrow.Render(w, r, http.StatusUnprocessableEntity, "notes/form", map[string]any{
 			"Fields":         f.Fields(),
 			"NonFieldErrors": f.NonFieldErrors(),
 			"TitleKey":       "notes-edit-title",
@@ -200,7 +200,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 
 	// HTMX: replace existing card via OOB + clear the form.
 	if htmx.Request(r).IsHTMX() {
-		return burrow.RenderTemplate(w, r, http.StatusOK, "notes/update_response", map[string]any{
+		return burrow.Render(w, r, http.StatusOK, "notes/update_response", map[string]any{
 			"Note":     updated,
 			"Messages": messages.Get(r.Context()),
 		})
@@ -230,7 +230,7 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	return burrow.RenderTemplate(w, r, http.StatusOK, "app/alerts_oob", map[string]any{
+	return burrow.Render(w, r, http.StatusOK, "app/alerts_oob", map[string]any{
 		"Messages": messages.Get(r.Context()),
 	})
 }

@@ -74,7 +74,7 @@ func (d *defaultRenderer) VerifyEmailError(w http.ResponseWriter, r *http.Reques
 func renderCentered(w http.ResponseWriter, r *http.Request, title, name string, data map[string]any) error {
 	exec := burrow.TemplateExecutorFromContext(r.Context())
 	if exec == nil {
-		return burrow.RenderTemplate(w, r, http.StatusOK, name, data)
+		return burrow.Render(w, r, http.StatusOK, name, data)
 	}
 
 	inner, err := exec(r, name, data)
@@ -83,14 +83,14 @@ func renderCentered(w http.ResponseWriter, r *http.Request, title, name string, 
 	}
 
 	centeredData := map[string]any{"Content": inner, "Title": title}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "auth/centered", centeredData)
+	return burrow.Render(w, r, http.StatusOK, "auth/centered", centeredData)
 }
 
 // renderCard renders a template wrapped in the auth/card layout.
 func renderCard(w http.ResponseWriter, r *http.Request, title, cardTitle, name string, data map[string]any) error {
 	exec := burrow.TemplateExecutorFromContext(r.Context())
 	if exec == nil {
-		return burrow.RenderTemplate(w, r, http.StatusOK, name, data)
+		return burrow.Render(w, r, http.StatusOK, name, data)
 	}
 
 	inner, err := exec(r, name, data)
@@ -99,5 +99,5 @@ func renderCard(w http.ResponseWriter, r *http.Request, title, cardTitle, name s
 	}
 
 	cardData := map[string]any{"Content": inner, "Title": title, "CardTitle": cardTitle}
-	return burrow.RenderTemplate(w, r, http.StatusOK, "auth/card", cardData)
+	return burrow.Render(w, r, http.StatusOK, "auth/card", cardData)
 }

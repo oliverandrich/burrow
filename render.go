@@ -2,24 +2,16 @@ package burrow
 
 import (
 	"fmt"
-	"html/template"
 	"maps"
 	"net/http"
 )
 
-// Render writes pre-rendered HTML content to the response.
-// Used for raw HTML output, HTMX fragments, or special cases
-// where content is already rendered.
-func Render(w http.ResponseWriter, r *http.Request, statusCode int, content template.HTML) error {
-	return HTML(w, statusCode, string(content))
-}
-
-// RenderTemplate executes a named template and writes the result.
+// Render executes a named template and writes the result.
 // It applies automatic layout/HTMX logic:
 //   - HTMX request (HX-Request header) → fragment only, no layout
 //   - Normal request + layout name in context → fragment wrapped in layout
 //   - Normal request + no layout → fragment only
-func RenderTemplate(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error {
+func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error {
 	exec := TemplateExecutorFromContext(r.Context())
 	if exec == nil {
 		return fmt.Errorf("burrow: no template executor in context")
@@ -52,4 +44,11 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, statusCode int, name
 		return fmt.Errorf("burrow: execute layout template %q: %w", layoutTmpl, err)
 	}
 	return HTML(w, statusCode, string(html))
+}
+
+// Deprecated: Use [Render] instead.
+//
+//go:fix inline
+func RenderTemplate(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error {
+	return Render(w, r, statusCode, name, data)
 }

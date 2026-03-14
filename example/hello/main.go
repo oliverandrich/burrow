@@ -143,7 +143,7 @@ func (a *helloApp) FuncMap() template.FuncMap { return nil }
 // requests, it automatically returns only the fragment (no layout).
 func (a *helloApp) Routes(r chi.Router) {
 	r.Get("/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return burrow.RenderTemplate(w, r, http.StatusOK, "hello/home", map[string]any{
+		return burrow.Render(w, r, http.StatusOK, "hello/home", map[string]any{
 			"Title": "Hello",
 		})
 	}))

@@ -20,7 +20,7 @@ In `internal/pages/templates/app/layout.html`, add the htmx script before the cl
 
 Add it in the `<head>` alongside the existing `bootstrap/css` and `bootstrap/js` templates.
 
-This makes all links and forms use HTMX automatically — navigating via AJAX and swapping just the `<body>` content. Burrow's `RenderTemplate()` detects the `HX-Request` header and returns only the fragment (no layout wrapping), making this work seamlessly.
+This makes all links and forms use HTMX automatically — navigating via AJAX and swapping just the `<body>` content. Burrow's `Render()` detects the `HX-Request` header and returns only the fragment (no layout wrapping), making this work seamlessly.
 
 ## HTMX-Aware Voting
 
@@ -167,10 +167,10 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 
     // For HTMX infinite scroll, return only the items fragment.
     if htmx.Request(r).IsHTMX() && pr.Page > 1 {
-        return burrow.RenderTemplate(w, r, http.StatusOK, "polls/list_page", data)
+        return burrow.Render(w, r, http.StatusOK, "polls/list_page", data)
     }
 
-    return burrow.RenderTemplate(w, r, http.StatusOK, "polls/list", data)
+    return burrow.Render(w, r, http.StatusOK, "polls/list", data)
 }
 ```
 

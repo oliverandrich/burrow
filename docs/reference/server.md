@@ -180,10 +180,10 @@ func (r *Registry) Seed(ctx context.Context) error
 
 Calls `Seed()` on each `Seedable` app in order.
 
-## RenderTemplate
+## Render
 
 ```go
-func RenderTemplate(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error
+func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error
 ```
 
 Renders a named template into the HTTP response. If the request has an `HX-Request` header (htmx), the fragment is returned directly. Otherwise, it is wrapped in the layout template from context (if set).

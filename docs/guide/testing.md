@@ -453,7 +453,7 @@ func TestCreateNoteIntegration(t *testing.T) {
 
 ## Testing Templates
 
-At runtime, the server parses all app templates into a single global `*template.Template` and injects a `TemplateExecutor` function into every request context. In tests, you must build this yourself because there is no running server. You only need this when testing handlers that call `burrow.RenderTemplate` and you want to verify the rendered HTML.
+At runtime, the server parses all app templates into a single global `*template.Template` and injects a `TemplateExecutor` function into every request context. In tests, you must build this yourself because there is no running server. You only need this when testing handlers that call `burrow.Render` and you want to verify the rendered HTML.
 
 Build a `TemplateExecutor` from your app's template files with stub functions for dependencies from other apps (like `csrfToken` from CSRF or `t` from i18n):
 

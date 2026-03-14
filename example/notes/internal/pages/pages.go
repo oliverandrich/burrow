@@ -76,5 +76,5 @@ func Logo() template.HTML {
 }
 
 func home(w http.ResponseWriter, r *http.Request) error {
-	return burrow.RenderTemplate(w, r, http.StatusOK, "pages/home", map[string]any{"Title": "Home"})
+	return burrow.Render(w, r, http.StatusOK, "pages/home", map[string]any{"Title": "Home"})
 }

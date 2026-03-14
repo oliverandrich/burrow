@@ -93,10 +93,10 @@ func Render(w http.ResponseWriter, r *http.Request, statusCode int, content temp
 
 Writes pre-rendered `template.HTML` content to the response. Useful for raw HTML output or HTMX fragments that are already rendered.
 
-### RenderTemplate
+### Render
 
 ```go
-func RenderTemplate(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error
+func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error
 ```
 
 Executes a named template and writes the result. Applies automatic layout and HTMX logic:
@@ -106,7 +106,7 @@ Executes a named template and writes the result. Applies automatic layout and HT
 - **Normal request without layout** — renders the fragment only
 
 ```go
-return burrow.RenderTemplate(w, r, http.StatusOK, "notes/list", map[string]any{
+return burrow.Render(w, r, http.StatusOK, "notes/list", map[string]any{
     "Notes": notes,
 })
 ```
@@ -195,7 +195,7 @@ func WithLayout(ctx context.Context, name string) context.Context
 func Layout(ctx context.Context) string
 ```
 
-Gets or sets the layout template name in the request context. The framework sets this automatically via middleware. Used by `RenderTemplate` to wrap content in the named layout template.
+Gets or sets the layout template name in the request context. The framework sets this automatically via middleware. Used by `Render` to wrap content in the named layout template.
 
 ### NavItems
 
@@ -228,7 +228,7 @@ func WithTemplateExecutor(ctx context.Context, exec TemplateExecutor) context.Co
 func TemplateExecutorFromContext(ctx context.Context) TemplateExecutor
 ```
 
-Gets or sets the template executor in the request context. The framework injects this automatically. Used internally by `RenderTemplate`.
+Gets or sets the template executor in the request context. The framework injects this automatically. Used internally by `Render`.
 
 ### Generic Context Helpers
 
@@ -273,7 +273,7 @@ Returns `true` if the host is a localhost address (`""`, `localhost`, `127.0.0.1
 
 ## Layout
 
-Layouts are template name strings. Use `SetLayout("myapp/layout")` to set the layout template name. `RenderTemplate` renders the content template, then renders the layout template with `.Content` set to the rendered fragment.
+Layouts are template name strings. Use `SetLayout("myapp/layout")` to set the layout template name. `Render` renders the content template, then renders the layout template with `.Content` set to the rendered fragment.
 
 See [Layouts & Rendering](../guide/layouts.md) for details on implementing layouts.
 

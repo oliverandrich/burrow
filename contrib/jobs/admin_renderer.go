@@ -28,7 +28,7 @@ func (r *jobsRenderer) List(w http.ResponseWriter, req *http.Request, items []Jo
 }
 
 func (r *jobsRenderer) Detail(w http.ResponseWriter, req *http.Request, item *Job, cfg modeladmin.RenderConfig) error {
-	return burrow.RenderTemplate(w, req, http.StatusOK, "jobs/admin_detail", map[string]any{
+	return burrow.Render(w, req, http.StatusOK, "jobs/admin_detail", map[string]any{
 		"Job": item,
 		"Cfg": cfg,
 	})

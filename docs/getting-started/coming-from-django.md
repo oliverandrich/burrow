@@ -161,7 +161,7 @@ In Django, `form.is_valid()` returns `False` and you re-render the template with
 if err := burrow.Bind(r, &req); err != nil {
     var ve *burrow.ValidationError
     if errors.As(err, &ve) {
-        return burrow.RenderTemplate(w, r, http.StatusUnprocessableEntity, "notes/form", map[string]any{
+        return burrow.Render(w, r, http.StatusUnprocessableEntity, "notes/form", map[string]any{
             "Form":   req,  // preserve user input
             "Errors": ve,   // per-field errors
         })
@@ -215,7 +215,7 @@ Django uses `{% extends "base.html" %}` with `{% block content %}` to build page
     srv.SetLayout("myapp/layout")
     ```
 
-Templates only define their own content. `RenderTemplate` renders the page template, then renders the layout template with `.Content` set to the rendered fragment — unlike Django's blocks, you can't inject content into multiple slots. Dynamic data (navigation, current user, etc.) is accessed via template functions like `navLinks`, `currentUser`, `csrfToken`. If you need reusable parts within a page, use `{{ template "name" . }}` calls (similar to Django's `{% include %}`). See [Layouts & Rendering](../guide/layouts.md) for details.
+Templates only define their own content. `Render` renders the page template, then renders the layout template with `.Content` set to the rendered fragment — unlike Django's blocks, you can't inject content into multiple slots. Dynamic data (navigation, current user, etc.) is accessed via template functions like `navLinks`, `currentUser`, `csrfToken`. If you need reusable parts within a page, use `{{ template "name" . }}` calls (similar to Django's `{% include %}`). See [Layouts & Rendering](../guide/layouts.md) for details.
 
 ### Named Blocks Instead of Includes
 
