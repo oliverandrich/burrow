@@ -81,7 +81,7 @@ func TestServeAndWait_WithOnReady(t *testing.T) {
 	ln, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	readyCalled := false
+	readyCh := make(chan struct{})
 	ctx, cancel := context.WithCancel(t.Context())
 
 	setup := &tlsSetup{addr: ln.Addr().String()}
@@ -95,14 +95,20 @@ func TestServeAndWait_WithOnReady(t *testing.T) {
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- serveAndWait(ctx, ln, nil, setup, handler, cfg, registry, func() error {
-			readyCalled = true
+			close(readyCh)
 			return nil
 		}, done, "done")
 	}()
 
 	addr := fmt.Sprintf("http://%s/", ln.Addr().String())
 	waitForServer(t, ctx, addr)
-	assert.True(t, readyCalled)
+
+	select {
+	case <-readyCh:
+		// onReady was called
+	case <-time.After(2 * time.Second):
+		t.Fatal("onReady was not called")
+	}
 
 	cancel()
 
