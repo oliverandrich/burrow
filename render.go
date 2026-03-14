@@ -12,7 +12,7 @@ import (
 //   - Normal request + layout name in context → fragment wrapped in layout
 //   - Normal request + no layout → fragment only
 func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error {
-	exec := TemplateExecutorFromContext(r.Context())
+	exec := TemplateExec(r.Context())
 	if exec == nil {
 		return fmt.Errorf("burrow: no template executor in context")
 	}

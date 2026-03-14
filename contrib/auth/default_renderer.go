@@ -72,7 +72,7 @@ func (d *defaultRenderer) VerifyEmailError(w http.ResponseWriter, r *http.Reques
 
 // renderCentered renders a template wrapped in the auth/centered layout (no card).
 func renderCentered(w http.ResponseWriter, r *http.Request, title, name string, data map[string]any) error {
-	exec := burrow.TemplateExecutorFromContext(r.Context())
+	exec := burrow.TemplateExec(r.Context())
 	if exec == nil {
 		return burrow.Render(w, r, http.StatusOK, name, data)
 	}
@@ -88,7 +88,7 @@ func renderCentered(w http.ResponseWriter, r *http.Request, title, name string, 
 
 // renderCard renders a template wrapped in the auth/card layout.
 func renderCard(w http.ResponseWriter, r *http.Request, title, cardTitle, name string, data map[string]any) error {
-	exec := burrow.TemplateExecutorFromContext(r.Context())
+	exec := burrow.TemplateExec(r.Context())
 	if exec == nil {
 		return burrow.Render(w, r, http.StatusOK, name, data)
 	}

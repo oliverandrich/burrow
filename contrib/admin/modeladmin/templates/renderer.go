@@ -199,7 +199,7 @@ func renderWithLayout(w http.ResponseWriter, r *http.Request, title string, cont
 		return burrow.HTML(w, http.StatusOK, string(content))
 	}
 
-	exec := burrow.TemplateExecutorFromContext(r.Context())
+	exec := burrow.TemplateExec(r.Context())
 	if exec == nil {
 		return burrow.HTML(w, http.StatusOK, string(content))
 	}

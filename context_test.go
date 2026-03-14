@@ -72,7 +72,7 @@ func TestTemplateExecutorContext(t *testing.T) {
 	ctx := context.Background()
 	ctx = WithTemplateExecutor(ctx, exec)
 
-	got := TemplateExecutorFromContext(ctx)
+	got := TemplateExec(ctx)
 	require.NotNil(t, got)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
@@ -83,7 +83,7 @@ func TestTemplateExecutorContext(t *testing.T) {
 
 func TestTemplateExecutorMissing(t *testing.T) {
 	ctx := context.Background()
-	assert.Nil(t, TemplateExecutorFromContext(ctx))
+	assert.Nil(t, TemplateExec(ctx))
 }
 
 func TestWithAuthChecker(t *testing.T) {

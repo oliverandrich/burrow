@@ -76,12 +76,19 @@ func WithTemplateExecutor(ctx context.Context, exec TemplateExecutor) context.Co
 	return context.WithValue(ctx, ctxKeyTemplateExecutor{}, exec)
 }
 
-// TemplateExecutorFromContext retrieves the template executor from the context.
-func TemplateExecutorFromContext(ctx context.Context) TemplateExecutor {
+// TemplateExec retrieves the template executor from the context.
+func TemplateExec(ctx context.Context) TemplateExecutor {
 	if exec, ok := ctx.Value(ctxKeyTemplateExecutor{}).(TemplateExecutor); ok {
 		return exec
 	}
 	return nil
+}
+
+// TemplateExecutorFromContext is a deprecated alias for [TemplateExec].
+//
+//go:fix inline
+func TemplateExecutorFromContext(ctx context.Context) TemplateExecutor {
+	return TemplateExec(ctx)
 }
 
 // WithAuthChecker stores an AuthChecker in the context. This is typically

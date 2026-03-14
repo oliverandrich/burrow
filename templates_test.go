@@ -366,7 +366,7 @@ func TestTemplateMiddleware(t *testing.T) {
 
 	var gotExec TemplateExecutor
 	handler := s.templateMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotExec = TemplateExecutorFromContext(r.Context())
+		gotExec = TemplateExec(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 

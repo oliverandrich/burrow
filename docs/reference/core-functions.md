@@ -225,7 +225,7 @@ Stores authentication state in the context via closures, allowing the core `navL
 type TemplateExecutor func(r *http.Request, name string, data map[string]any) (template.HTML, error)
 
 func WithTemplateExecutor(ctx context.Context, exec TemplateExecutor) context.Context
-func TemplateExecutorFromContext(ctx context.Context) TemplateExecutor
+func TemplateExec(ctx context.Context) TemplateExecutor
 ```
 
 Gets or sets the template executor in the request context. The framework injects this automatically. Used internally by `Render`.
