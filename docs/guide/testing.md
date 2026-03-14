@@ -29,41 +29,62 @@ import (
 )
 ```
 
-## Test Database Setup
+## Framework Test Helpers
 
-Create an in-memory SQLite database for each test. Use `t.Cleanup()` to close it automatically:
+Burrow provides shared test helpers in the root package. These are prefixed with `Test` to signal they are for testing only.
 
-```go
-func testDB(t *testing.T) *bun.DB {
-    t.Helper()
-    sqldb, err := sql.Open(sqliteshim.ShimName, ":memory:")
-    require.NoError(t, err)
-    t.Cleanup(func() { sqldb.Close() })
-    return bun.NewDB(sqldb, sqlitedialect.New())
-}
-```
+### TestDB
 
-If your tests need migrations (most app tests do), run them after opening the database:
+`burrow.TestDB` returns an in-memory SQLite database wrapped in a `*bun.DB`. The database is automatically closed when the test finishes:
 
 ```go
-func testDB(t *testing.T) *bun.DB {
-    t.Helper()
-    sqldb, err := sql.Open(sqliteshim.ShimName,
-        "file::memory:?cache=shared&_pragma=foreign_keys(1)")
-    require.NoError(t, err)
-    t.Cleanup(func() { sqldb.Close() })
-    db := bun.NewDB(sqldb, sqlitedialect.New())
+func TestListNotes(t *testing.T) {
+    db := burrow.TestDB(t)
 
-    // New() is your app's constructor — see "Creating an App".
+    // Run your app's migrations.
     app := New()
-    err = burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+    err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
     require.NoError(t, err)
-    return db
+
+    // ... test your handlers/repositories with db
 }
 ```
 
 !!! tip "Shared cache for concurrent access"
-    Use `file::memory:?cache=shared` when your handler opens transactions or when multiple goroutines access the same database. Plain `:memory:` creates a private database per connection.
+    `TestDB` uses `file::memory:` with foreign keys enabled. If your tests need concurrent access from multiple goroutines, use `file::memory:?cache=shared` instead by creating your own database setup.
+
+### TestErrorExecContext
+
+`burrow.TestErrorExecContext` injects a minimal `TemplateExecutor` into the context that renders error templates. You need this whenever your test triggers an error through `Handle()` or calls `RenderError()` directly:
+
+```go
+func TestNotFound(t *testing.T) {
+    handler := burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
+        return burrow.NewHTTPError(http.StatusNotFound, "note not found")
+    })
+
+    ctx := burrow.TestErrorExecContext(t.Context())
+    req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/notes/999", nil)
+    rec := httptest.NewRecorder()
+    handler.ServeHTTP(rec, req)
+
+    assert.Equal(t, http.StatusNotFound, rec.Code)
+    assert.Contains(t, rec.Body.String(), "note not found")
+}
+```
+
+In production, the template middleware provides the executor automatically. In tests, you provide this lightweight substitute.
+
+### TestErrorExecMiddleware
+
+`burrow.TestErrorExecMiddleware` is the middleware version — useful when setting up a chi router for integration tests:
+
+```go
+r := chi.NewRouter()
+r.Use(burrow.TestErrorExecMiddleware)
+r.Use(auth.RequireAdmin())
+r.Get("/admin", adminHandler)
+```
 
 ## Testing Handlers
 
@@ -86,7 +107,7 @@ func TestGreetHandler(t *testing.T) {
 
 ### Testing Error Responses
 
-Handlers signal errors by returning a `*burrow.HTTPError`. When wrapped with `burrow.Handle()`, the error is converted into the appropriate HTTP status code:
+Handlers signal errors by returning a `*burrow.HTTPError`. When wrapped with `burrow.Handle()`, the error is rendered through `RenderError()`, which needs a `TemplateExecutor` in the context. Use `TestErrorExecContext` (see [Framework Test Helpers](#framework-test-helpers)):
 
 ```go
 func TestNotFound(t *testing.T) {
@@ -94,7 +115,8 @@ func TestNotFound(t *testing.T) {
         return burrow.NewHTTPError(http.StatusNotFound, "note not found")
     })
 
-    req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/999", nil)
+    ctx := burrow.TestErrorExecContext(t.Context())
+    req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/notes/999", nil)
     rec := httptest.NewRecorder()
     handler.ServeHTTP(rec, req)
 
@@ -350,7 +372,7 @@ func TestRequireAuth(t *testing.T) {
 }
 ```
 
-Use table-driven tests for middleware that checks roles or permissions:
+Use table-driven tests for middleware that checks roles or permissions. `RequireAdmin` redirects unauthenticated users to login and renders 403 for authenticated non-admins — so you need `TestErrorExecContext` for the 403 case:
 
 ```go
 func TestRequireAdmin(t *testing.T) {
@@ -369,6 +391,7 @@ func TestRequireAdmin(t *testing.T) {
             r.Use(func(next http.Handler) http.Handler {
                 return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
                     ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: tt.role})
+                    ctx = burrow.TestErrorExecContext(ctx)
                     next.ServeHTTP(w, r.WithContext(ctx))
                 })
             })
@@ -418,16 +441,19 @@ The examples above test individual pieces in isolation. A complete integration t
 
 ```go
 func TestCreateNoteIntegration(t *testing.T) {
-    db := testDB(t)
+    db := burrow.TestDB(t)
+    app := New()
+    require.NoError(t, burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS()))
+
     repo := NewRepository(db)
     h := NewHandlers(repo)
 
     r := chi.NewRouter()
+    r.Use(burrow.TestErrorExecMiddleware)
     r.Use(session.New().Middleware()...)
     r.Use(func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
             ctx := auth.WithUser(r.Context(), &auth.User{ID: 1})
-            ctx = burrow.WithTemplateExecutor(ctx, testTemplateExecutor(t))
             next.ServeHTTP(w, r.WithContext(ctx))
         })
     })
@@ -578,10 +604,11 @@ req = session.Inject(req, map[string]any{})
 
 | What to test | Key tools |
 |---|---|
-| Database queries | `sql.Open(sqliteshim.ShimName, ":memory:")`, `RunAppMigrations` |
+| Database | `burrow.TestDB(t)`, `RunAppMigrations` |
 | Auth test DB | `authtest.NewDB(t)` — in-memory DB with auth migrations |
 | Test users | `authtest.CreateUser(t, db, ...options)` |
 | Handlers | `httptest.NewRecorder`, `httptest.NewRequestWithContext(t.Context(), ...)` |
+| Error responses | `burrow.TestErrorExecContext(ctx)`, `burrow.TestErrorExecMiddleware` |
 | Auth context | `auth.WithUser(ctx, user)`, `session.Inject(req, values)` |
 | HTMX responses | `req.Header.Set("HX-Request", "true")`, check `hx-swap-oob` |
 | Migrations | `fstest.MapFS`, `RunAppMigrations` |
