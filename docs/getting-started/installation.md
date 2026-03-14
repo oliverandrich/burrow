@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- **Go 1.25+**
+- **Go 1.26+**
 - **CGO_ENABLED=0** — the framework uses pure-Go SQLite (`modernc.org/sqlite`), no C compiler needed
 
 ## Create a Project

@@ -278,8 +278,7 @@ func bunAutoIncrementPKs[T any]() []string {
 		t = t.Elem()
 	}
 	var result []string
-	for i := range t.NumField() {
-		sf := t.Field(i)
+	for sf := range t.Fields() {
 		if !sf.IsExported() || sf.Anonymous {
 			continue
 		}

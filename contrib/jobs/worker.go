@@ -55,8 +55,7 @@ func NewWorker(repo *Repository, handlers map[string]burrow.JobHandlerFunc, conf
 func (w *Worker) Start(ctx context.Context) {
 	// Start worker goroutines.
 	for range w.config.NumWorkers {
-		w.wg.Add(1)
-		go w.work()
+		w.wg.Go(w.work)
 	}
 
 	// Run the poller in this goroutine.
@@ -122,7 +121,6 @@ func (w *Worker) maintenance(ctx context.Context) {
 }
 
 func (w *Worker) work() {
-	defer w.wg.Done()
 	for job := range w.jobs {
 		w.processJob(job)
 	}

@@ -4,7 +4,7 @@ Thank you for considering contributing to Burrow! This guide explains how to set
 
 ## Prerequisites
 
-- **Go 1.25+** — [go.dev/dl](https://go.dev/dl/)
+- **Go 1.26+** — [go.dev/dl](https://go.dev/dl/)
 - **just** — task runner ([github.com/casey/just](https://github.com/casey/just))
 - **pre-commit** — git hook manager ([pre-commit.com](https://pre-commit.com/#install))
 

@@ -147,8 +147,7 @@ func (f *Form[T]) Field(name string) (BoundField, bool) {
 // loadChoiceProvider loads choices from the ChoiceProvider interface.
 func (f *Form[T]) loadChoiceProvider(r *http.Request, cp ChoiceProvider) {
 	t := reflect.TypeFor[T]()
-	for i := range t.NumField() {
-		sf := t.Field(i)
+	for sf := range t.Fields() {
 		if !sf.IsExported() || sf.Anonymous || isSkipped(sf) {
 			continue
 		}
@@ -237,8 +236,7 @@ func (f *Form[T]) stripReadOnlyErrors() {
 	// Build a set of form names for read-only fields.
 	roFormNames := make(map[string]struct{}, len(f.config.readOnly))
 	t := reflect.TypeFor[T]()
-	for i := range t.NumField() {
-		sf := t.Field(i)
+	for sf := range t.Fields() {
 		if _, ok := f.config.readOnly[sf.Name]; ok {
 			roFormNames[fieldFormName(sf)] = struct{}{}
 		}

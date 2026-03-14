@@ -27,8 +27,7 @@ func tableName[T any]() string {
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
-	for i := range t.NumField() {
-		sf := t.Field(i)
+	for sf := range t.Fields() {
 		if !sf.Anonymous {
 			continue
 		}
@@ -50,8 +49,7 @@ func pkFieldName[T any]() string {
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
-	for i := range t.NumField() {
-		sf := t.Field(i)
+	for sf := range t.Fields() {
 		if containsOption(sf.Tag.Get("bun"), "pk") {
 			return sf.Name
 		}
@@ -68,8 +66,7 @@ func verboseNames[T any]() map[string]string {
 		t = t.Elem()
 	}
 	names := make(map[string]string)
-	for i := range t.NumField() {
-		sf := t.Field(i)
+	for sf := range t.Fields() {
 		if !sf.IsExported() || sf.Anonymous {
 			continue
 		}
