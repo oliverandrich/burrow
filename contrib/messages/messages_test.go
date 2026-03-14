@@ -237,6 +237,67 @@ func TestMiddlewareSeededPlusAdd(t *testing.T) {
 	assert.Equal(t, "Something broke", gotMessages[1].Text)
 }
 
+func TestName(t *testing.T) {
+	app := New()
+	assert.Equal(t, "messages", app.Name())
+}
+
+func TestRegister(t *testing.T) {
+	app := New()
+	err := app.Register(nil)
+	assert.NoError(t, err)
+}
+
+func TestDependencies(t *testing.T) {
+	app := New()
+	deps := app.Dependencies()
+	require.Len(t, deps, 1)
+	assert.Equal(t, "session", deps[0])
+}
+
+func TestRequestFuncMap(t *testing.T) {
+	app := New()
+	mw := app.Middleware()[0]
+
+	var addErr error
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		addErr = Add(w, r, Info, "hello from funcmap")
+
+		fm := app.RequestFuncMap(r)
+		assert.Contains(t, fm, "messages")
+
+		fn := fm["messages"].(func() []Message)
+		msgs := fn()
+		assert.Len(t, msgs, 1)
+		assert.Equal(t, Info, msgs[0].Level)
+		assert.Equal(t, "hello from funcmap", msgs[0].Text)
+	}))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req = session.Inject(req, map[string]any{})
+	handler.ServeHTTP(rec, req)
+
+	require.NoError(t, addErr)
+}
+
+func TestRequestFuncMapEmpty(t *testing.T) {
+	app := New()
+	mw := app.Middleware()[0]
+
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fm := app.RequestFuncMap(r)
+		fn := fm["messages"].(func() []Message)
+		msgs := fn()
+		assert.Nil(t, msgs, "should return nil when no messages exist")
+	}))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req = session.Inject(req, map[string]any{})
+	handler.ServeHTTP(rec, req)
+}
+
 func TestConvenienceHelpers(t *testing.T) {
 	tests := []struct {
 		name  string

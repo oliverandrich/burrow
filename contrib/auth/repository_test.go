@@ -150,3 +150,85 @@ func TestGetUserByEmailNotFound(t *testing.T) {
 	_, err := repo.GetUserByEmail(context.Background(), "nonexistent@example.com")
 	require.Error(t, err)
 }
+
+func TestUpdateUser(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	user, err := repo.CreateUser(ctx, "alice", "Alice")
+	require.NoError(t, err)
+	assert.Equal(t, "Alice", user.Name)
+
+	user.Name = "Alice Updated"
+	user.Bio = "A short bio"
+	err = repo.UpdateUser(ctx, user)
+	require.NoError(t, err)
+	assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt should be set after update")
+
+	got, err := repo.GetUserByID(ctx, user.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Alice Updated", got.Name)
+	assert.Equal(t, "A short bio", got.Bio)
+}
+
+func TestCreateInvite(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	invite := &Invite{
+		Email:     "bob@example.com",
+		TokenHash: "invite-hash-1",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+		Label:     "Test invite",
+	}
+	err := repo.CreateInvite(ctx, invite)
+	require.NoError(t, err)
+	assert.NotZero(t, invite.ID)
+
+	got, err := repo.GetInviteByTokenHash(ctx, "invite-hash-1")
+	require.NoError(t, err)
+	assert.Equal(t, "bob@example.com", got.Email)
+	assert.Equal(t, "Test invite", got.Label)
+}
+
+func TestDeleteInvite(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	invite := &Invite{
+		Email:     "carol@example.com",
+		TokenHash: "invite-hash-del",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+	require.NoError(t, repo.CreateInvite(ctx, invite))
+
+	err := repo.DeleteInvite(ctx, invite.ID)
+	require.NoError(t, err)
+
+	_, err = repo.GetInviteByTokenHash(ctx, "invite-hash-del")
+	require.Error(t, err)
+}
+
+func TestDeleteEmailVerificationToken(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	user, err := repo.CreateUser(ctx, "alice", "")
+	require.NoError(t, err)
+
+	err = repo.CreateEmailVerificationToken(ctx, user.ID, "token-del-hash", time.Now().Add(time.Hour))
+	require.NoError(t, err)
+
+	token, err := repo.GetEmailVerificationToken(ctx, "token-del-hash")
+	require.NoError(t, err)
+
+	err = repo.DeleteEmailVerificationToken(ctx, token.ID)
+	require.NoError(t, err)
+
+	_, err = repo.GetEmailVerificationToken(ctx, "token-del-hash")
+	require.Error(t, err)
+}

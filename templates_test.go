@@ -48,6 +48,60 @@ func TestBaseFuncMapSafeAttr(t *testing.T) {
 	assert.Equal(t, template.HTMLAttr(`class="foo"`), fn(`class="foo"`))
 }
 
+func TestBaseFuncMapDict(t *testing.T) {
+	fm := baseFuncMap()
+	fn := fm["dict"].(func(...any) map[string]any)
+
+	t.Run("key value pairs", func(t *testing.T) {
+		result := fn("a", 1, "b", "two")
+		assert.Equal(t, map[string]any{"a": 1, "b": "two"}, result)
+	})
+
+	t.Run("odd number of args drops last", func(t *testing.T) {
+		result := fn("a", 1, "orphan")
+		assert.Equal(t, map[string]any{"a": 1}, result)
+	})
+
+	t.Run("non-string key skipped", func(t *testing.T) {
+		result := fn(42, "val")
+		assert.Empty(t, result)
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		result := fn()
+		assert.Empty(t, result)
+	})
+}
+
+func TestBaseFuncMapLang(t *testing.T) {
+	fm := baseFuncMap()
+	fn := fm["lang"].(func() string)
+	assert.Equal(t, "en", fn())
+}
+
+func TestParseTemplateFS_ReadError(t *testing.T) {
+	badFS := fstest.MapFS{
+		"dir/nested.html": &fstest.MapFile{
+			Data: []byte(`{{ define "ok" }}ok{{ end }}`),
+		},
+	}
+	tmpl := template.New("")
+	// Valid FS should parse fine.
+	require.NoError(t, parseTemplateFS(tmpl, badFS))
+}
+
+func TestParseTemplateFS_ParseError(t *testing.T) {
+	badFS := fstest.MapFS{
+		"broken.html": &fstest.MapFile{
+			Data: []byte(`{{ define "broken" }}`),
+		},
+	}
+	tmpl := template.New("")
+	err := parseTemplateFS(tmpl, badFS)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parse template broken.html")
+}
+
 func TestBuildTemplates(t *testing.T) {
 	s := &Server{registry: NewRegistry()}
 

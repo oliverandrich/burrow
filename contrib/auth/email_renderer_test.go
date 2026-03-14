@@ -138,3 +138,28 @@ func TestDefaultEmailRendererInviteText(t *testing.T) {
 	assert.NotEmpty(t, subject)
 	assert.Contains(t, text, "http://localhost/register")
 }
+
+func TestRenderEmailTemplateNonExistentTemplate(t *testing.T) {
+	_, err := renderEmailTemplate("nonexistent/template", map[string]any{})
+	require.Error(t, err)
+}
+
+func TestRenderVerificationHTMLContainsAllElements(t *testing.T) {
+	r := DefaultEmailRenderer()
+	subject, html, err := r.RenderVerificationHTML(context.Background(), "http://localhost/verify?token=test123")
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, subject)
+	assert.Contains(t, html, "http://localhost/verify?token=test123")
+	assert.Contains(t, html, "email-verification-fallback")
+}
+
+func TestRenderInviteHTMLContainsAllElements(t *testing.T) {
+	r := DefaultEmailRenderer()
+	subject, html, err := r.RenderInviteHTML(context.Background(), "http://localhost/register?invite=test456")
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, subject)
+	assert.Contains(t, html, "http://localhost/register?invite=test456")
+	assert.Contains(t, html, "email-invite-fallback")
+}

@@ -198,3 +198,48 @@ func TestExampleTFallback(t *testing.T) {
 	// Without a localizer, T returns the message key as-is.
 	assert.Equal(t, "greeting.hello", T(context.Background(), "greeting.hello"))
 }
+
+func TestRequestFuncMapLang(t *testing.T) {
+	b := testBundle(t)
+	ctx := b.WithLocale(context.Background(), "de")
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+
+	fm := b.RequestFuncMap(req)
+	langFunc := fm["lang"].(func() string)
+	assert.Equal(t, "de", langFunc())
+}
+
+func TestAddTranslationsInvalidFile(t *testing.T) {
+	b, err := NewBundle("en", []string{"en"})
+	require.NoError(t, err)
+
+	// A file with invalid TOML content should cause LoadMessageFileFS to fail.
+	badFS := fstest.MapFS{
+		"translations/active.en.toml": &fstest.MapFile{
+			Data: []byte("= invalid toml [[["),
+		},
+	}
+	err = b.AddTranslations(badFS)
+	assert.Error(t, err)
+}
+
+func TestNewTestBundleWithInvalidTranslations(t *testing.T) {
+	badFS := fstest.MapFS{
+		"translations/active.en.toml": &fstest.MapFile{
+			Data: []byte("= invalid toml [[["),
+		},
+	}
+	_, err := NewTestBundle("en", badFS)
+	assert.Error(t, err)
+}
+
+func TestNewBundleSkipsEmptyAndDuplicateLanguages(t *testing.T) {
+	// Empty strings and duplicates of the default language should be silently ignored.
+	b, err := NewBundle("en", []string{"en", "", "  ", "en", "de"})
+	require.NoError(t, err)
+	require.NotNil(t, b)
+
+	// German should still work.
+	ctx := b.WithLocale(context.Background(), "de")
+	assert.Equal(t, "de", Locale(ctx))
+}

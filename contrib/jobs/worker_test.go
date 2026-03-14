@@ -262,6 +262,109 @@ func TestWorker_Maintenance(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
+func TestWorker_Maintenance_NoStaleNoCompleted(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	handlers := map[string]burrow.JobHandlerFunc{}
+	cfg := testWorkerConfig()
+	w := NewWorker(repo, handlers, cfg)
+
+	// Run maintenance with no stale or completed jobs — exercises the n==0 branches.
+	w.maintenance(ctx)
+}
+
+func TestWorker_ProcessJob_Direct(t *testing.T) {
+	tests := []struct { //nolint:govet // fieldalignment: test struct readability over optimization
+		name       string
+		typeName   string
+		handler    burrow.JobHandlerFunc
+		maxRetries int
+		wantStatus JobStatus
+		wantError  string
+	}{
+		{
+			name:     "success completes job",
+			typeName: "ok",
+			handler: func(_ context.Context, _ []byte) error {
+				return nil
+			},
+			maxRetries: 3,
+			wantStatus: StatusCompleted,
+		},
+		{
+			name:     "handler failure with retries left marks failed",
+			typeName: "fail_retry",
+			handler: func(_ context.Context, _ []byte) error {
+				return fmt.Errorf("handler error")
+			},
+			maxRetries: 3,
+			wantStatus: StatusFailed,
+			wantError:  "handler error",
+		},
+		{
+			name:     "handler failure at max retries marks dead",
+			typeName: "fail_dead",
+			handler: func(_ context.Context, _ []byte) error {
+				return fmt.Errorf("permanent")
+			},
+			maxRetries: 1,
+			wantStatus: StatusDead,
+			wantError:  "permanent",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := testDB(t)
+			repo := NewRepository(db)
+
+			handlers := map[string]burrow.JobHandlerFunc{tt.typeName: tt.handler}
+			cfg := testWorkerConfig()
+			cfg.RetryBaseDelay = time.Millisecond
+			w := NewWorker(repo, handlers, cfg)
+
+			_, err := repo.Enqueue(context.Background(), tt.typeName, `{}`, tt.maxRetries, time.Now())
+			require.NoError(t, err)
+			claimed, err := repo.Claim(context.Background(), 1)
+			require.NoError(t, err)
+			require.Len(t, claimed, 1)
+
+			w.processJob(claimed[0])
+
+			job, err := repo.GetByID(context.Background(), claimed[0].ID)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantStatus, job.Status)
+			if tt.wantError != "" {
+				assert.Equal(t, tt.wantError, job.LastError)
+			}
+		})
+	}
+
+	t.Run("unknown type marks dead", func(t *testing.T) {
+		db := testDB(t)
+		repo := NewRepository(db)
+
+		handlers := map[string]burrow.JobHandlerFunc{} // no handlers
+		cfg := testWorkerConfig()
+		w := NewWorker(repo, handlers, cfg)
+
+		_, err := repo.Enqueue(context.Background(), "unknown", `{}`, 3, time.Now())
+		require.NoError(t, err)
+		claimed, err := repo.Claim(context.Background(), 1)
+		require.NoError(t, err)
+		require.Len(t, claimed, 1)
+
+		w.processJob(claimed[0])
+
+		job, err := repo.GetByID(context.Background(), claimed[0].ID)
+		require.NoError(t, err)
+		assert.Equal(t, StatusDead, job.Status)
+		assert.Contains(t, job.LastError, "unknown job type")
+	})
+}
+
 func TestWorker_ScheduledJob(t *testing.T) {
 	db := testDB(t)
 	repo := NewRepository(db)

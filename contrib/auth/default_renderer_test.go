@@ -323,6 +323,40 @@ func TestDefaultRendererRegisterPageWithoutExecutor(t *testing.T) {
 	_ = err // May error without templates, but should not panic.
 }
 
+func TestRenderCenteredExecError(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
+
+	// Executor that always returns an error.
+	exec := func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+		return "", fmt.Errorf("template exec error")
+	}
+	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := r.LoginPage(rec, req, "/dashboard")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "template exec error")
+}
+
+func TestRenderCardExecError(t *testing.T) {
+	r := DefaultRenderer()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil)
+
+	// Executor that always returns an error.
+	exec := func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+		return "", fmt.Errorf("template exec error")
+	}
+	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := r.RegisterPage(rec, req, false, false, "", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "template exec error")
+}
+
 // rendererTestExecutorWithLogo creates an executor where authLogo returns the given HTML.
 func rendererTestExecutorWithLogo(logoHTML template.HTML) burrow.TemplateExecutor {
 	funcMap := template.FuncMap{

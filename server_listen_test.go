@@ -76,6 +76,146 @@ func TestSignalDone(t *testing.T) {
 	}
 }
 
+func TestServeAndWait_WithOnReady(t *testing.T) {
+	var lc net.ListenConfig
+	ln, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	readyCalled := false
+	ctx, cancel := context.WithCancel(t.Context())
+
+	setup := &tlsSetup{addr: ln.Addr().String()}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
+	registry := NewRegistry()
+	done := make(chan struct{})
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- serveAndWait(ctx, ln, nil, setup, handler, cfg, registry, func() error {
+			readyCalled = true
+			return nil
+		}, done, "done")
+	}()
+
+	addr := fmt.Sprintf("http://%s/", ln.Addr().String())
+	waitForServer(t, ctx, addr)
+	assert.True(t, readyCalled)
+
+	cancel()
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("server did not shut down in time")
+	}
+}
+
+func TestServeAndWait_WithHTTPRedirectServer(t *testing.T) {
+	var lc net.ListenConfig
+	ln, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	httpLn, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	setup := &tlsSetup{
+		addr:        ln.Addr().String(),
+		httpAddr:    httpLn.Addr().String(),
+		httpHandler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusMovedPermanently) }),
+	}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
+	registry := NewRegistry()
+	done := make(chan struct{})
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- serveAndWait(ctx, ln, httpLn, setup, handler, cfg, registry, nil, done, "done")
+	}()
+
+	// Wait for both servers.
+	mainAddr := fmt.Sprintf("http://%s/", ln.Addr().String())
+	httpAddr := fmt.Sprintf("http://%s/", httpLn.Addr().String())
+	waitForServer(t, ctx, mainAddr)
+	waitForServer(t, ctx, httpAddr)
+
+	// Verify HTTP redirect server responds.
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, httpAddr, nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, http.StatusMovedPermanently, resp.StatusCode)
+
+	cancel()
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("server did not shut down in time")
+	}
+}
+
+func TestServeAndWait_DoneChannelTriggersShutdown(t *testing.T) {
+	var lc net.ListenConfig
+	ln, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	setup := &tlsSetup{addr: ln.Addr().String()}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
+	registry := NewRegistry()
+	done := make(chan struct{})
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- serveAndWait(t.Context(), ln, nil, setup, handler, cfg, registry, nil, done, "done triggered")
+	}()
+
+	addr := fmt.Sprintf("http://%s/", ln.Addr().String())
+	waitForServer(t, t.Context(), addr)
+
+	// Trigger shutdown via done channel.
+	close(done)
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("server did not shut down in time")
+	}
+}
+
+func TestServeAndWait_OnReadyError(t *testing.T) {
+	var lc net.ListenConfig
+	ln, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	setup := &tlsSetup{addr: ln.Addr().String()}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {})
+	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
+	registry := NewRegistry()
+	done := make(chan struct{})
+
+	err = serveAndWait(t.Context(), ln, nil, setup, handler, cfg, registry, func() error {
+		return fmt.Errorf("ready failed")
+	}, done, "done")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ready failed")
+}
+
 func TestStartServer_GracefulShutdown(t *testing.T) {
 	pidFile := t.TempDir() + "/test.pid"
 	port := findFreePort(t)

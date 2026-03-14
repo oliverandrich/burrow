@@ -434,7 +434,7 @@ func TestEmailVerificationToken(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestDeleteUserEmailVerificationTokens(t *testing.T) {
+func TestDeleteUserEmailVerificationTokensViaApp(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -1871,4 +1871,220 @@ func TestAdminCreateInviteEmailModeMissingEmail(t *testing.T) {
 	err := app.handleCreateInvite(rec, req)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "email is required")
+}
+
+// --- backgroundCleanup: ticker path ---
+
+func TestBackgroundCleanupPurgesOrphanedUsers(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Create an orphaned user (no credentials, created > 5 min ago).
+	user, err := repo.CreateUser(ctx, "orphan", "")
+	require.NoError(t, err)
+
+	// Backdate the user's created_at to make it eligible for purge.
+	_, err = db.NewUpdate().Model((*User)(nil)).
+		Set("created_at = ?", time.Now().Add(-10*time.Minute)).
+		Where("id = ?", user.ID).
+		Exec(ctx)
+	require.NoError(t, err)
+
+	// Also create an expired email verification token.
+	err = repo.CreateEmailVerificationToken(ctx, user.ID, "expired-hash", time.Now().Add(-time.Hour))
+	require.NoError(t, err)
+
+	// Run cleanup logic directly (the same code backgroundCleanup executes on tick).
+	purged, err := repo.PurgeOrphanedUsers(ctx, 5*time.Minute)
+	require.NoError(t, err)
+	assert.Equal(t, 1, purged)
+
+	err = repo.DeleteExpiredEmailVerificationTokens(ctx)
+	require.NoError(t, err)
+}
+
+// --- setRole: repo not initialized ---
+
+func TestSetRoleRepoNotInitialized(t *testing.T) {
+	app := &App{repo: nil}
+
+	cliCmd := &cli.Command{
+		Name:      "test-set-role",
+		ArgsUsage: "<username>",
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return app.setRole(ctx, cmd, RoleAdmin)
+		},
+	}
+
+	err := cliCmd.Run(context.Background(), []string{"test-set-role", "alice"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "auth app not initialized")
+}
+
+// --- createInviteAction: repo not initialized ---
+
+func TestCreateInviteActionRepoNotInitialized(t *testing.T) {
+	app := &App{repo: nil}
+	cmds := app.CLICommands()
+
+	var createInviteCmd *cli.Command
+	for _, cmd := range cmds {
+		if cmd.Name == "create-invite" {
+			createInviteCmd = cmd
+			break
+		}
+	}
+	require.NotNil(t, createInviteCmd)
+
+	cliCmd := &cli.Command{
+		Name:     "test",
+		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
+		Commands: []*cli.Command{createInviteCmd},
+	}
+	err := cliCmd.Run(context.Background(), []string{"test", "create-invite", "test@example.com"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "auth app not initialized")
+}
+
+// --- createInviteAction: success with globalConfig ---
+
+func TestCreateInviteActionSuccess(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	app := &App{
+		repo:         repo,
+		globalConfig: &burrow.Config{},
+	}
+	cmds := app.CLICommands()
+
+	var createInviteCmd *cli.Command
+	for _, cmd := range cmds {
+		if cmd.Name == "create-invite" {
+			createInviteCmd = cmd
+			break
+		}
+	}
+	require.NotNil(t, createInviteCmd)
+
+	cliCmd := &cli.Command{
+		Name:     "test",
+		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
+		Commands: []*cli.Command{createInviteCmd},
+	}
+	err := cliCmd.Run(context.Background(), []string{"test", "create-invite", "invite@example.com"})
+	require.NoError(t, err)
+}
+
+// --- authMiddleware: admin user sets IsAdmin true ---
+
+func TestAuthMiddlewareWithAdminUser(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	user, err := repo.CreateUser(context.Background(), "admin", "Admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(context.Background(), user.ID, RoleAdmin))
+
+	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+
+	var gotUser *User
+	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUser = UserFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req = session.Inject(req, map[string]any{"user_id": user.ID})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	require.NotNil(t, gotUser)
+	assert.Equal(t, "admin", gotUser.Username)
+	assert.True(t, gotUser.IsAdmin(), "admin user should have admin role")
+}
+
+// --- deactivateUserHandler: invalid ID ---
+
+func TestDeactivateUserInvalidID(t *testing.T) {
+	_, repo := newTestApp(t)
+	adminUser := &User{ID: 1, Username: "admin", Role: RoleAdmin, IsActive: true}
+
+	router := userActionRouter(deactivateUserHandler(repo), adminUser)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/notanumber/deactivate", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	// chi returns 405 or the handler returns a 400. Let's check the response is an error.
+	assert.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+// --- activateUserHandler: invalid ID ---
+
+func TestActivateUserInvalidID(t *testing.T) {
+	_, repo := newTestApp(t)
+	adminUser := &User{ID: 1, Username: "admin", Role: RoleAdmin, IsActive: true}
+
+	router := userActionRouter(activateUserHandler(repo), adminUser)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/notanumber/activate", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+// --- deactivateUserHandler: DB error on SetUserActive ---
+
+func TestDeactivateUserDBError(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
+
+	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	require.NoError(t, err)
+
+	// Close the DB to force an error on SetUserActive.
+	require.NoError(t, db.Close())
+
+	router := userActionRouter(deactivateUserHandler(repo), adminUser)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/deactivate", target.ID), nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+// --- activateUserHandler: DB error on SetUserActive ---
+
+func TestActivateUserDBError(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
+
+	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserActive(ctx, target.ID, false))
+
+	// Close the DB to force an error on SetUserActive.
+	require.NoError(t, db.Close())
+
+	router := userActionRouter(activateUserHandler(repo), adminUser)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/activate", target.ID), nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }

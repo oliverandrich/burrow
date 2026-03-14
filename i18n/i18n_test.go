@@ -89,3 +89,24 @@ func TestValidationTranslateGerman(t *testing.T) {
 	got := TData(ctx, "validation-required", map[string]any{"Field": "Email", "Param": ""})
 	assert.Equal(t, "Email ist erforderlich", got)
 }
+
+func TestTFallsBackToKeyWhenLocalizerPresent(t *testing.T) {
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "en")
+	// Key does not exist in translations — localizer is present but Localize returns an error.
+	assert.Equal(t, "nonexistent_key", T(ctx, "nonexistent_key"))
+}
+
+func TestTDataFallsBackToKeyWhenLocalizerPresent(t *testing.T) {
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "en")
+	// Key does not exist — localizer present but Localize errors.
+	assert.Equal(t, "missing_key", TData(ctx, "missing_key", map[string]any{"Name": "test"}))
+}
+
+func TestTPluralFallsBackToKeyWhenLocalizerPresent(t *testing.T) {
+	bundle := testBundle(t)
+	ctx := bundle.WithLocale(context.Background(), "en")
+	// Key does not exist — localizer present but Localize errors.
+	assert.Equal(t, "missing_plural_key", TPlural(ctx, "missing_plural_key", 3))
+}

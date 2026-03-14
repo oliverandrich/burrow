@@ -13,6 +13,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v3"
 )
 
 func TestApp_InterfaceAssertions(t *testing.T) {
@@ -290,4 +291,156 @@ func TestApp_Handle_DefaultRetries(t *testing.T) {
 
 	assert.Equal(t, 3, app.retries["test"])
 	assert.NotNil(t, app.handlers["test"])
+}
+
+func TestNew_WithOptions(t *testing.T) {
+	called := false
+	opt := func(a *App) {
+		called = true
+		// Verify we can modify the app via the option.
+		a.handlers["preset"] = func(_ context.Context, _ []byte) error { return nil }
+	}
+
+	app := New(opt)
+	assert.True(t, called)
+	assert.NotNil(t, app.handlers["preset"])
+}
+
+func TestNew_MultipleOptions(t *testing.T) {
+	order := []int{}
+	opt1 := func(_ *App) { order = append(order, 1) }
+	opt2 := func(_ *App) { order = append(order, 2) }
+	opt3 := func(_ *App) { order = append(order, 3) }
+
+	_ = New(opt1, opt2, opt3)
+	assert.Equal(t, []int{1, 2, 3}, order)
+}
+
+// stubHasJobsApp is a minimal App that implements HasJobs for testing Configure.
+type stubHasJobsApp struct {
+	registered bool
+}
+
+func (s *stubHasJobsApp) Name() string                       { return "stub" }
+func (s *stubHasJobsApp) Register(_ *burrow.AppConfig) error { return nil }
+func (s *stubHasJobsApp) RegisterJobs(q burrow.Queue) {
+	s.registered = true
+	q.Handle("stub_job", func(_ context.Context, _ []byte) error { return nil })
+}
+
+// Compile-time check.
+var _ burrow.HasJobs = (*stubHasJobsApp)(nil)
+
+func TestApp_Configure(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+
+	// Set up a registry with a HasJobs implementor.
+	registry := burrow.NewRegistry()
+	stub := &stubHasJobsApp{}
+	registry.Add(stub)
+	app.registry = registry
+
+	// Build a cli.Command with the jobs flags so Configure can read them.
+	cmd := &cli.Command{
+		Name:   "test",
+		Flags:  app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+	}
+
+	err := cmd.Run(t.Context(), []string{"test",
+		"--jobs-workers", "4",
+		"--jobs-poll-interval", "500ms",
+		"--jobs-retry-base-delay", "10s",
+	})
+	require.NoError(t, err)
+
+	// Verify HasJobs discovery happened.
+	assert.True(t, stub.registered, "HasJobs.RegisterJobs should have been called")
+	assert.NotNil(t, app.handlers["stub_job"], "handler from stub should be registered")
+
+	// Verify worker was created with the right config.
+	require.NotNil(t, app.worker)
+	assert.Equal(t, 4, app.worker.config.NumWorkers)
+	assert.Equal(t, 500*time.Millisecond, app.worker.config.PollInterval)
+	assert.Equal(t, 10*time.Second, app.worker.config.RetryBaseDelay)
+
+	// Verify cancelFunc was set.
+	assert.NotNil(t, app.cancelFunc)
+
+	// Clean shutdown.
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
+}
+
+func TestApp_Configure_DefaultFlags(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+
+	cmd := &cli.Command{
+		Name:   "test",
+		Flags:  app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+	}
+
+	err := cmd.Run(t.Context(), []string{"test"})
+	require.NoError(t, err)
+
+	// Verify defaults from the flags.
+	require.NotNil(t, app.worker)
+	assert.Equal(t, 2, app.worker.config.NumWorkers)
+	assert.Equal(t, time.Second, app.worker.config.PollInterval)
+	assert.Equal(t, 30*time.Second, app.worker.config.RetryBaseDelay)
+
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
+}
+
+func TestApp_Configure_NilRegistry(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+	// registry is nil — should not panic.
+
+	cmd := &cli.Command{
+		Name:   "test",
+		Flags:  app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+	}
+
+	err := cmd.Run(t.Context(), []string{"test"})
+	require.NoError(t, err)
+
+	require.NotNil(t, app.worker)
+
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
+}
+
+func TestApp_Configure_RegistryWithoutHasJobs(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+
+	// Registry with an app that does NOT implement HasJobs.
+	registry := burrow.NewRegistry()
+	registry.Add(New()) // jobs app itself does not implement HasJobs
+	app.registry = registry
+
+	cmd := &cli.Command{
+		Name:   "test",
+		Flags:  app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+	}
+
+	err := cmd.Run(t.Context(), []string{"test"})
+	require.NoError(t, err)
+
+	// No handlers should have been registered from HasJobs discovery.
+	assert.Empty(t, app.handlers)
+
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
 }

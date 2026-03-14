@@ -1,6 +1,7 @@
 package csrf
 
 import (
+	"context"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v3"
 )
 
 // Compile-time interface assertions.
@@ -214,6 +216,119 @@ func TestRequestFuncMapCsrfField(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Contains(t, string(gotField), `<input type="hidden" name="gorilla.csrf.Token"`)
 	assert.Contains(t, string(gotField), `value="`)
+}
+
+func TestFlags(t *testing.T) {
+	a := New()
+	flags := a.Flags(nil)
+
+	require.Len(t, flags, 1)
+	assert.Equal(t, "csrf-key", flags[0].Names()[0])
+}
+
+func TestConfigureWithHTTPBaseURL(t *testing.T) {
+	a := New()
+	_ = a.Register(&burrow.AppConfig{
+		Config: &burrow.Config{
+			Server: burrow.ServerConfig{BaseURL: "http://localhost:8080"},
+		},
+	})
+
+	cliCmd := &cli.Command{
+		Name:  "test",
+		Flags: a.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return a.Configure(cmd)
+		},
+	}
+
+	err := cliCmd.Run(context.Background(), []string{"test"})
+	require.NoError(t, err)
+	assert.NotNil(t, a.protect)
+	assert.False(t, a.secure)
+}
+
+func TestConfigureWithHTTPSBaseURL(t *testing.T) {
+	a := New()
+	_ = a.Register(&burrow.AppConfig{
+		Config: &burrow.Config{
+			Server: burrow.ServerConfig{BaseURL: "https://example.com"},
+		},
+	})
+
+	cliCmd := &cli.Command{
+		Name:  "test",
+		Flags: a.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return a.Configure(cmd)
+		},
+	}
+
+	err := cliCmd.Run(context.Background(), []string{"test"})
+	require.NoError(t, err)
+	assert.NotNil(t, a.protect)
+	assert.True(t, a.secure)
+}
+
+func TestConfigureWithExplicitKey(t *testing.T) {
+	a := New()
+	_ = a.Register(&burrow.AppConfig{
+		Config: &burrow.Config{
+			Server: burrow.ServerConfig{BaseURL: "http://localhost:8080"},
+		},
+	})
+
+	key := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+	cliCmd := &cli.Command{
+		Name:  "test",
+		Flags: a.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return a.Configure(cmd)
+		},
+	}
+
+	err := cliCmd.Run(context.Background(), []string{"test", "--csrf-key", key})
+	require.NoError(t, err)
+	assert.NotNil(t, a.protect)
+}
+
+func TestConfigureWithInvalidKey(t *testing.T) {
+	a := New()
+	_ = a.Register(&burrow.AppConfig{
+		Config: &burrow.Config{
+			Server: burrow.ServerConfig{BaseURL: "http://localhost:8080"},
+		},
+	})
+
+	cliCmd := &cli.Command{
+		Name:  "test",
+		Flags: a.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return a.Configure(cmd)
+		},
+	}
+
+	err := cliCmd.Run(context.Background(), []string{"test", "--csrf-key", "not-hex"})
+	assert.Error(t, err)
+}
+
+func TestConfigureWithNilConfig(t *testing.T) {
+	a := New()
+	// Don't call Register, so a.config is nil.
+
+	cliCmd := &cli.Command{
+		Name:  "test",
+		Flags: a.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return a.Configure(cmd)
+		},
+	}
+
+	err := cliCmd.Run(context.Background(), []string{"test"})
+	require.NoError(t, err)
+	assert.NotNil(t, a.protect)
+	assert.False(t, a.secure, "secure should be false when config is nil")
 }
 
 func TestSecureDerivedFromBaseURL(t *testing.T) {
