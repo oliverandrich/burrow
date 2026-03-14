@@ -292,3 +292,191 @@ type migratableApp struct {
 func (a *migratableApp) Name() string                { return a.name }
 func (a *migratableApp) Register(_ *AppConfig) error { return nil }
 func (a *migratableApp) MigrationFS() fs.FS          { return a.fs }
+
+// depApp is a test helper implementing App + Migratable + HasDependencies.
+type depApp struct {
+	fs   fs.FS
+	name string
+	deps []string
+}
+
+func (a *depApp) Name() string                { return a.name }
+func (a *depApp) Register(_ *AppConfig) error { return nil }
+func (a *depApp) MigrationFS() fs.FS          { return a.fs }
+func (a *depApp) Dependencies() []string      { return a.deps }
+
+func TestMigrationDependencyOrder(t *testing.T) {
+	db := testDB(t)
+	reg := NewRegistry()
+
+	// App "base" creates the base table.
+	baseFS := fstest.MapFS{
+		"001_base.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE base (id INTEGER PRIMARY KEY, name TEXT);"),
+		},
+	}
+	// App "child" depends on "base" and references its table via a foreign key.
+	childFS := fstest.MapFS{
+		"001_child.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE child (id INTEGER PRIMARY KEY, base_id INTEGER NOT NULL REFERENCES base(id));"),
+		},
+	}
+	// App "grandchild" depends on "child" and references its table.
+	grandchildFS := fstest.MapFS{
+		"001_grandchild.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE grandchild (id INTEGER PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES child(id));"),
+		},
+	}
+
+	// Register in dependency order (enforced by Registry.Add).
+	reg.Add(&migratableApp{name: "base", fs: baseFS})
+	reg.Add(&depApp{name: "child", fs: childFS, deps: []string{"base"}})
+	reg.Add(&depApp{name: "grandchild", fs: grandchildFS, deps: []string{"child"}})
+
+	err := reg.RunMigrations(t.Context(), db)
+	require.NoError(t, err)
+
+	// Verify all three apps' migrations were recorded.
+	var count int
+	err = db.NewRaw("SELECT COUNT(*) FROM _migrations").Scan(t.Context(), &count)
+	require.NoError(t, err)
+	assert.Equal(t, 3, count)
+
+	// Verify the foreign key chain works by inserting data.
+	_, err = db.NewRaw("INSERT INTO base (id, name) VALUES (1, 'root')").Exec(t.Context())
+	require.NoError(t, err)
+	_, err = db.NewRaw("INSERT INTO child (id, base_id) VALUES (1, 1)").Exec(t.Context())
+	require.NoError(t, err)
+	_, err = db.NewRaw("INSERT INTO grandchild (id, child_id) VALUES (1, 1)").Exec(t.Context())
+	require.NoError(t, err)
+}
+
+func TestMigrationPartialFailureRecovery(t *testing.T) {
+	db := testDB(t)
+	reg := NewRegistry()
+
+	// App "good" has a valid migration.
+	goodFS := fstest.MapFS{
+		"001_create_users.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT);"),
+		},
+	}
+	// App "bad" has two migrations: first succeeds, second fails.
+	badFS := fstest.MapFS{
+		"001_create_orders.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER);"),
+		},
+		"002_broken.up.sql": &fstest.MapFile{
+			Data: []byte("ALTER TABLE nonexistent ADD COLUMN broken TEXT;"),
+		},
+	}
+
+	reg.Add(&migratableApp{name: "good", fs: goodFS})
+	reg.Add(&migratableApp{name: "bad", fs: badFS})
+
+	err := reg.RunMigrations(t.Context(), db)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "002_broken.up.sql")
+
+	// "good" app's migration should have been applied successfully.
+	var goodCount int
+	err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ?", "good").
+		Scan(t.Context(), &goodCount)
+	require.NoError(t, err)
+	assert.Equal(t, 1, goodCount, "good app migration should be recorded")
+
+	// "bad" app's first migration should have been applied.
+	var badCount int
+	err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ? AND name = ?",
+		"bad", "001_create_orders.up.sql").Scan(t.Context(), &badCount)
+	require.NoError(t, err)
+	assert.Equal(t, 1, badCount, "bad app's first migration should be recorded")
+
+	// "bad" app's second (failed) migration should NOT be recorded.
+	err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ? AND name = ?",
+		"bad", "002_broken.up.sql").Scan(t.Context(), &badCount)
+	require.NoError(t, err)
+	assert.Equal(t, 0, badCount, "bad app's failed migration should not be recorded")
+
+	// Verify the users table from "good" is intact.
+	_, err = db.NewRaw("INSERT INTO users (email) VALUES ('test@example.com')").Exec(t.Context())
+	require.NoError(t, err)
+
+	// Verify the orders table from "bad"'s successful first migration is intact.
+	_, err = db.NewRaw("INSERT INTO orders (user_id) VALUES (1)").Exec(t.Context())
+	require.NoError(t, err)
+}
+
+func TestMigrationIdempotency(t *testing.T) {
+	db := testDB(t)
+	reg := NewRegistry()
+
+	migFS := fstest.MapFS{
+		"001_create_widgets.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE widgets (id INTEGER PRIMARY KEY, name TEXT);"),
+		},
+		"002_add_color.up.sql": &fstest.MapFile{
+			Data: []byte("ALTER TABLE widgets ADD COLUMN color TEXT;"),
+		},
+	}
+
+	reg.Add(&migratableApp{name: "widgets", fs: migFS})
+
+	// Run migrations three times. All should succeed.
+	for range 3 {
+		err := reg.RunMigrations(t.Context(), db)
+		require.NoError(t, err)
+	}
+
+	// Verify migrations are recorded exactly once each.
+	var count int
+	err := db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ?", "widgets").
+		Scan(t.Context(), &count)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count, "each migration should be recorded exactly once")
+
+	// Verify the table works correctly (proves no duplicate ALTER TABLE etc.).
+	_, err = db.NewRaw("INSERT INTO widgets (name, color) VALUES ('gear', 'red')").Exec(t.Context())
+	require.NoError(t, err)
+}
+
+func TestMigrationIdempotencyAfterPartialFailure(t *testing.T) {
+	db := testDB(t)
+
+	// First run: migration 001 succeeds, 002 fails.
+	migrations := fstest.MapFS{
+		"001_create_settings.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE settings (id INTEGER PRIMARY KEY, key TEXT);"),
+		},
+		"002_invalid.up.sql": &fstest.MapFile{
+			Data: []byte("THIS IS INVALID SQL;"),
+		},
+	}
+
+	err := RunAppMigrations(t.Context(), db, "app", migrations)
+	require.Error(t, err)
+
+	// Fix the broken migration and re-run.
+	migrationsFixed := fstest.MapFS{
+		"001_create_settings.up.sql": &fstest.MapFile{
+			Data: []byte("CREATE TABLE settings (id INTEGER PRIMARY KEY, key TEXT);"),
+		},
+		"002_invalid.up.sql": &fstest.MapFile{
+			Data: []byte("ALTER TABLE settings ADD COLUMN value TEXT;"),
+		},
+	}
+
+	err = RunAppMigrations(t.Context(), db, "app", migrationsFixed)
+	require.NoError(t, err)
+
+	// Verify both migrations are now recorded.
+	var count int
+	err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ?", "app").
+		Scan(t.Context(), &count)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+
+	// Verify the table has both columns.
+	_, err = db.NewRaw("INSERT INTO settings (key, value) VALUES ('theme', 'dark')").Exec(t.Context())
+	require.NoError(t, err)
+}
