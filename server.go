@@ -2,14 +2,10 @@ package burrow
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,8 +14,6 @@ import (
 	"github.com/go-chi/httplog/v3"
 	"github.com/oliverandrich/burrow/i18n"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 	"github.com/urfave/cli/v3"
 )
 
@@ -221,7 +215,13 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	r := chi.NewRouter()
-	setupCoreMiddleware(r, cfg)
+	r.Use(httplog.RequestLogger(slog.Default(), &httplog.Options{
+		Level:         slog.LevelInfo,
+		RecoverPanics: true,
+	}))
+	r.Use(chimw.RequestID)
+	r.Use(chimw.Compress(5))
+	r.Use(chimw.RequestSize(int64(cfg.Server.MaxBodySize) * 1024 * 1024))
 	r.Use(s.i18nBundle.LocaleMiddleware())
 	navItems := s.registry.AllNavItems()
 	r.Use(navItemsMiddleware(navItems))
@@ -258,111 +258,6 @@ func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
 	return s.registry.Seed(ctx)
 }
 
-// checkDBDir verifies that the parent directory of a file-based DSN exists.
-// In-memory databases (":memory:" or empty DSN) are skipped.
-func checkDBDir(dsn string) error {
-	if dsn == "" || dsn == ":memory:" || strings.HasPrefix(dsn, "file::memory") {
-		return nil
-	}
-
-	// Strip query parameters from file: URIs.
-	path := dsn
-	if after, ok := strings.CutPrefix(path, "file:"); ok {
-		path = after
-		if i := strings.IndexByte(path, '?'); i >= 0 {
-			path = path[:i]
-		}
-	}
-
-	dir := filepath.Dir(path)
-	if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("database directory %q does not exist; create it with: mkdir -p %s", dir, dir)
-	}
-	return nil
-}
-
-func openDB(dsn string) (*bun.DB, error) {
-	if err := checkDBDir(dsn); err != nil {
-		return nil, err
-	}
-
-	dsn = withTxLock(dsn)
-	dsn = withPerConnPragmas(dsn)
-
-	sqldb, err := sql.Open(sqliteshim.ShimName, dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	sqldb.SetMaxOpenConns(10)
-	sqldb.SetMaxIdleConns(5)
-	sqldb.SetConnMaxLifetime(time.Hour)
-
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-
-	// Per-database PRAGMAs only need to run once (they persist in the DB file).
-	dbPragmas := []struct {
-		sql    string
-		errMsg string
-	}{
-		{"PRAGMA journal_mode=WAL", "set WAL mode"},
-		{"PRAGMA journal_size_limit=27103364", "set journal size limit"},
-	}
-
-	for _, p := range dbPragmas {
-		if _, err := db.Exec(p.sql); err != nil {
-			return nil, fmt.Errorf("%s: %w", p.errMsg, err)
-		}
-	}
-
-	return db, nil
-}
-
-// withPerConnPragmas appends per-connection PRAGMAs to the DSN via _pragma
-// parameters. Unlike db.Exec(), _pragma parameters are applied to every new
-// connection the pool creates, ensuring settings like foreign_keys=ON are
-// always active.
-func withPerConnPragmas(dsn string) string {
-	pragmas := []string{
-		"_pragma=foreign_keys(1)",
-		"_pragma=synchronous(normal)",
-		"_pragma=busy_timeout(5000)",
-		"_pragma=temp_store(memory)",
-		"_pragma=mmap_size(134217728)",
-		"_pragma=cache_size(2000)",
-	}
-
-	for _, p := range pragmas {
-		if strings.Contains(dsn, "?") {
-			dsn += "&" + p
-		} else {
-			dsn += "?" + p
-		}
-	}
-	return dsn
-}
-
-// withTxLock ensures the DSN uses IMMEDIATE transaction mode.
-// This prevents transactions from failing immediately when the database is
-// locked and instead waits up to busy_timeout before returning an error.
-func withTxLock(dsn string) string {
-	if strings.Contains(dsn, "_txlock=") {
-		return dsn
-	}
-
-	switch {
-	case dsn == ":memory:" || strings.HasPrefix(dsn, "file::memory"):
-		return dsn
-	case strings.HasPrefix(dsn, "file:"):
-		if strings.Contains(dsn, "?") {
-			return dsn + "&_txlock=immediate"
-		}
-		return dsn + "?_txlock=immediate"
-	default:
-		return "file:" + dsn + "?_txlock=immediate"
-	}
-}
-
 func layoutMiddleware(name string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -379,16 +274,6 @@ func navItemsMiddleware(items []NavItem) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
-}
-
-func setupCoreMiddleware(r chi.Router, cfg *Config) {
-	r.Use(httplog.RequestLogger(slog.Default(), &httplog.Options{
-		Level:         slog.LevelInfo,
-		RecoverPanics: true,
-	}))
-	r.Use(chimw.RequestID)
-	r.Use(chimw.Compress(5))
-	r.Use(chimw.RequestSize(int64(cfg.Server.MaxBodySize) * 1024 * 1024))
 }
 
 // shutdownServers performs graceful shutdown of the HTTP servers and registry.
