@@ -69,6 +69,59 @@ func startServerTableflip(
 		return fmt.Errorf("listen %s: %w", setup.addr, err)
 	}
 
+	var httpLn net.Listener
+	if setup.httpHandler != nil {
+		httpLn, err = upg.Listen("tcp", setup.httpAddr)
+		if err != nil {
+			return fmt.Errorf("listen %s: %w", setup.httpAddr, err)
+		}
+	}
+
+	return serveAndWait(ctx, ln, httpLn, setup, handler, cfg, registry, upg.Ready, upg.Exit(), "upgrade/signal received, shutting down")
+}
+
+// startServerSimple is the fallback when tableflip is unavailable.
+// It uses plain listeners without graceful restart support.
+func startServerSimple(
+	ctx context.Context,
+	setup *tlsSetup,
+	handler http.Handler,
+	cfg *Config,
+	registry *Registry,
+) error {
+	var lc net.ListenConfig
+
+	ln, err := lc.Listen(context.Background(), "tcp", setup.addr)
+	if err != nil {
+		return fmt.Errorf("listen %s: %w", setup.addr, err)
+	}
+
+	var httpLn net.Listener
+	if setup.httpHandler != nil {
+		httpLn, err = lc.Listen(context.Background(), "tcp", setup.httpAddr)
+		if err != nil {
+			return fmt.Errorf("listen %s: %w", setup.httpAddr, err)
+		}
+	}
+
+	return serveAndWait(ctx, ln, httpLn, setup, handler, cfg, registry, nil, signalDone(syscall.SIGINT, syscall.SIGTERM), "signal received, shutting down")
+}
+
+// serveAndWait wraps listeners with TLS if configured, starts serving, waits
+// for a shutdown trigger (context cancellation, done channel, or server error),
+// then performs graceful shutdown.
+func serveAndWait(
+	ctx context.Context,
+	ln net.Listener,
+	httpLn net.Listener,
+	setup *tlsSetup,
+	handler http.Handler,
+	cfg *Config,
+	registry *Registry,
+	onReady func() error,
+	done <-chan struct{},
+	doneMsg string,
+) error {
 	if setup.tlsConfig != nil {
 		ln = tls.NewListener(ln, setup.tlsConfig)
 	}
@@ -80,14 +133,8 @@ func startServerTableflip(
 
 	errChan := make(chan error, 2)
 
-	// Start ACME HTTP challenge/redirect server if needed.
 	var httpServer *http.Server
-	if setup.httpHandler != nil {
-		httpLn, listenErr := upg.Listen("tcp", setup.httpAddr)
-		if listenErr != nil {
-			return fmt.Errorf("listen %s: %w", setup.httpAddr, listenErr)
-		}
-
+	if httpLn != nil {
 		httpServer = &http.Server{
 			Handler:           setup.httpHandler,
 			ReadHeaderTimeout: 10 * time.Second,
@@ -108,16 +155,17 @@ func startServerTableflip(
 		}
 	}()
 
-	// Signal ready — allows the parent process (if any) to stop accepting.
-	if err := upg.Ready(); err != nil {
-		return fmt.Errorf("tableflip ready: %w", err)
+	if onReady != nil {
+		if err := onReady(); err != nil {
+			return fmt.Errorf("ready callback: %w", err)
+		}
 	}
 
 	select {
 	case <-ctx.Done():
 		slog.Info("context cancelled, shutting down")
-	case <-upg.Exit():
-		slog.Info("upgrade/signal received, shutting down")
+	case <-done:
+		slog.Info(doneMsg)
 	case err := <-errChan:
 		return err
 	}
@@ -125,71 +173,18 @@ func startServerTableflip(
 	return shutdownServers(cfg, registry, server, httpServer)
 }
 
-// startServerSimple is the fallback when tableflip is unavailable.
-// It uses plain listeners without graceful restart support.
-func startServerSimple(
-	ctx context.Context,
-	setup *tlsSetup,
-	handler http.Handler,
-	cfg *Config,
-	registry *Registry,
-) error {
-	var lc net.ListenConfig
+// signalDone returns a channel that is closed when one of the given signals
+// is received.
+func signalDone(signals ...os.Signal) <-chan struct{} {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, signals...)
 
-	ln, err := lc.Listen(context.Background(), "tcp", setup.addr)
-	if err != nil {
-		return fmt.Errorf("listen %s: %w", setup.addr, err)
-	}
-
-	if setup.tlsConfig != nil {
-		ln = tls.NewListener(ln, setup.tlsConfig)
-	}
-
-	server := &http.Server{
-		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	errChan := make(chan error, 2)
-
-	var httpServer *http.Server
-	if setup.httpHandler != nil {
-		httpLn, listenErr := lc.Listen(context.Background(), "tcp", setup.httpAddr)
-		if listenErr != nil {
-			return fmt.Errorf("listen %s: %w", setup.httpAddr, listenErr)
-		}
-
-		httpServer = &http.Server{
-			Handler:           setup.httpHandler,
-			ReadHeaderTimeout: 10 * time.Second,
-		}
-
-		go func() {
-			slog.Info("http redirect server listening", "addr", setup.httpAddr)
-			if serveErr := httpServer.Serve(httpLn); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
-				errChan <- serveErr
-			}
-		}()
-	}
+	done := make(chan struct{})
 
 	go func() {
-		slog.Info("server listening", "addr", setup.addr, "tls", setup.tlsConfig != nil)
-		if serveErr := server.Serve(ln); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
-			errChan <- serveErr
-		}
+		<-sig
+		close(done)
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	select {
-	case <-ctx.Done():
-		slog.Info("context cancelled, shutting down")
-	case <-quit:
-		slog.Info("signal received, shutting down")
-	case err := <-errChan:
-		return err
-	}
-
-	return shutdownServers(cfg, registry, server, httpServer)
+	return done
 }

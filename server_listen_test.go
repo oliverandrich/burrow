@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"syscall"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -54,6 +56,26 @@ func waitForServer(t *testing.T, ctx context.Context, addr string) {
 // Note: tableflip uses global signal handlers, so only one test in this
 // file can safely create a tableflip.Upgrader per process. We combine
 // all assertions into a single test to avoid conflicts.
+func TestSignalDone(t *testing.T) {
+	done := signalDone(syscall.SIGUSR1)
+
+	select {
+	case <-done:
+		t.Fatal("channel should not be closed before signal")
+	default:
+	}
+
+	// Send the signal to ourselves.
+	require.NoError(t, syscall.Kill(syscall.Getpid(), syscall.SIGUSR1))
+
+	select {
+	case <-done:
+		// expected
+	case <-time.After(2 * time.Second):
+		t.Fatal("channel should have been closed after signal")
+	}
+}
+
 func TestStartServer_GracefulShutdown(t *testing.T) {
 	pidFile := t.TempDir() + "/test.pid"
 	port := findFreePort(t)
