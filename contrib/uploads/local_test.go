@@ -3,6 +3,7 @@ package uploads
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -288,4 +290,141 @@ func TestStoreFile_MissingField(t *testing.T) {
 
 	_, err := StoreFile(req, "avatar", s, StoreOptions{})
 	assert.ErrorIs(t, err, ErrMissingField)
+}
+
+// --- Integration tests ---
+
+func TestLocalStorage_LargeFile(t *testing.T) {
+	s := newTestStorage(t)
+	ctx := context.Background()
+
+	// Generate a 2MB file with random data.
+	const size = 2 * 1024 * 1024
+	data := make([]byte, size)
+	_, err := rand.Read(data)
+	require.NoError(t, err)
+
+	key, err := s.Store(ctx, bytes.NewReader(data), StoreOptions{
+		Prefix:   "large",
+		Filename: "bigfile.bin",
+	})
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(key, "large/"))
+	assert.True(t, strings.HasSuffix(key, ".bin"))
+
+	// Verify the file exists on disk with the correct size.
+	info, err := os.Stat(s.Path(key))
+	require.NoError(t, err)
+	assert.Equal(t, int64(size), info.Size())
+
+	// Open and verify full content matches.
+	rc, err := s.Open(ctx, key)
+	require.NoError(t, err)
+	defer rc.Close()
+
+	got, err := io.ReadAll(rc)
+	require.NoError(t, err)
+	assert.Equal(t, data, got)
+}
+
+func TestLocalStorage_ConcurrentUploads(t *testing.T) {
+	s := newTestStorage(t)
+	ctx := context.Background()
+
+	const numFiles = 20
+
+	// Pre-generate unique file contents so each gets a distinct key.
+	contents := make([][]byte, numFiles)
+	for i := range contents {
+		buf := make([]byte, 1024)
+		_, err := rand.Read(buf)
+		require.NoError(t, err)
+		contents[i] = buf
+	}
+
+	keys := make([]string, numFiles)
+	errs := make([]error, numFiles)
+
+	var wg sync.WaitGroup
+	wg.Add(numFiles)
+
+	for i := range numFiles {
+		go func(idx int) {
+			defer wg.Done()
+			keys[idx], errs[idx] = s.Store(ctx, bytes.NewReader(contents[idx]), StoreOptions{
+				Prefix:   "concurrent",
+				Filename: "file.dat",
+			})
+		}(i)
+	}
+	wg.Wait()
+
+	// Verify all uploads succeeded and each file is retrievable.
+	storedKeys := make(map[string]bool)
+	for i := range numFiles {
+		require.NoError(t, errs[i], "upload %d failed", i)
+		storedKeys[keys[i]] = true
+
+		rc, err := s.Open(ctx, keys[i])
+		require.NoError(t, err, "open %d failed", i)
+
+		got, err := io.ReadAll(rc)
+		require.NoError(t, err)
+		rc.Close()
+
+		assert.Equal(t, contents[i], got, "content mismatch for upload %d", i)
+	}
+
+	// All files should have unique keys (unique content → unique hash).
+	assert.Len(t, storedKeys, numFiles, "expected %d unique keys", numFiles)
+}
+
+func TestLocalStorage_MaxSizeBoundary(t *testing.T) {
+	s := newTestStorage(t)
+	ctx := context.Background()
+
+	const maxSize int64 = 1024
+
+	t.Run("exactly at limit succeeds", func(t *testing.T) {
+		data := bytes.Repeat([]byte("a"), int(maxSize))
+		key, err := s.Store(ctx, bytes.NewReader(data), StoreOptions{
+			Filename: "exact.txt",
+			MaxSize:  maxSize,
+		})
+		require.NoError(t, err)
+
+		rc, err := s.Open(ctx, key)
+		require.NoError(t, err)
+		defer rc.Close()
+
+		got, err := io.ReadAll(rc)
+		require.NoError(t, err)
+		assert.Equal(t, data, got)
+	})
+
+	t.Run("one byte over limit fails", func(t *testing.T) {
+		data := bytes.Repeat([]byte("a"), int(maxSize)+1)
+		_, err := s.Store(ctx, bytes.NewReader(data), StoreOptions{
+			Filename: "over.txt",
+			MaxSize:  maxSize,
+		})
+		assert.ErrorIs(t, err, ErrFileTooLarge)
+	})
+
+	t.Run("one byte under limit succeeds", func(t *testing.T) {
+		data := bytes.Repeat([]byte("a"), int(maxSize)-1)
+		key, err := s.Store(ctx, bytes.NewReader(data), StoreOptions{
+			Filename: "under.txt",
+			MaxSize:  maxSize,
+		})
+		require.NoError(t, err)
+
+		rc, err := s.Open(ctx, key)
+		require.NoError(t, err)
+		defer rc.Close()
+
+		got, err := io.ReadAll(rc)
+		require.NoError(t, err)
+		assert.Equal(t, data, got)
+	})
 }

@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/gorilla/securecookie"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -398,6 +400,276 @@ func TestInject(t *testing.T) {
 
 	cookies := rec.Result().Cookies()
 	require.NotEmpty(t, cookies)
+}
+
+// --- Corrupted session cookie through middleware ---
+
+func TestMiddlewareCorruptedCookieGracefulDegradation(t *testing.T) {
+	r, _ := routerWithSession(t)
+
+	var gotValues map[string]any
+	var setErr error
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotValues = GetValues(r)
+		// Verify that Set still works even when the initial cookie was corrupted.
+		setErr = Set(w, r, "new_key", "new_value")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "_session", Value: "corrupted-garbage-data"})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code, "corrupted cookie should not cause a crash")
+	assert.Nil(t, gotValues, "corrupted cookie should yield nil values")
+	require.NoError(t, setErr, "should be able to set values after corrupted cookie")
+
+	// A new valid session cookie should have been written.
+	cookies := rec.Result().Cookies()
+	require.NotEmpty(t, cookies)
+	assert.Equal(t, "_session", cookies[0].Name)
+}
+
+func TestMiddlewareCorruptedCookieGettersReturnDefaults(t *testing.T) {
+	r, _ := routerWithSession(t)
+
+	var gotString string
+	var gotInt int64
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotString = GetString(r, "anything")
+		gotInt = GetInt64(r, "anything")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "_session", Value: "!invalid!"})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Empty(t, gotString)
+	assert.Equal(t, int64(0), gotInt)
+}
+
+// --- Expired session through middleware ---
+
+func TestMiddlewareExpiredSessionTreatedAsEmpty(t *testing.T) {
+	r, app := routerWithSession(t)
+	mgr := app.Manager()
+
+	// Manually create an expired cookie payload.
+	payload := cookiePayload{
+		ExpiresAt: time.Now().Add(-1 * time.Hour),
+		Values:    map[string]any{"user_id": int64(42)},
+	}
+	encoded, err := mgr.sc.Encode(mgr.cookieName, payload)
+	require.NoError(t, err)
+
+	var gotValues map[string]any
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotValues = GetValues(r)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "_session", Value: encoded})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Nil(t, gotValues, "expired session should be treated as empty")
+}
+
+func TestMiddlewareExpiredSessionAllowsNewSet(t *testing.T) {
+	r, app := routerWithSession(t)
+	mgr := app.Manager()
+
+	// Create an expired cookie.
+	payload := cookiePayload{
+		ExpiresAt: time.Now().Add(-1 * time.Hour),
+		Values:    map[string]any{"old": "data"},
+	}
+	encoded, err := mgr.sc.Encode(mgr.cookieName, payload)
+	require.NoError(t, err)
+
+	var setErr error
+	var afterSet map[string]any
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		setErr = Set(w, r, "fresh", "value")
+		afterSet = GetValues(r)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "_session", Value: encoded})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	require.NoError(t, setErr)
+	require.NotNil(t, afterSet)
+	assert.Equal(t, "value", afterSet["fresh"])
+	_, hasOld := afterSet["old"]
+	assert.False(t, hasOld, "expired session data should not persist")
+}
+
+// --- Missing session middleware ---
+
+func TestNoMiddlewareAllGettersReturnDefaults(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+
+	assert.Nil(t, GetValues(req))
+	assert.Empty(t, GetString(req, "key"))
+	assert.Equal(t, int64(0), GetInt64(req, "key"))
+}
+
+func TestNoMiddlewareSetReturnsError(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	err := Set(rec, req, "key", "value")
+	require.Error(t, err)
+	assert.Equal(t, errNoMiddleware, err)
+}
+
+func TestNoMiddlewareDeleteReturnsError(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	err := Delete(rec, req, "key")
+	require.Error(t, err)
+	assert.Equal(t, errNoMiddleware, err)
+}
+
+func TestNoMiddlewareSaveReturnsError(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	err := Save(rec, req, map[string]any{"key": "value"})
+	require.Error(t, err)
+	assert.Equal(t, errNoMiddleware, err)
+}
+
+func TestNoMiddlewareClearDoesNotPanic(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	assert.NotPanics(t, func() { Clear(rec, req) })
+}
+
+// --- Empty session values ---
+
+func TestEmptySessionValuesGettersReturnDefaults(t *testing.T) {
+	r, app := routerWithSession(t)
+	mgr := app.Manager()
+
+	// Save a session with an empty map.
+	cookie, err := mgr.Save(map[string]any{})
+	require.NoError(t, err)
+
+	var gotValues map[string]any
+	var gotString string
+	var gotInt int64
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotValues = GetValues(r)
+		gotString = GetString(r, "nonexistent")
+		gotInt = GetInt64(r, "nonexistent")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	require.NotNil(t, gotValues)
+	assert.Empty(t, gotValues)
+	assert.Empty(t, gotString)
+	assert.Equal(t, int64(0), gotInt)
+}
+
+func TestSetOnEmptySession(t *testing.T) {
+	r, _ := routerWithSession(t)
+
+	var setErr error
+	var afterSet map[string]any
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		// No prior cookie — session values start as nil.
+		setErr = Set(w, r, "key", "value")
+		afterSet = GetValues(r)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	require.NoError(t, setErr)
+	require.NotNil(t, afterSet)
+	assert.Equal(t, "value", afterSet["key"])
+}
+
+func TestSetNilValue(t *testing.T) {
+	r, _ := routerWithSession(t)
+
+	var setErr error
+	var afterSet map[string]any
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		setErr = Set(w, r, "key", nil)
+		afterSet = GetValues(r)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	require.NoError(t, setErr)
+	require.NotNil(t, afterSet)
+	// The key should exist with a nil value.
+	v, exists := afterSet["key"]
+	assert.True(t, exists)
+	assert.Nil(t, v)
+}
+
+func TestInjectWithEmptyMap(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req = Inject(req, map[string]any{})
+
+	values := GetValues(req)
+	require.NotNil(t, values)
+	assert.Empty(t, values)
+	assert.Empty(t, GetString(req, "anything"))
+	assert.Equal(t, int64(0), GetInt64(req, "anything"))
+}
+
+// --- Cookie signed with different key through middleware ---
+
+func TestMiddlewareWrongKeyCookieGracefulDegradation(t *testing.T) {
+	r, _ := routerWithSession(t)
+
+	// Create a cookie signed with a completely different key.
+	otherSC := securecookie.New([]byte("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"), nil)
+	otherSC.MaxAge(3600)
+	otherMgr := &Manager{sc: otherSC, cookieName: "_session", maxAge: 3600}
+	cookie, err := otherMgr.Save(map[string]any{"user_id": int64(99)})
+	require.NoError(t, err)
+
+	var gotValues map[string]any
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		gotValues = GetValues(r)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code, "wrong-key cookie should not crash")
+	assert.Nil(t, gotValues, "wrong-key cookie should yield nil values")
 }
 
 func TestInjectNilValues(t *testing.T) {
