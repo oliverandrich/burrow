@@ -91,13 +91,6 @@ func WithAuthChecker(ctx context.Context, checker AuthChecker) context.Context {
 	return context.WithValue(ctx, ctxKeyAuthChecker{}, checker)
 }
 
-// AuthCheckerContextKey returns the context key used for AuthChecker storage.
-// This is intended for testing: use ContextValue with this key to inspect
-// the AuthChecker set by middleware.
-func AuthCheckerContextKey() any {
-	return ctxKeyAuthChecker{}
-}
-
 // isAuthenticated returns true if the AuthChecker in context reports
 // authentication. Returns false if no AuthChecker is set.
 func isAuthenticated(ctx context.Context) bool {
