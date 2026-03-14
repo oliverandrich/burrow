@@ -52,14 +52,14 @@ func Handle(fn HandlerFunc) http.HandlerFunc {
 						"path", r.URL.Path,
 					)
 				}
-				http.Error(w, httpErr.Message, httpErr.Code)
+				RenderError(w, r, httpErr.Code, httpErr.Message)
 			} else {
 				slog.Error("unhandled error", //nolint:gosec // slog handlers escape values
 					"error", err,
 					"method", r.Method,
 					"path", r.URL.Path,
 				)
-				http.Error(w, "internal server error", http.StatusInternalServerError)
+				RenderError(w, r, http.StatusInternalServerError, "internal server error")
 			}
 		}
 	}

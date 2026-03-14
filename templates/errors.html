@@ -1,0 +1,43 @@
+{{ define "error/403" }}
+<!DOCTYPE html>
+<html>
+    <head><meta charset="utf-8"><title>403 Forbidden</title></head>
+    <body>
+        <h1>403</h1>
+        <p>{{ .Message }}</p>
+    </body>
+</html>
+{{ end }}
+
+{{ define "error/404" }}
+<!DOCTYPE html>
+<html>
+    <head><meta charset="utf-8"><title>404 Not Found</title></head>
+    <body>
+        <h1>404</h1>
+        <p>{{ .Message }}</p>
+    </body>
+</html>
+{{ end }}
+
+{{ define "error/405" }}
+<!DOCTYPE html>
+<html>
+    <head><meta charset="utf-8"><title>405 Method Not Allowed</title></head>
+    <body>
+        <h1>405</h1>
+        <p>{{ .Message }}</p>
+    </body>
+</html>
+{{ end }}
+
+{{ define "error/500" }}
+<!DOCTYPE html>
+<html>
+    <head><meta charset="utf-8"><title>500 Internal Server Error</title></head>
+    <body>
+        <h1>500</h1>
+        <p>{{ .Message }}</p>
+    </body>
+</html>
+{{ end }}

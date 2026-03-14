@@ -234,6 +234,13 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	s.registry.RegisterMiddleware(r)
 	s.registry.RegisterRoutes(r)
 
+	r.NotFound(Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return NewHTTPError(http.StatusNotFound, "page not found")
+	}))
+	r.MethodNotAllowed(Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return NewHTTPError(http.StatusMethodNotAllowed, "method not allowed")
+	}))
+
 	return startServer(ctx, r, cfg, s.registry)
 }
 

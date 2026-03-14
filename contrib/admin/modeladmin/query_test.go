@@ -2,15 +2,11 @@ package modeladmin
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-
-	"github.com/uptrace/bun/driver/sqliteshim"
 
 	"github.com/oliverandrich/burrow"
 )
@@ -24,13 +20,9 @@ type testItem struct { //nolint:govet // fieldalignment: test struct
 
 func setupTestDB(t *testing.T) *bun.DB {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { db.Close() })
+	db := burrow.TestDB(t)
 
-	ctx := context.Background()
-	_, err = db.NewCreateTable().Model((*testItem)(nil)).Exec(ctx)
+	_, err := db.NewCreateTable().Model((*testItem)(nil)).Exec(context.Background())
 	require.NoError(t, err)
 
 	return db

@@ -3,6 +3,7 @@ package burrow
 import (
 	"bytes"
 	"context"
+	"embed"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -10,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 )
+
+//go:embed templates/*.html
+var coreTemplateFS embed.FS
 
 // baseFuncMap returns the default template functions available in all templates.
 func baseFuncMap() template.FuncMap {
@@ -94,6 +98,15 @@ func (s *Server) buildTemplates() error {
 	}
 
 	t := template.New("").Funcs(funcMap)
+
+	// Parse core error templates first so apps can override them.
+	coreFS, err := fs.Sub(coreTemplateFS, "templates")
+	if err != nil {
+		return fmt.Errorf("core templates: %w", err)
+	}
+	if err := parseTemplateFS(t, coreFS); err != nil {
+		return err
+	}
 
 	for _, fsys := range templateFSes {
 		if err := parseTemplateFS(t, fsys); err != nil {

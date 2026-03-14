@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/session"
 )
 
@@ -48,13 +49,22 @@ func redirectTarget(r *http.Request) string {
 	return parsed.RequestURI()
 }
 
-// RequireAdmin returns middleware that returns 403 if the user is not an admin.
+// RequireAdmin returns middleware that enforces admin access.
+// Unauthenticated users are redirected to login (like [RequireAuth]).
+// Authenticated non-admin users see a 403 error page.
 func RequireAdmin() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user := UserFromContext(r.Context())
-			if user == nil || !user.IsAdmin() {
-				http.Error(w, "forbidden", http.StatusForbidden)
+			if user == nil {
+				if target := redirectTarget(r); target != "" {
+					_ = session.Set(w, r, "redirect_after_login", target)
+				}
+				http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+				return
+			}
+			if !user.IsAdmin() {
+				burrow.RenderError(w, r, http.StatusForbidden, "forbidden")
 				return
 			}
 			next.ServeHTTP(w, r)

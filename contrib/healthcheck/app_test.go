@@ -2,7 +2,6 @@ package healthcheck
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -12,22 +11,11 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 )
-
-func testDB(t *testing.T) *bun.DB {
-	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	t.Cleanup(func() { sqldb.Close() })
-	return bun.NewDB(sqldb, sqlitedialect.New())
-}
 
 func setupRouter(t *testing.T, apps ...burrow.App) chi.Router {
 	t.Helper()
-	db := testDB(t)
+	db := burrow.TestDB(t)
 	reg := burrow.NewRegistry()
 	for _, a := range apps {
 		reg.Add(a)
@@ -55,7 +43,7 @@ func TestAppName(t *testing.T) {
 
 func TestAppRegister(t *testing.T) {
 	app := New()
-	db := testDB(t)
+	db := burrow.TestDB(t)
 	reg := burrow.NewRegistry()
 	cfg := &burrow.AppConfig{DB: db, Registry: reg}
 

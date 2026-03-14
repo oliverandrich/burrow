@@ -10,6 +10,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/session"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -159,10 +160,11 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
 
 	r := chi.NewRouter()
-	// Inject non-admin user.
+	// Inject non-admin user and TemplateExecutor.
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleUser})
+			ctx = burrow.TestErrorExecContext(ctx)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})

@@ -60,7 +60,7 @@ func TestServerBootstrap(t *testing.T) {
 	tracker := &trackingApp{name: "tracker"}
 
 	s := NewServer(app, tracker)
-	db := testDB(t)
+	db := TestDB(t)
 
 	err := s.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestServerBootstrapSetsConfig(t *testing.T) {
 	}
 
 	s := NewServer(app)
-	db := testDB(t)
+	db := TestDB(t)
 
 	cfg := &Config{Server: ServerConfig{Host: "testhost", Port: 9090}}
 	err := s.bootstrap(t.Context(), db, cfg)
@@ -102,7 +102,7 @@ func TestServerBootstrapCallsSeed(t *testing.T) {
 	app := &trackingApp{name: "seedable"}
 
 	s := NewServer(app)
-	db := testDB(t)
+	db := TestDB(t)
 
 	err := s.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
@@ -115,7 +115,7 @@ func TestServerBootstrapSeedError(t *testing.T) {
 	app := &failingApp{name: "bad-seed", failOn: "seed", err: seedErr}
 
 	s := NewServer(app)
-	db := testDB(t)
+	db := TestDB(t)
 
 	err := s.bootstrap(t.Context(), db, nil)
 	require.ErrorIs(t, err, seedErr)

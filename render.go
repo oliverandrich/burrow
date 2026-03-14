@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"strings"
+
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 // Render executes a named template and writes the result.
@@ -44,6 +47,28 @@ func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string,
 		return fmt.Errorf("burrow: execute layout template %q: %w", layoutTmpl, err)
 	}
 	return HTML(w, statusCode, string(html))
+}
+
+// RenderError writes an error response.
+// For JSON API requests (Accept: application/json) it returns a JSON object.
+// Otherwise it renders the "error/{code}" template through the standard
+// [Render] pipeline (with layout wrapping, HTMX support, etc.).
+func RenderError(w http.ResponseWriter, r *http.Request, code int, message string) {
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		_ = JSON(w, code, map[string]any{"error": message, "code": code})
+		return
+	}
+
+	messageKey := fmt.Sprintf("error-%d", code)
+	localizedMessage := i18n.T(r.Context(), messageKey)
+	if localizedMessage == messageKey {
+		localizedMessage = message
+	}
+
+	_ = Render(w, r, code, fmt.Sprintf("error/%d", code), map[string]any{
+		"Code":    code,
+		"Message": localizedMessage,
+	})
 }
 
 // Deprecated: Use [Render] instead.

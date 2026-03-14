@@ -2,7 +2,6 @@ package burrow
 
 import (
 	"bytes"
-	"database/sql"
 	"io/fs"
 	"log/slog"
 	"testing"
@@ -10,22 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
-func testDB(t *testing.T) *bun.DB {
-	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	t.Cleanup(func() { sqldb.Close() })
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	return db
-}
-
 func TestRunAppMigrationsCreatesTrackingTable(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	migrations := fstest.MapFS{
 		"001_create_items.up.sql": &fstest.MapFile{
 			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY);"),
@@ -44,7 +31,7 @@ func TestRunAppMigrationsCreatesTrackingTable(t *testing.T) {
 }
 
 func TestRunAppMigrationsExecutesSQL(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	migrations := fstest.MapFS{
 		"001_create_items.up.sql": &fstest.MapFile{
 			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);"),
@@ -60,7 +47,7 @@ func TestRunAppMigrationsExecutesSQL(t *testing.T) {
 }
 
 func TestRunAppMigrationsSkipsApplied(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	migrations := fstest.MapFS{
 		"001_create_items.up.sql": &fstest.MapFile{
 			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY);"),
@@ -75,7 +62,7 @@ func TestRunAppMigrationsSkipsApplied(t *testing.T) {
 }
 
 func TestRunAppMigrationsRunsInOrder(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	migrations := fstest.MapFS{
 		"001_create_items.up.sql": &fstest.MapFile{
 			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY);"),
@@ -101,7 +88,7 @@ func TestRunAppMigrationsRunsInOrder(t *testing.T) {
 }
 
 func TestRunAppMigrationsIgnoresDownFiles(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	migrations := fstest.MapFS{
 		"001_create_items.up.sql": &fstest.MapFile{
 			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY);"),
@@ -120,7 +107,7 @@ func TestRunAppMigrationsIgnoresDownFiles(t *testing.T) {
 }
 
 func TestRunAppMigrationsNamespacesPerApp(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	migrationsA := fstest.MapFS{
 		"001_create_items.up.sql": &fstest.MapFile{
 			Data: []byte("CREATE TABLE items_a (id INTEGER PRIMARY KEY);"),
@@ -150,7 +137,7 @@ func TestRunAppMigrationsNamespacesPerApp(t *testing.T) {
 }
 
 func TestRunAppMigrationsRollsBackOnFailure(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 
 	// First migration succeeds, second fails mid-way.
 	// The second migration creates a table then runs invalid SQL.
@@ -186,7 +173,7 @@ func TestRunAppMigrationsRollsBackOnFailure(t *testing.T) {
 }
 
 func TestRunAppMigrationsReturnsErrorOnBadSQL(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	migrations := fstest.MapFS{
 		"001_bad.up.sql": &fstest.MapFile{
 			Data: []byte("THIS IS NOT SQL;"),
@@ -200,7 +187,7 @@ func TestRunAppMigrationsReturnsErrorOnBadSQL(t *testing.T) {
 }
 
 func TestRunAppMigrationsEmptyFS(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	migrations := fstest.MapFS{}
 
 	err := RunAppMigrations(t.Context(), db, "empty", migrations)
@@ -208,7 +195,7 @@ func TestRunAppMigrationsEmptyFS(t *testing.T) {
 }
 
 func TestRegistryRunMigrations(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	reg := NewRegistry()
 
 	migFS := fstest.MapFS{
@@ -232,7 +219,7 @@ func TestRegistryRunMigrations(t *testing.T) {
 }
 
 func TestRunAppMigrationsLogsAppliedMigrations(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 
 	var buf bytes.Buffer
 	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
@@ -259,7 +246,7 @@ func TestRunAppMigrationsLogsAppliedMigrations(t *testing.T) {
 }
 
 func TestRunAppMigrationsDoesNotLogSkippedMigrations(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 
 	migrations := fstest.MapFS{
 		"001_create_items.up.sql": &fstest.MapFile{
@@ -306,7 +293,7 @@ func (a *depApp) MigrationFS() fs.FS          { return a.fs }
 func (a *depApp) Dependencies() []string      { return a.deps }
 
 func TestMigrationDependencyOrder(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	reg := NewRegistry()
 
 	// App "base" creates the base table.
@@ -352,7 +339,7 @@ func TestMigrationDependencyOrder(t *testing.T) {
 }
 
 func TestMigrationPartialFailureRecovery(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	reg := NewRegistry()
 
 	// App "good" has a valid migration.
@@ -408,7 +395,7 @@ func TestMigrationPartialFailureRecovery(t *testing.T) {
 }
 
 func TestMigrationIdempotency(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	reg := NewRegistry()
 
 	migFS := fstest.MapFS{
@@ -441,7 +428,7 @@ func TestMigrationIdempotency(t *testing.T) {
 }
 
 func TestMigrationIdempotencyAfterPartialFailure(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 
 	// First run: migration 001 succeeds, 002 fails.
 	migrations := fstest.MapFS{

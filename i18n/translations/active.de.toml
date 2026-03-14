@@ -1,3 +1,8 @@
+error-403 = "Sie haben keine Berechtigung, auf diese Seite zuzugreifen."
+error-404 = "Die angeforderte Seite wurde nicht gefunden."
+error-405 = "Die Anfragemethode wird für diese Seite nicht unterstützt."
+error-500 = "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut."
+
 validation-required = "{{.Field}} ist erforderlich"
 validation-email = "{{.Field}} muss eine gültige E-Mail-Adresse sein"
 validation-min = "{{.Field}} muss mindestens {{.Param}} sein"

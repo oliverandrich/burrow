@@ -157,7 +157,7 @@ func TestPageRequest_Offset(t *testing.T) {
 }
 
 func TestApplyOffset_Integration(t *testing.T) {
-	db := testDB(t)
+	db := TestDB(t)
 	ctx := t.Context()
 
 	_, err := db.ExecContext(ctx, `CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)`)

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/stretchr/testify/assert"
 )
@@ -116,6 +117,7 @@ func TestRequireAdmin(t *testing.T) {
 			r.Use(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					ctx := WithUser(r.Context(), &User{ID: 1, Role: tt.role})
+					ctx = burrow.TestErrorExecContext(ctx)
 					next.ServeHTTP(w, r.WithContext(ctx))
 				})
 			})
@@ -131,6 +133,21 @@ func TestRequireAdmin(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, rec.Code)
 		})
 	}
+}
+
+func TestRequireAdminRedirectsUnauthenticated(t *testing.T) {
+	r := chi.NewRouter()
+	r.Use(RequireAdmin())
+	r.Get("/admin", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/auth/login", rec.Header().Get("Location"))
 }
 
 func TestSafeRedirectPath(t *testing.T) {

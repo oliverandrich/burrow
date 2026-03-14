@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
@@ -40,7 +42,7 @@ func TestHandleHTTPError(t *testing.T) {
 		return NewHTTPError(http.StatusForbidden, "forbidden")
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -53,7 +55,7 @@ func TestHandleGenericError(t *testing.T) {
 		return errors.New("something broke")
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -145,7 +147,7 @@ func TestHandle5xxErrorIsLogged(t *testing.T) {
 		return NewHTTPError(http.StatusInternalServerError, "db down")
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test-path", nil)
+	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodGet, "/test-path", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -165,7 +167,7 @@ func TestHandle4xxErrorNotLogged(t *testing.T) {
 		return NewHTTPError(http.StatusNotFound, "not found")
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/missing", nil)
+	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodGet, "/missing", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -218,6 +220,111 @@ func TestBindMultipartForm(t *testing.T) {
 	assert.Equal(t, "alice@example.com", p.Email)
 }
 
+func TestRenderError_JSONForAPIRequest(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/missing", nil)
+	req.Header.Set("Accept", "application/json")
+	rec := httptest.NewRecorder()
+
+	RenderError(rec, req, http.StatusNotFound, "page not found")
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, "page not found", body["error"])
+	assert.InDelta(t, float64(http.StatusNotFound), body["code"], 0)
+}
+
+func TestRenderError_WithTemplate(t *testing.T) {
+	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		if name == "error/404" {
+			return template.HTML(fmt.Sprintf("<h1>%d - %s</h1>", data["Code"], data["Message"])), nil
+		}
+		return "", fmt.Errorf("template %q not found", name)
+	}
+
+	ctx := WithTemplateExecutor(t.Context(), exec)
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/missing", nil)
+	rec := httptest.NewRecorder()
+
+	RenderError(rec, req, http.StatusNotFound, "page not found")
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+	assert.Contains(t, rec.Body.String(), "<h1>404 - page not found</h1>")
+}
+
+func TestRenderError_TemplateWithLayout(t *testing.T) {
+	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		switch name {
+		case "error/500":
+			return template.HTML(fmt.Sprintf("<p>%s</p>", data["Message"])), nil
+		case "myapp/layout":
+			return template.HTML(fmt.Sprintf("<html>%s</html>", data["Content"])), nil
+		default:
+			return "", fmt.Errorf("template %q not found", name)
+		}
+	}
+
+	ctx := WithTemplateExecutor(t.Context(), exec)
+	ctx = WithLayout(ctx, "myapp/layout")
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/broken", nil)
+	rec := httptest.NewRecorder()
+
+	RenderError(rec, req, http.StatusInternalServerError, "server error")
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "<html>")
+	assert.Contains(t, rec.Body.String(), "<p>server error</p>")
+}
+
+func TestRenderError_HTMXRequestGetsFragmentOnly(t *testing.T) {
+	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		switch name {
+		case "error/404":
+			return template.HTML(fmt.Sprintf("<p>%s</p>", data["Message"])), nil
+		case "myapp/layout":
+			return template.HTML(fmt.Sprintf("<html>%s</html>", data["Content"])), nil
+		default:
+			return "", fmt.Errorf("template %q not found", name)
+		}
+	}
+
+	ctx := WithTemplateExecutor(t.Context(), exec)
+	ctx = WithLayout(ctx, "myapp/layout")
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/missing", nil)
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+
+	RenderError(rec, req, http.StatusNotFound, "not found")
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "<p>not found</p>")
+	assert.NotContains(t, rec.Body.String(), "<html>")
+}
+
+func TestHandle_UsesRenderError(t *testing.T) {
+	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+		if name == "error/403" {
+			return template.HTML(fmt.Sprintf("<h1>%d</h1>", data["Code"])), nil
+		}
+		return "", fmt.Errorf("not found")
+	}
+
+	handler := Handle(func(_ http.ResponseWriter, _ *http.Request) error {
+		return NewHTTPError(http.StatusForbidden, "forbidden")
+	})
+
+	ctx := WithTemplateExecutor(t.Context(), exec)
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "<h1>403</h1>")
+}
+
 func TestBindWithValidationFailure(t *testing.T) {
 	type payload struct {
 		Email string `form:"email" validate:"required,email"`
@@ -263,7 +370,7 @@ func TestHandleValidationErrorIsUnhandled(t *testing.T) {
 		}
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
+	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -305,7 +412,7 @@ func TestHandleUnhandledErrorIsLogged(t *testing.T) {
 		return errors.New("unexpected failure")
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/submit", nil)
+	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodPost, "/submit", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 

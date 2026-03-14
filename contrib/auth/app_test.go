@@ -17,6 +17,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
@@ -731,18 +732,11 @@ func newTestApp(t *testing.T) (*App, *Repository) {
 	return app, app.repo
 }
 
-// stubTemplateExecutor returns a TemplateExecutor that renders template name as plain text.
-func stubTemplateExecutor() burrow.TemplateExecutor {
-	return func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
-		return template.HTML("<div>" + name + "</div>"), nil //nolint:gosec // test stub
-	}
-}
-
 func adminUserRouter(app *App) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rctx := burrow.WithTemplateExecutor(r.Context(), stubTemplateExecutor())
+			rctx := burrow.TestErrorExecContext(r.Context())
 			next.ServeHTTP(w, r.WithContext(rctx))
 		})
 	})
@@ -900,6 +894,12 @@ func TestAdminCreateInviteNoAuth(t *testing.T) {
 	app, _ := newTestApp(t)
 
 	router := chi.NewRouter()
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.TestErrorExecContext(r.Context())
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 	router.Post("/admin/invites", burrow.Handle(app.handleCreateInvite))
 
 	body := strings.NewReader(`email=test@example.com`)
@@ -916,6 +916,12 @@ func TestRevokeInviteInvalidID(t *testing.T) {
 	_, repo := newTestApp(t)
 
 	router := chi.NewRouter()
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.TestErrorExecContext(r.Context())
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 	router.Delete("/admin/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(repo)))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/invalid/revoke", nil)
@@ -1130,6 +1136,7 @@ func userActionRouter(handler burrow.HandlerFunc, user *User) *chi.Mux {
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			rctx := WithUser(r.Context(), user)
+			rctx = burrow.TestErrorExecContext(rctx)
 			next.ServeHTTP(w, r.WithContext(rctx))
 		})
 	})

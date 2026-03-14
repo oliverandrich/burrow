@@ -2,6 +2,7 @@ package burrow
 
 import (
 	"context"
+	"encoding/json"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -108,6 +109,13 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	srv.registry.RegisterMiddleware(r)
 	srv.registry.RegisterRoutes(r)
 
+	r.NotFound(Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return NewHTTPError(http.StatusNotFound, "page not found")
+	}))
+	r.MethodNotAllowed(Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return NewHTTPError(http.StatusMethodNotAllowed, "method not allowed")
+	}))
+
 	return r
 }
 
@@ -183,7 +191,7 @@ func TestIntegration_HTMXRequestReturnsFragmentOnly(t *testing.T) {
 	assert.NotContains(t, body, "<main>")
 }
 
-func TestIntegration_404ErrorHandling(t *testing.T) {
+func TestIntegration_404ErrorPage(t *testing.T) {
 	router := buildIntegrationRouter(t)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/nonexistent", nil)
@@ -191,4 +199,35 @@ func TestIntegration_404ErrorHandling(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+	assert.Contains(t, rec.Body.String(), "404")
+	assert.Contains(t, rec.Body.String(), "The page you are looking for does not exist.")
+}
+
+func TestIntegration_404JSONForAPI(t *testing.T) {
+	router := buildIntegrationRouter(t)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/nonexistent", nil)
+	req.Header.Set("Accept", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, "page not found", body["error"])
+}
+
+func TestIntegration_405ErrorPage(t *testing.T) {
+	router := buildIntegrationRouter(t)
+
+	// GET / is defined, but DELETE / is not.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	assert.Contains(t, rec.Body.String(), "405")
 }

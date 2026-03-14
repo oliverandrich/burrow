@@ -97,6 +97,12 @@ func setupHandlerTest(t *testing.T) (*bun.DB, *mockRenderer, *ModelAdmin[testIte
 
 func newRouter(ma *ModelAdmin[testItem]) chi.Router {
 	r := chi.NewRouter()
+	// Inject a minimal TemplateExecutor so burrow.RenderError can render error responses.
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(burrow.TestErrorExecContext(r.Context())))
+		})
+	})
 	ma.Routes(r)
 	return r
 }
