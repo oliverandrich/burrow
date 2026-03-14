@@ -4,7 +4,7 @@ default:
 
 # Run all tests
 test *args:
-    go test -json {{args}} ./... | tparse
+    go test -race -json {{args}} ./... | tparse
 
 # Run linter
 lint:
