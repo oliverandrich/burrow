@@ -163,20 +163,6 @@ func ExampleOffsetResult() {
 	// has_more: true
 }
 
-func ExampleCursorResult() {
-	items := []string{"a", "b", "c", "d", "e", "extra"}
-	items, hasMore := burrow.TrimCursorResults(items, 5)
-	result := burrow.CursorResult(items[len(items)-1], hasMore)
-
-	fmt.Println("items:", len(items))
-	fmt.Println("has_more:", result.HasMore)
-	fmt.Println("next_cursor:", result.NextCursor)
-	// Output:
-	// items: 5
-	// has_more: true
-	// next_cursor: e
-}
-
 func ExamplePageResponse() {
 	resp := burrow.PageResponse[string]{
 		Items:      []string{"alice", "bob"},

@@ -3,7 +3,6 @@ package notes
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/oliverandrich/burrow"
@@ -40,27 +39,30 @@ func (r *Repository) ListByUserID(ctx context.Context, userID int64) ([]Note, er
 	return notes, nil
 }
 
-// ListByUserIDPaged returns paginated notes for a user using cursor-based pagination.
+// ListByUserIDPaged returns paginated notes for a user using offset-based pagination.
 // Notes are ordered by ID descending (newest first).
 func (r *Repository) ListByUserIDPaged(ctx context.Context, userID int64, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
+	baseQ := r.db.NewSelect().Model((*Note)(nil)).Where("user_id = ?", userID)
+
+	count, err := baseQ.Count(ctx)
+	if err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("count notes for user %d: %w", userID, err)
+	}
+
 	var notes []Note
-	q := r.db.NewSelect().Model(&notes).Where("user_id = ?", userID)
-	q = burrow.ApplyCursor(q, pr, "id")
+	q := r.db.NewSelect().Model(&notes).
+		Where("user_id = ?", userID).
+		Order("id DESC")
+	q = burrow.ApplyOffset(q, pr)
 	if err := q.Scan(ctx); err != nil {
 		return nil, burrow.PageResult{}, fmt.Errorf("list notes for user %d: %w", userID, err)
 	}
 
-	notes, hasMore := burrow.TrimCursorResults(notes, pr.Limit)
-	var lastID string
-	if len(notes) > 0 {
-		lastID = strconv.FormatInt(notes[len(notes)-1].ID, 10)
-	}
-
-	return notes, burrow.CursorResult(lastID, hasMore), nil
+	return notes, burrow.OffsetResult(pr, count), nil
 }
 
 // SearchByUserID performs a full-text search across notes for a user using FTS5.
-// Results are ordered by ID descending (newest first) with cursor-based pagination.
+// Results are ordered by ID descending (newest first) with offset-based pagination.
 // Returns empty results for empty queries or FTS5 syntax errors.
 func (r *Repository) SearchByUserID(ctx context.Context, userID int64, query string, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
 	query = strings.TrimSpace(query)
@@ -69,28 +71,32 @@ func (r *Repository) SearchByUserID(ctx context.Context, userID int64, query str
 	}
 
 	// Validate FTS5 syntax with a probe query.
-	var count int
-	if err := r.db.NewRaw("SELECT COUNT(*) FROM notes_fts WHERE notes_fts MATCH ?", query).Scan(ctx, &count); err != nil {
+	var probeCount int
+	if err := r.db.NewRaw("SELECT COUNT(*) FROM notes_fts WHERE notes_fts MATCH ?", query).Scan(ctx, &probeCount); err != nil {
 		// FTS5 syntax error — return empty results.
 		return nil, burrow.PageResult{}, nil //nolint:nilerr // intentional: treat FTS5 syntax errors as empty results
+	}
+
+	matchCond := r.db.NewSelect().Model((*Note)(nil)).
+		Where("user_id = ?", userID).
+		Where("id IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?)", query)
+
+	count, err := matchCond.Count(ctx)
+	if err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("count search notes for user %d: %w", userID, err)
 	}
 
 	var notes []Note
 	q := r.db.NewSelect().Model(&notes).
 		Where("user_id = ?", userID).
-		Where("id IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?)", query)
-	q = burrow.ApplyCursor(q, pr, "id")
+		Where("id IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?)", query).
+		Order("id DESC")
+	q = burrow.ApplyOffset(q, pr)
 	if err := q.Scan(ctx); err != nil {
 		return nil, burrow.PageResult{}, fmt.Errorf("search notes for user %d: %w", userID, err)
 	}
 
-	notes, hasMore := burrow.TrimCursorResults(notes, pr.Limit)
-	var lastID string
-	if len(notes) > 0 {
-		lastID = strconv.FormatInt(notes[len(notes)-1].ID, 10)
-	}
-
-	return notes, burrow.CursorResult(lastID, hasMore), nil
+	return notes, burrow.OffsetResult(pr, count), nil
 }
 
 // GetByID returns a single note by ID, scoped to the given user.

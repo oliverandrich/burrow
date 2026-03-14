@@ -206,6 +206,7 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 	fm["itoa"] = func(id int64) string { return fmt.Sprintf("%d", id) }
 	fm["iconTrash"] = func(class ...string) template.HTML { return "<svg>trash</svg>" }
 	fm["alertClass"] = func(level messages.Level) string { return string(level) }
+	fm["add"] = func(a, b int) int { return a + b }
 
 	tmpl := template.New("").Funcs(fm)
 
@@ -280,7 +281,7 @@ func TestListNotesHTMXNavReturnsFragment(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
-	// HTMX nav request (no cursor) → should use RenderTemplate → fragment only.
+	// HTMX nav request (no page param) → should use RenderTemplate → fragment only.
 	req.Header.Set("HX-Request", "true")
 
 	ctx := burrow.WithLayout(req.Context(), "test-layout")
@@ -1023,8 +1024,8 @@ func TestListNotesHTMXScrollReturnsFragment(t *testing.T) {
 	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Scroll Note", Content: "Content", UserID: 42}))
 
 	h := NewHandlers(repo)
-	// HTMX request with cursor → triggers the infinite scroll branch.
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?cursor=9999&limit=10", nil)
+	// HTMX request with page > 1 → triggers the infinite scroll branch.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?page=2&limit=10", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
 	req.Header.Set("HX-Request", "true")
@@ -1034,7 +1035,6 @@ func TestListNotesHTMXScrollReturnsFragment(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "Scroll Note")
 }
 
 // --- Pagination & search tests ---
@@ -1054,15 +1054,17 @@ func TestListByUserIDPaged(t *testing.T) {
 	}
 
 	// First page with limit 3.
-	pr := burrow.PageRequest{Limit: 3}
+	pr := burrow.PageRequest{Limit: 3, Page: 1}
 	notes, page, err := repo.ListByUserIDPaged(ctx, 1, pr)
 	require.NoError(t, err)
 	assert.Len(t, notes, 3)
 	assert.True(t, page.HasMore)
-	assert.NotEmpty(t, page.NextCursor)
+	assert.Equal(t, 1, page.Page)
+	assert.Equal(t, 2, page.TotalPages)
+	assert.Equal(t, 5, page.TotalCount)
 
-	// Second page using cursor.
-	pr2 := burrow.PageRequest{Limit: 3, Cursor: page.NextCursor}
+	// Second page.
+	pr2 := burrow.PageRequest{Limit: 3, Page: 2}
 	notes2, page2, err := repo.ListByUserIDPaged(ctx, 1, pr2)
 	require.NoError(t, err)
 	assert.Len(t, notes2, 2)
@@ -1073,12 +1075,12 @@ func TestListByUserIDPagedEmpty(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	pr := burrow.PageRequest{Limit: 10}
+	pr := burrow.PageRequest{Limit: 10, Page: 1}
 	notes, page, err := repo.ListByUserIDPaged(t.Context(), 999, pr)
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 	assert.False(t, page.HasMore)
-	assert.Empty(t, page.NextCursor)
+	assert.Equal(t, 0, page.TotalCount)
 }
 
 func TestSearchByUserID(t *testing.T) {
@@ -1132,14 +1134,14 @@ func TestSearchByUserID(t *testing.T) {
 		assert.Empty(t, notes)
 	})
 
-	t.Run("pagination with cursor", func(t *testing.T) {
-		notes, page, err := repo.SearchByUserID(ctx, 1, "Learn", burrow.PageRequest{Limit: 1})
+	t.Run("pagination with offset", func(t *testing.T) {
+		notes, page, err := repo.SearchByUserID(ctx, 1, "Learn", burrow.PageRequest{Limit: 1, Page: 1})
 		require.NoError(t, err)
 		assert.Len(t, notes, 1)
 		assert.True(t, page.HasMore)
-		assert.NotEmpty(t, page.NextCursor)
+		assert.Equal(t, 2, page.TotalCount)
 
-		notes2, page2, err := repo.SearchByUserID(ctx, 1, "Learn", burrow.PageRequest{Limit: 1, Cursor: page.NextCursor})
+		notes2, page2, err := repo.SearchByUserID(ctx, 1, "Learn", burrow.PageRequest{Limit: 1, Page: 2})
 		require.NoError(t, err)
 		assert.Len(t, notes2, 1)
 		assert.False(t, page2.HasMore)

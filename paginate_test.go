@@ -14,7 +14,6 @@ func TestParsePageRequest_Defaults(t *testing.T) {
 	pr := ParsePageRequest(r)
 
 	assert.Equal(t, 20, pr.Limit)
-	assert.Empty(t, pr.Cursor)
 	assert.Equal(t, 0, pr.Page)
 }
 
@@ -47,30 +46,12 @@ func TestParsePageRequest_LimitClamping(t *testing.T) {
 	}
 }
 
-func TestParsePageRequest_Cursor(t *testing.T) {
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?cursor=abc123&limit=10", nil)
-	pr := ParsePageRequest(r)
-
-	assert.Equal(t, "abc123", pr.Cursor)
-	assert.Equal(t, 10, pr.Limit)
-	assert.Equal(t, 0, pr.Page, "page should be 0 when cursor is set")
-}
-
 func TestParsePageRequest_Page(t *testing.T) {
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?page=3&limit=25", nil)
 	pr := ParsePageRequest(r)
 
 	assert.Equal(t, 3, pr.Page)
 	assert.Equal(t, 25, pr.Limit)
-	assert.Empty(t, pr.Cursor)
-}
-
-func TestParsePageRequest_CursorTakesPrecedence(t *testing.T) {
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items?cursor=xyz&page=5", nil)
-	pr := ParsePageRequest(r)
-
-	assert.Equal(t, "xyz", pr.Cursor)
-	assert.Equal(t, 0, pr.Page, "page should be ignored when cursor is present")
 }
 
 func TestParsePageRequest_InvalidPage(t *testing.T) {
@@ -150,33 +131,8 @@ func TestOffsetResult(t *testing.T) {
 			assert.Equal(t, tt.wantTotal, result.TotalCount)
 			assert.Equal(t, tt.wantPages, result.TotalPages)
 			assert.Equal(t, tt.wantMore, result.HasMore)
-			assert.Empty(t, result.NextCursor)
-			assert.Empty(t, result.PrevCursor)
 		})
 	}
-}
-
-func TestCursorResult(t *testing.T) {
-	t.Run("has more items", func(t *testing.T) {
-		result := CursorResult("42", true)
-
-		assert.Equal(t, "42", result.NextCursor)
-		assert.True(t, result.HasMore)
-	})
-
-	t.Run("no more items", func(t *testing.T) {
-		result := CursorResult("99", false)
-
-		assert.Empty(t, result.NextCursor)
-		assert.False(t, result.HasMore)
-	})
-
-	t.Run("empty cursor", func(t *testing.T) {
-		result := CursorResult("", false)
-
-		assert.Empty(t, result.NextCursor)
-		assert.False(t, result.HasMore)
-	})
 }
 
 func TestPageRequest_Offset(t *testing.T) {
@@ -198,65 +154,6 @@ func TestPageRequest_Offset(t *testing.T) {
 			assert.Equal(t, tt.expect, pr.Offset())
 		})
 	}
-}
-
-func TestApplyCursor_Integration(t *testing.T) {
-	db := testDB(t)
-	ctx := t.Context()
-
-	// Create test table and insert data.
-	_, err := db.ExecContext(ctx, `CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)`)
-	require.NoError(t, err)
-
-	for i := 1; i <= 10; i++ {
-		_, err := db.ExecContext(ctx, `INSERT INTO items (id, name) VALUES (?, ?)`, i, "item")
-		require.NoError(t, err)
-	}
-
-	type Item struct { //nolint:govet // test struct
-		ID   int64 `bun:",pk"`
-		Name string
-	}
-
-	t.Run("first page", func(t *testing.T) {
-		pr := PageRequest{Limit: 3}
-		var items []Item
-		q := db.NewSelect().Model(&items)
-		q = ApplyCursor(q, pr, "id")
-		err := q.Scan(ctx)
-		require.NoError(t, err)
-
-		// Should get limit+1 items (4), caller trims to 3 and detects hasMore.
-		assert.Len(t, items, 4)
-		assert.Equal(t, int64(10), items[0].ID)
-		assert.Equal(t, int64(7), items[3].ID)
-	})
-
-	t.Run("with cursor", func(t *testing.T) {
-		pr := PageRequest{Limit: 3, Cursor: "7"}
-		var items []Item
-		q := db.NewSelect().Model(&items)
-		q = ApplyCursor(q, pr, "id")
-		err := q.Scan(ctx)
-		require.NoError(t, err)
-
-		// Items with id < 7: 6, 5, 4, 3 (limit+1=4).
-		assert.Len(t, items, 4)
-		assert.Equal(t, int64(6), items[0].ID)
-	})
-
-	t.Run("last page with fewer items", func(t *testing.T) {
-		pr := PageRequest{Limit: 3, Cursor: "3"}
-		var items []Item
-		q := db.NewSelect().Model(&items)
-		q = ApplyCursor(q, pr, "id")
-		err := q.Scan(ctx)
-		require.NoError(t, err)
-
-		// Items with id < 3: 2, 1 — fewer than limit+1, so no more.
-		assert.Len(t, items, 2)
-		assert.Equal(t, int64(2), items[0].ID)
-	})
 }
 
 func TestApplyOffset_Integration(t *testing.T) {
@@ -312,39 +209,5 @@ func TestApplyOffset_Integration(t *testing.T) {
 
 		assert.Len(t, items, 1)
 		assert.Equal(t, int64(10), items[0].ID)
-	})
-}
-
-func TestTrimCursorResults(t *testing.T) {
-	t.Run("more items than limit", func(t *testing.T) {
-		items := []int{1, 2, 3, 4}
-		trimmed, hasMore := TrimCursorResults(items, 3)
-
-		assert.Equal(t, []int{1, 2, 3}, trimmed)
-		assert.True(t, hasMore)
-	})
-
-	t.Run("exactly limit items", func(t *testing.T) {
-		items := []int{1, 2, 3}
-		trimmed, hasMore := TrimCursorResults(items, 3)
-
-		assert.Equal(t, []int{1, 2, 3}, trimmed)
-		assert.False(t, hasMore)
-	})
-
-	t.Run("fewer items than limit", func(t *testing.T) {
-		items := []int{1, 2}
-		trimmed, hasMore := TrimCursorResults(items, 3)
-
-		assert.Equal(t, []int{1, 2}, trimmed)
-		assert.False(t, hasMore)
-	})
-
-	t.Run("empty slice", func(t *testing.T) {
-		items := []int{}
-		trimmed, hasMore := TrimCursorResults(items, 3)
-
-		assert.Empty(t, trimmed)
-		assert.False(t, hasMore)
 	})
 }

@@ -13,10 +13,9 @@ const (
 )
 
 // PageRequest holds pagination parameters parsed from a query string.
-type PageRequest struct { //nolint:govet // fieldalignment: readability over optimization
-	Limit  int    // items per page (default 20, max 100)
-	Cursor string // opaque cursor for cursor-based pagination (empty = first page)
-	Page   int    // 1-based page number for offset-based pagination (0 = not used)
+type PageRequest struct {
+	Limit int // items per page (default 20, max 100)
+	Page  int // 1-based page number for offset-based pagination (0 = not used)
 }
 
 // Offset returns the SQL OFFSET for the current page.
@@ -30,22 +29,18 @@ func (pr PageRequest) Offset() int {
 
 // PageResult holds pagination metadata returned alongside items.
 type PageResult struct {
-	NextCursor string `json:"next_cursor,omitempty"` // cursor for next page (empty = no more)
-	PrevCursor string `json:"prev_cursor,omitempty"` // cursor for previous page (empty = first page)
-	HasMore    bool   `json:"has_more"`              // convenience: NextCursor != ""
-	// Offset-based fields (only populated when using offset pagination):
-	Page       int `json:"page,omitempty"`        // current page number (1-based)
-	TotalPages int `json:"total_pages,omitempty"` // total number of pages
-	TotalCount int `json:"total_count,omitempty"` // total number of items
+	HasMore    bool `json:"has_more"`              // convenience: more pages exist
+	Page       int  `json:"page,omitempty"`        // current page number (1-based)
+	TotalPages int  `json:"total_pages,omitempty"` // total number of pages
+	TotalCount int  `json:"total_count,omitempty"` // total number of items
 }
 
 // PageResponse wraps items with pagination metadata for JSON APIs.
-// Use with [CursorResult] or [OffsetResult] to populate the Pagination field:
+// Use with [OffsetResult] to populate the Pagination field:
 //
-//	items, hasMore := burrow.TrimCursorResults(rows, pr.Limit)
 //	return burrow.PageResponse[Item]{
 //	    Items:      items,
-//	    Pagination: burrow.CursorResult(items[len(items)-1].ID, hasMore),
+//	    Pagination: burrow.OffsetResult(pr, totalCount),
 //	}
 type PageResponse[T any] struct {
 	Items      []T        `json:"items"`
@@ -53,60 +48,21 @@ type PageResponse[T any] struct {
 }
 
 // ParsePageRequest extracts pagination parameters from the request query string.
-// If both cursor and page are present, cursor takes precedence.
 func ParsePageRequest(r *http.Request) PageRequest {
 	q := r.URL.Query()
 
 	limit := min(max(parseIntOr(q.Get("limit"), defaultLimit), 1), maxLimit)
-
-	cursor := q.Get("cursor")
-	var page int
-	if cursor == "" {
-		page = max(parseIntOr(q.Get("page"), 0), 0)
-	}
+	page := max(parseIntOr(q.Get("page"), 0), 0)
 
 	return PageRequest{
-		Limit:  limit,
-		Cursor: cursor,
-		Page:   page,
+		Limit: limit,
+		Page:  page,
 	}
-}
-
-// ApplyCursor applies cursor-based pagination to a Bun SelectQuery.
-// It orders by orderColumn DESC and fetches limit+1 rows to detect whether
-// more items exist. Use TrimCursorResults to trim the extra item.
-func ApplyCursor(q *bun.SelectQuery, pr PageRequest, orderColumn string) *bun.SelectQuery {
-	if pr.Cursor != "" {
-		q = q.Where("? < ?", bun.Ident(orderColumn), pr.Cursor)
-	}
-	return q.OrderExpr("? DESC", bun.Ident(orderColumn)).Limit(pr.Limit + 1)
 }
 
 // ApplyOffset applies offset-based pagination to a Bun SelectQuery.
 func ApplyOffset(q *bun.SelectQuery, pr PageRequest) *bun.SelectQuery {
 	return q.Limit(pr.Limit).Offset(pr.Offset())
-}
-
-// TrimCursorResults trims a result slice that was fetched with limit+1.
-// It returns the trimmed slice and whether more items exist beyond the limit.
-func TrimCursorResults[T any](items []T, limit int) ([]T, bool) {
-	if len(items) > limit {
-		return items[:limit], true
-	}
-	return items, false
-}
-
-// CursorResult builds a PageResult for cursor-based pagination.
-// lastCursor is the cursor value of the last item in the current page.
-// hasMore indicates whether there are more items after this page.
-func CursorResult(lastCursor string, hasMore bool) PageResult {
-	if !hasMore {
-		return PageResult{HasMore: false}
-	}
-	return PageResult{
-		NextCursor: lastCursor,
-		HasMore:    true,
-	}
 }
 
 // OffsetResult builds a PageResult for offset-based pagination.

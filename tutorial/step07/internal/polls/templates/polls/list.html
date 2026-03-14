@@ -8,7 +8,7 @@
         {{ end -}}
     </div>
     {{ if .Page.HasMore -}}
-    <div hx-get="/polls?cursor={{ .Page.NextCursor }}&limit=20"
+    <div hx-get="/polls?page={{ add .Page.Page 1 }}&limit=20"
          hx-trigger="revealed"
          hx-target="#polls-list"
          hx-swap="beforeend"

@@ -1,5 +1,5 @@
 // Package polls implements a polls application for the burrow tutorial.
-// Step 7 adds HTMX-powered voting and cursor-based pagination.
+// Step 7 adds HTMX-powered voting and offset-based pagination.
 package polls
 
 import (
@@ -55,19 +55,19 @@ func NewRepository(db *bun.DB) *Repository {
 }
 
 func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageRequest) ([]Question, burrow.PageResult, error) {
+	count, err := r.db.NewSelect().Model((*Question)(nil)).Count(ctx)
+	if err != nil {
+		return nil, burrow.PageResult{}, err
+	}
+
 	var questions []Question
-	q := r.db.NewSelect().Model(&questions)
-	q = burrow.ApplyCursor(q, pr, "id")
+	q := r.db.NewSelect().Model(&questions).Order("id DESC")
+	q = burrow.ApplyOffset(q, pr)
 	if err := q.Scan(ctx); err != nil {
 		return nil, burrow.PageResult{}, err
 	}
 
-	questions, hasMore := burrow.TrimCursorResults(questions, pr.Limit)
-	var lastCursor string
-	if len(questions) > 0 {
-		lastCursor = strconv.FormatInt(questions[len(questions)-1].ID, 10)
-	}
-	return questions, burrow.CursorResult(lastCursor, hasMore), nil
+	return questions, burrow.OffsetResult(pr, count), nil
 }
 
 func (r *Repository) GetQuestion(ctx context.Context, id int64) (*Question, error) {
@@ -114,7 +114,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// For HTMX infinite scroll requests, return only the items fragment.
-	if htmx.Request(r).IsHTMX() && pr.Cursor != "" {
+	if htmx.Request(r).IsHTMX() && pr.Page > 1 {
 		return burrow.RenderTemplate(w, r, http.StatusOK, "polls/list_page", data)
 	}
 

@@ -1,6 +1,6 @@
 # Pagination
 
-Burrow provides pagination utilities for both cursor-based (infinite scroll) and offset-based (numbered pages) patterns. All types and functions are in the root `burrow` package.
+Burrow provides offset-based pagination utilities for numbered pages. All types and functions are in the root `burrow` package.
 
 ## Types
 
@@ -10,13 +10,12 @@ Parsed from query parameters via `ParsePageRequest(r)`:
 
 ```go
 type PageRequest struct {
-    Limit  int    // items per page (default 20, max 100)
-    Cursor string // opaque cursor for cursor-based pagination
-    Page   int    // 1-based page number for offset-based pagination
+    Limit int // items per page (default 20, max 100)
+    Page  int // 1-based page number for offset-based pagination
 }
 ```
 
-Query parameters: `?limit=20&cursor=abc` or `?limit=20&page=2`. When both `cursor` and `page` are present, cursor takes precedence.
+Query parameters: `?limit=20&page=2`.
 
 ### PageResult
 
@@ -24,67 +23,16 @@ Returned alongside query results:
 
 ```go
 type PageResult struct {
-    NextCursor string // cursor for next page (empty = no more)
-    PrevCursor string // cursor for previous page
-    HasMore    bool   // convenience: more pages exist
-    Page       int    // current page number (offset-based only)
-    TotalPages int    // total number of pages (offset-based only)
-    TotalCount int    // total number of items (offset-based only)
-}
-```
-
-## Cursor-Based Pagination
-
-Best for infinite scroll, feeds, and real-time data where items may be inserted or deleted between requests.
-
-### Query Helper
-
-`ApplyCursor` adds `WHERE`, `ORDER BY`, and `LIMIT` to a Bun query:
-
-```go
-func ApplyCursor(q *bun.SelectQuery, pr PageRequest, orderColumn string) *bun.SelectQuery
-```
-
-It fetches `limit + 1` rows to detect whether more items exist.
-
-### Building Results
-
-```go
-// Trim the extra row and detect if there are more items.
-items, hasMore := burrow.TrimCursorResults(notes, pr.Limit)
-
-// Build the PageResult with the last item's cursor value.
-var lastCursor string
-if len(items) > 0 {
-    lastCursor = strconv.FormatInt(items[len(items)-1].ID, 10)
-}
-pageResult := burrow.CursorResult(lastCursor, hasMore)
-```
-
-### Full Example
-
-```go
-func (r *Repository) ListPaged(ctx context.Context, userID int64, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
-    var notes []Note
-    q := r.db.NewSelect().Model(&notes).Where("user_id = ?", userID)
-    q = burrow.ApplyCursor(q, pr, "id")
-    if err := q.Scan(ctx); err != nil {
-        return nil, burrow.PageResult{}, err
-    }
-
-    notes, hasMore := burrow.TrimCursorResults(notes, pr.Limit)
-    var lastID string
-    if len(notes) > 0 {
-        lastID = strconv.FormatInt(notes[len(notes)-1].ID, 10)
-    }
-
-    return notes, burrow.CursorResult(lastID, hasMore), nil
+    HasMore    bool // convenience: more pages exist
+    Page       int  // current page number (1-based)
+    TotalPages int  // total number of pages
+    TotalCount int  // total number of items
 }
 ```
 
 ## Offset-Based Pagination
 
-Best for admin panels and tables where users need to jump to specific pages.
+Best for admin panels, tables, and infinite scroll where users need to jump to specific pages or load the next page.
 
 ### Query Helper
 

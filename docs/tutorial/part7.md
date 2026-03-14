@@ -1,6 +1,6 @@
 # Part 7: HTMX, Charts & Pagination
 
-In this final part you'll add the `htmx` contrib app for SPA-like navigation, HTMX-powered voting, a Chart.js results visualisation, and cursor-based pagination with infinite scroll.
+In this final part you'll add the `htmx` contrib app for SPA-like navigation, HTMX-powered voting, a Chart.js results visualisation, and offset-based pagination with infinite scroll.
 
 **Source code:** [`tutorial/step07/`](https://github.com/oliverandrich/burrow/tree/main/tutorial/step07)
 
@@ -122,31 +122,30 @@ Key points:
 - **Go template loops** — the `{{ range }}` blocks generate the JavaScript arrays server-side
 - **`DOMContentLoaded`** — ensures the canvas element exists before Chart.js initialises
 
-## Cursor-Based Pagination
+## Offset-Based Pagination
 
 In `internal/polls/polls.go`, replace the simple `ListQuestions` with a paginated version using Burrow's pagination helpers:
 
 ```go
 func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageRequest) ([]Question, burrow.PageResult, error) {
+    count, err := r.db.NewSelect().Model((*Question)(nil)).Count(ctx)
+    if err != nil {
+        return nil, burrow.PageResult{}, err
+    }
+
     var questions []Question
-    q := r.db.NewSelect().Model(&questions)
-    q = burrow.ApplyCursor(q, pr, "id")
+    q := r.db.NewSelect().Model(&questions).Order("id DESC")
+    q = burrow.ApplyOffset(q, pr)
     if err := q.Scan(ctx); err != nil {
         return nil, burrow.PageResult{}, err
     }
 
-    questions, hasMore := burrow.TrimCursorResults(questions, pr.Limit)
-    var lastCursor string
-    if len(questions) > 0 {
-        lastCursor = strconv.FormatInt(questions[len(questions)-1].ID, 10)
-    }
-    return questions, burrow.CursorResult(lastCursor, hasMore), nil
+    return questions, burrow.OffsetResult(pr, count), nil
 }
 ```
 
-- **`burrow.ApplyCursor()`** — adds `WHERE`, `ORDER BY`, and `LIMIT` clauses
-- **`burrow.TrimCursorResults()`** — removes the extra row used to detect "has more"
-- **`burrow.CursorResult()`** — builds the `PageResult` with cursor and `HasMore` flag
+- **`burrow.ApplyOffset()`** — adds `LIMIT` and `OFFSET` clauses
+- **`burrow.OffsetResult()`** — builds the `PageResult` with page numbers and `HasMore` flag
 
 ## Infinite Scroll
 
@@ -167,7 +166,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
     }
 
     // For HTMX infinite scroll, return only the items fragment.
-    if htmx.Request(r).IsHTMX() && pr.Cursor != "" {
+    if htmx.Request(r).IsHTMX() && pr.Page > 1 {
         return burrow.RenderTemplate(w, r, http.StatusOK, "polls/list_page", data)
     }
 
@@ -195,7 +194,7 @@ Update `internal/polls/templates/polls/list.html` to add an `id` to the list gro
         {{ end -}}
     </div>
     {{ if .Page.HasMore -}}
-    <div hx-get="/polls?cursor={{ .Page.NextCursor }}&limit=20"
+    <div hx-get="/polls?page={{ add .Page.Page 1 }}&limit=20"
          hx-trigger="revealed"
          hx-target="#polls-list"
          hx-swap="beforeend">
@@ -265,7 +264,7 @@ The application now has:
 - **`htmx.Redirect()`** — client-side redirect via response header
 - **`hx-boost`** — automatic AJAX navigation with history management
 - **Chart.js** — CDN-loaded charting library with server-rendered data via Go templates
-- **Cursor-based pagination** — `ApplyCursor()`, `TrimCursorResults()`, `CursorResult()`
+- **Offset-based pagination** — `ApplyOffset()`, `OffsetResult()`
 - **Infinite scroll** — `hx-trigger="revealed"` loads more items when scrolled into view
 
 ## What's Next

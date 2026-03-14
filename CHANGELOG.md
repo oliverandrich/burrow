@@ -9,6 +9,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Forms: `Cleanable.Clean()` signature changed** — `Clean() error` is now `Clean(ctx context.Context) error`; existing implementations must add the `context.Context` parameter
 - **Auth: `isAdminEditSelf` and `isAdminEditLastAdmin` template functions removed** — the custom user admin detail page is replaced by generic ModelAdmin forms; `IsAdminEditSelf()`, `IsAdminEditLastAdmin()`, and `emailValue` are no longer available
 - **Auth: `User` model form tags changed** — `Email`, `Username`, `IsActive`, `Name`, `Bio`, and `Role` now have explicit `form` tags instead of `form:"-"`; code that relied on these fields being excluded from forms must use `WithExclude` or `WithReadOnly`
+- **Pagination: cursor-based pagination removed** — `ApplyCursor()`, `TrimCursorResults()`, `CursorResult()`, `PageRequest.Cursor`, `PageResult.NextCursor`, and `PageResult.PrevCursor` have been removed; use `ApplyOffset()` + `OffsetResult()` for all pagination
 
 ### Added
 

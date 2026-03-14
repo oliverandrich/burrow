@@ -30,7 +30,7 @@ func NewHandlers(repo *Repository) *Handlers {
 	return &Handlers{repo: repo}
 }
 
-// List renders the user's notes as an HTML page with cursor-based pagination.
+// List renders the user's notes as an HTML page with offset-based pagination.
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
@@ -63,7 +63,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	tmpl := "notes/list_page"
 	if htmx.Request(r).IsHTMX() {
 		switch {
-		case pr.Cursor != "":
+		case pr.Page > 1:
 			tmpl = "notes/notes_page"
 		case r.URL.Query().Has("q"):
 			tmpl = "notes/notes_list"
