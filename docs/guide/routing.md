@@ -26,8 +26,8 @@ flowchart TD
     O --> M
     J -- No --> P[JSON / Text / HTML / Redirect]
     I -- Error --> Q{HTTPError?}
-    Q -- Yes --> R[Status Code + Message]
-    Q -- No --> S[500 Internal Server Error]
+    Q -- Yes --> R[RenderError]
+    Q -- No --> S[RenderError 500]
 
     style B fill:#f0f0f0,color:#333
     style E fill:#f0f0f0,color:#333,stroke-dasharray: 5 5

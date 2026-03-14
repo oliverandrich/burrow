@@ -67,6 +67,7 @@ nav:
       - Core:
           - Creating an App: guide/creating-an-app.md
           - Routing: guide/routing.md
+          - Error Handling: guide/error-handling.md
           - Database: guide/database.md
           - Migrations: guide/migrations.md
           - Configuration: guide/configuration.md
