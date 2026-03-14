@@ -88,14 +88,6 @@ return burrow.HTML(w, http.StatusOK, "<h1>Hello!</h1>")
 ### Render
 
 ```go
-func Render(w http.ResponseWriter, r *http.Request, statusCode int, content template.HTML) error
-```
-
-Writes pre-rendered `template.HTML` content to the response. Useful for raw HTML output or HTMX fragments that are already rendered.
-
-### Render
-
-```go
 func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error
 ```
 
@@ -112,6 +104,35 @@ return burrow.Render(w, r, http.StatusOK, "notes/list", map[string]any{
 ```
 
 See [Layouts & Rendering](../guide/layouts.md) for details on templates and layout wrapping.
+
+### RenderError
+
+```go
+func RenderError(w http.ResponseWriter, r *http.Request, code int, message string)
+```
+
+Writes an error response. Picks the format automatically:
+
+1. **JSON API** — if `Accept: application/json`, returns `{"error": "...", "code": 404}`
+2. **HTML** — renders the `error/{code}` template (e.g. `error/404`) through the standard `Render` pipeline with layout wrapping, HTMX support, and i18n-translated messages
+
+The framework ships default error templates for 403, 404, 405, and 500. Override them by defining `{{ define "error/404" }}` in any app's template FS — the last definition wins.
+
+Template data:
+
+| Key       | Type   | Description                          |
+|-----------|--------|--------------------------------------|
+| `Code`    | `int`  | HTTP status code                     |
+| `Message` | `string` | i18n-translated error message      |
+
+```go
+// In a handler:
+return burrow.NewHTTPError(http.StatusNotFound, "item not found")
+// Handle() calls RenderError automatically.
+
+// In middleware:
+burrow.RenderError(w, r, http.StatusForbidden, "forbidden")
+```
 
 ## Request Binding
 

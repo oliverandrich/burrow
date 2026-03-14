@@ -13,6 +13,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **`Render()` renamed** — `RenderTemplate()` is now `Render()`; the old `Render(w, r, code, template.HTML)` raw-HTML wrapper has been removed (use `HTML()` directly); `RenderTemplate()` remains as a deprecated shim with `//go:fix inline` for automatic migration via `go fix` (Go 1.26+)
 - **`TemplateExec()` renamed** — `TemplateExecutorFromContext()` is now `TemplateExec()`; the old name remains as a deprecated shim with `//go:fix inline`
 - **Minimum Go version raised to 1.26** — required for `reflect.Type.Fields` iterator, `sync.WaitGroup.Go`, and future use of `testing.B.Loop` and `net/http.CrossOriginProtection`
+- **`RequireAdmin()` behavior changed** — unauthenticated users are now redirected to `/auth/login` (like `RequireAuth`); previously returned plain-text 403 for all denied users
 
 ### Added
 
@@ -28,6 +29,9 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Auth: user admin uses generic ModelAdmin** — user detail/edit/delete now use ModelAdmin with `WithCleanFunc` for last-admin demotion protection; custom handlers, `isAdminEditSelf`/`isAdminEditLastAdmin` context helpers, and custom template removed
 - **Auth: `authtest` package** — new `contrib/auth/authtest` package provides `NewDB` (in-memory DB with auth migrations) and `CreateUser` (with functional options) for tests that depend on the auth app
 - **ModelAdmin: bulk actions (`BulkActions`)** — new `BulkActions []BulkAction` field on `ModelAdmin[T]` enables multi-select checkbox operations in list views; includes `DeleteBulkAction[T]()` convenience constructor for bulk delete; toolbar with action dropdown, select-all checkbox, and JS confirm for destructive actions
+- **Error pages with `RenderError()`** — new `RenderError(w, r, code, message)` renders `error/{code}` templates through the standard `Render` pipeline with i18n-translated messages, layout wrapping, and HTMX fragment support; JSON responses for `Accept: application/json`; default templates for 403, 404, 405, 500 shipped as embedded FS (override by defining `{{ define "error/404" }}` in any app's templates)
+- **Chi `NotFound` and `MethodNotAllowed` handlers** — unmatched routes and wrong HTTP methods now render styled error pages instead of plain text
+- **Test helpers: `TestDB`, `TestErrorExecContext`, `TestErrorExecMiddleware`** — shared test helpers in the root package for framework and app tests
 
 ### Removed
 
