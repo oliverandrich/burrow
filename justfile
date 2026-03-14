@@ -19,7 +19,7 @@ fmt:
 coverage:
     #!/usr/bin/env bash
     set -euo pipefail
-    go test -json -coverprofile=coverage.out ./... > test.json
+    go test -race -json -coverprofile=coverage.out ./... > test.json
     go-ignore-cov --file coverage.out --exclude-globs "**/*_generated.go"
     # Patch coverage percentages in JSON for packages containing generated files
     cp test.json test.patched.json
