@@ -1213,7 +1213,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
 	}
 
-	app.authLayout = "auth/layout"
+	app.authLayout = "bootstrap/layout"
 
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
@@ -1230,7 +1230,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	// The captured layout should be the auth layout, not the global one.
-	assert.Equal(t, "auth/layout", *mockR.capturedLayout, "layout should be the auth layout")
+	assert.Equal(t, "bootstrap/layout", *mockR.capturedLayout, "layout should be the auth layout")
 }
 
 func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
@@ -1247,7 +1247,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 		handlers: NewHandlers(repo, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
 	}
 
-	app.authLayout = "auth/layout"
+	app.authLayout = "bootstrap/layout"
 
 	// Create a user so the credentials handler can look up credentials.
 	user, err := repo.CreateUser(context.Background(), "alice", "Alice")

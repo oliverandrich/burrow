@@ -1,51 +1,11 @@
-{{ define "app/layout" -}}
-<!doctype html>
-<html lang="{{ lang }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ .Title }}</title>
-    {{ template "bootstrap/css" . }}
-    {{ template "bootstrap/theme_script" . }}
-    {{ template "bootstrap/js" . }}
-    {{ template "htmx/js" . }}
-</head>
-<body>
-    {{ template "app/navbar" . }}
-    <div class="container py-4">
-        {{ template "app/alerts" . }}
-        <main>
-            {{ .Content }}
-        </main>
-    </div>
-    <script>
-    document.body.addEventListener("htmx:pushedIntoHistory", function() {
-        var path = window.location.pathname;
-        document.querySelectorAll(".navbar-nav .nav-link[hx-get]").forEach(function(link) {
-            var url = link.getAttribute("href");
-            var isActive = url === "/"
-                ? path === "/"
-                : path.indexOf(url) === 0;
-            if (isActive) {
-                link.classList.add("active");
-            } else {
-                link.classList.remove("active");
-            }
-        });
-    });
-    </script>
-</body>
-</html>
-{{- end }}
-
-{{ define "app/navbar" -}}
-<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
+{{ define "bootstrap/navbar" -}}
+<nav class="navbar navbar-expand-lg bg-body sticky-top">
     <div class="container">
         <a class="navbar-brand" href="/">{{ t "layout-brand" }}</a>
         <button class="navbar-toggler" type="button"
-            data-bs-toggle="collapse" data-bs-target="#navbarNav"
-            aria-controls="navbarNav" aria-expanded="false"
-            aria-label="{{ t "layout-toggle-nav" }}">
+                data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false"
+                aria-label="{{ t "layout-toggle-nav" }}">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
@@ -53,9 +13,8 @@
                 {{ range navLinks -}}
                 <li class="nav-item">
                     <a class="nav-link{{ if .IsActive }} active{{ end }}" href="{{ .URL }}"
-                        hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
-                        {{ if .Icon }}<span class="me-1">{{ .Icon }}</span>{{ end }}
-                        {{ .Label }}
+                       hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
+                        {{ if .Icon }}<span class="me-1">{{ .Icon }}</span>{{ end }}{{ .Label }}
                     </a>
                 </li>
                 {{- end }}
@@ -74,7 +33,7 @@
     {{ with currentUser -}}
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button"
-            data-bs-toggle="dropdown" aria-expanded="false">
+           data-bs-toggle="dropdown" aria-expanded="false">
             <span class="me-1">{{ iconPersonCircle }}</span>
             {{ .Username }}
         </a>
@@ -107,7 +66,7 @@
 </ul>
 {{- end }}
 
-{{ define "app/alerts" -}}
+{{ define "bootstrap/alerts" -}}
 <div id="alerts">
     {{ range messages -}}
     <div class="alert alert-{{ alertClass .Level }} alert-dismissible fade show" role="alert">

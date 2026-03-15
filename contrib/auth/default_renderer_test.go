@@ -295,7 +295,7 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 // --- DefaultAuthLayout tests ---
 
 func TestDefaultAuthLayout(t *testing.T) {
-	assert.Equal(t, "auth/layout", DefaultAuthLayout())
+	assert.Equal(t, "bootstrap/layout", DefaultAuthLayout())
 }
 
 // --- renderCentered/renderCard without executor ---

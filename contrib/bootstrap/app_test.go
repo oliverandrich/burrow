@@ -27,14 +27,21 @@ var (
 )
 
 func TestAppName(t *testing.T) {
-	app := New()
-	assert.Equal(t, "bootstrap", app.Name())
+	assert.Equal(t, "bootstrap", New().Name())
 }
 
 func TestAppRegister(t *testing.T) {
+	require.NoError(t, New().Register(&burrow.AppConfig{}))
+}
+
+func TestDefaultColor(t *testing.T) {
 	app := New()
-	err := app.Register(&burrow.AppConfig{})
-	require.NoError(t, err)
+	assert.Equal(t, Purple, app.color)
+}
+
+func TestWithColor(t *testing.T) {
+	app := New(WithColor(Blue))
+	assert.Equal(t, Blue, app.color)
 }
 
 func TestDependencies(t *testing.T) {
@@ -43,15 +50,16 @@ func TestDependencies(t *testing.T) {
 }
 
 func TestStaticFS(t *testing.T) {
-	app := New()
-	prefix, fsys := app.StaticFS()
-
+	prefix, fsys := New().StaticFS()
 	assert.Equal(t, "bootstrap", prefix)
 	require.NotNil(t, fsys)
 
 	for _, name := range []string{
 		"bootstrap.min.css",
 		"bootstrap.bundle.min.js",
+		"theme-blue.min.css",
+		"theme-purple.min.css",
+		"theme-gray.min.css",
 	} {
 		f, err := fsys.Open(name)
 		require.NoError(t, err, "expected %s to exist in static FS", name)
@@ -60,12 +68,12 @@ func TestStaticFS(t *testing.T) {
 }
 
 func TestTemplateFS(t *testing.T) {
-	app := New()
-	fsys := app.TemplateFS()
+	fsys := New().TemplateFS()
 	require.NotNil(t, fsys)
 
 	for _, name := range []string{
 		"layout.html",
+		"nav_layout.html",
 		"theme_script.html",
 		"theme_switcher.html",
 		"pagination.html",
@@ -79,22 +87,54 @@ func TestTemplateFS(t *testing.T) {
 }
 
 func TestFuncMap(t *testing.T) {
-	app := New()
-	fm := app.FuncMap()
+	fm := New().FuncMap()
 
-	expectedKeys := []string{
+	for _, key := range []string{
 		"iconSunFill", "iconMoonStarsFill", "iconCircleHalf",
+		"themeCSS",
 		"pageURL", "pageLimit", "pageNumbers",
-		"add", "sub",
-	}
-	for _, key := range expectedKeys {
+	} {
 		assert.Contains(t, fm, key)
 	}
 }
 
+func TestFuncMapThemeCSSReturnsCorrectPath(t *testing.T) {
+	tests := []struct {
+		color    Color
+		expected string
+	}{
+		{Default, "bootstrap/bootstrap.min.css"},
+		{Blue, "bootstrap/theme-blue.min.css"},
+		{Purple, "bootstrap/theme-purple.min.css"},
+		{Gray, "bootstrap/theme-gray.min.css"},
+	}
+	for _, tt := range tests {
+		app := New(WithColor(tt.color))
+		fn := app.FuncMap()["themeCSS"].(func() string)
+		assert.Equal(t, tt.expected, fn())
+	}
+}
+
+func TestFuncMapThemeCSSCustom(t *testing.T) {
+	app := New(WithCustomCSS("myapp/mytheme.min.css"))
+	fn := app.FuncMap()["themeCSS"].(func() string)
+	assert.Equal(t, "myapp/mytheme.min.css", fn())
+}
+
+func TestWithCustomCSSOverridesColor(t *testing.T) {
+	app := New(WithColor(Blue), WithCustomCSS("myapp/custom.css"))
+	fn := app.FuncMap()["themeCSS"].(func() string)
+	assert.Equal(t, "myapp/custom.css", fn())
+}
+
+func TestWithColorClearsCustomCSS(t *testing.T) {
+	app := New(WithCustomCSS("myapp/custom.css"), WithColor(Gray))
+	fn := app.FuncMap()["themeCSS"].(func() string)
+	assert.Equal(t, "bootstrap/theme-gray.min.css", fn())
+}
+
 func TestFuncMapIconsReturnSVG(t *testing.T) {
-	app := New()
-	fm := app.FuncMap()
+	fm := New().FuncMap()
 
 	for _, key := range []string{"iconSunFill", "iconMoonStarsFill", "iconCircleHalf"} {
 		fn := fm[key].(func(...string) template.HTML)
@@ -104,64 +144,40 @@ func TestFuncMapIconsReturnSVG(t *testing.T) {
 }
 
 func TestFuncMapIconsAcceptClasses(t *testing.T) {
-	app := New()
-	fm := app.FuncMap()
-
-	fn := fm["iconSunFill"].(func(...string) template.HTML)
+	fn := New().FuncMap()["iconSunFill"].(func(...string) template.HTML)
 	svg := fn("fs-1", "d-block")
 	assert.Contains(t, string(svg), `class="fs-1 d-block"`)
 }
 
-func TestFuncMapArithmetic(t *testing.T) {
-	app := New()
-	fm := app.FuncMap()
-
-	add := fm["add"].(func(int, int) int)
-	sub := fm["sub"].(func(int, int) int)
-
-	assert.Equal(t, 5, add(2, 3))
-	assert.Equal(t, 1, sub(3, 2))
-}
-
 func TestMiddlewareInjectsLayout(t *testing.T) {
-	app := New()
-	mws := app.Middleware()
+	mws := New().Middleware()
 	require.Len(t, mws, 1)
 
 	var got string
-	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+	handler := mws[0](http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got = burrow.Layout(r.Context())
-	})
-
-	handler := mws[0](inner)
-
-	req := newGetRequest()
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-
-	assert.Equal(t, "bootstrap/layout", got, "middleware should inject layout when none is set")
+	}))
+	handler.ServeHTTP(httptest.NewRecorder(), newGetRequest())
+	assert.Equal(t, "bootstrap/layout", got)
 }
 
 func TestMiddlewareDoesNotOverride(t *testing.T) {
-	app := New()
-	mws := app.Middleware()
-	require.Len(t, mws, 1)
+	mws := New().Middleware()
 
 	var got string
-	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+	handler := mws[0](http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got = burrow.Layout(r.Context())
-	})
-
-	handler := mws[0](inner)
-
+	}))
 	req := newGetRequest()
 	req = req.WithContext(burrow.WithLayout(req.Context(), "custom/layout"))
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-
-	assert.Equal(t, "custom/layout", got, "middleware should not override existing layout")
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+	assert.Equal(t, "custom/layout", got)
 }
 
 func TestLayoutReturnsTemplateName(t *testing.T) {
 	assert.Equal(t, "bootstrap/layout", Layout())
+}
+
+func TestNavLayoutReturnsTemplateName(t *testing.T) {
+	assert.Equal(t, "bootstrap/nav_layout", NavLayout())
 }

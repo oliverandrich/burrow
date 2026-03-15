@@ -81,11 +81,6 @@ func TestHome_UsesRenderTemplate(t *testing.T) {
 	})
 }
 
-func TestLayout_ReturnsTemplateName(t *testing.T) {
-	name := Layout()
-	assert.Equal(t, "app/layout", name)
-}
-
 func TestLogo_ReturnsNonEmpty(t *testing.T) {
 	html := Logo()
 	assert.NotEmpty(t, html)

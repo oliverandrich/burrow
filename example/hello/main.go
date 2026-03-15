@@ -69,11 +69,6 @@ func main() {
 		hello,           // Our custom app (defined below)
 	)
 
-	// SetLayout wraps every page in the given layout template. The bootstrap
-	// contrib provides a ready-made layout with <head>, Bootstrap CSS/JS, and
-	// a theme switcher. For a custom layout with navbar, see the notes example.
-	srv.SetLayout(bootstrap.Layout())
-
 	// Wire up the CLI. The server provides built-in flags (--host, --port,
 	// --database-dsn, --log-level, etc.) and the Action runs the HTTP server.
 	cmd := &cli.Command{

@@ -1,4 +1,4 @@
-{{ define "bootstrap/layout" -}}
+{{ define "bootstrap/nav_layout" -}}
 <!doctype html>
 <html lang="{{ lang }}">
 <head>
@@ -12,7 +12,15 @@
     {{ template "htmx/config" . }}
 </head>
 <body>
-    {{ .Content }}
+    {{ template "bootstrap/navbar" . }}
+    <div class="container">{{ template "bootstrap/alerts" . }}</div>
+    <main>
+        {{ .Content }}
+    </main>
+    {{ template "bootstrap/nav_scripts" . }}
 </body>
 </html>
 {{- end }}
+
+{{ define "bootstrap/navbar" }}{{ end }}
+{{ define "bootstrap/alerts" }}{{ end }}

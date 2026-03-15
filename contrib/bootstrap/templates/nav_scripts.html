@@ -1,0 +1,18 @@
+{{ define "bootstrap/nav_scripts" -}}
+<script>
+document.body.addEventListener("htmx:pushedIntoHistory", function() {
+    var path = window.location.pathname;
+    document.querySelectorAll(".navbar-nav .nav-link[hx-get]").forEach(function(link) {
+        var url = link.getAttribute("href");
+        var isActive = url === "/"
+            ? path === "/"
+            : path.indexOf(url) === 0;
+        if (isActive) {
+            link.classList.add("active");
+        } else {
+            link.classList.remove("active");
+        }
+    });
+});
+</script>
+{{- end }}

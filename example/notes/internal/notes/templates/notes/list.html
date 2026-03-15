@@ -1,27 +1,29 @@
 {{ define "notes/list_page" -}}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">{{ t "notes-title" }}</h1>
-    <a href="/notes/new" class="btn btn-primary"
-        hx-get="/notes/new"
-        hx-target="#note-form"
-        hx-swap="innerHTML">
-        <span class="me-1">{{ iconPlusLg }}</span>{{ t "notes-add-button" }}
-    </a>
-</div>
-<div id="note-form"></div>
-<form method="get" action="/notes" class="mb-4"
-    hx-get="/notes"
-    hx-target="#notes-list"
-    hx-swap="innerHTML"
-    hx-push-url="true">
-    <div class="input-group">
-        <input type="search" class="form-control" name="q" value="{{ .SearchQuery }}"
-            placeholder="{{ t "notes-search-placeholder" }}">
-        <button type="submit" class="btn btn-outline-secondary">{{ t "notes-search-button" }}</button>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">{{ t "notes-title" }}</h1>
+        <a href="/notes/new" class="btn btn-primary"
+           hx-get="/notes/new"
+           hx-target="#note-form"
+           hx-swap="innerHTML">
+            <span class="me-1">{{ iconPlusLg }}</span>{{ t "notes-add-button" }}
+        </a>
     </div>
-</form>
-<div id="notes-list">
-    {{ template "notes/notes_list" . }}
+    <div id="note-form"></div>
+    <form method="get" action="/notes" class="mb-4"
+          hx-get="/notes"
+          hx-target="#notes-list"
+          hx-swap="innerHTML"
+          hx-push-url="true">
+        <div class="input-group">
+            <input type="search" class="form-control" name="q" value="{{ .SearchQuery }}"
+                   placeholder="{{ t "notes-search-placeholder" }}">
+            <button type="submit" class="btn btn-outline-secondary">{{ t "notes-search-button" }}</button>
+        </div>
+    </form>
+    <div id="notes-list">
+        {{ template "notes/notes_list" . }}
+    </div>
 </div>
 {{- end }}
 
@@ -50,7 +52,7 @@
 
 {{ define "notes/note_card" -}}
 <div class="col-md-6 col-lg-4" id="note-{{ itoa .ID }}">
-{{ template "notes/note_card_inner" . }}
+    {{ template "notes/note_card_inner" . }}
 </div>
 {{- end }}
 
@@ -64,17 +66,17 @@
     </div>
     <div class="card-footer bg-transparent border-top-0 text-end">
         <a href="/notes/{{ itoa .ID }}/edit" class="btn btn-sm btn-outline-secondary me-1"
-            hx-get="/notes/{{ itoa .ID }}/edit"
-            hx-target="#note-form"
-            hx-swap="innerHTML">
+           hx-get="/notes/{{ itoa .ID }}/edit"
+           hx-target="#note-form"
+           hx-swap="innerHTML">
             <span class="me-1">{{ iconPencil }}</span>{{ t "notes-edit-button" }}
         </a>
         <button class="btn btn-sm btn-outline-danger"
-            hx-delete="/notes/{{ itoa .ID }}"
-            hx-target="#note-{{ itoa .ID }}"
-            hx-swap="outerHTML swap:0.3s"
-            hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
-            hx-confirm="{{ t "notes-delete-confirm" }}">
+                hx-delete="/notes/{{ itoa .ID }}"
+                hx-target="#note-{{ itoa .ID }}"
+                hx-swap="outerHTML swap:0.3s"
+                hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
+                hx-confirm="{{ t "notes-delete-confirm" }}">
             <span class="me-1">{{ iconTrash }}</span>{{ t "notes-delete-button" }}
         </button>
     </div>
@@ -84,8 +86,8 @@
 {{ define "notes/scroll_trigger" -}}
 {{ if .Page.HasMore -}}
 <div hx-get="/notes?page={{ add .Page.Page 1 }}&limit=20{{ if .SearchQuery }}&q={{ .SearchQuery }}{{ end }}"
-    hx-trigger="revealed"
-    hx-swap="outerHTML">
+     hx-trigger="revealed"
+     hx-swap="outerHTML">
     <div class="text-center py-3">
         <div class="spinner-border spinner-border-sm text-secondary" role="status">
             <span class="visually-hidden">{{ t "notes-loading" }}</span>
@@ -98,7 +100,7 @@
 {{ define "notes/create_response" -}}
 <div id="note-form" hx-swap-oob="innerHTML"></div>
 <div id="notes-grid" hx-swap-oob="afterbegin">
-{{ template "notes/note_card" .Note }}
+    {{ template "notes/note_card" .Note }}
 </div>
 {{ template "app/alerts_oob" . }}
 {{- end }}
@@ -106,7 +108,7 @@
 {{ define "notes/update_response" -}}
 <div id="note-form" hx-swap-oob="innerHTML"></div>
 <div class="col-md-6 col-lg-4" id="note-{{ itoa .Note.ID }}" hx-swap-oob="outerHTML">
-{{ template "notes/note_card_inner" .Note }}
+    {{ template "notes/note_card_inner" .Note }}
 </div>
 {{ template "app/alerts_oob" . }}
 {{- end }}

@@ -64,8 +64,8 @@ func main() {
 		admin.New(),
 	)
 
-	// Use the app layout with navbar (overrides bare bootstrap layout).
-	srv.SetLayout(pages.Layout())
+	// Use the nav layout with navbar slot (provided by bootstrap contrib).
+	srv.SetLayout(bootstrap.NavLayout())
 
 	cmd := &cli.Command{
 		Name:     "example",

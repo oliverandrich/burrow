@@ -1,0 +1,26 @@
+// Burrow shared Bootstrap overrides
+// Included by all color themes before importing Bootstrap.
+
+$min-contrast-ratio: 3;
+
+$border-radius:    0.25rem;
+$border-radius-sm: 0.15rem;
+$border-radius-lg: 0.375rem;
+
+$spacer: 1rem;
+$spacers: (
+  0: 0,
+  1: $spacer * .25,
+  2: $spacer * .5,
+  3: $spacer,
+  4: $spacer * 1.5,
+  5: $spacer * 3,
+  6: $spacer * 4.5,
+  7: $spacer * 6,
+  8: $spacer * 9,
+);
+
+$navbar-padding-y: 0.875rem;
+
+$link-decoration:       none;
+$link-hover-decoration: underline;

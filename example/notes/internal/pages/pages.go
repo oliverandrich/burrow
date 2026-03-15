@@ -65,11 +65,6 @@ func (a *App) Routes(r chi.Router) {
 	r.Get("/", burrow.Handle(home))
 }
 
-// Layout returns the template name for the app layout.
-func Layout() string {
-	return "app/layout"
-}
-
 // Logo returns a static brand logo HTML for auth pages.
 func Logo() template.HTML {
 	return `<h1 class="display-5 fw-bold">Burrow</h1>`

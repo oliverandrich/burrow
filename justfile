@@ -62,6 +62,8 @@ setup:
     check govulncheck     "go install golang.org/x/vuln/cmd/govulncheck@latest"
     check go-ignore-cov   "go install github.com/quantumcycle/go-ignore-cov@latest"
     check go-licenses     "go install github.com/google/go-licenses@latest"
+    check npm              "https://nodejs.org/"
+    check sass             "https://sass-lang.com/install/"
     check pre-commit      "https://pre-commit.com/#install"
     echo ""
     if $ok; then
@@ -71,6 +73,16 @@ setup:
         echo "Some tools are missing. Install them and re-run 'just setup'."
         exit 1
     fi
+
+# Install Bootstrap Sass source (needed for theme compilation)
+sass-setup:
+    cd contrib/bootstrap && npm install --save-dev bootstrap@5.3.8 --silent
+
+# Compile all Bootstrap Sass themes
+sass: sass-setup
+    sass contrib/bootstrap/scss/theme-blue.scss contrib/bootstrap/static/theme-blue.min.css --style=compressed --no-source-map --quiet-deps --quiet
+    sass contrib/bootstrap/scss/theme-purple.scss contrib/bootstrap/static/theme-purple.min.css --style=compressed --no-source-map --quiet-deps --quiet
+    sass contrib/bootstrap/scss/theme-gray.scss contrib/bootstrap/static/theme-gray.min.css --style=compressed --no-source-map --quiet-deps --quiet
 
 # Tidy module dependencies
 tidy:

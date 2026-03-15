@@ -207,6 +207,7 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 	fm["iconTrash"] = func(class ...string) template.HTML { return "<svg>trash</svg>" }
 	fm["alertClass"] = func(level messages.Level) string { return string(level) }
 	fm["add"] = func(a, b int) int { return a + b }
+	fm["sub"] = func(a, b int) int { return a - b }
 
 	tmpl := template.New("").Funcs(fm)
 

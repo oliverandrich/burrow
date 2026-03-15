@@ -2,6 +2,26 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+
+- **Bootstrap color themes** — three Sass-compiled color themes (blue, purple, gray) selectable via `bootstrap.WithColor()`; default is purple; vanilla Bootstrap available via `bootstrap.WithColor(bootstrap.Default)`
+- **`bootstrap.NavLayout()`** — layout template with empty `bootstrap/navbar`, `bootstrap/alerts`, and `bootstrap/nav_scripts` slots that apps can override via `HasTemplates`
+- **Extended spacing utilities** — spacing scale extended with levels 6 (4.5rem), 7 (6rem), and 8 (9rem)
+- **`bootstrap.WithCustomCSS()`** — option to use a custom Sass-compiled CSS file instead of the built-in themes
+- **`themeCSS` template function** — returns the CSS path for the selected color theme
+- **`add`/`sub` template functions in core** — integer arithmetic available in all templates without contrib app registration
+- **Core htmx template stubs** — `htmx/js` and `htmx/config` defined as empty stubs in core; htmx app overrides them when registered
+- **Sass build pipeline** — `just sass` compiles themes, `just sass-setup` installs Bootstrap Sass source; pre-commit hook auto-compiles on `.scss` changes
+
+### Changed
+
+- **Bootstrap layout simplified** — `bootstrap/layout` no longer wraps content in `<main class="container">`; apps control their own container and structure
+- **Auth layout removed** — `auth/layout` template removed; auth pages now use `bootstrap/layout` directly
+- **Notes example uses `bootstrap.NavLayout()`** — app-specific layout replaced by framework-provided nav layout with slot overrides
+- **Notes homepage redesign** — full-width hero section with primary color background, shadow cards
+
 ## 0.5.0 — 2026-03-15
 
 ### Breaking Changes
