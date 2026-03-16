@@ -64,7 +64,7 @@
                                 {{ .Label }}
                             </button>
                             <div class="collapse show" id="collapse-{{ .AppName }}">
-                                <ul class="nav nav-pills flex-column ms-3 small">
+                                <ul class="nav nav-pills flex-column ms-3">
                                     {{- range .Items }}
                                     <li class="nav-item">
                                         <a href="{{ .URL }}" class="{{ .LinkClass }}"
@@ -109,7 +109,7 @@
                 </div>
             </div>
         </div>
-        <main class="flex-grow-1 p-4">
+        <main class="flex-grow-1 p-4 d-flex flex-column overflow-hidden vh-100">
             {{ .Content }}
         </main>
     </div>
@@ -120,7 +120,7 @@
             var url = link.getAttribute("href");
             var isActive = (url === "/admin" || url === "/admin/")
                 ? (path === "/admin" || path === "/admin/")
-                : path.indexOf(url) === 0;
+                : path === url || path.startsWith(url + "/");
             if (isActive) {
                 link.classList.add("active");
                 link.classList.remove("text-body-emphasis");

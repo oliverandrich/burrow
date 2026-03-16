@@ -19,7 +19,7 @@ import (
 // ChoicesFunc returns dynamic choices for a select field, typically loaded from the database.
 type ChoicesFunc func(ctx context.Context) ([]forms.Choice, error)
 
-const defaultPageSize = 25
+const defaultPageSize = 20
 
 // ModelAdmin provides generic CRUD admin views for a Bun model.
 // It is not a burrow.App itself — it's a helper that apps embed

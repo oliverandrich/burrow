@@ -85,6 +85,89 @@ func TestHandleBulkAction_DeletesItems(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
+func TestHandleBulkAction_PreservesPage(t *testing.T) {
+	db, _, ma := setupHandlerTest(t)
+	ma.PageSize = 3
+	seedItems(t, db, 30) // 10 pages of 3 items
+
+	r := newRouter(ma)
+
+	form := url.Values{
+		"_selected": {"1", "2"},
+		"_page":     {"3"},
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/admin/items?page=3", w.Header().Get("Location"))
+}
+
+func TestHandleBulkAction_PreservesPage_HXCurrentURLFallback(t *testing.T) {
+	db, _, ma := setupHandlerTest(t)
+	ma.PageSize = 3
+	seedItems(t, db, 30) // 10 pages of 3 items
+
+	r := newRouter(ma)
+
+	// No _page form param, falls back to HX-Current-URL.
+	form := url.Values{
+		"_selected": {"1", "2"},
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Current-URL", "http://localhost:8080/admin/items?page=3")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/admin/items?page=3", w.Header().Get("Location"))
+}
+
+func TestHandleBulkAction_PreservesPage_RefererFallback(t *testing.T) {
+	db, _, ma := setupHandlerTest(t)
+	ma.PageSize = 3
+	seedItems(t, db, 30) // 10 pages of 3 items
+
+	r := newRouter(ma)
+
+	// No _page, no HX-Current-URL, falls back to Referer.
+	form := url.Values{
+		"_selected": {"1", "2"},
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Referer", "http://localhost:8080/admin/items?page=3")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/admin/items?page=3", w.Header().Get("Location"))
+}
+
+func TestHandleBulkAction_ClampsToLastPage(t *testing.T) {
+	db, _, ma := setupHandlerTest(t)
+	ma.PageSize = 3
+	seedItems(t, db, 10) // pages: 1,2,3,4 (last page has 1 item)
+
+	r := newRouter(ma)
+
+	// Delete the single item on page 4 (item ID 10).
+	form := url.Values{
+		"_selected": {"10"},
+		"_page":     {"4"},
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/admin/items?page=3", w.Header().Get("Location"), "should clamp to last available page")
+}
+
 func TestHandleBulkAction_UnknownAction(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
 	// CanDelete=true → DeleteBulkAction auto-added by Init().

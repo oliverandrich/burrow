@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
@@ -42,9 +44,14 @@ func (ma *ModelAdmin[T]) HandleBulkAction(w http.ResponseWriter, r *http.Request
 		return burrow.NewHTTPError(http.StatusInternalServerError, "bulk action failed")
 	}
 
+	totalCount, err := ma.DB.NewSelect().Model((*T)(nil)).Count(r.Context())
+	if err != nil {
+		totalCount = 0
+	}
+
 	slog.Info("bulk action executed", "slug", ma.Slug, "action", slug, "count", len(ids)) //nolint:gosec // slug is developer-set
 	_ = messages.AddSuccess(w, r, i18n.TPlural(r.Context(), "modeladmin-bulk-success", len(ids)))
-	http.Redirect(w, r, "/admin/"+ma.Slug, http.StatusSeeOther)
+	http.Redirect(w, r, listRedirectURL(r, ma.Slug, totalCount, ma.pageSize()), http.StatusSeeOther)
 	return nil
 }
 
@@ -52,9 +59,7 @@ func (ma *ModelAdmin[T]) HandleBulkAction(w http.ResponseWriter, r *http.Request
 // Exported so apps can mount ModelAdmin list views alongside custom handlers.
 func (ma *ModelAdmin[T]) HandleList(w http.ResponseWriter, r *http.Request) error {
 	pr := burrow.ParsePageRequest(r)
-	if pr.Limit == 0 || pr.Limit > ma.pageSize() {
-		pr.Limit = ma.pageSize()
-	}
+	pr.Limit = ma.pageSize()
 	if pr.Page == 0 {
 		pr.Page = 1
 	}
@@ -280,10 +285,86 @@ func (ma *ModelAdmin[T]) HandleDelete(w http.ResponseWriter, r *http.Request) er
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete item")
 	}
 
+	totalCount, err := ma.DB.NewSelect().Model((*T)(nil)).Count(r.Context())
+	if err != nil {
+		totalCount = 0
+	}
+
 	slog.Info("item deleted", "slug", ma.Slug, "id", id) //nolint:gosec // slug is developer-set, id is from URL param
-	htmx.Redirect(w, "/admin/"+ma.Slug)
+	htmx.Redirect(w, listRedirectURL(r, ma.Slug, totalCount, ma.pageSize()))
 	w.WriteHeader(http.StatusOK)
 	return nil
+}
+
+// listRedirectURL returns a redirect URL that preserves the current page
+// parameter. It resolves the page from multiple sources:
+//  1. "_page" form parameter (explicit, used by bulk action forms)
+//  2. HX-Current-URL header (set by HTMX on every request)
+//  3. Referer header (fallback)
+//
+// If totalCount and pageSize are provided (both > 0), it clamps the page
+// to the last available page so that deleting the last item on a page
+// redirects to the previous one.
+func listRedirectURL(r *http.Request, slug string, totalCount, pageSize int) string {
+	base := "/admin/" + slug
+	page := pageFromRequest(r)
+
+	if page > 1 && totalCount > 0 && pageSize > 0 {
+		lastPage := (totalCount + pageSize - 1) / pageSize
+		if page > lastPage {
+			page = lastPage
+		}
+	}
+
+	if page > 1 {
+		return base + "?page=" + strconv.Itoa(page)
+	}
+	return base
+}
+
+// pageFromRequest extracts the current page number from the request.
+// It checks (in order): _page form param, HX-Current-URL header, Referer header.
+func pageFromRequest(r *http.Request) int {
+	// 1. Explicit form parameter (bulk actions).
+	if p := r.FormValue("_page"); p != "" {
+		if n, err := strconv.Atoi(p); err == nil && n > 0 {
+			return n
+		}
+	}
+
+	// 2. HTMX current URL header (reliable after pushState navigation).
+	if cu := r.Header.Get("HX-Current-URL"); cu != "" {
+		if n := pageFromURL(cu); n > 0 {
+			return n
+		}
+	}
+
+	// 3. Referer fallback.
+	if n := pageFromURL(r.Referer()); n > 0 {
+		return n
+	}
+
+	return 1
+}
+
+// pageFromURL extracts the "page" query parameter from a URL string.
+func pageFromURL(raw string) int {
+	if raw == "" {
+		return 0
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return 0
+	}
+	p := u.Query().Get("page")
+	if p == "" {
+		return 0
+	}
+	n, err := strconv.Atoi(p)
+	if err != nil || n < 1 {
+		return 0
+	}
+	return n
 }
 
 // translateBoundFields translates field labels via i18n at request time.

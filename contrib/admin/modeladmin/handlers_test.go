@@ -326,6 +326,53 @@ func TestHandleDelete(t *testing.T) {
 	assert.Equal(t, 0, count)
 }
 
+func TestHandleDelete_PreservesPage(t *testing.T) {
+	db, _, ma := setupHandlerTest(t)
+	ma.PageSize = 2
+	seedItems(t, db, 20) // 10 pages of 2 items
+
+	r := newRouter(ma)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/items/1", nil)
+	req.Header.Set("HX-Current-URL", "http://localhost:8080/admin/items?page=5")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "/admin/items?page=5", w.Header().Get("HX-Redirect"))
+}
+
+func TestHandleDelete_PreservesPage_RefererFallback(t *testing.T) {
+	db, _, ma := setupHandlerTest(t)
+	ma.PageSize = 2
+	seedItems(t, db, 20) // 10 pages of 2 items
+
+	r := newRouter(ma)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/items/1", nil)
+	// No HX-Current-URL, only Referer.
+	req.Header.Set("Referer", "http://localhost:8080/admin/items?page=5")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "/admin/items?page=5", w.Header().Get("HX-Redirect"))
+}
+
+func TestHandleDelete_ClampsToLastPage(t *testing.T) {
+	db, _, ma := setupHandlerTest(t)
+	ma.PageSize = 3
+	seedItems(t, db, 10) // pages: 1,2,3,4 (last page has 1 item)
+
+	r := newRouter(ma)
+	// Delete the single item on page 4.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/items/10", nil)
+	req.Header.Set("HX-Current-URL", "http://localhost:8080/admin/items?page=4")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "/admin/items?page=3", w.Header().Get("HX-Redirect"), "should clamp to last available page")
+}
+
 func TestHandleDelete_NotFound(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
 
@@ -391,7 +438,7 @@ func TestIdFromRequest_CustomIDFunc(t *testing.T) {
 
 func TestPageSize_Default(t *testing.T) {
 	ma := &ModelAdmin[testItem]{}
-	assert.Equal(t, 25, ma.pageSize())
+	assert.Equal(t, 20, ma.pageSize())
 }
 
 func TestPageSize_Custom(t *testing.T) {
@@ -401,12 +448,12 @@ func TestPageSize_Custom(t *testing.T) {
 
 func TestPageSize_Zero(t *testing.T) {
 	ma := &ModelAdmin[testItem]{PageSize: 0}
-	assert.Equal(t, 25, ma.pageSize(), "zero should return default")
+	assert.Equal(t, 20, ma.pageSize(), "zero should return default")
 }
 
 func TestPageSize_Negative(t *testing.T) {
 	ma := &ModelAdmin[testItem]{PageSize: -1}
-	assert.Equal(t, 25, ma.pageSize(), "negative should return default")
+	assert.Equal(t, 20, ma.pageSize(), "negative should return default")
 }
 
 // validatedItem has a validate tag to trigger validation errors.
