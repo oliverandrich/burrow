@@ -83,6 +83,31 @@ func (h *Handlers) AdminList(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
+## Building Pagination URLs
+
+`PageURL` builds a URL that preserves existing query parameters (search terms, filters, sort order) and sets the `page` parameter. This prevents pagination links from dropping the current query state.
+
+```go
+func PageURL(basePath, rawQuery string, page int) string
+```
+
+```go
+// In a handler:
+rawQuery := r.URL.RawQuery // e.g. "q=alpha&sort=-created_at"
+url := burrow.PageURL("/notes", rawQuery, 3)
+// => "/notes?page=3&q=alpha&sort=-created_at"
+```
+
+In templates, pass the current query string and use `pageURL` to generate links:
+
+```html
+{{- $base := "/notes" }}
+{{- $query := .Query }}
+{{- range pageRange .Page.TotalPages }}
+<a href="{{ pageURL $base $query . }}">{{ . }}</a>
+{{- end }}
+```
+
 ## Bootstrap Pagination Component
 
 The `contrib/bootstrap/templates` package provides a ready-made Bootstrap 5 pagination nav. See [Bootstrap — Pagination](../contrib/bootstrap.md#pagination).

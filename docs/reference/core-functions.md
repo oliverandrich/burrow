@@ -267,6 +267,47 @@ val, ok := burrow.ContextValue[MyType](ctx, myKey{})
 
 See [Inter-App Communication](../guide/inter-app-communication.md) for usage patterns.
 
+## Pagination
+
+### ParsePageRequest
+
+```go
+func ParsePageRequest(r *http.Request) PageRequest
+```
+
+Extracts `page` and `limit` from query parameters. Defaults: `limit=20`, `page=0`. Limit is clamped to `[1, 100]`.
+
+### ApplyOffset
+
+```go
+func ApplyOffset(q *bun.SelectQuery, pr PageRequest) *bun.SelectQuery
+```
+
+Adds `LIMIT` and `OFFSET` to a Bun query based on the page request.
+
+### OffsetResult
+
+```go
+func OffsetResult(pr PageRequest, totalCount int) PageResult
+```
+
+Computes `PageResult` metadata (total pages, has more, etc.) from a total count.
+
+### PageURL
+
+```go
+func PageURL(basePath, rawQuery string, page int) string
+```
+
+Builds a pagination URL that preserves existing query parameters (search, filters, sort) and sets the `page` parameter. Pass `r.URL.RawQuery` as `rawQuery` to retain the current query state.
+
+```go
+burrow.PageURL("/notes", "q=alpha&sort=-created_at", 3)
+// => "/notes?page=3&q=alpha&sort=-created_at"
+```
+
+See [Pagination Guide](../guide/pagination.md) for full usage examples.
+
 ## Configuration Helpers
 
 ### FlagSources
