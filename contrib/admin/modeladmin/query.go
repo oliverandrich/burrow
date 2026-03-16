@@ -48,9 +48,7 @@ func listItems[T any](ctx context.Context, db *bun.DB, opts listOpts, pr burrow.
 	// Apply sorting: user-requested sort takes precedence over default.
 	sortApplied := false
 	if opts.r != nil && len(opts.sortFields) > 0 {
-		before := q
-		q = applySort(q, opts.r, opts.sortFields)
-		sortApplied = q != before
+		q, sortApplied = applySort(q, opts.r, opts.sortFields)
 	}
 	if !sortApplied && opts.orderBy != "" {
 		q = q.OrderExpr(opts.orderBy)
@@ -84,9 +82,7 @@ func allItems[T any](ctx context.Context, db *bun.DB, opts listOpts) ([]T, error
 
 	sortApplied := false
 	if opts.r != nil && len(opts.sortFields) > 0 {
-		before := q
-		q = applySort(q, opts.r, opts.sortFields)
-		sortApplied = q != before
+		q, sortApplied = applySort(q, opts.r, opts.sortFields)
 	}
 	if !sortApplied && opts.orderBy != "" {
 		q = q.OrderExpr(opts.orderBy)

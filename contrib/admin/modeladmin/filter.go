@@ -51,10 +51,11 @@ func applyFilters(q *bun.SelectQuery, r *http.Request, filters []FilterDef) *bun
 // applySort applies column sorting from query parameters.
 // Only fields in the allowed list are accepted. The query param format is
 // "sort=field" for ascending or "sort=-field" for descending.
-func applySort(q *bun.SelectQuery, r *http.Request, allowed []string) *bun.SelectQuery {
+// Returns true if a sort was applied.
+func applySort(q *bun.SelectQuery, r *http.Request, allowed []string) (*bun.SelectQuery, bool) {
 	sortParam := r.URL.Query().Get("sort")
 	if sortParam == "" {
-		return q
+		return q, false
 	}
 
 	desc := false
@@ -65,7 +66,7 @@ func applySort(q *bun.SelectQuery, r *http.Request, allowed []string) *bun.Selec
 	}
 
 	if !slices.Contains(allowed, field) {
-		return q
+		return q, false
 	}
 
 	if desc {
@@ -74,7 +75,7 @@ func applySort(q *bun.SelectQuery, r *http.Request, allowed []string) *bun.Selec
 		q = q.OrderExpr("? ASC", bun.Ident(field))
 	}
 
-	return q
+	return q, true
 }
 
 // isValidChoice checks if a value is in the list of allowed choices.

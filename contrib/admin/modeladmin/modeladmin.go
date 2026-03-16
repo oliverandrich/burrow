@@ -154,6 +154,7 @@ type RenderConfig struct { //nolint:govet // fieldalignment: readability over op
 	ItemActionSets    [][]RenderAction // per-item action sets, parallel to items (ShowWhen-evaluated)
 	BulkActions       []RenderBulkAction
 	HasBulkActions    bool
+	HasSearch         bool
 	EmptyMessage      string
 	ComputedColumns   map[string]func(any) template.HTML // field → render function
 	DeleteImpacts     []CascadeImpact                    // cascade-delete impact counts (confirm-delete page)
@@ -209,6 +210,7 @@ func (ma *ModelAdmin[T]) renderConfig() RenderConfig {
 		HasRowActions:     len(renderActions) > 0,
 		BulkActions:       renderBulkActions,
 		HasBulkActions:    len(renderBulkActions) > 0,
+		HasSearch:         len(ma.SearchFields) > 0,
 		EmptyMessage:      emptyMsg,
 	}
 }

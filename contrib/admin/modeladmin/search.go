@@ -37,7 +37,7 @@ func applyFTSSearch(q *bun.SelectQuery, db *bun.DB, term string, fields []string
 		return applyLikeSearch(q, term, fields)
 	}
 
-	q = q.Where("id IN (SELECT rowid FROM "+ftsTable+" WHERE "+ftsTable+" MATCH ?)", term) //nolint:gosec // ftsTable is derived from struct tags at boot, not user input
+	q = q.Where("?TableAlias.id IN (SELECT rowid FROM "+ftsTable+" WHERE "+ftsTable+" MATCH ?)", term) //nolint:gosec // ftsTable is derived from struct tags at boot, not user input
 	return q
 }
 
@@ -50,9 +50,9 @@ func applyLikeSearch(q *bun.SelectQuery, term string, fields []string) *bun.Sele
 	q = q.WhereGroup(" AND ", func(sq *bun.SelectQuery) *bun.SelectQuery {
 		for i, field := range fields {
 			if i == 0 {
-				sq = sq.Where("? LIKE ? ESCAPE '\\'", bun.Ident(field), pattern)
+				sq = sq.Where("?TableAlias.? LIKE ? ESCAPE '\\'", bun.Ident(field), pattern)
 			} else {
-				sq = sq.WhereOr("? LIKE ? ESCAPE '\\'", bun.Ident(field), pattern)
+				sq = sq.WhereOr("?TableAlias.? LIKE ? ESCAPE '\\'", bun.Ident(field), pattern)
 			}
 		}
 		return sq

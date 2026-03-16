@@ -46,10 +46,12 @@ func funcMap() template.FuncMap {
 		"fieldValue":      modeladmin.FieldValue,
 		"add":             func(a, b int) int { return a + b },
 		"sub":             func(a, b int) int { return a - b },
+		"pageURL":         burrow.PageURL,
 		"pageRange":       pageRange,
 		"dict":            dict,
 		"printf":          fmt.Sprintf,
 		"iconPlus":        func() template.HTML { return bsicons.PlusLg() },
+		"iconSearch":      func() template.HTML { return bsicons.Search() },
 		"T":               func(key string) string { return key }, // stub, overridden per-request
 		"alertClass": func(level messages.Level) string {
 			if level == messages.Error {
@@ -120,6 +122,7 @@ func (d *defaultRenderer[T]) List(w http.ResponseWriter, r *http.Request, items 
 		"Messages":        messages.Get(ctx),
 		"ComputedColumns": cfg.ComputedColumns,
 		"Query":           r.URL.RawQuery,
+		"SearchTerm":      r.URL.Query().Get("q"),
 	}
 	content, err := executeTemplate("modeladmin/list", t, data)
 	if err != nil {

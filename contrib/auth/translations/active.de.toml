@@ -64,6 +64,7 @@ admin-dashboard-empty = "Keine Administrationsbereiche verfügbar."
 
 # Admin: Benutzer
 admin-users-none = "Keine Benutzer gefunden."
+admin-users-role = "Rolle"
 Username = "Benutzername"
 Name = "Name"
 Email = "E-Mail"

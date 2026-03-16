@@ -2,6 +2,7 @@ package burrow
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/uptrace/bun"
@@ -80,6 +81,21 @@ func OffsetResult(pr PageRequest, totalCount int) PageResult {
 		TotalPages: totalPages,
 		HasMore:    page < totalPages,
 	}
+}
+
+// PageURL builds a URL that preserves existing query parameters from rawQuery
+// and sets (or replaces) the "page" parameter. This is useful for pagination
+// links that need to retain search terms, filters, and other query state.
+//
+//	burrow.PageURL("/admin/notes", "q=alpha&sort=-created_at", 3)
+//	// => "/admin/notes?page=3&q=alpha&sort=-created_at"
+func PageURL(basePath, rawQuery string, page int) string {
+	q, _ := url.ParseQuery(rawQuery)
+	if q == nil {
+		q = make(url.Values)
+	}
+	q.Set("page", strconv.Itoa(page))
+	return basePath + "?" + q.Encode()
 }
 
 func parseIntOr(s string, fallback int) int {

@@ -12,7 +12,16 @@
             {{ .Cfg.DisplayPluralName }}
             <span class="badge text-bg-secondary fs-6 align-middle ms-2">{{ .Page.TotalCount }}</span>
         </h2>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
+            {{- if .Cfg.HasSearch }}
+            <form class="d-flex" action="/admin/{{ .Cfg.Slug }}" method="GET"
+                hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">
+                <div class="input-group">
+                    <input type="search" class="form-control" name="q" value="{{ .SearchTerm }}" placeholder="{{ T "modeladmin-search" }}">
+                    <button class="btn btn-outline-secondary" type="submit">{{ iconSearch }}</button>
+                </div>
+            </form>
+            {{- end }}
             {{- if .Cfg.CanExport }}
             <div class="dropdown">
                 <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -31,36 +40,39 @@
             {{- end }}
         </div>
     </div>
-    {{- if .Cfg.HasBulkActions }}
-    <div class="d-flex align-items-center gap-2 mb-3" id="ma-bulk-toolbar">
-        <select id="ma-bulk-select" class="form-select form-select-sm w-auto" disabled>
-            <option value="">-- {{ T "modeladmin-bulk-choose-action" }} --</option>
-            {{- range .Cfg.BulkActions }}
-            <option value="{{ .Slug }}"{{ if .Confirm }} data-confirm="{{ T .Confirm }}"{{ end }}>{{ T .Label }}</option>
+    <div class="d-flex align-items-center mb-3">
+        {{- if .Cfg.HasBulkActions }}
+        <div class="d-flex align-items-center gap-2" id="ma-bulk-toolbar">
+            <select id="ma-bulk-select" class="form-select form-select-sm w-auto" disabled>
+                <option value="">-- {{ T "modeladmin-bulk-choose-action" }} --</option>
+                {{- range .Cfg.BulkActions }}
+                <option value="{{ .Slug }}"{{ if .Confirm }} data-confirm="{{ T .Confirm }}"{{ end }}>{{ T .Label }}</option>
+                {{- end }}
+            </select>
+            <button type="submit" form="ma-bulk-form" class="btn btn-sm btn-outline-primary" id="ma-bulk-apply" disabled>{{ T "modeladmin-bulk-apply" }}</button>
+        </div>
+        {{- end }}
+        {{- if .Cfg.Filters }}
+        <div class="d-flex align-items-center gap-3 ms-auto">
+            {{- range .Cfg.Filters }}
+            <div class="d-flex align-items-center">
+                <span class="fw-semibold me-2 small text-body-secondary">{{ .Label }}:</span>
+                <ul class="nav nav-pills nav-pills-sm">
+                    {{- range .Choices }}
+                    <li class="nav-item">
+                        <a class="nav-link py-1 px-2{{ if .IsActive }} active{{ end }}" href="{{ .URL }}"
+                            hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
+                            {{ .Label }}
+                        </a>
+                    </li>
+                    {{- end }}
+                </ul>
+            </div>
             {{- end }}
-        </select>
-        <button type="submit" form="ma-bulk-form" class="btn btn-sm btn-outline-primary" id="ma-bulk-apply" disabled>{{ T "modeladmin-bulk-apply" }}</button>
+        </div>
+        {{- end }}
     </div>
-    {{- end }}
 </div>
-{{- if .Cfg.Filters }}
-<div class="mb-3">
-    {{- range .Cfg.Filters }}
-    <div class="d-flex align-items-center mb-2">
-        <span class="fw-semibold me-2 small text-body-secondary">{{ .Label }}:</span>
-        <ul class="nav nav-pills nav-pills-sm">
-            {{- range .Choices }}
-            <li class="nav-item">
-                <a class="nav-link py-1 px-2{{ if .IsActive }} active{{ end }}" href="{{ .URL }}">
-                    {{ .Label }}
-                </a>
-            </li>
-            {{- end }}
-        </ul>
-    </div>
-    {{- end }}
-</div>
-{{- end }}
 {{ if .Items -}}
 <div class="flex-grow-1 overflow-auto">
 {{- if .Cfg.HasBulkActions }}
@@ -169,23 +181,28 @@
 <div class="flex-shrink-0 pt-3">
     <nav aria-label="Page navigation">
         <ul class="pagination justify-content-center mb-0">
+            {{- $base := printf "/admin/%s" .Cfg.Slug }}
+            {{- $query := .Query }}
             <li class="page-item{{ if le .Page.Page 1 }} disabled{{ end }}">
-                <a class="page-link" href="/admin/{{ .Cfg.Slug }}?page={{ sub .Page.Page 1 }}"
-                    hx-get="/admin/{{ .Cfg.Slug }}?page={{ sub .Page.Page 1 }}" hx-target="main" hx-push-url="true">
+                {{- $prev := pageURL $base $query (sub .Page.Page 1) }}
+                <a class="page-link" href="{{ $prev }}"
+                    hx-get="{{ $prev }}" hx-target="main" hx-push-url="true">
                     {{ T "modeladmin-previous" }}
                 </a>
             </li>
             {{- range pageRange .Page.TotalPages }}
             <li class="page-item{{ if eq . $.Page.Page }} active{{ end }}">
-                <a class="page-link" href="/admin/{{ $.Cfg.Slug }}?page={{ . }}"
-                    hx-get="/admin/{{ $.Cfg.Slug }}?page={{ . }}" hx-target="main" hx-push-url="true">
+                {{- $url := pageURL $base $query . }}
+                <a class="page-link" href="{{ $url }}"
+                    hx-get="{{ $url }}" hx-target="main" hx-push-url="true">
                     {{ . }}
                 </a>
             </li>
             {{- end }}
             <li class="page-item{{ if not .Page.HasMore }} disabled{{ end }}">
-                <a class="page-link" href="/admin/{{ .Cfg.Slug }}?page={{ add .Page.Page 1 }}"
-                    hx-get="/admin/{{ .Cfg.Slug }}?page={{ add .Page.Page 1 }}" hx-target="main" hx-push-url="true">
+                {{- $next := pageURL $base $query (add .Page.Page 1) }}
+                <a class="page-link" href="{{ $next }}"
+                    hx-get="{{ $next }}" hx-target="main" hx-push-url="true">
                     {{ T "modeladmin-next" }}
                 </a>
             </li>

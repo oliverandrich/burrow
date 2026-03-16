@@ -64,6 +64,7 @@ admin-dashboard-empty = "No admin sections available."
 
 # Admin: Users
 admin-users-none = "No users found."
+admin-users-role = "Role"
 User = "User"
 Users = "Users"
 admin-users-action-deactivate = "Deactivate"
