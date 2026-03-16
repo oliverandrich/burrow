@@ -11,6 +11,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Extended spacing utilities** — spacing scale extended with levels 6 (4.5rem), 7 (6rem), and 8 (9rem)
 - **`bootstrap.WithCustomCSS()`** — option to use a custom Sass-compiled CSS file instead of the built-in themes
 - **`themeCSS` template function** — returns the CSS path for the selected color theme
+- **`burrow.PageURL()` helper** — builds pagination URLs that preserve existing query parameters (search, filters) while setting the page number; useful for any paginated view that needs to retain query state across page navigation
+- **ModelAdmin: search input** — admin list views with `SearchFields` now show a search input with HTMX support; uses FTS5 when available, falls back to LIKE
 - **`add`/`sub` template functions in core** — integer arithmetic available in all templates without contrib app registration
 - **Core htmx template stubs** — `htmx/js` and `htmx/config` defined as empty stubs in core; htmx app overrides them when registered
 - **Sass build pipeline** — `just sass` compiles themes, `just sass-setup` installs Bootstrap Sass source; pre-commit hook auto-compiles on `.scss` changes
@@ -60,7 +62,11 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Fixed
 
 - **SQLite PRAGMAs now applied per-connection** — per-connection PRAGMAs (foreign_keys, busy_timeout, synchronous, etc.) are now set via `_pragma` DSN parameters instead of one-shot `db.Exec()` calls, ensuring they are active on every connection in the pool; this fixes `ON DELETE CASCADE` not firing when a different pool connection handled the DELETE
-- **ModelAdmin: ambiguous column name with relations** — `getItem` and list queries now qualify column names with the table alias to prevent SQLite "ambiguous column name" errors when eager-loading relations that share column names (e.g. `id`, `created_at`)
+- **ModelAdmin: ambiguous column name with relations** — `getItem`, list, search (FTS5 and LIKE), and filter queries now qualify column names with `?TableAlias` to prevent SQLite "ambiguous column name" errors when eager-loading relations that share column names (e.g. `id`, `created_at`)
+- **ModelAdmin: pagination preserves query parameters** — pagination links now retain search terms, filters, and sort parameters when navigating between pages
+- **ModelAdmin: `applySort` pointer comparison** — user-requested column sorting was silently overridden by the default `OrderBy` because `applySort` returned the same pointer; now returns `(query, bool)` for reliable detection
+- **Admin sidebar: active-link prefix matching** — `path.indexOf(url) === 0` replaced with boundary-aware `startsWith(url + "/")` to prevent false matches when model slugs share a prefix (e.g. `/admin/user` and `/admin/user-role`)
+- **ModelAdmin: delete/bulk-delete preserves current page** — after deleting items, the redirect now returns to the current page (clamped to the last available page) instead of always going back to page 1
 - **Auth: invites FK missing ON DELETE** — `used_by` and `created_by` in the `invites` table now have `ON DELETE SET NULL`, preventing user deletion from failing due to FK constraint violations (migration `005_invites_fk_set_null`)
 - **Auth: swallowed errors in handlers** — `SetUserRole` (first-user admin promotion), `DeleteEmailVerificationToken`, and `DeleteUserEmailVerificationTokens` errors are now logged via `slog.Error` instead of silently discarded
 
