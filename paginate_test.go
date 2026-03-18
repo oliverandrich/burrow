@@ -156,6 +156,53 @@ func TestPageRequest_Offset(t *testing.T) {
 	}
 }
 
+func TestPageResult_PageSize(t *testing.T) {
+	tests := []struct {
+		name       string
+		totalCount int
+		totalPages int
+		want       int
+	}{
+		{"standard", 25, 3, 9},
+		{"exact", 20, 2, 10},
+		{"zero pages", 0, 0, 0},
+		{"single page", 5, 1, 5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pr := PageResult{TotalCount: tt.totalCount, TotalPages: tt.totalPages}
+			assert.Equal(t, tt.want, pr.PageSize())
+		})
+	}
+}
+
+func TestPageNumbers(t *testing.T) {
+	tests := []struct { //nolint:govet // readability over optimization
+		name    string
+		current int
+		total   int
+		want    []int
+	}{
+		{"3 pages", 1, 3, []int{1, 2, 3}},
+		{"7 pages no ellipsis", 4, 7, []int{1, 2, 3, 4, 5, 6, 7}},
+		{"10 pages first page", 1, 10, []int{1, 2, -1, 10}},
+		{"10 pages middle", 5, 10, []int{1, -1, 4, 5, 6, -1, 10}},
+		{"10 pages last page", 10, 10, []int{1, -1, 9, 10}},
+		{"10 pages near start", 3, 10, []int{1, 2, 3, 4, -1, 10}},
+		{"10 pages near end", 8, 10, []int{1, -1, 7, 8, 9, 10}},
+		{"1 page", 1, 1, []int{1}},
+		{"2 pages", 1, 2, []int{1, 2}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := PageNumbers(tt.current, tt.total)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestApplyOffset_Integration(t *testing.T) {
 	db := TestDB(t)
 	ctx := t.Context()

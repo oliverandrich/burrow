@@ -112,13 +112,13 @@ In templates, pass the current query string and use `pageURL` to generate links:
 
 The `contrib/bootstrap/templates` package provides a ready-made Bootstrap 5 pagination nav. See [Bootstrap — Pagination](../contrib/bootstrap.md#pagination).
 
-Use the `bootstrap/pagination` template in your own templates:
+Use the `bootstrap/pagination` template in your own templates. Pass a struct or map with `BasePath`, `RawQuery`, and `Page`:
 
 ```html
-{{ template "bootstrap/pagination" .Page }}
+{{ template "bootstrap/pagination" dict "BasePath" "/notes" "RawQuery" .RawQuery "Page" .Page }}
 ```
 
-This renders a `<nav>` with numbered page links, previous/next buttons, and ellipsis for large page counts. The current page is highlighted with Bootstrap's `active` class.
+This renders a `<nav>` with numbered page links, previous/next buttons, and ellipsis for large page counts. The current page is highlighted with Bootstrap's `active` class. Query parameters (search terms, filters) are preserved in pagination links.
 
 ## JSON API
 

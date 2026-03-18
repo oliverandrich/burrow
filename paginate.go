@@ -98,6 +98,47 @@ func PageURL(basePath, rawQuery string, page int) string {
 	return basePath + "?" + q.Encode()
 }
 
+// PageSize returns the number of items per page, derived from TotalCount and
+// TotalPages. Returns 0 when TotalPages is zero.
+func (pr PageResult) PageSize() int {
+	if pr.TotalPages == 0 {
+		return 0
+	}
+	return (pr.TotalCount + pr.TotalPages - 1) / pr.TotalPages
+}
+
+// PageNumbers returns page numbers to display for pagination, using -1 for
+// ellipsis gaps. Shows at most 7 slots: first, last, current, and neighbors
+// with ellipsis.
+func PageNumbers(current, total int) []int {
+	if total <= 7 {
+		pages := make([]int, total)
+		for i := range total {
+			pages[i] = i + 1
+		}
+		return pages
+	}
+
+	pages := make([]int, 0, 7)
+	pages = append(pages, 1)
+
+	if current > 3 {
+		pages = append(pages, -1) // ellipsis
+	}
+
+	// Window around current page.
+	for p := max(2, current-1); p <= min(total-1, current+1); p++ {
+		pages = append(pages, p)
+	}
+
+	if current < total-2 {
+		pages = append(pages, -1) // ellipsis
+	}
+
+	pages = append(pages, total)
+	return pages
+}
+
 func parseIntOr(s string, fallback int) int {
 	if s == "" {
 		return fallback

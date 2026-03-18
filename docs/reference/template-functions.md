@@ -17,6 +17,10 @@ Provided by the framework itself. Always available.
 | `safeURL` | `{{ safeURL .Link }}` | Mark a string as safe URL |
 | `safeAttr` | `{{ safeAttr .Attr }}` | Mark a string as safe HTML attribute |
 | `itoa` | `{{ itoa .ID }}` | Convert `int64` to string |
+| `add` | `{{ add .Page 1 }}` | Integer addition |
+| `sub` | `{{ sub .Total 1 }}` | Integer subtraction |
+| `pageURL` | `{{ pageURL .BasePath .RawQuery 3 }}` | Builds a pagination URL preserving existing query parameters |
+| `pageNumbers` | `{{ range pageNumbers .Current .Total }}` | Generates a slice of page numbers with ellipsis gaps (`-1`) |
 
 **Navigation (request-scoped, provided by the framework):**
 
@@ -71,11 +75,9 @@ Provided by the framework itself. Always available.
 
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|
-| `add` | Static | `{{ add .Page 1 }}` | Integer addition. |
-| `sub` | Static | `{{ sub .Total 1 }}` | Integer subtraction. |
-| `pageURL` | Static | `{{ pageURL .BaseURL .Page .Limit }}` | Builds a pagination URL with `page` and `limit` query parameters. |
-| `pageLimit` | Static | `{{ pageLimit .Page }}` | Derives the per-page size from a `PageResult`. |
-| `pageNumbers` | Static | `{{ range pageNumbers .Current .Total }}` | Generates a slice of page numbers for pagination controls. |
+| `iconSunFill` | Static | `{{ iconSunFill }}` | Bootstrap Icons sun-fill SVG (for theme switcher). |
+| `iconMoonStarsFill` | Static | `{{ iconMoonStarsFill }}` | Bootstrap Icons moon-stars-fill SVG (for theme switcher). |
+| `iconCircleHalf` | Static | `{{ iconCircleHalf }}` | Bootstrap Icons circle-half SVG (for theme switcher). |
 
 ## How It Works
 

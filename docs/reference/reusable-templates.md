@@ -42,6 +42,6 @@ Provided by the [`bootstrap`](../contrib/bootstrap.md) contrib app.
 | Template | Description |
 |----------|-------------|
 | `{{ template "bootstrap/layout" . }}` | Base HTML page shell with theme support |
-| `{{ template "bootstrap/pagination" .Page }}` | Offset-based pagination nav (expects `burrow.PageResult`) |
+| `{{ template "bootstrap/pagination" dict "BasePath" "/notes" "RawQuery" .RawQuery "Page" .Page }}` | Offset-based pagination nav with query-preserving links |
 | `{{ template "bootstrap/theme_script" . }}` | Inline script for dark mode persistence (place in `<head>`) |
 | `{{ template "bootstrap/theme_switcher" . }}` | Theme toggle button (light/dark/auto) |

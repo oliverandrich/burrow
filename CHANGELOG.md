@@ -19,6 +19,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Changed
 
+- **Pagination helpers moved to core** — `pageURL`, `pageNumbers` are now core template functions (registered in `baseFuncMap`); `PageResult.PageSize()` method replaces the old `pageLimit` template function; `bootstrap/pagination` template now uses `BasePath`/`RawQuery` instead of `BaseURL` for query-preserving pagination links
+- **`themeCSS` template function removed** — the CSS path is now baked into the `bootstrap/css` template at boot time via an overlay FS; this removes a potential FuncMap collision point for alternative CSS framework apps
 - **Bootstrap layout simplified** — `bootstrap/layout` no longer wraps content in `<main class="container">`; apps control their own container and structure
 - **Auth layout removed** — `auth/layout` template removed; auth pages now use `bootstrap/layout` directly
 - **Notes example uses `bootstrap.NavLayout()`** — app-specific layout replaced by framework-provided nav layout with slot overrides

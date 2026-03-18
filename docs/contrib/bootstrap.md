@@ -173,12 +173,9 @@ The custom CSS path is resolved via `staticURL`, so the file must be served by a
 
 | Function | Example | Description |
 |----------|---------|-------------|
-| `themeCSS` | `{{ themeCSS }}` | Returns CSS path for the selected color theme |
-| `add` | `{{ add .Page 1 }}` | Integer addition |
-| `sub` | `{{ sub .Total 1 }}` | Integer subtraction |
-| `pageURL` | `{{ pageURL .BaseURL .Page .Limit }}` | Builds a pagination URL |
-| `pageLimit` | `{{ pageLimit .Page }}` | Returns the current page size |
-| `pageNumbers` | `{{ range pageNumbers .Current .Total }}` | Generates page number slice |
+| `iconSunFill` | `{{ iconSunFill }}` | Bootstrap Icons sun-fill SVG |
+| `iconMoonStarsFill` | `{{ iconMoonStarsFill }}` | Bootstrap Icons moon-stars-fill SVG |
+| `iconCircleHalf` | `{{ iconCircleHalf }}` | Bootstrap Icons circle-half SVG |
 
 ## Extended Spacing
 

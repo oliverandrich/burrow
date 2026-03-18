@@ -8,7 +8,7 @@
         </li>
         {{- else -}}
         <li class="page-item">
-            <a class="page-link" href="{{ pageURL .BaseURL (sub .Page.Page 1) (pageLimit .Page) }}" aria-label="Previous">
+            <a class="page-link" href="{{ pageURL .BasePath .RawQuery (sub .Page.Page 1) }}" aria-label="Previous">
                 <span aria-hidden="true">&laquo;</span>
             </a>
         </li>
@@ -24,7 +24,7 @@
         </li>
         {{- else -}}
         <li class="page-item">
-            <a class="page-link" href="{{ pageURL $.BaseURL . (pageLimit $.Page) }}">
+            <a class="page-link" href="{{ pageURL $.BasePath $.RawQuery . }}">
                 {{ . }}
             </a>
         </li>
@@ -36,7 +36,7 @@
         </li>
         {{- else -}}
         <li class="page-item">
-            <a class="page-link" href="{{ pageURL .BaseURL (add .Page.Page 1) (pageLimit .Page) }}" aria-label="Next">
+            <a class="page-link" href="{{ pageURL .BasePath .RawQuery (add .Page.Page 1) }}" aria-label="Next">
                 <span aria-hidden="true">&raquo;</span>
             </a>
         </li>

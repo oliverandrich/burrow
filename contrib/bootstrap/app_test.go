@@ -91,14 +91,12 @@ func TestFuncMap(t *testing.T) {
 
 	for _, key := range []string{
 		"iconSunFill", "iconMoonStarsFill", "iconCircleHalf",
-		"themeCSS",
-		"pageURL", "pageLimit", "pageNumbers",
 	} {
 		assert.Contains(t, fm, key)
 	}
 }
 
-func TestFuncMapThemeCSSReturnsCorrectPath(t *testing.T) {
+func TestCSSTemplateReturnsCorrectPath(t *testing.T) {
 	tests := []struct {
 		color    Color
 		expected string
@@ -110,27 +108,23 @@ func TestFuncMapThemeCSSReturnsCorrectPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		app := New(WithColor(tt.color))
-		fn := app.FuncMap()["themeCSS"].(func() string)
-		assert.Equal(t, tt.expected, fn())
+		assert.Contains(t, app.cssTemplate(), tt.expected)
 	}
 }
 
-func TestFuncMapThemeCSSCustom(t *testing.T) {
+func TestCSSTemplateCustom(t *testing.T) {
 	app := New(WithCustomCSS("myapp/mytheme.min.css"))
-	fn := app.FuncMap()["themeCSS"].(func() string)
-	assert.Equal(t, "myapp/mytheme.min.css", fn())
+	assert.Contains(t, app.cssTemplate(), "myapp/mytheme.min.css")
 }
 
 func TestWithCustomCSSOverridesColor(t *testing.T) {
 	app := New(WithColor(Blue), WithCustomCSS("myapp/custom.css"))
-	fn := app.FuncMap()["themeCSS"].(func() string)
-	assert.Equal(t, "myapp/custom.css", fn())
+	assert.Contains(t, app.cssTemplate(), "myapp/custom.css")
 }
 
 func TestWithColorClearsCustomCSS(t *testing.T) {
 	app := New(WithCustomCSS("myapp/custom.css"), WithColor(Gray))
-	fn := app.FuncMap()["themeCSS"].(func() string)
-	assert.Equal(t, "bootstrap/theme-gray.min.css", fn())
+	assert.Contains(t, app.cssTemplate(), "bootstrap/theme-gray.min.css")
 }
 
 func TestFuncMapIconsReturnSVG(t *testing.T) {

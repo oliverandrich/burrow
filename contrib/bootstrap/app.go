@@ -10,6 +10,7 @@ package bootstrap
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -78,34 +79,34 @@ func (a *App) StaticFS() (string, fs.FS) {
 	return "bootstrap", sub
 }
 
-// TemplateFS returns the embedded HTML template files.
+// TemplateFS returns the embedded HTML template files with the CSS link
+// template generated from the configured color theme.
 func (a *App) TemplateFS() fs.FS {
 	sub, _ := fs.Sub(templateFS, "templates")
-	return sub
+	return &overlayFS{base: sub, cssHTML: a.cssTemplate()}
+}
+
+// cssTemplate returns the bootstrap/css template content with the configured
+// CSS path baked in.
+func (a *App) cssTemplate() string {
+	path := "bootstrap/bootstrap.min.css"
+	if a.customCSS != "" {
+		path = a.customCSS
+	} else if a.color != Default {
+		path = "bootstrap/theme-" + string(a.color) + ".min.css"
+	}
+	return fmt.Sprintf(`{{ define "bootstrap/css" -}}
+<link rel="stylesheet" href="{{ staticURL %q }}">
+{{- end }}
+`, path)
 }
 
 // FuncMap returns template functions provided by the bootstrap app.
-// It includes a "themeCSS" function that returns the CSS filename for the
-// selected color theme.
 func (a *App) FuncMap() template.FuncMap {
-	color := a.color
-	custom := a.customCSS
 	return template.FuncMap{
 		"iconSunFill":       func(class ...string) template.HTML { return bsicons.SunFill(class...) },
 		"iconMoonStarsFill": func(class ...string) template.HTML { return bsicons.MoonStarsFill(class...) },
 		"iconCircleHalf":    func(class ...string) template.HTML { return bsicons.CircleHalf(class...) },
-		"themeCSS": func() string {
-			if custom != "" {
-				return custom
-			}
-			if color == Default {
-				return "bootstrap/bootstrap.min.css"
-			}
-			return "bootstrap/theme-" + string(color) + ".min.css"
-		},
-		"pageURL":     pageURL,
-		"pageLimit":   pageLimit,
-		"pageNumbers": pageNumbers,
 	}
 }
 
