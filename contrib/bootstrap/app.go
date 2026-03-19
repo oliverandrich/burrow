@@ -11,7 +11,6 @@ package bootstrap
 import (
 	"embed"
 	"fmt"
-	"html/template"
 	"io/fs"
 	"net/http"
 
@@ -69,9 +68,15 @@ func New(opts ...Option) *App {
 	return a
 }
 
-func (a *App) Name() string                       { return "bootstrap" }
-func (a *App) Register(_ *burrow.AppConfig) error { return nil }
-func (a *App) Dependencies() []string             { return []string{"staticfiles", "htmx"} } //nolint:goconst
+func (a *App) Name() string           { return "bootstrap" }
+func (a *App) Dependencies() []string { return []string{"staticfiles", "htmx"} } //nolint:goconst
+
+func (a *App) Register(cfg *burrow.AppConfig) error {
+	cfg.RegisterIconFunc("iconSunFill", bsicons.SunFill)
+	cfg.RegisterIconFunc("iconMoonStarsFill", bsicons.MoonStarsFill)
+	cfg.RegisterIconFunc("iconCircleHalf", bsicons.CircleHalf)
+	return nil
+}
 
 // StaticFS returns the embedded static assets under the "bootstrap" prefix.
 func (a *App) StaticFS() (string, fs.FS) {
@@ -99,15 +104,6 @@ func (a *App) cssTemplate() string {
 <link rel="stylesheet" href="{{ staticURL %q }}">
 {{- end }}
 `, path)
-}
-
-// FuncMap returns template functions provided by the bootstrap app.
-func (a *App) FuncMap() template.FuncMap {
-	return template.FuncMap{
-		"iconSunFill":       func(class ...string) template.HTML { return bsicons.SunFill(class...) },
-		"iconMoonStarsFill": func(class ...string) template.HTML { return bsicons.MoonStarsFill(class...) },
-		"iconCircleHalf":    func(class ...string) template.HTML { return bsicons.CircleHalf(class...) },
-	}
 }
 
 // Middleware returns middleware that injects the bootstrap layout into the

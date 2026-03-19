@@ -30,6 +30,7 @@ type Server struct { //nolint:govet // fieldalignment: readability over optimiza
 	templates               *template.Template
 	requestFuncMapProviders []func(r *http.Request) template.FuncMap
 	i18nBundle              *i18n.Bundle
+	appCfg                  *AppConfig
 }
 
 // NewServer creates a Server and registers the given apps.
@@ -250,14 +251,14 @@ func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 
-	appCfg := &AppConfig{
+	s.appCfg = &AppConfig{
 		DB:         db,
 		Registry:   s.registry,
 		Config:     cfg,
 		WithLocale: s.i18nBundle.WithLocale,
 	}
 	for _, app := range s.registry.Apps() {
-		if err := app.Register(appCfg); err != nil {
+		if err := app.Register(s.appCfg); err != nil {
 			return fmt.Errorf("register app %q: %w", app.Name(), err)
 		}
 	}

@@ -169,13 +169,11 @@ The custom CSS path is resolved via `staticURL`, so the file must be served by a
 | `theme-purple.min.css` | Purple color theme (Sass-compiled) |
 | `theme-gray.min.css` | Gray color theme (Sass-compiled) |
 
-## Template Functions
+## Icon Registration
 
-| Function | Example | Description |
-|----------|---------|-------------|
-| `iconSunFill` | `{{ iconSunFill }}` | Bootstrap Icons sun-fill SVG |
-| `iconMoonStarsFill` | `{{ iconMoonStarsFill }}` | Bootstrap Icons moon-stars-fill SVG |
-| `iconCircleHalf` | `{{ iconCircleHalf }}` | Bootstrap Icons circle-half SVG |
+The bootstrap app registers the following icons via `cfg.RegisterIconFunc()` in its `Register()` method:
+
+- `iconSunFill`, `iconMoonStarsFill`, `iconCircleHalf` — used by the theme switcher
 
 ## Extended Spacing
 

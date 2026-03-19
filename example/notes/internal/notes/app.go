@@ -3,7 +3,6 @@ package notes
 
 import (
 	"embed"
-	"html/template"
 	"io/fs"
 
 	"github.com/go-chi/chi/v5"
@@ -40,6 +39,10 @@ func (a *App) Name() string { return "notes" }
 func (a *App) Dependencies() []string { return []string{"auth"} }
 
 func (a *App) Register(cfg *burrow.AppConfig) error {
+	cfg.RegisterIconFunc("iconPlusLg", bsicons.PlusLg)
+	cfg.RegisterIconFunc("iconPencil", bsicons.Pencil)
+	cfg.RegisterIconFunc("iconJournalText", bsicons.JournalText)
+
 	a.repo = NewRepository(cfg.DB)
 	a.handlers = NewHandlers(a.repo)
 	a.notesAdmin = &modeladmin.ModelAdmin[Note]{
@@ -84,15 +87,6 @@ func (a *App) MigrationFS() fs.FS {
 func (a *App) TemplateFS() fs.FS {
 	sub, _ := fs.Sub(noteTemplateFS, "templates")
 	return sub
-}
-
-// FuncMap returns template functions used by notes templates.
-func (a *App) FuncMap() template.FuncMap {
-	return template.FuncMap{
-		"iconPlusLg":      func(class ...string) template.HTML { return bsicons.PlusLg(class...) },
-		"iconPencil":      func(class ...string) template.HTML { return bsicons.Pencil(class...) },
-		"iconJournalText": func(class ...string) template.HTML { return bsicons.JournalText(class...) },
-	}
 }
 
 func (a *App) NavItems() []burrow.NavItem {

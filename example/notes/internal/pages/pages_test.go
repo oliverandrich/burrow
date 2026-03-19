@@ -90,15 +90,7 @@ func TestLogo_ReturnsNonEmpty(t *testing.T) {
 func TestFuncMap_ContainsExpectedEntries(t *testing.T) {
 	app := New()
 	fm := app.FuncMap()
-
-	expectedKeys := []string{
-		"iconHouse", "iconKey", "iconPuzzle", "iconLightning",
-		"iconGear", "iconBoxArrowRight", "iconBoxArrowInRight",
-		"alertClass",
-	}
-	for _, key := range expectedKeys {
-		assert.Contains(t, fm, key)
-	}
+	assert.Contains(t, fm, "alertClass")
 }
 
 func TestAlertClass(t *testing.T) {
@@ -118,27 +110,19 @@ func TestTemplateFS_ReturnsNonNil(t *testing.T) {
 	assert.NotNil(t, fsys)
 }
 
-func TestRegister_ReturnsNil(t *testing.T) {
+func TestRegister_RegistersIcons(t *testing.T) {
 	app := New()
-	err := app.Register(nil)
-	assert.NoError(t, err)
-}
+	cfg := &burrow.AppConfig{}
+	require.NoError(t, app.Register(cfg))
 
-func TestFuncMap_IconFunctionsReturnSVG(t *testing.T) {
-	app := New()
-	fm := app.FuncMap()
-
-	iconKeys := []string{
-		"iconHouse", "iconKey", "iconPuzzle", "iconLightning",
-		"iconGear", "iconBoxArrowRight", "iconBoxArrowInRight",
-	}
-	for _, key := range iconKeys {
-		fn, ok := fm[key].(func(class ...string) template.HTML)
-		require.True(t, ok, "expected %s to be func(...string) template.HTML", key)
-		result := fn()
-		assert.NotEmpty(t, result, "expected %s to return non-empty HTML", key)
-		assert.Contains(t, string(result), "<svg", "expected %s to return SVG", key)
-	}
+	icons := cfg.IconFuncs()
+	assert.Contains(t, icons, "iconHouse")
+	assert.Contains(t, icons, "iconKey")
+	assert.Contains(t, icons, "iconPuzzle")
+	assert.Contains(t, icons, "iconLightning")
+	assert.Contains(t, icons, "iconGear")
+	assert.Contains(t, icons, "iconBoxArrowRight")
+	assert.Contains(t, icons, "iconBoxArrowInRight")
 }
 
 func TestRoutes_RegistersHomeRoute(t *testing.T) {

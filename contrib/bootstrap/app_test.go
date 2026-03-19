@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +21,6 @@ var (
 	_ burrow.HasStaticFiles  = (*App)(nil)
 	_ burrow.HasMiddleware   = (*App)(nil)
 	_ burrow.HasTemplates    = (*App)(nil)
-	_ burrow.HasFuncMap      = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
 )
 
@@ -31,7 +29,13 @@ func TestAppName(t *testing.T) {
 }
 
 func TestAppRegister(t *testing.T) {
-	require.NoError(t, New().Register(&burrow.AppConfig{}))
+	cfg := &burrow.AppConfig{}
+	require.NoError(t, New().Register(cfg))
+
+	icons := cfg.IconFuncs()
+	assert.Contains(t, icons, "iconSunFill")
+	assert.Contains(t, icons, "iconMoonStarsFill")
+	assert.Contains(t, icons, "iconCircleHalf")
 }
 
 func TestDefaultColor(t *testing.T) {
@@ -86,16 +90,6 @@ func TestTemplateFS(t *testing.T) {
 	}
 }
 
-func TestFuncMap(t *testing.T) {
-	fm := New().FuncMap()
-
-	for _, key := range []string{
-		"iconSunFill", "iconMoonStarsFill", "iconCircleHalf",
-	} {
-		assert.Contains(t, fm, key)
-	}
-}
-
 func TestCSSTemplateReturnsCorrectPath(t *testing.T) {
 	tests := []struct {
 		color    Color
@@ -125,22 +119,6 @@ func TestWithCustomCSSOverridesColor(t *testing.T) {
 func TestWithColorClearsCustomCSS(t *testing.T) {
 	app := New(WithCustomCSS("myapp/custom.css"), WithColor(Gray))
 	assert.Contains(t, app.cssTemplate(), "bootstrap/theme-gray.min.css")
-}
-
-func TestFuncMapIconsReturnSVG(t *testing.T) {
-	fm := New().FuncMap()
-
-	for _, key := range []string{"iconSunFill", "iconMoonStarsFill", "iconCircleHalf"} {
-		fn := fm[key].(func(...string) template.HTML)
-		svg := fn()
-		assert.Contains(t, string(svg), "<svg", "expected %s to return SVG", key)
-	}
-}
-
-func TestFuncMapIconsAcceptClasses(t *testing.T) {
-	fn := New().FuncMap()["iconSunFill"].(func(...string) template.HTML)
-	svg := fn("fs-1", "d-block")
-	assert.Contains(t, string(svg), `class="fs-1 d-block"`)
 }
 
 func TestMiddlewareInjectsLayout(t *testing.T) {

@@ -31,7 +31,6 @@ var (
 	_ burrow.HasAdmin        = (*App)(nil)
 	_ burrow.HasTranslations = (*App)(nil)
 	_ burrow.HasTemplates    = (*App)(nil)
-	_ burrow.HasFuncMap      = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -198,16 +197,20 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 	t.Helper()
 
 	app := New()
-	fm := app.FuncMap()
-	// Add stubs for request-scoped functions and functions provided by other apps.
-	fm["t"] = func(key string) string { return key }
-	fm["csrfToken"] = func() string { return "test-token" }
-	fm["staticURL"] = func(name string) string { return "/static/" + name }
-	fm["itoa"] = func(id int64) string { return fmt.Sprintf("%d", id) }
-	fm["iconTrash"] = func(class ...string) template.HTML { return "<svg>trash</svg>" }
-	fm["alertClass"] = func(level messages.Level) string { return string(level) }
-	fm["add"] = func(a, b int) int { return a + b }
-	fm["sub"] = func(a, b int) int { return a - b }
+	// Stubs for request-scoped functions, icons, and functions from other apps.
+	fm := template.FuncMap{
+		"t":               func(key string) string { return key },
+		"csrfToken":       func() string { return "test-token" },
+		"staticURL":       func(name string) string { return "/static/" + name },
+		"itoa":            func(id int64) string { return fmt.Sprintf("%d", id) },
+		"iconTrash":       func(class ...string) template.HTML { return "<svg>trash</svg>" },
+		"iconPlusLg":      func(class ...string) template.HTML { return "<svg>plus</svg>" },
+		"iconPencil":      func(class ...string) template.HTML { return "<svg>pencil</svg>" },
+		"iconJournalText": func(class ...string) template.HTML { return "<svg>journal</svg>" },
+		"alertClass":      func(level messages.Level) string { return string(level) },
+		"add":             func(a, b int) int { return a + b },
+		"sub":             func(a, b int) int { return a - b },
+	}
 
 	tmpl := template.New("").Funcs(fm)
 
@@ -993,29 +996,6 @@ func TestAdminRoutesNilNotesAdmin(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-func TestFuncMapIconFunctions(t *testing.T) {
-	app := New()
-	fm := app.FuncMap()
-
-	plusLgFn, ok := fm["iconPlusLg"].(func(class ...string) template.HTML)
-	require.True(t, ok)
-	result := plusLgFn()
-	assert.NotEmpty(t, result)
-	assert.Contains(t, string(result), "<svg")
-
-	pencilFn, ok := fm["iconPencil"].(func(class ...string) template.HTML)
-	require.True(t, ok)
-	result = pencilFn()
-	assert.NotEmpty(t, result)
-	assert.Contains(t, string(result), "<svg")
-
-	journalTextFn, ok := fm["iconJournalText"].(func(class ...string) template.HTML)
-	require.True(t, ok)
-	result = journalTextFn("my-class")
-	assert.NotEmpty(t, result)
-	assert.Contains(t, string(result), "<svg")
 }
 
 func TestListNotesHTMXScrollReturnsFragment(t *testing.T) {

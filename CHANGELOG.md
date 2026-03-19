@@ -6,11 +6,11 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
+- **`AppConfig.RegisterIconFunc()`** — apps register icon template functions in their `Register()` method via `cfg.RegisterIconFunc("iconName", bsicons.IconFunc)`; duplicate registrations are silently ignored, allowing multiple apps to depend on the same icon without collisions
 - **Bootstrap color themes** — three Sass-compiled color themes (blue, purple, gray) selectable via `bootstrap.WithColor()`; default is purple; vanilla Bootstrap available via `bootstrap.WithColor(bootstrap.Default)`
 - **`bootstrap.NavLayout()`** — layout template with empty `bootstrap/navbar`, `bootstrap/alerts`, and `bootstrap/nav_scripts` slots that apps can override via `HasTemplates`
 - **Extended spacing utilities** — spacing scale extended with levels 6 (4.5rem), 7 (6rem), and 8 (9rem)
 - **`bootstrap.WithCustomCSS()`** — option to use a custom Sass-compiled CSS file instead of the built-in themes
-- **`themeCSS` template function** — returns the CSS path for the selected color theme
 - **`burrow.PageURL()` helper** — builds pagination URLs that preserve existing query parameters (search, filters) while setting the page number; useful for any paginated view that needs to retain query state across page navigation
 - **ModelAdmin: search input** — admin list views with `SearchFields` now show a search input with HTMX support; uses FTS5 when available, falls back to LIKE
 - **`add`/`sub` template functions in core** — integer arithmetic available in all templates without contrib app registration
@@ -21,6 +21,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **Pagination helpers moved to core** — `pageURL`, `pageNumbers` are now core template functions (registered in `baseFuncMap`); `PageResult.PageSize()` method replaces the old `pageLimit` template function; `bootstrap/pagination` template now uses `BasePath`/`RawQuery` instead of `BaseURL` for query-preserving pagination links
 - **`themeCSS` template function removed** — the CSS path is now baked into the `bootstrap/css` template at boot time via an overlay FS; this removes a potential FuncMap collision point for alternative CSS framework apps
+- **Icon template functions moved to `RegisterIconFunc`** — apps no longer register icon functions via `FuncMap()`; instead they call `cfg.RegisterIconFunc()` in `Register()`, which prevents FuncMap collisions when multiple apps use the same icons
 - **Bootstrap layout simplified** — `bootstrap/layout` no longer wraps content in `<main class="container">`; apps control their own container and structure
 - **Auth layout removed** — `auth/layout` template removed; auth pages now use `bootstrap/layout` directly
 - **Notes example uses `bootstrap.NavLayout()`** — app-specific layout replaced by framework-provided nav layout with slot overrides

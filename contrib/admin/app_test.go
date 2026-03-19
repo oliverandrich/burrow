@@ -21,7 +21,6 @@ var (
 	_ burrow.HasRoutes         = (*App)(nil)
 	_ burrow.HasDependencies   = (*App)(nil)
 	_ burrow.HasTemplates      = (*App)(nil)
-	_ burrow.HasFuncMap        = (*App)(nil)
 	_ burrow.HasTranslations   = (*App)(nil)
 	_ burrow.HasRequestFuncMap = (*App)(nil)
 )

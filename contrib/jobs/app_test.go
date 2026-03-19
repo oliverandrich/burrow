@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"html/template"
 	"io/fs"
 	"strconv"
 	"sync/atomic"
@@ -216,7 +215,7 @@ func TestApp_FuncMap(t *testing.T) {
 	require.NotNil(t, fm)
 
 	// Verify expected keys exist.
-	expectedKeys := []string{"prettyJSON", "jobStatus", "string", "iconArrowCounterclockwise", "iconXCircle", "iconTrash"}
+	expectedKeys := []string{"prettyJSON", "jobStatus", "string"}
 	for _, key := range expectedKeys {
 		assert.Contains(t, fm, key)
 	}
@@ -230,16 +229,6 @@ func TestApp_FuncMap(t *testing.T) {
 	stringFn := fm["string"].(func(any) string)
 	assert.Equal(t, "42", stringFn(42))
 	assert.Equal(t, "hello", stringFn("hello"))
-
-	// Test icon functions return non-empty template.HTML.
-	iconFn := fm["iconArrowCounterclockwise"].(func(...string) template.HTML)
-	assert.NotEmpty(t, iconFn())
-
-	iconXFn := fm["iconXCircle"].(func(...string) template.HTML)
-	assert.NotEmpty(t, iconXFn())
-
-	iconTrashFn := fm["iconTrash"].(func(...string) template.HTML)
-	assert.NotEmpty(t, iconTrashFn())
 }
 
 func TestPrettyJSON(t *testing.T) {

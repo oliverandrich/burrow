@@ -59,6 +59,10 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.repo = NewRepository(cfg.DB)
 	a.registry = cfg.Registry
 
+	cfg.RegisterIconFunc("iconArrowCounterclockwise", bsicons.ArrowCounterclockwise)
+	cfg.RegisterIconFunc("iconXCircle", bsicons.XCircle)
+	cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
+
 	a.jobsAdmin = &modeladmin.ModelAdmin[Job]{
 		Slug:              "jobs",
 		DisplayName:       "Job",
@@ -239,12 +243,9 @@ func (a *App) TemplateFS() fs.FS {
 // FuncMap returns static template functions for jobs templates.
 func (a *App) FuncMap() template.FuncMap {
 	return template.FuncMap{
-		"prettyJSON":                prettyJSON,
-		"jobStatus":                 func(j Job) string { return string(j.Status) },
-		"string":                    func(v any) string { return fmt.Sprint(v) },
-		"iconArrowCounterclockwise": func(class ...string) template.HTML { return bsicons.ArrowCounterclockwise(class...) },
-		"iconXCircle":               func(class ...string) template.HTML { return bsicons.XCircle(class...) },
-		"iconTrash":                 func(class ...string) template.HTML { return bsicons.Trash(class...) },
+		"prettyJSON": prettyJSON,
+		"jobStatus":  func(j Job) string { return string(j.Status) },
+		"string":     func(v any) string { return fmt.Sprint(v) },
 	}
 }
 

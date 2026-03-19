@@ -71,13 +71,14 @@ Provided by the framework itself. Always available.
 | `isAuthenticated` | Request | `{{ if isAuthenticated }}...{{ end }}` | Returns `true` if a user is logged in. |
 | `authLogo` | Request | `{{ authLogo }}` | Returns the auth logo HTML. |
 
-### bootstrap
+### Icons (via RegisterIconFunc)
+
+Icon template functions are registered by apps in their `Register()` method via [`cfg.RegisterIconFunc()`](interfaces.md#registericonfunc). They are not tied to any specific contrib app. The `IconFunc` signature is `func(...string) template.HTML` — the variadic string parameter accepts optional CSS classes.
 
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|
-| `iconSunFill` | Static | `{{ iconSunFill }}` | Bootstrap Icons sun-fill SVG (for theme switcher). |
-| `iconMoonStarsFill` | Static | `{{ iconMoonStarsFill }}` | Bootstrap Icons moon-stars-fill SVG (for theme switcher). |
-| `iconCircleHalf` | Static | `{{ iconCircleHalf }}` | Bootstrap Icons circle-half SVG (for theme switcher). |
+| `icon<Name>` | Static | `{{ iconSunFill }}` | Icon SVG. Name depends on which icons are registered by apps. |
+| `icon<Name>` (with class) | Static | `{{ iconSunFill "fs-1" }}` | Icon SVG with CSS class applied. |
 
 ## How It Works
 

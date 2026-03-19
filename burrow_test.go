@@ -725,6 +725,35 @@ func TestSortApps_NoWarningWhenOrderCorrect(t *testing.T) {
 	assert.NotContains(t, buf.String(), "app registration order was adjusted")
 }
 
+func TestAppConfig_RegisterIconFunc(t *testing.T) {
+	cfg := &AppConfig{}
+	icon := func(class ...string) template.HTML { return "<svg>test</svg>" }
+
+	cfg.RegisterIconFunc("iconTest", icon)
+
+	assert.Len(t, cfg.IconFuncs(), 1)
+	assert.Contains(t, cfg.IconFuncs(), "iconTest")
+}
+
+func TestAppConfig_RegisterIconFunc_DuplicateIsNoop(t *testing.T) {
+	cfg := &AppConfig{}
+	icon1 := func(class ...string) template.HTML { return "<svg>first</svg>" }
+	icon2 := func(class ...string) template.HTML { return "<svg>second</svg>" }
+
+	cfg.RegisterIconFunc("iconTest", icon1)
+	cfg.RegisterIconFunc("iconTest", icon2)
+
+	assert.Len(t, cfg.IconFuncs(), 1)
+	// First registration wins.
+	fn := cfg.IconFuncs()["iconTest"]
+	assert.Equal(t, template.HTML("<svg>first</svg>"), fn())
+}
+
+func TestAppConfig_IconFuncs_NilWhenEmpty(t *testing.T) {
+	cfg := &AppConfig{}
+	assert.Nil(t, cfg.IconFuncs())
+}
+
 func indexOf(s []string, val string) int {
 	for i, v := range s {
 		if v == val {

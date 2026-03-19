@@ -30,22 +30,27 @@ html := bsicons.JournalText("fs-1 d-block mb-2")
 html := bsicons.People("fs-1", "text-primary")
 ```
 
-### In Templates via FuncMap
+### In Templates via RegisterIconFunc
 
-Apps that need icons in templates register them via `HasFuncMap`. For example, the admin app registers icon functions like `iconGearFill`:
+Apps register icons for template use in their `Register()` method via `cfg.RegisterIconFunc()`:
 
-```html
-{{ define "admin/sidebar" -}}
-<nav>
-  {{ iconGearFill "me-2" }} Settings
-</nav>
-{{- end }}
+```go
+func (a *App) Register(cfg *burrow.AppConfig) error {
+    cfg.RegisterIconFunc("iconGearFill", bsicons.GearFill)
+    cfg.RegisterIconFunc("iconPencil", bsicons.Pencil)
+    return nil
+}
 ```
 
-!!! tip "Register once, use everywhere"
-    Template functions are global — once any app registers an icon function, it is available in **all** templates. If another app (e.g., `admin`) already registers `iconPersonCircle`, your app can use it directly in templates without re-registering it. Registering the same name twice causes a startup panic.
+Registered icons are available in all templates:
 
-    When registering your own icon functions, prefix them with your app name to avoid collisions (e.g., `notesIconStar` instead of `iconStar`).
+```html
+{{ iconGearFill "me-2" }} Settings
+{{ iconPencil }} Edit
+```
+
+!!! tip "Duplicate registrations are safe"
+    If multiple apps register the same icon name, the first registration wins and subsequent ones are silently ignored. This means apps can independently declare the icons they need without worrying about collisions.
 
 ### NavItems
 

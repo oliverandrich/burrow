@@ -66,6 +66,9 @@ func (a *App) Dependencies() []string { return []string{"auth"} }
 
 func (a *App) Register(cfg *burrow.AppConfig) error {
 	a.registry = cfg.Registry
+	cfg.RegisterIconFunc("iconGearFill", bsicons.GearFill)
+	cfg.RegisterIconFunc("iconChevronRight", bsicons.ChevronRight)
+	cfg.RegisterIconFunc("iconPersonCircle", bsicons.PersonCircle)
 	return nil
 }
 
@@ -101,15 +104,6 @@ func (a *App) TranslationFS() fs.FS { return translationFS }
 func (a *App) TemplateFS() fs.FS {
 	sub, _ := fs.Sub(templateFS, "templates")
 	return sub
-}
-
-// FuncMap returns static template functions for admin icons.
-func (a *App) FuncMap() template.FuncMap {
-	return template.FuncMap{
-		"iconGearFill":     func(class ...string) template.HTML { return bsicons.GearFill(class...) },
-		"iconChevronRight": func(class ...string) template.HTML { return bsicons.ChevronRight(class...) },
-		"iconPersonCircle": func(class ...string) template.HTML { return bsicons.PersonCircle(class...) },
-	}
 }
 
 // RequestFuncMap returns request-scoped template functions for the admin sidebar.

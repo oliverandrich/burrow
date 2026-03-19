@@ -51,6 +51,27 @@ type AppConfig struct {
 | `Config` | Parsed framework configuration |
 | `WithLocale` | Function that returns a new context with the given locale set (provided by the i18n `Bundle`) |
 
+#### RegisterIconFunc
+
+```go
+// IconFunc is the function signature for icon template functions.
+type IconFunc = func(...string) template.HTML
+
+func (cfg *AppConfig) RegisterIconFunc(name string, fn IconFunc)
+```
+
+Registers an icon function as a template function. Apps call this in their `Register()` method to make icons available in templates without polluting the global `FuncMap`. Duplicate registrations of the same name are silently ignored, so multiple apps can depend on the same icon.
+
+```go
+func (a *myApp) Register(cfg *burrow.AppConfig) error {
+    cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
+    cfg.RegisterIconFunc("iconPencil", bsicons.Pencil)
+    return nil
+}
+```
+
+The registered icon functions become available in templates as `{{ iconTrash }}` or `{{ iconTrash "fs-1" }}`.
+
 ## Optional
 
 Apps can implement any combination of these interfaces. The framework detects them via type assertion and calls the appropriate methods during the boot sequence.
@@ -207,7 +228,7 @@ func (a *App) FuncMap() template.FuncMap {
 
 !!! warning "Reserved function names"
     The following names are already registered by the framework and contrib apps:
-    `safeHTML`, `safeURL`, `safeAttr`, `itoa`, `lang`, `navItems`, `navLinks`, `staticURL`, `csrfToken`, `t`, `tData`, `tPlural`, `currentUser`, `isAuthenticated`, `add`, `sub`, `pageURL`, `pageNumbers`, `iconSunFill`, `iconMoonStarsFill`, `iconCircleHalf`.
+    `safeHTML`, `safeURL`, `safeAttr`, `itoa`, `lang`, `navItems`, `navLinks`, `staticURL`, `csrfToken`, `t`, `tData`, `tPlural`, `currentUser`, `isAuthenticated`, `add`, `sub`, `pageURL`, `pageNumbers`, plus any `icon*` names registered via `cfg.RegisterIconFunc()`.
     Do not use these names in your own `FuncMap` — the server will panic at startup.
 
 ### HasRequestFuncMap

@@ -172,6 +172,14 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 		}
 	}
 
+	// Add icon functions registered via AppConfig.RegisterIconFunc.
+	// No duplicate check needed — RegisterIconFunc already deduplicates.
+	if s.appCfg != nil {
+		for k, v := range s.appCfg.IconFuncs() {
+			funcMap[k] = v
+		}
+	}
+
 	return funcMap, templateFSes
 }
 
