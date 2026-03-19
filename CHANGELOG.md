@@ -13,7 +13,11 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Added
 
 - **ModelAdmin: `ConfirmPage` on `BulkAction`** — bulk actions with `ConfirmPage: true` redirect to a confirm page instead of using a JS `confirm()` dialog; the built-in `DeleteBulkAction` uses this by default
-- **Admin layout: CSRF token on `<body>`** — `hx-headers` with the CSRF token is set on the `<body>` element so all HTMX requests inherit it automatically; individual `hx-headers` attributes removed from modeladmin templates
+- **Admin layout: `hx-boost` on `<body>`** — replaces manual `hx-get`/`hx-target`/`hx-push-url` on every link; all navigation and form submissions are automatically boosted to swap `<main>` without full page reloads
+
+### Fixed
+
+- **Auth middleware: HTMX-aware login redirect** — when a session expires during HTMX navigation (e.g. in the admin), the auth middleware now uses `HX-Redirect` to force a full page navigation to the login page instead of swapping it into `<main>`
 
 - **`AppConfig.RegisterIconFunc()`** — apps register icon template functions in their `Register()` method via `cfg.RegisterIconFunc("iconName", bsicons.IconFunc)`; duplicate registrations are silently ignored, allowing multiple apps to depend on the same icon without collisions
 - **Bootstrap color themes** — three Sass-compiled color themes (blue, purple, gray) selectable via `bootstrap.WithColor()`; default is purple; vanilla Bootstrap available via `bootstrap.WithColor(bootstrap.Default)`

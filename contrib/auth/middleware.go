@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/session"
 )
 
@@ -22,7 +23,7 @@ func RequireAuth() func(http.Handler) http.Handler {
 				if target := redirectTarget(r); target != "" {
 					_ = session.Set(w, r, "redirect_after_login", target)
 				}
-				http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+				redirectToLogin(w, r)
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -60,7 +61,7 @@ func RequireAdmin() func(http.Handler) http.Handler {
 				if target := redirectTarget(r); target != "" {
 					_ = session.Set(w, r, "redirect_after_login", target)
 				}
-				http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+				redirectToLogin(w, r)
 				return
 			}
 			if !user.IsAdmin() {
@@ -70,6 +71,18 @@ func RequireAdmin() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// redirectToLogin sends the user to the login page. For HTMX requests it uses
+// HX-Redirect to force a full page navigation instead of swapping into the
+// current target (which would render the login page inside <main>).
+func redirectToLogin(w http.ResponseWriter, r *http.Request) {
+	if htmx.Request(r).IsHTMX() {
+		htmx.Redirect(w, "/auth/login")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 }
 
 // SafeRedirectPath validates a redirect path, falling back to defaultPath.
