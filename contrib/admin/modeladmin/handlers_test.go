@@ -33,6 +33,7 @@ type mockRenderer struct { //nolint:govet // fieldalignment: test struct
 	lastFields          []forms.BoundField
 	lastConfig          RenderConfig
 	lastPage            burrow.PageResult
+	lastDeleteItems     []DeleteItem
 }
 
 func (m *mockRenderer) List(w http.ResponseWriter, r *http.Request, items []testItem, page burrow.PageResult, cfg RenderConfig) error {
@@ -61,9 +62,9 @@ func (m *mockRenderer) Form(w http.ResponseWriter, r *http.Request, item *testIt
 	return nil
 }
 
-func (m *mockRenderer) ConfirmDelete(w http.ResponseWriter, r *http.Request, item *testItem, cfg RenderConfig) error {
+func (m *mockRenderer) ConfirmDelete(w http.ResponseWriter, r *http.Request, items []DeleteItem, cfg RenderConfig) error {
 	m.confirmDeleteCalled = true
-	m.lastItem = item
+	m.lastDeleteItems = items
 	m.lastConfig = cfg
 	w.WriteHeader(http.StatusOK)
 	return nil
@@ -313,12 +314,14 @@ func TestHandleDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/items/%d", item.ID), nil)
+	form := url.Values{"_selected": {fmt.Sprintf("%d", item.ID)}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "/admin/items", w.Header().Get("HX-Redirect"))
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/admin/items", w.Header().Get("Location"))
 
 	// Verify deletion.
 	count, err := db.NewSelect().Model((*testItem)(nil)).Count(context.Background())
@@ -332,13 +335,15 @@ func TestHandleDelete_PreservesPage(t *testing.T) {
 	seedItems(t, db, 20) // 10 pages of 2 items
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/items/1", nil)
+	form := url.Values{"_selected": {"1"}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Current-URL", "http://localhost:8080/admin/items?page=5")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "/admin/items?page=5", w.Header().Get("HX-Redirect"))
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/admin/items?page=5", w.Header().Get("Location"))
 }
 
 func TestHandleDelete_PreservesPage_RefererFallback(t *testing.T) {
@@ -347,14 +352,16 @@ func TestHandleDelete_PreservesPage_RefererFallback(t *testing.T) {
 	seedItems(t, db, 20) // 10 pages of 2 items
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/items/1", nil)
+	form := url.Values{"_selected": {"1"}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	// No HX-Current-URL, only Referer.
 	req.Header.Set("Referer", "http://localhost:8080/admin/items?page=5")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "/admin/items?page=5", w.Header().Get("HX-Redirect"))
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/admin/items?page=5", w.Header().Get("Location"))
 }
 
 func TestHandleDelete_ClampsToLastPage(t *testing.T) {
@@ -364,41 +371,44 @@ func TestHandleDelete_ClampsToLastPage(t *testing.T) {
 
 	r := newRouter(ma)
 	// Delete the single item on page 4.
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/items/10", nil)
+	form := url.Values{"_selected": {"10"}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Current-URL", "http://localhost:8080/admin/items?page=4")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "/admin/items?page=3", w.Header().Get("HX-Redirect"), "should clamp to last available page")
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	assert.Equal(t, "/admin/items?page=3", w.Header().Get("Location"), "should clamp to last available page")
 }
 
-func TestHandleDelete_NotFound(t *testing.T) {
+func TestHandleDelete_NoItemsSelected(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/items/999", nil)
+	form := url.Values{}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestHandleDelete_Forbidden(t *testing.T) {
-	db, _, ma := setupHandlerTest(t)
+	_, _, ma := setupHandlerTest(t)
 	ma.CanDelete = false
 
-	item := &testItem{Name: "Test", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
-	require.NoError(t, err)
-
-	// When CanDelete is false, the DELETE route is not registered.
+	// When CanDelete is false, no delete routes are registered.
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/items/%d", item.ID), nil)
+	form := url.Values{"_selected": {"1"}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+	// POST /bulk/delete not registered, but POST /bulk/{action} catches it → 404 (no "delete" action).
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestRenderConfig(t *testing.T) {
@@ -498,9 +508,8 @@ func (m *mockValidatedRenderer) Form(w http.ResponseWriter, _ *http.Request, ite
 	return nil
 }
 
-func (m *mockValidatedRenderer) ConfirmDelete(w http.ResponseWriter, _ *http.Request, item *validatedItem, cfg RenderConfig) error {
+func (m *mockValidatedRenderer) ConfirmDelete(w http.ResponseWriter, _ *http.Request, _ []DeleteItem, cfg RenderConfig) error {
 	m.confirmDeleteCalled = true
-	m.lastItem = item
 	m.lastConfig = cfg
 	w.WriteHeader(http.StatusOK)
 	return nil

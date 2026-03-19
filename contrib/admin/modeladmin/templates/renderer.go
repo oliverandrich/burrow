@@ -171,17 +171,15 @@ func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *
 	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
 }
 
-func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Request, item *T, cfg modeladmin.RenderConfig) error {
-	itemAny := any(*item)
+func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Request, items []modeladmin.DeleteItem, cfg modeladmin.RenderConfig) error {
 	ctx := r.Context()
 	t := func(key string) string { return i18n.T(ctx, key) }
 	data := map[string]any{
-		"Item":          itemAny,
-		"IDValue":       fmt.Sprintf("%v", modeladmin.FieldValue(itemAny, cfg.IDField)),
-		"Cfg":           cfg,
-		"CSRFToken":     csrf.Token(ctx),
-		"Messages":      messages.Get(ctx),
-		"DeleteImpacts": cfg.DeleteImpacts,
+		"Items":          items,
+		"Cfg":            cfg,
+		"CSRFToken":      csrf.Token(ctx),
+		"Messages":       messages.Get(ctx),
+		"ConfirmMessage": i18n.TPlural(ctx, "modeladmin-delete-confirm", len(items)),
 	}
 	content, err := executeTemplate("modeladmin/confirm_delete", t, data)
 	if err != nil {

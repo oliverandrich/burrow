@@ -21,6 +21,13 @@ type CascadeImpact struct {
 	Count       int
 }
 
+// DeleteItem holds per-item information for the delete confirmation page.
+type DeleteItem struct {
+	ID      string
+	Label   string
+	Impacts []CascadeImpact
+}
+
 // tableDisplayNames maps SQL table names to human-readable DisplayPluralName values.
 // Populated by Init() at boot time for each registered ModelAdmin.
 var (
@@ -103,26 +110,43 @@ func scanForeignKeys(ctx context.Context, db *bun.DB, tbl, targetTable string) [
 	return refs
 }
 
-// countCascadeImpacts counts affected rows per cascade reference for a given item ID.
-// Only returns entries with Count > 0.
-func countCascadeImpacts(ctx context.Context, db *bun.DB, cascades []cascadeRef, id string) ([]CascadeImpact, error) {
-	var impacts []CascadeImpact
+// countPerItemCascadeImpacts counts cascade impacts grouped by parent ID.
+// Returns a map from parent ID to its cascade impacts (only non-zero counts).
+func countPerItemCascadeImpacts(ctx context.Context, db *bun.DB, cascades []cascadeRef, ids []string) (map[string][]CascadeImpact, error) {
+	result := make(map[string][]CascadeImpact)
 	for _, c := range cascades {
+		if err := countCascadeForRef(ctx, db, c, ids, result); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// countCascadeForRef counts cascade impacts for a single cascade reference, grouped by parent ID.
+func countCascadeForRef(ctx context.Context, db *bun.DB, c cascadeRef, ids []string, result map[string][]CascadeImpact) error {
+	rows, err := db.QueryContext(ctx,
+		fmt.Sprintf("SELECT %q, COUNT(*) FROM %q WHERE %q IN (?) GROUP BY %q", c.Column, c.Table, c.Column, c.Column), //nolint:gosec // table/column from boot-time introspection
+		bun.List(ids),
+	)
+	if err != nil {
+		return fmt.Errorf("count cascade impact for %s.%s: %w", c.Table, c.Column, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	displayName := lookupTableDisplayName(c.Table)
+	for rows.Next() {
+		var parentID string
 		var count int
-		err := db.NewRaw(
-			fmt.Sprintf("SELECT COUNT(*) FROM %q WHERE %q = ?", c.Table, c.Column), //nolint:gosec // table/column from boot-time introspection
-			id,
-		).Scan(ctx, &count)
-		if err != nil {
-			return nil, fmt.Errorf("count cascade impact for %s.%s: %w", c.Table, c.Column, err)
+		if err := rows.Scan(&parentID, &count); err != nil {
+			return fmt.Errorf("scan cascade impact for %s.%s: %w", c.Table, c.Column, err)
 		}
 		if count > 0 {
-			impacts = append(impacts, CascadeImpact{
+			result[parentID] = append(result[parentID], CascadeImpact{
 				Table:       c.Table,
-				DisplayName: lookupTableDisplayName(c.Table),
+				DisplayName: displayName,
 				Count:       count,
 			})
 		}
 	}
-	return impacts, nil
+	return nil
 }

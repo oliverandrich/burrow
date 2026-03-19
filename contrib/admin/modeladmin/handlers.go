@@ -3,6 +3,7 @@ package modeladmin
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -11,13 +12,13 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/forms"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
 // HandleBulkAction processes a bulk action on selected items.
+// Actions with ConfirmPage=true are redirected to HandleConfirmDelete instead.
 func (ma *ModelAdmin[T]) HandleBulkAction(w http.ResponseWriter, r *http.Request) error {
 	slug := chi.URLParam(r, "action")
 
@@ -226,63 +227,76 @@ func (ma *ModelAdmin[T]) HandleUpdate(w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
-// HandleConfirmDelete renders the delete confirmation page.
-// Exported so apps can mount ModelAdmin confirm-delete views alongside custom handlers.
+// HandleConfirmDelete renders the unified delete confirmation page for one or more items.
+// It reads item IDs from the _selected query parameter (GET request, reload-safe).
 func (ma *ModelAdmin[T]) HandleConfirmDelete(w http.ResponseWriter, r *http.Request) error {
 	if !ma.CanDelete {
 		return burrow.NewHTTPError(http.StatusForbidden, "delete not allowed")
 	}
 
-	id := ma.idFromRequest(r)
-	if id == "" {
-		return burrow.NewHTTPError(http.StatusBadRequest, "missing id")
+	ids := r.URL.Query()["_selected"]
+	if len(ids) == 0 {
+		return burrow.NewHTTPError(http.StatusBadRequest, "no items selected")
 	}
 
-	item, err := getItem[T](r.Context(), ma.DB, id, ma.Relations)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return burrow.NewHTTPError(http.StatusNotFound, "item not found")
-		}
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get item")
-	}
-
-	cfg := ma.renderConfig()
-	ma.translateRenderConfig(&cfg, r)
-
-	if len(ma.cascades) > 0 {
-		impacts, err := countCascadeImpacts(r.Context(), ma.DB, ma.cascades, id)
-		if err != nil {
-			slog.Error("failed to count cascade impacts", "error", err, "slug", ma.Slug, "id", id) //nolint:gosec // slug is developer-set, id is from URL param
-		} else {
-			cfg.DeleteImpacts = impacts
-		}
-	}
-
-	return ma.Renderer.ConfirmDelete(w, r, item, cfg)
+	return ma.confirmDelete(w, r, ids)
 }
 
-// HandleDelete deletes an item by ID.
-// Exported so apps can mount ModelAdmin delete alongside custom handlers.
+// HandleDelete deletes one or more items by ID.
+// It reads item IDs from the _selected form parameter.
 func (ma *ModelAdmin[T]) HandleDelete(w http.ResponseWriter, r *http.Request) error {
 	if !ma.CanDelete {
 		return burrow.NewHTTPError(http.StatusForbidden, "delete not allowed")
 	}
 
-	id := ma.idFromRequest(r)
-	if id == "" {
-		return burrow.NewHTTPError(http.StatusBadRequest, "missing id")
+	ids, err := parseSelectedIDs(r)
+	if err != nil {
+		return err
 	}
 
-	// Verify item exists.
-	if _, err := getItem[T](r.Context(), ma.DB, id, ma.Relations); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return burrow.NewHTTPError(http.StatusNotFound, "item not found")
+	return ma.deleteItems(w, r, ids)
+}
+
+// confirmDelete renders the confirm-delete page for the given IDs.
+func (ma *ModelAdmin[T]) confirmDelete(w http.ResponseWriter, r *http.Request, ids []string) error {
+	cfg := ma.renderConfig()
+	ma.translateRenderConfig(&cfg, r)
+
+	var perItemImpacts map[string][]CascadeImpact
+	if len(ma.cascades) > 0 {
+		var err error
+		perItemImpacts, err = countPerItemCascadeImpacts(r.Context(), ma.DB, ma.cascades, ids)
+		if err != nil {
+			slog.Error("failed to count cascade impacts", "error", err, "slug", ma.Slug) //nolint:gosec // slug is developer-set
 		}
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get item")
 	}
 
-	if err := deleteItem[T](r.Context(), ma.DB, id); err != nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete item")
+	// Build DeleteItem list with labels and per-item impacts.
+	// Uses fmt.Stringer if the model implements it, otherwise falls back to the ID.
+	items := make([]DeleteItem, 0, len(ids))
+	for _, id := range ids {
+		label := id
+		if item, err := getItem[T](r.Context(), ma.DB, id, nil); err == nil {
+			if s, ok := any(*item).(fmt.Stringer); ok {
+				label = s.String()
+			}
+		}
+		items = append(items, DeleteItem{
+			ID:      id,
+			Label:   label,
+			Impacts: perItemImpacts[id],
+		})
+	}
+
+	return ma.Renderer.ConfirmDelete(w, r, items, cfg)
+}
+
+// deleteItems deletes the given IDs, flashes success, and redirects to the list.
+func (ma *ModelAdmin[T]) deleteItems(w http.ResponseWriter, r *http.Request, ids []string) error {
+	for _, id := range ids {
+		if err := deleteItem[T](r.Context(), ma.DB, id); err != nil {
+			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete item")
+		}
 	}
 
 	totalCount, err := ma.DB.NewSelect().Model((*T)(nil)).Count(r.Context())
@@ -290,10 +304,25 @@ func (ma *ModelAdmin[T]) HandleDelete(w http.ResponseWriter, r *http.Request) er
 		totalCount = 0
 	}
 
-	slog.Info("item deleted", "slug", ma.Slug, "id", id) //nolint:gosec // slug is developer-set, id is from URL param
-	htmx.Redirect(w, listRedirectURL(r, ma.Slug, totalCount, ma.pageSize()))
-	w.WriteHeader(http.StatusOK)
+	slog.Info("items deleted", "slug", ma.Slug, "count", len(ids)) //nolint:gosec // slug is developer-set
+	redirectURL := listRedirectURL(r, ma.Slug, totalCount, ma.pageSize())
+	_ = messages.AddSuccess(w, r, i18n.TPlural(r.Context(), "modeladmin-bulk-success", len(ids)))
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 	return nil
+}
+
+// parseSelectedIDs extracts _selected IDs from the request.
+// Uses ParseForm which handles both query parameters (used by HTMX for
+// DELETE via hx-include) and request body (used for POST).
+func parseSelectedIDs(r *http.Request) ([]string, error) {
+	if err := r.ParseForm(); err != nil { //nolint:gosec // G120: body size limited by server-level RequestSize middleware
+		return nil, burrow.NewHTTPError(http.StatusBadRequest, "invalid form data")
+	}
+	ids := r.Form["_selected"]
+	if len(ids) == 0 {
+		return nil, burrow.NewHTTPError(http.StatusBadRequest, "no items selected")
+	}
+	return ids, nil
 }
 
 // listRedirectURL returns a redirect URL that preserves the current page

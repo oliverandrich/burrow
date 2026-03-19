@@ -5,8 +5,8 @@
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">Admin</a></li>
-        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}" hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">{{ .Cfg.DisplayPluralName }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/">Admin</a></li>
+        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}">{{ .Cfg.DisplayPluralName }}</a></li>
         <li class="breadcrumb-item active" aria-current="page">{{ .IDValue }}</li>
     </ol>
 </nav>
@@ -32,7 +32,7 @@
         type="button"
         class="btn {{ .Class }}"
         {{ if eq .Method "DELETE" }}hx-delete{{ else }}hx-post{{ end }}="/admin/{{ $.Cfg.Slug }}/{{ $.IDValue }}/{{ .Slug }}"
-        hx-headers='{"X-CSRF-Token":"{{ $.CSRFToken }}"}'
+        hx-swap="none"
         {{- if .Confirm }}
         hx-confirm="{{ T .Confirm }}"
         {{- end }}
@@ -43,11 +43,8 @@
     {{- end }}
     {{- if .Cfg.CanDelete }}
     <a
-        href="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}/delete"
+        href="/admin/{{ .Cfg.Slug }}/bulk/delete?_selected={{ .IDValue }}"
         class="btn btn-outline-danger ms-auto"
-        hx-get="/admin/{{ .Cfg.Slug }}/{{ .IDValue }}/delete"
-        hx-target="main"
-        hx-push-url="true"
     >
         {{ T "modeladmin-delete" }}
     </a>

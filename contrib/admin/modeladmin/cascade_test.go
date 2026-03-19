@@ -92,14 +92,15 @@ func TestCountCascadeImpacts(t *testing.T) {
 
 	cascades := []cascadeRef{{Table: "children", Column: "parent_id"}}
 
-	impacts, err := countCascadeImpacts(ctx, db, cascades, "1")
+	perItem, err := countPerItemCascadeImpacts(ctx, db, cascades, []string{"1"})
 	require.NoError(t, err)
-	require.Len(t, impacts, 1)
-	assert.Equal(t, "children", impacts[0].Table)
-	assert.Equal(t, 3, impacts[0].Count)
+	require.Contains(t, perItem, "1")
+	require.Len(t, perItem["1"], 1)
+	assert.Equal(t, "children", perItem["1"][0].Table)
+	assert.Equal(t, 3, perItem["1"][0].Count)
 }
 
-func TestCountCascadeImpacts_ZeroRows(t *testing.T) {
+func TestCountPerItemCascadeImpacts_ZeroRows(t *testing.T) {
 	db := setupCascadeDB(t)
 	ctx := context.Background()
 
@@ -109,13 +110,13 @@ func TestCountCascadeImpacts_ZeroRows(t *testing.T) {
 
 	cascades := []cascadeRef{{Table: "children", Column: "parent_id"}}
 
-	impacts, err := countCascadeImpacts(ctx, db, cascades, "1")
+	perItem, err := countPerItemCascadeImpacts(ctx, db, cascades, []string{"1"})
 	require.NoError(t, err)
 	// Zero-count impacts are omitted.
-	assert.Empty(t, impacts)
+	assert.Empty(t, perItem)
 }
 
-func TestCountCascadeImpacts_MultipleCascades(t *testing.T) {
+func TestCountPerItemCascadeImpacts_MultipleCascades(t *testing.T) {
 	db := setupCascadeDB(t)
 	ctx := context.Background()
 
@@ -139,13 +140,14 @@ func TestCountCascadeImpacts_MultipleCascades(t *testing.T) {
 		{Table: "grandchildren", Column: "parent_id"},
 	}
 
-	impacts, err := countCascadeImpacts(ctx, db, cascades, "1")
+	perItem, err := countPerItemCascadeImpacts(ctx, db, cascades, []string{"1"})
 	require.NoError(t, err)
-	require.Len(t, impacts, 2)
+	require.Contains(t, perItem, "1")
+	require.Len(t, perItem["1"], 2)
 
 	// Build a map for order-independent assertions.
-	impactMap := make(map[string]int, len(impacts))
-	for _, imp := range impacts {
+	impactMap := make(map[string]int, len(perItem["1"]))
+	for _, imp := range perItem["1"] {
 		impactMap[imp.Table] = imp.Count
 	}
 	assert.Equal(t, 1, impactMap["children"])
@@ -182,13 +184,14 @@ func TestHandleConfirmDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d/delete", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/bulk/delete?_selected=%d", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, renderer.confirmDeleteCalled)
-	assert.NotNil(t, renderer.lastItem)
+	require.Len(t, renderer.lastDeleteItems, 1)
+	assert.Equal(t, fmt.Sprintf("%d", item.ID), renderer.lastDeleteItems[0].ID)
 }
 
 func TestHandleConfirmDelete_WithCascades(t *testing.T) {
@@ -214,27 +217,28 @@ func TestHandleConfirmDelete_WithCascades(t *testing.T) {
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d/delete", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/bulk/delete?_selected=%d", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, renderer.confirmDeleteCalled)
-	require.Len(t, renderer.lastConfig.DeleteImpacts, 1)
-	assert.Equal(t, "item_comments", renderer.lastConfig.DeleteImpacts[0].Table)
-	assert.Equal(t, "item_comments", renderer.lastConfig.DeleteImpacts[0].DisplayName) // no ModelAdmin registered → falls back to table name
-	assert.Equal(t, 2, renderer.lastConfig.DeleteImpacts[0].Count)
+	require.Len(t, renderer.lastDeleteItems, 1)
+	require.Len(t, renderer.lastDeleteItems[0].Impacts, 1)
+	assert.Equal(t, "item_comments", renderer.lastDeleteItems[0].Impacts[0].Table)
+	assert.Equal(t, "item_comments", renderer.lastDeleteItems[0].Impacts[0].DisplayName) // no ModelAdmin registered → falls back to table name
+	assert.Equal(t, 2, renderer.lastDeleteItems[0].Impacts[0].Count)
 }
 
-func TestHandleConfirmDelete_NotFound(t *testing.T) {
+func TestHandleConfirmDelete_NoItemsSelected(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/999/delete", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/bulk/delete", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestHandleConfirmDelete_Forbidden(t *testing.T) {
@@ -242,10 +246,10 @@ func TestHandleConfirmDelete_Forbidden(t *testing.T) {
 	ma.CanDelete = false
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/1/delete", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/bulk/delete?_selected=1", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	// Route is not registered when CanDelete is false, so 404.
+	// No delete routes registered when CanDelete is false.
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }

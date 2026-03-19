@@ -6,8 +6,8 @@
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">{{ T "modeladmin-admin" }}</a></li>
-        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}" hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">{{ .Cfg.DisplayPluralName }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/">{{ T "modeladmin-admin" }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}">{{ .Cfg.DisplayPluralName }}</a></li>
         <li class="breadcrumb-item active" aria-current="page">{{ T "modeladmin-edit" }}</li>
     </ol>
 </nav>
@@ -17,8 +17,8 @@
 </div>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">{{ T "modeladmin-admin" }}</a></li>
-        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}" hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">{{ .Cfg.DisplayPluralName }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/">{{ T "modeladmin-admin" }}</a></li>
+        <li class="breadcrumb-item"><a href="/admin/{{ .Cfg.Slug }}">{{ .Cfg.DisplayPluralName }}</a></li>
         <li class="breadcrumb-item active" aria-current="page">{{ T "modeladmin-new" }}</li>
     </ol>
 </nav>
@@ -120,15 +120,12 @@
         {{- if .Item }}
         <button type="submit" name="_continue" value="1" class="btn btn-outline-secondary">{{ T "modeladmin-save-continue" }}</button>
         {{- if .Cfg.CanDelete }}
-        <button
-            type="button"
+        <a
+            href="/admin/{{ .Cfg.Slug }}/bulk/delete?_selected={{ fieldValue .Item .Cfg.IDField }}"
             class="btn btn-outline-danger ms-auto"
-            hx-delete="/admin/{{ .Cfg.Slug }}/{{ fieldValue .Item .Cfg.IDField }}"
-            hx-headers='{"X-CSRF-Token":"{{ .CSRFToken }}"}'
-            hx-confirm="{{ T "modeladmin-delete-confirm" }}"
         >
             {{ T "modeladmin-delete" }}
-        </button>
+        </a>
         {{- end }}
         {{- end }}
     </div>

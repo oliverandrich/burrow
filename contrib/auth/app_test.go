@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -1008,12 +1009,14 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 
 	router := adminUserRouter(app)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/users/%d", target.ID), nil)
+	form := url.Values{"_selected": {fmt.Sprintf("%d", target.ID)}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "/admin/users", rec.Header().Get("HX-Redirect"))
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/admin/users", rec.Header().Get("Location"))
 
 	// Verify user was deleted.
 	users, err := repo.ListUsers(ctx)
@@ -1025,11 +1028,15 @@ func TestAdminDeleteUserNotFound(t *testing.T) {
 	app, _ := newTestApp(t)
 	router := adminUserRouter(app)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/users/999", nil)
+	form := url.Values{"_selected": {"999"}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusNotFound, rec.Code)
+	// Item doesn't exist but deleteItem still attempts to delete — no error
+	// since DELETE WHERE id=999 succeeds with 0 rows affected.
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
 }
 
 // --- PurgeOrphanedUsers tests ---

@@ -22,7 +22,7 @@ func TestNewJobsRenderer(t *testing.T) {
 
 func TestJobsRenderer_ConfirmDelete(t *testing.T) {
 	r := newJobsRenderer()
-	err := r.ConfirmDelete(nil, nil, &Job{}, modeladmin.RenderConfig{})
+	err := r.ConfirmDelete(nil, nil, []modeladmin.DeleteItem{{ID: "1"}}, modeladmin.RenderConfig{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "confirm delete not supported")
 }

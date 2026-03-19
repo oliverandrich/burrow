@@ -66,15 +66,15 @@ func (ma *ModelAdmin[T]) Routes(r chi.Router) {
 			r.Post("/", burrow.Handle(ma.HandleCreate))
 		}
 
+		if ma.CanDelete {
+			r.Get("/bulk/delete", burrow.Handle(ma.HandleConfirmDelete))
+			r.Post("/bulk/delete", burrow.Handle(ma.HandleDelete))
+		}
+
 		r.Get("/{id}", burrow.Handle(ma.HandleDetail))
 
 		if ma.CanEdit {
 			r.Post("/{id}", burrow.Handle(ma.HandleUpdate))
-		}
-
-		if ma.CanDelete {
-			r.Get("/{id}/delete", burrow.Handle(ma.HandleConfirmDelete))
-			r.Delete("/{id}", burrow.Handle(ma.HandleDelete))
 		}
 
 		for _, action := range ma.RowActions {

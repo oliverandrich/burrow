@@ -38,6 +38,6 @@ func (r *jobsRenderer) Form(w http.ResponseWriter, req *http.Request, item *Job,
 	return r.base.Form(w, req, item, fields, cfg)
 }
 
-func (r *jobsRenderer) ConfirmDelete(_ http.ResponseWriter, _ *http.Request, _ *Job, _ modeladmin.RenderConfig) error {
+func (r *jobsRenderer) ConfirmDelete(_ http.ResponseWriter, _ *http.Request, _ []modeladmin.DeleteItem, _ modeladmin.RenderConfig) error {
 	return fmt.Errorf("confirm delete not supported for jobs")
 }

@@ -117,7 +117,7 @@ type Renderer[T any] interface {
 	List(w http.ResponseWriter, r *http.Request, items []T, page burrow.PageResult, cfg RenderConfig) error
 	Detail(w http.ResponseWriter, r *http.Request, item *T, cfg RenderConfig) error
 	Form(w http.ResponseWriter, r *http.Request, item *T, fields []forms.BoundField, cfg RenderConfig) error
-	ConfirmDelete(w http.ResponseWriter, r *http.Request, item *T, cfg RenderConfig) error
+	ConfirmDelete(w http.ResponseWriter, r *http.Request, items []DeleteItem, cfg RenderConfig) error
 }
 
 // ActiveFilter holds filter state for rendering in the list template.
@@ -157,7 +157,6 @@ type RenderConfig struct { //nolint:govet // fieldalignment: readability over op
 	HasSearch         bool
 	EmptyMessage      string
 	ComputedColumns   map[string]func(any) template.HTML // field → render function
-	DeleteImpacts     []CascadeImpact                    // cascade-delete impact counts (confirm-delete page)
 }
 
 // computedColumns type-erases ListDisplay into a map usable by columnHTML.

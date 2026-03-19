@@ -3,7 +3,7 @@
 <div class="flex-shrink-0">
     <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">{{ T "modeladmin-admin" }}</a></li>
+            <li class="breadcrumb-item"><a href="/admin/">{{ T "modeladmin-admin" }}</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ .Cfg.DisplayPluralName }}</li>
         </ol>
     </nav>
@@ -13,8 +13,7 @@
         </h2>
         <div class="d-flex gap-2 align-items-center">
             {{- if .Cfg.HasSearch }}
-            <form class="d-flex" action="/admin/{{ .Cfg.Slug }}" method="GET"
-                hx-get="/admin/{{ .Cfg.Slug }}" hx-target="main" hx-push-url="true">
+            <form class="d-flex" action="/admin/{{ .Cfg.Slug }}" method="GET">
                 <div class="input-group">
                     <input type="search" class="form-control" name="q" value="{{ .SearchTerm }}" placeholder="{{ T "modeladmin-search" }}">
                     <button class="btn btn-outline-secondary" type="submit">{{ iconSearch }}</button>
@@ -27,8 +26,8 @@
                     {{ T "modeladmin-export" }}
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="/admin/{{ .Cfg.Slug }}/export.csv{{ if .Query }}?{{ .Query }}{{ end }}">{{ T "modeladmin-export-csv" }}</a></li>
-                    <li><a class="dropdown-item" href="/admin/{{ .Cfg.Slug }}/export.json{{ if .Query }}?{{ .Query }}{{ end }}">{{ T "modeladmin-export-json" }}</a></li>
+                    <li><a class="dropdown-item" href="/admin/{{ .Cfg.Slug }}/export.csv{{ if .Query }}?{{ .Query }}{{ end }}" hx-boost="false">{{ T "modeladmin-export-csv" }}</a></li>
+                    <li><a class="dropdown-item" href="/admin/{{ .Cfg.Slug }}/export.json{{ if .Query }}?{{ .Query }}{{ end }}" hx-boost="false">{{ T "modeladmin-export-json" }}</a></li>
                 </ul>
             </div>
             {{- end }}
@@ -45,7 +44,7 @@
             <select id="ma-bulk-select" class="form-select form-select-sm w-auto" disabled>
                 <option value="">-- {{ T "modeladmin-bulk-choose-action" }} --</option>
                 {{- range .Cfg.BulkActions }}
-                <option value="{{ .Slug }}"{{ if .Confirm }} data-confirm="{{ T .Confirm }}"{{ end }}>{{ T .Label }}</option>
+                <option value="{{ .Slug }}"{{ if .Confirm }} data-confirm="{{ T .Confirm }}"{{ end }}{{ if .ConfirmPage }} data-confirm-page="true"{{ end }}>{{ T .Label }}</option>
                 {{- end }}
             </select>
             <button type="submit" form="ma-bulk-form" class="btn btn-sm btn-outline-primary" id="ma-bulk-apply" disabled>{{ T "modeladmin-bulk-apply" }}</button>
@@ -59,8 +58,7 @@
                 <ul class="nav nav-pills nav-pills-sm">
                     {{- range .Choices }}
                     <li class="nav-item">
-                        <a class="nav-link py-1 px-2{{ if .IsActive }} active{{ end }}" href="{{ .URL }}"
-                            hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
+                        <a class="nav-link py-1 px-2{{ if .IsActive }} active{{ end }}" href="{{ .URL }}">
                             {{ .Label }}
                         </a>
                     </li>
@@ -119,7 +117,6 @@
                             type="button"
                             class="btn btn-sm {{ .Class }}"
                             {{ if eq .Method "DELETE" }}hx-delete{{ else }}hx-post{{ end }}="/admin/{{ $.Cfg.Slug }}/{{ $itemID }}/{{ .Slug }}"
-                            hx-headers='{"X-CSRF-Token":"{{ $.CSRFToken }}"}'
                             hx-swap="none"
                             {{- if .Confirm }}
                             hx-confirm="{{ T .Confirm }}"
@@ -168,6 +165,15 @@
     form.addEventListener('submit', function(e) {
         const opt = bulkSelect.options[bulkSelect.selectedIndex];
         if (!opt || !opt.value) { e.preventDefault(); return; }
+        if (opt.getAttribute('data-confirm-page')) {
+            e.preventDefault();
+            var params = new URLSearchParams();
+            document.querySelectorAll('.ma-select-item:checked').forEach(function(cb) {
+                params.append('_selected', cb.value);
+            });
+            window.location.href = '/admin/{{ .Cfg.Slug }}/bulk/' + opt.value + '?' + params.toString();
+            return;
+        }
         const confirmText = opt.getAttribute('data-confirm');
         if (confirmText && !confirm(confirmText)) { e.preventDefault(); return; }
         form.action = '/admin/{{ .Cfg.Slug }}/bulk/' + opt.value;
@@ -184,24 +190,21 @@
             {{- $query := .Query }}
             <li class="page-item{{ if le .Page.Page 1 }} disabled{{ end }}">
                 {{- $prev := pageURL $base $query (sub .Page.Page 1) }}
-                <a class="page-link" href="{{ $prev }}"
-                    hx-get="{{ $prev }}" hx-target="main" hx-push-url="true">
+                <a class="page-link" href="{{ $prev }}">
                     {{ T "modeladmin-previous" }}
                 </a>
             </li>
             {{- range pageRange .Page.TotalPages }}
             <li class="page-item{{ if eq . $.Page.Page }} active{{ end }}">
                 {{- $url := pageURL $base $query . }}
-                <a class="page-link" href="{{ $url }}"
-                    hx-get="{{ $url }}" hx-target="main" hx-push-url="true">
+                <a class="page-link" href="{{ $url }}">
                     {{ . }}
                 </a>
             </li>
             {{- end }}
             <li class="page-item{{ if not .Page.HasMore }} disabled{{ end }}">
                 {{- $next := pageURL $base $query (add .Page.Page 1) }}
-                <a class="page-link" href="{{ $next }}"
-                    hx-get="{{ $next }}" hx-target="main" hx-push-url="true">
+                <a class="page-link" href="{{ $next }}">
                     {{ T "modeladmin-next" }}
                 </a>
             </li>

@@ -4,7 +4,16 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Breaking Changes
+
+- **ModelAdmin: `Renderer.ConfirmDelete` signature changed** — `ConfirmDelete(w, r, item *T, cfg)` is now `ConfirmDelete(w, r, ids []string, impacts []CascadeImpact, cfg)`. Custom renderers must update their implementation.
+- **ModelAdmin: `DeleteImpacts` removed from `RenderConfig`** — cascade impacts are now passed directly to `ConfirmDelete` instead of being embedded in `RenderConfig`.
+- **ModelAdmin: delete routes changed** — `GET /{id}/delete` and `DELETE /{id}` replaced by unified `POST /bulk/delete` (confirm page) and `DELETE /bulk/delete` (execute deletion). Both accept `_selected` form parameter with one or more IDs.
+
 ### Added
+
+- **ModelAdmin: `ConfirmPage` on `BulkAction`** — bulk actions with `ConfirmPage: true` redirect to a confirm page instead of using a JS `confirm()` dialog; the built-in `DeleteBulkAction` uses this by default
+- **Admin layout: CSRF token on `<body>`** — `hx-headers` with the CSRF token is set on the `<body>` element so all HTMX requests inherit it automatically; individual `hx-headers` attributes removed from modeladmin templates
 
 - **`AppConfig.RegisterIconFunc()`** — apps register icon template functions in their `Register()` method via `cfg.RegisterIconFunc("iconName", bsicons.IconFunc)`; duplicate registrations are silently ignored, allowing multiple apps to depend on the same icon without collisions
 - **Bootstrap color themes** — three Sass-compiled color themes (blue, purple, gray) selectable via `bootstrap.WithColor()`; default is purple; vanilla Bootstrap available via `bootstrap.WithColor(bootstrap.Default)`

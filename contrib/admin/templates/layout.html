@@ -14,7 +14,7 @@
         [aria-expanded="true"] > .sidebar-chevron { transform: rotate(90deg); }
     </style>
 </head>
-<body>
+<body hx-boost="true" hx-target="main" hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'>
     <!-- Mobile navbar with offcanvas toggle -->
     <nav class="navbar d-md-none bg-body-tertiary border-bottom">
         <div class="container-fluid">
@@ -44,7 +44,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#admin-sidebar" aria-label="Close"></button>
             </div>
             <div class="offcanvas-body p-3 d-flex flex-column" style="width: 280px; min-height: 100vh;">
-                <a href="/admin" hx-get="/admin" hx-target="main" hx-push-url="true" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom d-none d-md-flex">
+                <a href="/admin" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom d-none d-md-flex">
                     <span class="me-2 fs-5">{{ iconGearFill }}</span>
                     <span class="fs-5 fw-semibold">{{ t "admin-sidebar-title" }}</span>
                 </a>
@@ -67,8 +67,7 @@
                                 <ul class="nav nav-pills flex-column ms-3">
                                     {{- range .Items }}
                                     <li class="nav-item">
-                                        <a href="{{ .URL }}" class="{{ .LinkClass }}"
-                                            hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
+                                        <a href="{{ .URL }}" class="{{ .LinkClass }}">
                                             {{- if .Icon }}
                                             <span class="me-2">{{ .Icon }}</span>
                                             {{- end }}
@@ -97,7 +96,7 @@
                         </button>
                         <ul class="dropdown-menu text-small shadow">
                             <li>
-                                <form method="post" action="/auth/logout">
+                                <form method="post" action="/auth/logout" hx-boost="false">
                                     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
                                     <button type="submit" class="dropdown-item">{{ t "admin-logout" }}</button>
                                 </form>

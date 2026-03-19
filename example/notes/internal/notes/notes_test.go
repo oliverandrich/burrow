@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -941,12 +942,14 @@ func TestModelAdminRoutes_Delete(t *testing.T) {
 	r := chi.NewRouter()
 	app.AdminRoutes(r)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/notes/%d", note.ID), nil)
+	form := url.Values{"_selected": {fmt.Sprintf("%d", note.ID)}}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes/bulk/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "/admin/notes", rec.Header().Get("HX-Redirect"))
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/admin/notes", rec.Header().Get("Location"))
 
 	// Verify deletion.
 	count, err := db.NewSelect().Model((*Note)(nil)).Count(ctx)
