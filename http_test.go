@@ -239,7 +239,7 @@ func TestRenderError_JSONForAPIRequest(t *testing.T) {
 func TestRenderError_WithTemplate(t *testing.T) {
 	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
 		if name == "error/404" {
-			return template.HTML(fmt.Sprintf("<h1>%d - %s</h1>", data["Code"], data["Message"])), nil
+			return template.HTML(fmt.Sprintf("<h1>%d - %s - %s</h1>", data["Code"], data["Title"], data["Message"])), nil
 		}
 		return "", fmt.Errorf("template %q not found", name)
 	}
@@ -252,10 +252,11 @@ func TestRenderError_WithTemplate(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
-	assert.Contains(t, rec.Body.String(), "<h1>404 - page not found</h1>")
+	// Without i18n context, Title falls back to http.StatusText.
+	assert.Contains(t, rec.Body.String(), "<h1>404 - Not Found - page not found</h1>")
 }
 
-func TestRenderError_TemplateWithLayout(t *testing.T) {
+func TestRenderError_SkipsAppLayout(t *testing.T) {
 	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
 		switch name {
 		case "error/500":
@@ -275,7 +276,8 @@ func TestRenderError_TemplateWithLayout(t *testing.T) {
 	RenderError(rec, req, http.StatusInternalServerError, "server error")
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	assert.Contains(t, rec.Body.String(), "<html>")
+	// Error pages bypass the app layout — error templates own their HTML.
+	assert.NotContains(t, rec.Body.String(), "<html>")
 	assert.Contains(t, rec.Body.String(), "<p>server error</p>")
 }
 

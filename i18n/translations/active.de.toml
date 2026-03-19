@@ -1,7 +1,12 @@
 error-403 = "Sie haben keine Berechtigung, auf diese Seite zuzugreifen."
+error-403-title = "Zugriff verweigert"
 error-404 = "Die angeforderte Seite wurde nicht gefunden."
+error-404-title = "Nicht gefunden"
 error-405 = "Die Anfragemethode wird für diese Seite nicht unterstützt."
+error-405-title = "Methode nicht erlaubt"
 error-500 = "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut."
+error-500-title = "Serverfehler"
+error-back-home = "Zurück zur Startseite"
 
 validation-required = "{{.Field}} ist erforderlich"
 validation-email = "{{.Field}} muss eine gültige E-Mail-Adresse sein"

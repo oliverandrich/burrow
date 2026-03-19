@@ -1,0 +1,21 @@
+{{ define "error/405" }}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }}</title>
+    {{ template "bootstrap/css" . }}
+    {{ template "bootstrap/theme_script" . }}
+</head>
+<body>
+    <div class="d-flex justify-content-center align-items-center min-vh-100">
+        <div class="d-flex align-items-center">
+            <h1 class="me-3 fs-1 fw-bold mb-0" style="color: var(--bs-primary)">{{ .Code }}</h1>
+            <div class="vr align-self-stretch"></div>
+            <h2 class="ms-3 fs-5 fw-normal lead mb-0">{{ .Message }}</h2>
+        </div>
+    </div>
+</body>
+</html>
+{{ end }}

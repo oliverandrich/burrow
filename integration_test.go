@@ -200,8 +200,12 @@ func TestIntegration_404ErrorPage(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
-	assert.Contains(t, rec.Body.String(), "404")
-	assert.Contains(t, rec.Body.String(), "The page you are looking for does not exist.")
+	body := rec.Body.String()
+	assert.Contains(t, body, "404")
+	assert.Contains(t, body, "The page you are looking for does not exist.")
+
+	// Error pages bypass the app layout — no nav wrapping.
+	assert.NotContains(t, body, "<nav>")
 }
 
 func TestIntegration_404JSONForAPI(t *testing.T) {
@@ -229,5 +233,22 @@ func TestIntegration_405ErrorPage(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
-	assert.Contains(t, rec.Body.String(), "405")
+	body := rec.Body.String()
+	assert.Contains(t, body, "405")
+
+	// Error pages bypass the app layout — no nav wrapping.
+	assert.NotContains(t, body, "<nav>")
+}
+
+func TestIntegration_ErrorPageHasTitleField(t *testing.T) {
+	router := buildIntegrationRouter(t)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/nonexistent", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	// The i18n bundle has the error-404-title key loaded, so the localized title
+	// "Not Found" should appear in the rendered output.
+	assert.Contains(t, rec.Body.String(), "Not Found")
 }

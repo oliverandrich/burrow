@@ -65,8 +65,19 @@ func RenderError(w http.ResponseWriter, r *http.Request, code int, message strin
 		localizedMessage = message
 	}
 
+	titleKey := fmt.Sprintf("error-%d-title", code)
+	localizedTitle := i18n.T(r.Context(), titleKey)
+	if localizedTitle == titleKey {
+		localizedTitle = http.StatusText(code)
+	}
+
+	// Error pages render without the app layout — error templates are
+	// responsible for their own HTML shell (if they need one).
+	r = r.WithContext(WithLayout(r.Context(), ""))
+
 	_ = Render(w, r, code, fmt.Sprintf("error/%d", code), map[string]any{
 		"Code":    code,
+		"Title":   localizedTitle,
 		"Message": localizedMessage,
 	})
 }
