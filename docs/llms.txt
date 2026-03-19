@@ -41,6 +41,129 @@ Burrow is designed for server-rendered web applications, not API-only services.
 - [Template Functions](https://burrow.someonewho.codes/reference/template-functions/): Built-in template functions
 - [Context Helpers](https://burrow.someonewho.codes/reference/context-helpers/): Request context accessors
 
+## Quick Conventions for Coding Agents
+
+These are the non-obvious patterns and rules that matter most when generating Burrow code.
+
+### Handler Pattern
+
+Handlers return `error` — never call `http.Error()` directly:
+
+```go
+r.Get("/notes", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
+    notes, err := repo.List(r.Context())
+    if err != nil {
+        return err // 500, logged automatically
+    }
+    return burrow.Render(w, r, http.StatusOK, "notes/list", notes)
+}))
+```
+
+Return `burrow.NewHTTPError(code, msg)` for client errors (404, 403, etc.). Any other error becomes a 500.
+
+### App Structure
+
+Every app lives in its own package and implements `burrow.App`:
+
+```go
+func (a *myApp) Name() string          { return "notes" }
+func (a *myApp) Register(cfg *burrow.AppConfig) error { /* init repos, services */ }
+```
+
+Optional interfaces add capabilities: `HasRoutes`, `HasMiddleware`, `HasTemplates`, `Migratable`, `Configurable`, `HasFuncMap`, `HasRequestFuncMap`, `HasNavItems`, `HasAdmin`, `HasTranslations`, `HasDependencies`, `HasJobs`, `HasStaticFiles`, `HasShutdown`.
+
+File layout: `app.go`, `context.go`, `handlers.go`, `middleware.go`, `models.go`, `repository.go`, `templates/*.html`, `migrations/*.sql`.
+
+### Models & Database
+
+SQLite via Bun ORM — pure Go, no CGO required:
+
+```go
+type Note struct {
+    bun.BaseModel `bun:"table:notes,alias:n"`
+    ID    int64  `bun:",pk,autoincrement"`
+    Title string `bun:",notnull"`
+}
+```
+
+Always set a table alias. Always qualify column names with `?TableAlias` in queries that use `.Relation()` JOINs:
+
+```go
+q.Where("?TableAlias.user_id = ?", userID)
+```
+
+### Migrations
+
+Embedded SQL files per app, tracked in `_migrations` table:
+
+```go
+//go:embed migrations
+var migrationFS embed.FS
+```
+
+Files are named `001_create_notes.up.sql`, `002_add_index.up.sql`, etc.
+
+### Templates
+
+All templates are parsed into a single global `*template.Template`. Namespace with app name:
+
+```html
+{{ define "notes/list" }}
+<h1>Notes</h1>
+{{ range .Items }}<p>{{ .Title }}</p>{{ end }}
+{{ end }}
+```
+
+Embed template files in the app:
+
+```go
+//go:embed templates/*.html
+var templateFS embed.FS
+```
+
+### Context Helpers
+
+Each package owns its context accessors. Naming convention — getter: `X(ctx)`, setter: `WithX(ctx, val)`:
+
+```go
+user := auth.UserFromContext(ctx)
+token := csrf.Token(ctx)
+items := burrow.NavItems(ctx)
+layout := burrow.Layout(ctx)
+```
+
+Context helpers never live in the root `burrow` package unless they are core framework concerns.
+
+### Response Helpers
+
+- `burrow.Render(w, r, code, templateName, data)` — render template with layout wrapping
+- `burrow.JSON(w, code, v)` — JSON response
+- `burrow.Text(w, code, s)` — plain text
+- `burrow.HTML(w, code, s)` — raw HTML
+
+### Request Binding & Validation
+
+```go
+var input CreateNoteInput
+if err := burrow.Bind(r, &input); err != nil { return err }
+if err := burrow.Validate(input); err != nil { return err }
+```
+
+Use `validate` struct tags. `*ValidationError` has `[]FieldError` and `HasField()`.
+
+### Routing
+
+Uses chi directly — `chi.URLParam(r, "id")` for path params. Middleware is stdlib `func(http.Handler) http.Handler`.
+
+### Pagination
+
+```go
+pr := burrow.ParsePageRequest(r)
+q := burrow.ApplyOffset(q, pr)
+result := burrow.OffsetResult(pr, totalCount)
+url := burrow.PageURL(basePath, r.URL.RawQuery, page) // preserves existing query params
+```
+
 ## Optional
 
 - [Tutorial](https://burrow.someonewho.codes/tutorial/): Build a complete polls app step by step (7 parts)
