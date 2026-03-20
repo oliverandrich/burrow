@@ -169,7 +169,7 @@ func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.VerifyEmailSuccess(rec, req)
+	err := r.VerifyEmailSuccessPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -183,7 +183,7 @@ func TestDefaultRendererVerifyEmailError(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.VerifyEmailError(rec, req, "invalid_token")
+	err := r.VerifyEmailErrorPage(rec, req, "invalid_token")
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)

@@ -22,7 +22,7 @@ func deactivateUserHandler(repo *Repository) burrow.HandlerFunc {
 			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to deactivate user")
 		}
 
-		currentUser := UserFromContext(r.Context())
+		currentUser := CurrentUser(r.Context())
 		slog.Info("user deactivated", "user_id", id, "deactivated_by", currentUser.ID) //nolint:gosec // G706: IDs are int64
 		htmx.Redirect(w, "/admin/users")
 		w.WriteHeader(http.StatusOK)
@@ -42,7 +42,7 @@ func activateUserHandler(repo *Repository) burrow.HandlerFunc {
 			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to activate user")
 		}
 
-		currentUser := UserFromContext(r.Context())
+		currentUser := CurrentUser(r.Context())
 		slog.Info("user activated", "user_id", id, "activated_by", currentUser.ID) //nolint:gosec // G706: IDs are int64
 		htmx.Redirect(w, "/admin/users")
 		w.WriteHeader(http.StatusOK)

@@ -22,7 +22,7 @@ type testItem struct { //nolint:govet // fieldalignment: test struct
 	Name string `form:"name"`
 }
 
-func TestRenderWithLayout_SkipsLayoutForHTMX(t *testing.T) {
+func TestRenderContent_SkipsLayoutForHTMX(t *testing.T) {
 	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			content, _ := data["Content"].(template.HTML)
@@ -39,7 +39,7 @@ func TestRenderWithLayout_SkipsLayoutForHTMX(t *testing.T) {
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/admin/items", nil)
 		w := httptest.NewRecorder()
 
-		err := renderWithLayout(w, req, "Items", content)
+		err := burrow.RenderContent(w, req, http.StatusOK, content, map[string]any{"Title": "Items"})
 		require.NoError(t, err)
 		assert.Contains(t, w.Body.String(), "<layout>")
 	})
@@ -51,7 +51,7 @@ func TestRenderWithLayout_SkipsLayoutForHTMX(t *testing.T) {
 		req.Header.Set("HX-Request", "true")
 		w := httptest.NewRecorder()
 
-		err := renderWithLayout(w, req, "Items", content)
+		err := burrow.RenderContent(w, req, http.StatusOK, content, map[string]any{"Title": "Items"})
 		require.NoError(t, err)
 		assert.Contains(t, w.Body.String(), "<p>fragment</p>")
 		assert.NotContains(t, w.Body.String(), "<layout>")
@@ -492,14 +492,14 @@ func TestExecuteTemplate_UnknownTemplate(t *testing.T) {
 	assert.Contains(t, err.Error(), "execute template nonexistent/template")
 }
 
-// --- renderWithLayout without layout ---
+// --- RenderContent without layout ---
 
-func TestRenderWithLayout_NoLayout(t *testing.T) {
+func TestRenderContent_NoLayout(t *testing.T) {
 	// No layout set in context — should render bare content.
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/items", nil)
 	w := httptest.NewRecorder()
 
-	err := renderWithLayout(w, req, "Items", template.HTML("<p>bare</p>"))
+	err := burrow.RenderContent(w, req, http.StatusOK, template.HTML("<p>bare</p>"), map[string]any{"Title": "Items"})
 	require.NoError(t, err)
 	assert.Contains(t, w.Body.String(), "<p>bare</p>")
 }

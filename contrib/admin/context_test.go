@@ -14,21 +14,21 @@ func TestNavGroupsContext(t *testing.T) {
 	}
 
 	ctx := WithNavGroups(context.Background(), groups)
-	got := NavGroupsFromContext(ctx)
+	got := NavGroups(ctx)
 
 	assert.Equal(t, groups, got)
 }
 
 func TestNavGroupsContextEmpty(t *testing.T) {
-	got := NavGroupsFromContext(context.Background())
+	got := NavGroups(context.Background())
 	assert.Nil(t, got)
 }
 
 func TestRequestPathContext(t *testing.T) {
 	ctx := WithRequestPath(context.Background(), "/admin/users")
-	assert.Equal(t, "/admin/users", RequestPathFromContext(ctx))
+	assert.Equal(t, "/admin/users", RequestPath(ctx))
 }
 
 func TestRequestPathContextEmpty(t *testing.T) {
-	assert.Empty(t, RequestPathFromContext(context.Background()))
+	assert.Empty(t, RequestPath(context.Background()))
 }

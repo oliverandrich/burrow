@@ -147,7 +147,7 @@ func NewHandlers(repo *Repository) *Handlers {
 }
 
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
-    user := auth.UserFromContext(r.Context())
+    user := auth.CurrentUser(r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }
@@ -163,7 +163,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
-    user := auth.UserFromContext(r.Context())
+    user := auth.CurrentUser(r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }

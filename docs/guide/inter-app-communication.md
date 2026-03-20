@@ -41,11 +41,11 @@ If a dependency is missing when `NewServer` processes your app, it panics at sta
 
 ## Using Auth Context
 
-The auth app sets the current user in the request context via middleware. Other apps read it with `auth.UserFromContext()`:
+The auth app sets the current user in the request context via middleware. Other apps read it with `auth.CurrentUser()`:
 
 ```go
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
-    user := auth.UserFromContext(r.Context())
+    user := auth.CurrentUser(r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }

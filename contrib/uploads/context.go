@@ -15,10 +15,17 @@ func WithStorage(ctx context.Context, s Storage) context.Context {
 	return context.WithValue(ctx, ctxKeyStorage{}, s)
 }
 
-// StorageFromContext returns the Storage from the context, or nil.
-func StorageFromContext(ctx context.Context) Storage {
+// GetStorage returns the Storage from the context, or nil.
+func GetStorage(ctx context.Context) Storage {
 	s, _ := ctx.Value(ctxKeyStorage{}).(Storage)
 	return s
+}
+
+// StorageFromContext is a deprecated alias for [GetStorage].
+//
+//go:fix inline
+func StorageFromContext(ctx context.Context) Storage {
+	return GetStorage(ctx)
 }
 
 // withAllowedTypes returns a new context carrying the default allowed MIME types.
@@ -35,7 +42,7 @@ func allowedTypesFromContext(ctx context.Context) []string {
 // URL returns the public URL for a storage key. If no Storage is in the
 // context, it returns the key as-is (safe fallback for templates).
 func URL(ctx context.Context, key string) string {
-	s := StorageFromContext(ctx)
+	s := GetStorage(ctx)
 	if s == nil {
 		return key
 	}

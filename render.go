@@ -2,6 +2,7 @@ package burrow
 
 import (
 	"fmt"
+	"html/template"
 	"maps"
 	"net/http"
 	"strings"
@@ -25,28 +26,7 @@ func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string,
 		return fmt.Errorf("burrow: execute template %q: %w", name, err)
 	}
 
-	// HTMX requests get the fragment only, no layout wrapping.
-	// Exception: boosted requests (hx-boost) swap the full body,
-	// so they need the layout applied like normal requests.
-	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Boosted") != "true" {
-		return HTML(w, statusCode, string(content))
-	}
-
-	// Normal request: wrap in layout if available.
-	layoutTmpl := Layout(r.Context())
-	if layoutTmpl == "" {
-		return HTML(w, statusCode, string(content))
-	}
-
-	layoutData := make(map[string]any, len(data)+1)
-	maps.Copy(layoutData, data)
-	layoutData["Content"] = content
-
-	html, err := exec(r, layoutTmpl, layoutData)
-	if err != nil {
-		return fmt.Errorf("burrow: execute layout template %q: %w", layoutTmpl, err)
-	}
-	return HTML(w, statusCode, string(html))
+	return RenderContent(w, r, statusCode, content, data)
 }
 
 // RenderError writes an error response.
@@ -80,6 +60,41 @@ func RenderError(w http.ResponseWriter, r *http.Request, code int, message strin
 		"Title":   localizedTitle,
 		"Message": localizedMessage,
 	})
+}
+
+// RenderContent writes pre-rendered HTML content, applying the same layout
+// and HTMX logic as [Render]. The data map is passed to the layout template
+// with "Content" added automatically.
+//
+// This is useful when content was rendered by a separate template system
+// (e.g., modeladmin's built-in templates) but still needs layout wrapping.
+func RenderContent(w http.ResponseWriter, r *http.Request, statusCode int, content template.HTML, data map[string]any) error {
+	// HTMX requests get the fragment only, no layout wrapping.
+	// Exception: boosted requests (hx-boost) swap the full body,
+	// so they need the layout applied like normal requests.
+	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Boosted") != "true" {
+		return HTML(w, statusCode, string(content))
+	}
+
+	layoutTmpl := Layout(r.Context())
+	if layoutTmpl == "" {
+		return HTML(w, statusCode, string(content))
+	}
+
+	exec := TemplateExec(r.Context())
+	if exec == nil {
+		return HTML(w, statusCode, string(content))
+	}
+
+	layoutData := make(map[string]any, len(data)+1)
+	maps.Copy(layoutData, data)
+	layoutData["Content"] = content
+
+	html, err := exec(r, layoutTmpl, layoutData)
+	if err != nil {
+		return fmt.Errorf("burrow: execute layout template %q: %w", layoutTmpl, err)
+	}
+	return HTML(w, statusCode, string(html))
 }
 
 // Deprecated: Use [Render] instead.

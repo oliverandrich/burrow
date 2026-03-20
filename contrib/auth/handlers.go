@@ -27,8 +27,8 @@ type Renderer interface {
 	RecoveryPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
 	RecoveryCodesPage(w http.ResponseWriter, r *http.Request, codes []string) error
 	VerifyPendingPage(w http.ResponseWriter, r *http.Request) error
-	VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error
-	VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error
+	VerifyEmailSuccessPage(w http.ResponseWriter, r *http.Request) error
+	VerifyEmailErrorPage(w http.ResponseWriter, r *http.Request, errorCode string) error
 }
 
 // Handlers contains all auth and invite HTTP handlers.
@@ -392,7 +392,7 @@ func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) error {
 
 // CredentialsPage renders the credentials management page.
 func (h *Handlers) CredentialsPage(w http.ResponseWriter, r *http.Request) error {
-	user := UserFromContext(r.Context())
+	user := CurrentUser(r.Context())
 	creds, err := h.repo.GetCredentialsByUserID(r.Context(), user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to get credentials", err)
@@ -402,7 +402,7 @@ func (h *Handlers) CredentialsPage(w http.ResponseWriter, r *http.Request) error
 
 // AddCredentialBegin starts the process of adding a new credential.
 func (h *Handlers) AddCredentialBegin(w http.ResponseWriter, r *http.Request) error {
-	user := UserFromContext(r.Context())
+	user := CurrentUser(r.Context())
 	options, sessionData, err := h.webauthn.WebAuthn().BeginRegistration(user)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to begin registration", err)
@@ -414,7 +414,7 @@ func (h *Handlers) AddCredentialBegin(w http.ResponseWriter, r *http.Request) er
 
 // AddCredentialFinish completes adding a new credential.
 func (h *Handlers) AddCredentialFinish(w http.ResponseWriter, r *http.Request) error {
-	user := UserFromContext(r.Context())
+	user := CurrentUser(r.Context())
 	sessionData, err := h.webauthn.GetRegistrationSession(user.ID)
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "registration session expired")
@@ -436,7 +436,7 @@ func (h *Handlers) AddCredentialFinish(w http.ResponseWriter, r *http.Request) e
 
 // DeleteCredential removes a credential.
 func (h *Handlers) DeleteCredential(w http.ResponseWriter, r *http.Request) error {
-	user := UserFromContext(r.Context())
+	user := CurrentUser(r.Context())
 	credID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid credential id")
@@ -518,7 +518,7 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 // RegenerateRecoveryCodes generates new recovery codes and invalidates old ones.
 // Stores codes in session and returns a redirect to the recovery codes page.
 func (h *Handlers) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
-	user := UserFromContext(r.Context())
+	user := CurrentUser(r.Context())
 	codes, err := h.generateAndStoreRecoveryCodes(r.Context(), user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to regenerate codes", err)
@@ -582,7 +582,7 @@ func (h *Handlers) VerifyPendingPage(w http.ResponseWriter, r *http.Request) err
 func (h *Handlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		return h.renderer.VerifyEmailError(w, r, "missing_token")
+		return h.renderer.VerifyEmailErrorPage(w, r, "missing_token")
 	}
 
 	ctx := r.Context()
@@ -590,19 +590,19 @@ func (h *Handlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 
 	verificationToken, err := h.repo.GetEmailVerificationToken(ctx, tokenHash)
 	if err != nil {
-		return h.renderer.VerifyEmailError(w, r, "invalid_token")
+		return h.renderer.VerifyEmailErrorPage(w, r, "invalid_token")
 	}
 
 	if time.Now().After(verificationToken.ExpiresAt) {
 		if delErr := h.repo.DeleteEmailVerificationToken(ctx, verificationToken.ID); delErr != nil {
 			slog.Error("failed to delete expired verification token", "token_id", verificationToken.ID, "error", delErr)
 		}
-		return h.renderer.VerifyEmailError(w, r, "token_expired")
+		return h.renderer.VerifyEmailErrorPage(w, r, "token_expired")
 	}
 
 	if markErr := h.repo.MarkEmailVerified(ctx, verificationToken.UserID); markErr != nil {
 		slog.Error("failed to mark email as verified", "error", markErr)
-		return h.renderer.VerifyEmailError(w, r, "verification_failed")
+		return h.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
 	}
 
 	if delErr := h.repo.DeleteUserEmailVerificationTokens(ctx, verificationToken.UserID); delErr != nil {
@@ -612,15 +612,15 @@ func (h *Handlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 	user, err := h.repo.GetUserByID(ctx, verificationToken.UserID)
 	if err != nil {
 		slog.Error("failed to get user after verification", "error", err)
-		return h.renderer.VerifyEmailError(w, r, "verification_failed")
+		return h.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
 	}
 
 	if err := session.Save(w, r, map[string]any{"user_id": user.ID}); err != nil {
 		slog.Error("failed to create session after verification", "error", err)
-		return h.renderer.VerifyEmailError(w, r, "verification_failed")
+		return h.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
 	}
 
-	return h.renderer.VerifyEmailSuccess(w, r)
+	return h.renderer.VerifyEmailSuccessPage(w, r)
 }
 
 // ResendVerificationRequest is the request body for resending verification email.

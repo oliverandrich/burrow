@@ -58,13 +58,13 @@ func (m *mockRenderer) VerifyPendingPage(w http.ResponseWriter, _ *http.Request)
 	return burrow.Text(w, http.StatusOK, "verify-pending")
 }
 
-func (m *mockRenderer) VerifyEmailSuccess(w http.ResponseWriter, _ *http.Request) error {
-	m.lastMethod = "VerifyEmailSuccess"
+func (m *mockRenderer) VerifyEmailSuccessPage(w http.ResponseWriter, _ *http.Request) error {
+	m.lastMethod = "VerifyEmailSuccessPage"
 	return burrow.Text(w, http.StatusOK, "verify-success")
 }
 
-func (m *mockRenderer) VerifyEmailError(w http.ResponseWriter, _ *http.Request, _ string) error {
-	m.lastMethod = "VerifyEmailError"
+func (m *mockRenderer) VerifyEmailErrorPage(w http.ResponseWriter, _ *http.Request, _ string) error {
+	m.lastMethod = "VerifyEmailErrorPage"
 	return burrow.Text(w, http.StatusBadRequest, "verify-error")
 }
 
@@ -933,7 +933,7 @@ func TestVerifyEmailMissingToken(t *testing.T) {
 	err := h.VerifyEmail(rec, req)
 
 	require.NoError(t, err)
-	assert.Equal(t, "VerifyEmailError", r.lastMethod)
+	assert.Equal(t, "VerifyEmailErrorPage", r.lastMethod)
 }
 
 func TestVerifyEmailInvalidToken(t *testing.T) {
@@ -945,7 +945,7 @@ func TestVerifyEmailInvalidToken(t *testing.T) {
 	err := h.VerifyEmail(rec, req)
 
 	require.NoError(t, err)
-	assert.Equal(t, "VerifyEmailError", r.lastMethod)
+	assert.Equal(t, "VerifyEmailErrorPage", r.lastMethod)
 }
 
 func TestVerifyEmailExpiredToken(t *testing.T) {
@@ -961,7 +961,7 @@ func TestVerifyEmailExpiredToken(t *testing.T) {
 	err := h.VerifyEmail(rec, req)
 
 	require.NoError(t, err)
-	assert.Equal(t, "VerifyEmailError", r.lastMethod)
+	assert.Equal(t, "VerifyEmailErrorPage", r.lastMethod)
 }
 
 func TestVerifyEmailSuccess(t *testing.T) {
@@ -977,7 +977,7 @@ func TestVerifyEmailSuccess(t *testing.T) {
 	err := h.VerifyEmail(rec, req)
 
 	require.NoError(t, err)
-	assert.Equal(t, "VerifyEmailSuccess", r.lastMethod)
+	assert.Equal(t, "VerifyEmailSuccessPage", r.lastMethod)
 
 	// User should be marked as verified.
 	got, _ := repo.GetUserByID(context.Background(), user.ID)

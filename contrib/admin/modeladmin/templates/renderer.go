@@ -15,7 +15,6 @@ import (
 	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
 	"github.com/oliverandrich/burrow/contrib/csrf"
-	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/forms"
 	"github.com/oliverandrich/burrow/i18n"
@@ -128,7 +127,7 @@ func (d *defaultRenderer[T]) List(w http.ResponseWriter, r *http.Request, items 
 	if err != nil {
 		return err
 	}
-	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
+	return burrow.RenderContent(w, r, http.StatusOK, content, map[string]any{"Title": cfg.DisplayPluralName})
 }
 
 func (d *defaultRenderer[T]) Detail(w http.ResponseWriter, r *http.Request, item *T, cfg modeladmin.RenderConfig) error {
@@ -146,7 +145,7 @@ func (d *defaultRenderer[T]) Detail(w http.ResponseWriter, r *http.Request, item
 	if err != nil {
 		return err
 	}
-	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
+	return burrow.RenderContent(w, r, http.StatusOK, content, map[string]any{"Title": cfg.DisplayPluralName})
 }
 
 func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *T, fields []forms.BoundField, cfg modeladmin.RenderConfig) error {
@@ -168,7 +167,7 @@ func (d *defaultRenderer[T]) Form(w http.ResponseWriter, r *http.Request, item *
 	if err != nil {
 		return err
 	}
-	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
+	return burrow.RenderContent(w, r, http.StatusOK, content, map[string]any{"Title": cfg.DisplayPluralName})
 }
 
 func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Request, items []modeladmin.DeleteItem, cfg modeladmin.RenderConfig) error {
@@ -185,32 +184,5 @@ func (d *defaultRenderer[T]) ConfirmDelete(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return err
 	}
-	return renderWithLayout(w, r, cfg.DisplayPluralName, content)
-}
-
-// renderWithLayout wraps pre-rendered content in the layout template from context.
-// For HTMX requests, it returns the content fragment directly.
-func renderWithLayout(w http.ResponseWriter, r *http.Request, title string, content template.HTML) error {
-	if htmx.Request(r).IsHTMX() {
-		return burrow.HTML(w, http.StatusOK, string(content))
-	}
-
-	layoutTmpl := burrow.Layout(r.Context())
-	if layoutTmpl == "" {
-		return burrow.HTML(w, http.StatusOK, string(content))
-	}
-
-	exec := burrow.TemplateExec(r.Context())
-	if exec == nil {
-		return burrow.HTML(w, http.StatusOK, string(content))
-	}
-
-	html, err := exec(r, layoutTmpl, map[string]any{
-		"Title":   title,
-		"Content": content,
-	})
-	if err != nil {
-		return fmt.Errorf("burrow: execute layout template %q: %w", layoutTmpl, err)
-	}
-	return burrow.HTML(w, http.StatusOK, string(html))
+	return burrow.RenderContent(w, r, http.StatusOK, content, map[string]any{"Title": cfg.DisplayPluralName})
 }

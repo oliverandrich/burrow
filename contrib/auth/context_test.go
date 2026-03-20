@@ -9,18 +9,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUserFromContext(t *testing.T) {
+func TestCurrentUser(t *testing.T) {
 	user := &User{ID: 7, Username: "bob"}
 	ctx := WithUser(context.Background(), user)
 
-	got := UserFromContext(ctx)
+	got := CurrentUser(ctx)
 	require.NotNil(t, got)
 	assert.Equal(t, int64(7), got.ID)
 	assert.Equal(t, "bob", got.Username)
 }
 
-func TestUserFromContextEmpty(t *testing.T) {
-	assert.Nil(t, UserFromContext(context.Background()))
+func TestCurrentUserEmpty(t *testing.T) {
+	assert.Nil(t, CurrentUser(context.Background()))
 }
 
 func TestIsAuthenticated(t *testing.T) {
@@ -30,14 +30,14 @@ func TestIsAuthenticated(t *testing.T) {
 	assert.True(t, IsAuthenticated(ctx))
 }
 
-func TestLogoFromContextEmpty(t *testing.T) {
-	assert.Empty(t, LogoFromContext(context.Background()))
+func TestLogoEmpty(t *testing.T) {
+	assert.Empty(t, Logo(context.Background()))
 }
 
 func TestWithLogo(t *testing.T) {
 	logo := template.HTML(`<img src="logo.png"/>`)
 	ctx := WithLogo(context.Background(), logo)
 
-	got := LogoFromContext(ctx)
+	got := Logo(ctx)
 	assert.Equal(t, logo, got)
 }

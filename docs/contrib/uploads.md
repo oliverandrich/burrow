@@ -33,7 +33,7 @@ Use `uploads.StoreFile()` in a handler to extract and store a file from a multip
 import "github.com/oliverandrich/burrow/contrib/uploads"
 
 func (h *Handlers) UploadAvatar(w http.ResponseWriter, r *http.Request) error {
-    storage := uploads.StorageFromContext(r.Context())
+    storage := uploads.GetStorage(r.Context())
 
     key, err := uploads.StoreFile(r, "avatar", storage, uploads.StoreOptions{
         Prefix:       "avatars",
@@ -75,7 +75,7 @@ Typical handler pattern combining database and storage cleanup:
 
 ```go
 func (h *Handlers) DeleteAvatar(w http.ResponseWriter, r *http.Request) error {
-    storage := uploads.StorageFromContext(r.Context())
+    storage := uploads.GetStorage(r.Context())
 
     user := getUser(r)
     oldKey := user.AvatarKey
@@ -128,7 +128,7 @@ The built-in `LocalStorage` provides some useful properties you may want to repl
 The uploads app injects the `Storage` backend and allowed MIME types into every request context via middleware:
 
 ```go
-storage := uploads.StorageFromContext(r.Context())
+storage := uploads.GetStorage(r.Context())
 ```
 
 ## Using URLs in Templates

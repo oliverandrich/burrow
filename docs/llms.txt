@@ -126,7 +126,7 @@ var templateFS embed.FS
 Each package owns its context accessors. Naming convention — getter: `X(ctx)`, setter: `WithX(ctx, val)`:
 
 ```go
-user := auth.UserFromContext(ctx)
+user := auth.CurrentUser(ctx)
 token := csrf.Token(ctx)
 items := burrow.NavItems(ctx)
 layout := burrow.Layout(ctx)

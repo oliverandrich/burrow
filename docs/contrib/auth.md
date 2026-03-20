@@ -159,7 +159,7 @@ Registered automatically — loads the user from the session on every request:
 
 ```go
 // In any handler, after auth middleware runs:
-user := auth.UserFromContext(r.Context())  // *auth.User or nil
+user := auth.CurrentUser(r.Context())  // *auth.User or nil
 ```
 
 ### RequireAuth
@@ -191,7 +191,7 @@ r.Route("/admin", func(r chi.Router) {
 In Go code:
 
 ```go
-user := auth.UserFromContext(r.Context())    // *auth.User or nil
+user := auth.CurrentUser(r.Context())    // *auth.User or nil
 if auth.IsAuthenticated(r.Context()) { ... }
 ```
 
@@ -231,8 +231,8 @@ type Renderer interface {
     RecoveryPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
     RecoveryCodesPage(w http.ResponseWriter, r *http.Request, codes []string) error
     VerifyPendingPage(w http.ResponseWriter, r *http.Request) error
-    VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error
-    VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error
+    VerifyEmailSuccessPage(w http.ResponseWriter, r *http.Request) error
+    VerifyEmailErrorPage(w http.ResponseWriter, r *http.Request, errorCode string) error
 }
 ```
 

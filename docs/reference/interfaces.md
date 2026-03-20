@@ -245,10 +245,10 @@ Returns request-scoped template functions that are injected per-request via `tem
 func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
     return template.FuncMap{
         "currentUser": func() *User {
-            return UserFromContext(r.Context())
+            return CurrentUser(r.Context())
         },
         "isAuthenticated": func() bool {
-            return UserFromContext(r.Context()) != nil
+            return CurrentUser(r.Context()) != nil
         },
     }
 }

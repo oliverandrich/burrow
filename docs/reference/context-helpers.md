@@ -68,13 +68,15 @@ Generic context value helpers. `ContextValue` is a typed getter that returns the
 
 Defined in `github.com/oliverandrich/burrow/contrib/admin`.
 
-### NavGroupsFromContext
+### NavGroups
 
 ```go
-func NavGroupsFromContext(ctx context.Context) []NavGroup
+func NavGroups(ctx context.Context) []NavGroup
 ```
 
 Returns the admin nav groups from the context. Each `NavGroup` contains an app name and its navigation items. Returns `nil` if not set.
+
+> **Deprecated alias:** `NavGroupsFromContext` still works but prefer `NavGroups`.
 
 ### WithNavGroups
 
@@ -84,13 +86,15 @@ func WithNavGroups(ctx context.Context, groups []NavGroup) context.Context
 
 Stores admin nav groups in the context. Used internally by the admin route middleware.
 
-### RequestPathFromContext
+### RequestPath
 
 ```go
-func RequestPathFromContext(ctx context.Context) string
+func RequestPath(ctx context.Context) string
 ```
 
 Returns the current request path from the context. Used by admin templates to highlight the active sidebar link. Returns `""` if not set.
+
+> **Deprecated alias:** `RequestPathFromContext` still works but prefer `RequestPath`.
 
 ### WithRequestPath
 
@@ -127,13 +131,15 @@ Stores a CSRF token in the context. Used internally by the CSRF middleware.
 
 Defined in `github.com/oliverandrich/burrow/contrib/auth`.
 
-### UserFromContext
+### CurrentUser
 
 ```go
-func UserFromContext(ctx context.Context) *User
+func CurrentUser(ctx context.Context) *User
 ```
 
 Returns the authenticated user from the context, or `nil` if not logged in.
+
+> **Deprecated alias:** `UserFromContext` still works but prefer `CurrentUser`.
 
 ### IsAuthenticated
 

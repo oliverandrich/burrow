@@ -3,17 +3,15 @@
 package authtest
 
 import (
-	"database/sql"
 	"fmt"
 	"sync/atomic"
 	"testing"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
+	"github.com/oliverandrich/burrow/internal/sqlitetest"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
 var userCounter atomic.Int64
@@ -23,14 +21,10 @@ var userCounter atomic.Int64
 func NewDB(t *testing.T) *bun.DB {
 	t.Helper()
 
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?cache=shared&_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = sqldb.Close() })
-
-	db := bun.NewDB(sqldb, sqlitedialect.New())
+	db := sqlitetest.OpenDB(t)
 
 	authApp := auth.New()
-	err = burrow.RunAppMigrations(t.Context(), db, authApp.Name(), authApp.MigrationFS())
+	err := burrow.RunAppMigrations(t.Context(), db, authApp.Name(), authApp.MigrationFS())
 	require.NoError(t, err)
 
 	return db

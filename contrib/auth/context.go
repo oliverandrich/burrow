@@ -13,17 +13,24 @@ import (
 // ctxKeyUser is the context key for the authenticated user.
 type ctxKeyUser struct{}
 
-// UserFromContext retrieves the authenticated user from the context.
-func UserFromContext(ctx context.Context) *User {
+// CurrentUser retrieves the authenticated user from the context.
+func CurrentUser(ctx context.Context) *User {
 	if user, ok := ctx.Value(ctxKeyUser{}).(*User); ok {
 		return user
 	}
 	return nil
 }
 
+// UserFromContext is a deprecated alias for [CurrentUser].
+//
+//go:fix inline
+func UserFromContext(ctx context.Context) *User {
+	return CurrentUser(ctx)
+}
+
 // IsAuthenticated returns true if a user is present in the context.
 func IsAuthenticated(ctx context.Context) bool {
-	return UserFromContext(ctx) != nil
+	return CurrentUser(ctx) != nil
 }
 
 // WithUser returns a new context with the user set.
@@ -39,8 +46,15 @@ func WithLogo(ctx context.Context, logo template.HTML) context.Context {
 	return context.WithValue(ctx, ctxKeyLogo{}, logo)
 }
 
-// LogoFromContext retrieves the logo HTML from context, or empty if not set.
-func LogoFromContext(ctx context.Context) template.HTML {
+// Logo retrieves the logo HTML from context, or empty if not set.
+func Logo(ctx context.Context) template.HTML {
 	logo, _ := ctx.Value(ctxKeyLogo{}).(template.HTML)
 	return logo
+}
+
+// LogoFromContext is a deprecated alias for [Logo].
+//
+//go:fix inline
+func LogoFromContext(ctx context.Context) template.HTML {
+	return Logo(ctx)
 }

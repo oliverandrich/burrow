@@ -56,7 +56,7 @@ func redirectTarget(r *http.Request) string {
 func RequireAdmin() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user := UserFromContext(r.Context())
+			user := CurrentUser(r.Context())
 			if user == nil {
 				if target := redirectTarget(r); target != "" {
 					_ = session.Set(w, r, "redirect_after_login", target)

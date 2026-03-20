@@ -52,6 +52,9 @@ func (r *Repository) CreateUserWithEmail(ctx context.Context, email, name string
 func (r *Repository) GetUserByID(ctx context.Context, id int64) (*User, error) {
 	var user User
 	if err := r.db.NewSelect().Model(&user).Where("u.id = ?", id).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get user by id %d: %w", id, err)
 	}
 	return &user, nil
@@ -61,6 +64,9 @@ func (r *Repository) GetUserByID(ctx context.Context, id int64) (*User, error) {
 func (r *Repository) GetUserByIDWithCredentials(ctx context.Context, id int64) (*User, error) {
 	var user User
 	if err := r.db.NewSelect().Model(&user).Relation("Credentials").Where("u.id = ?", id).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get user by id %d with credentials: %w", id, err)
 	}
 	return &user, nil
@@ -70,6 +76,9 @@ func (r *Repository) GetUserByIDWithCredentials(ctx context.Context, id int64) (
 func (r *Repository) GetUserByUsername(ctx context.Context, username string) (*User, error) {
 	var user User
 	if err := r.db.NewSelect().Model(&user).Where("username = ?", username).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get user by username %q: %w", username, err)
 	}
 	return &user, nil
@@ -79,6 +88,9 @@ func (r *Repository) GetUserByUsername(ctx context.Context, username string) (*U
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	var user User
 	if err := r.db.NewSelect().Model(&user).Where("email = ?", email).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get user by email %q: %w", email, err)
 	}
 	return &user, nil
@@ -363,6 +375,9 @@ func (r *Repository) CreateEmailVerificationToken(ctx context.Context, userID in
 func (r *Repository) GetEmailVerificationToken(ctx context.Context, tokenHash string) (*EmailVerificationToken, error) {
 	var token EmailVerificationToken
 	if err := r.db.NewSelect().Model(&token).Where("token_hash = ?", tokenHash).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get email verification token: %w", err)
 	}
 	return &token, nil
@@ -412,6 +427,9 @@ func (r *Repository) CreateInvite(ctx context.Context, invite *Invite) error {
 func (r *Repository) GetInviteByTokenHash(ctx context.Context, tokenHash string) (*Invite, error) {
 	var invite Invite
 	if err := r.db.NewSelect().Model(&invite).Where("token_hash = ?", tokenHash).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get invite by token hash: %w", err)
 	}
 	return &invite, nil

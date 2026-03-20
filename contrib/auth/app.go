@@ -272,19 +272,22 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Sources: burrow.FlagSources(configSource, "AUTH_INVITE_ONLY", "auth.invite_only"),
 		},
 		&cli.StringFlag{
-			Name:    "webauthn-rp-id",
+			Name:    "auth-webauthn-rp-id",
+			Aliases: []string{"webauthn-rp-id"},
 			Value:   "localhost",
 			Usage:   "WebAuthn Relying Party ID (domain name)",
 			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_ID", "auth.webauthn_rp_id"),
 		},
 		&cli.StringFlag{
-			Name:    "webauthn-rp-display-name",
+			Name:    "auth-webauthn-rp-display-name",
+			Aliases: []string{"webauthn-rp-display-name"},
 			Value:   "Web App",
 			Usage:   "WebAuthn Relying Party display name",
 			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_DISPLAY_NAME", "auth.webauthn_rp_display_name"),
 		},
 		&cli.StringFlag{
-			Name:    "webauthn-rp-origin",
+			Name:    "auth-webauthn-rp-origin",
+			Aliases: []string{"webauthn-rp-origin"},
 			Usage:   "WebAuthn Relying Party origin (defaults to base URL)",
 			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_ORIGIN", "auth.webauthn_rp_origin"),
 		},
@@ -307,7 +310,7 @@ func (a *App) Configure(cmd *cli.Command) error {
 	}
 
 	// Create WebAuthn service with a cancellable context for the cleanup goroutine.
-	rpOrigin := cmd.String("webauthn-rp-origin")
+	rpOrigin := cmd.String("auth-webauthn-rp-origin")
 	if rpOrigin == "" {
 		rpOrigin = baseURL
 	}
@@ -315,8 +318,8 @@ func (a *App) Configure(cmd *cli.Command) error {
 	a.cancelCleanup = cancel
 	waSvc, err := NewWebAuthnService(
 		ctx,
-		cmd.String("webauthn-rp-display-name"),
-		cmd.String("webauthn-rp-id"),
+		cmd.String("auth-webauthn-rp-display-name"),
+		cmd.String("auth-webauthn-rp-id"),
 		rpOrigin,
 	)
 	if err != nil {
@@ -394,9 +397,9 @@ func (a *App) FuncMap() template.FuncMap {
 func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
 	ctx := r.Context()
 	return template.FuncMap{
-		"currentUser":     func() *User { return UserFromContext(ctx) },
+		"currentUser":     func() *User { return CurrentUser(ctx) },
 		"isAuthenticated": func() bool { return IsAuthenticated(ctx) },
-		"authLogo":        func() template.HTML { return LogoFromContext(ctx) },
+		"authLogo":        func() template.HTML { return Logo(ctx) },
 	}
 }
 

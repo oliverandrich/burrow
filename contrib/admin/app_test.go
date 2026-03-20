@@ -326,7 +326,7 @@ func (a *navGroupsCheckApp) Name() string                       { return "nav-gr
 func (a *navGroupsCheckApp) Register(_ *burrow.AppConfig) error { return nil }
 func (a *navGroupsCheckApp) AdminRoutes(r chi.Router) {
 	r.Get("/nav-groups-check", func(w http.ResponseWriter, r *http.Request) {
-		a.gotGroups = NavGroupsFromContext(r.Context())
+		a.gotGroups = NavGroups(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
 }

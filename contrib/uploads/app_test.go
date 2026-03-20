@@ -151,7 +151,7 @@ func TestContextHelpers(t *testing.T) {
 
 	t.Run("storage from context", func(t *testing.T) {
 		ctx := WithStorage(ctx, s) //nolint:govet // intentional shadow for test clarity
-		got := StorageFromContext(ctx)
+		got := GetStorage(ctx)
 		require.NotNil(t, got)
 		assert.Equal(t, "/media/some/key.jpg", URL(ctx, "some/key.jpg"))
 	})
@@ -166,7 +166,7 @@ func TestMiddlewareInjectsStorage(t *testing.T) {
 
 	var gotStorage Storage
 	handler := mw[0](http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotStorage = StorageFromContext(r.Context())
+		gotStorage = GetStorage(r.Context())
 	}))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
@@ -207,7 +207,7 @@ func TestDefaultAllowedTypesApplied(t *testing.T) {
 	r.Use(app.Middleware()...)
 
 	r.Post("/upload", func(w http.ResponseWriter, r *http.Request) {
-		storage := StorageFromContext(r.Context())
+		storage := GetStorage(r.Context())
 		// No AllowedTypes in opts → should use app defaults
 		key, err := StoreFile(r, "file", storage, StoreOptions{Prefix: "uploads"})
 		if err != nil {
@@ -245,7 +245,7 @@ func TestPerCallAllowedTypesOverrideDefault(t *testing.T) {
 	r.Use(app.Middleware()...)
 
 	r.Post("/upload", func(w http.ResponseWriter, r *http.Request) {
-		storage := StorageFromContext(r.Context())
+		storage := GetStorage(r.Context())
 		// Per-call opts explicitly allow text/plain → should override app default
 		key, err := StoreFile(r, "file", storage, StoreOptions{
 			Prefix:       "docs",
@@ -285,7 +285,7 @@ func TestFullUploadFlow(t *testing.T) {
 
 	// Upload handler
 	r.Post("/upload", func(w http.ResponseWriter, r *http.Request) {
-		storage := StorageFromContext(r.Context())
+		storage := GetStorage(r.Context())
 		key, err := StoreFile(r, "file", storage, StoreOptions{Prefix: "uploads"})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

@@ -111,7 +111,7 @@ func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
 	ctx := r.Context()
 	return template.FuncMap{
 		"adminSidebar": func() []SidebarGroup {
-			return PrepareSidebar(ctx, NavGroupsFromContext(ctx))
+			return PrepareSidebar(ctx, NavGroups(ctx))
 		},
 	}
 }

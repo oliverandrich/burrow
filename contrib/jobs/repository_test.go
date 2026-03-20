@@ -2,28 +2,22 @@ package jobs
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 	"time"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/internal/sqlitetest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
 func testDB(t *testing.T) *bun.DB {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	sqldb.SetMaxOpenConns(1)
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { _ = db.Close() })
+	db := sqlitetest.OpenDB(t)
 
 	app := New()
-	err = burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+	err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
 	require.NoError(t, err)
 	return db
 }

@@ -61,11 +61,11 @@ func (d *defaultRenderer) VerifyPendingPage(w http.ResponseWriter, r *http.Reque
 	return renderCard(w, r, i18n.T(r.Context(), "verify-pending-title"), i18n.T(r.Context(), "verify-pending-title"), "auth/verify_pending", nil)
 }
 
-func (d *defaultRenderer) VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error {
+func (d *defaultRenderer) VerifyEmailSuccessPage(w http.ResponseWriter, r *http.Request) error {
 	return renderCard(w, r, i18n.T(r.Context(), "verify-success-title"), i18n.T(r.Context(), "verify-success-title"), "auth/verify_success", nil)
 }
 
-func (d *defaultRenderer) VerifyEmailError(w http.ResponseWriter, r *http.Request, errorCode string) error {
+func (d *defaultRenderer) VerifyEmailErrorPage(w http.ResponseWriter, r *http.Request, errorCode string) error {
 	return renderCard(w, r, i18n.T(r.Context(), "verify-error-title"), i18n.T(r.Context(), "verify-error-title"), "auth/verify_error", map[string]any{
 		"ErrorCode": errorCode,
 	})

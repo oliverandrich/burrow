@@ -89,7 +89,7 @@ layoutData := map[string]any{
     "Content":  content,
     "NavItems": burrow.NavItems(r.Context()),
     "Messages": messages.Get(r.Context()),
-    "User":     auth.UserFromContext(r.Context()),  // new
+    "User":     auth.CurrentUser(r.Context()),  // new
 }
 ```
 
@@ -142,7 +142,7 @@ Visit `/auth/register` to create an account (you'll need a browser that supports
 
 - **`auth.New()`** — configures the auth app with built-in default renderer and layout
 - **`auth.RequireAuth()`** — middleware that redirects unauthenticated users to login
-- **`auth.UserFromContext()`** — retrieves the authenticated user from request context
+- **`auth.CurrentUser()`** — retrieves the authenticated user from request context
 - **`HasDependencies`** — declares inter-app dependencies for automatic ordering
 
 ## Next

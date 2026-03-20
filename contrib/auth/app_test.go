@@ -18,12 +18,11 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/burrow/internal/sqlitetest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 	"github.com/urfave/cli/v3"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -65,9 +64,9 @@ func TestAppFlags(t *testing.T) {
 	assert.True(t, names["auth-use-email"])
 	assert.True(t, names["auth-require-verification"])
 	assert.True(t, names["auth-invite-only"])
-	assert.True(t, names["webauthn-rp-id"])
-	assert.True(t, names["webauthn-rp-display-name"])
-	assert.True(t, names["webauthn-rp-origin"])
+	assert.True(t, names["auth-webauthn-rp-id"])
+	assert.True(t, names["auth-webauthn-rp-display-name"])
+	assert.True(t, names["auth-webauthn-rp-origin"])
 }
 
 func TestMigrationFS(t *testing.T) {
@@ -89,14 +88,10 @@ func TestMigrationFS(t *testing.T) {
 
 func openTestDB(t *testing.T) *bun.DB {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?cache=shared&_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = sqldb.Close() })
-
-	db := bun.NewDB(sqldb, sqlitedialect.New())
+	db := sqlitetest.OpenDB(t)
 
 	app := New()
-	err = burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+	err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
 	require.NoError(t, err)
 
 	return db
@@ -573,7 +568,7 @@ func TestAuthMiddlewareNoSession(t *testing.T) {
 
 	var gotUser *User
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-		gotUser = UserFromContext(r.Context())
+		gotUser = CurrentUser(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -1349,13 +1344,13 @@ func (m *layoutCapturingRenderer) VerifyPendingPage(w http.ResponseWriter, r *ht
 	return burrow.Text(w, http.StatusOK, "verify-pending")
 }
 
-func (m *layoutCapturingRenderer) VerifyEmailSuccess(w http.ResponseWriter, r *http.Request) error {
+func (m *layoutCapturingRenderer) VerifyEmailSuccessPage(w http.ResponseWriter, r *http.Request) error {
 	lay := burrow.Layout(r.Context())
 	*m.capturedLayout = lay
 	return burrow.Text(w, http.StatusOK, "verify-success")
 }
 
-func (m *layoutCapturingRenderer) VerifyEmailError(w http.ResponseWriter, r *http.Request, _ string) error {
+func (m *layoutCapturingRenderer) VerifyEmailErrorPage(w http.ResponseWriter, r *http.Request, _ string) error {
 	lay := burrow.Layout(r.Context())
 	*m.capturedLayout = lay
 	return burrow.Text(w, http.StatusBadRequest, "verify-error")
@@ -1535,7 +1530,7 @@ func TestAuthMiddlewareWithValidUser(t *testing.T) {
 
 	var gotUser *User
 	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotUser = UserFromContext(r.Context())
+		gotUser = CurrentUser(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -1561,7 +1556,7 @@ func TestAuthMiddlewareWithInactiveUser(t *testing.T) {
 
 	var gotUser *User
 	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotUser = UserFromContext(r.Context())
+		gotUser = CurrentUser(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -1582,7 +1577,7 @@ func TestAuthMiddlewareWithNonexistentUser(t *testing.T) {
 
 	var gotUser *User
 	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotUser = UserFromContext(r.Context())
+		gotUser = CurrentUser(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -1601,7 +1596,7 @@ func TestAuthLogoMiddleware(t *testing.T) {
 
 	var gotLogo template.HTML
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotLogo = LogoFromContext(r.Context())
+		gotLogo = Logo(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -2004,7 +1999,7 @@ func TestAuthMiddlewareWithAdminUser(t *testing.T) {
 
 	var gotUser *User
 	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotUser = UserFromContext(r.Context())
+		gotUser = CurrentUser(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 

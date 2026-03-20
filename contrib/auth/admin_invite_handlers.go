@@ -31,7 +31,7 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusBadRequest, "email is required")
 	}
 
-	user := UserFromContext(r.Context())
+	user := CurrentUser(r.Context())
 	if user == nil {
 		return burrow.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}

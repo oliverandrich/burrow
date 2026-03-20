@@ -14,7 +14,7 @@ func ExampleWithNavGroups() {
 	}
 	ctx := admin.WithNavGroups(context.Background(), groups)
 
-	result := admin.NavGroupsFromContext(ctx)
+	result := admin.NavGroups(ctx)
 	fmt.Println(result[0].AppName, result[0].Items[0].Label)
 	// Output:
 	// users All Users
@@ -23,7 +23,7 @@ func ExampleWithNavGroups() {
 func ExampleWithRequestPath() {
 	ctx := admin.WithRequestPath(context.Background(), "/admin/users/42")
 
-	fmt.Println(admin.RequestPathFromContext(ctx))
+	fmt.Println(admin.RequestPath(ctx))
 	// Output:
 	// /admin/users/42
 }

@@ -28,11 +28,11 @@ func ExampleNormalizeCode() {
 	// abcdefgh2345
 }
 
-func ExampleWithUser() {
+func ExampleCurrentUser() {
 	user := &auth.User{Username: "alice", Role: "admin"}
 	ctx := auth.WithUser(context.Background(), user)
 
-	u := auth.UserFromContext(ctx)
+	u := auth.CurrentUser(ctx)
 	fmt.Println(u.Username, u.Role)
 	// Output:
 	// alice admin
