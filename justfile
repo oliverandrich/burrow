@@ -142,6 +142,14 @@ update-bootstrap version="5.3.8":
     cp "$tmp/extract/bootstrap-{{version}}-dist/js/bootstrap.bundle.min.js" contrib/bootstrap/static/
     echo "Done — Bootstrap v{{version}} updated"
 
+# Update Alpine.js (downloads latest release)
+update-alpine version="3.15.8":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Downloading Alpine.js v{{version}}..."
+    curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@{{version}}/dist/cdn.min.js" -o contrib/alpine/static/alpine.min.js
+    echo "Done — Alpine.js v{{version}} updated"
+
 # Update htmx (downloads latest release)
 update-htmx version="2.0.8":
     #!/usr/bin/env bash

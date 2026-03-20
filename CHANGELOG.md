@@ -28,6 +28,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **ModelAdmin: search input** — admin list views with `SearchFields` now show a search input with HTMX support; uses FTS5 when available, falls back to LIKE
 - **`add`/`sub` template functions in core** — integer arithmetic available in all templates without contrib app registration
 - **Core htmx template stubs** — `htmx/js` and `htmx/config` defined as empty stubs in core; htmx app overrides them when registered
+- **Alpine.js contrib app** — new `alpine` app that embeds Alpine.js 3.15.8 and serves it via `staticfiles` with content-hashed URLs; include via `{{ template "alpine/js" . }}` in layout templates
 - **Sass build pipeline** — `just sass` compiles themes, `just sass-setup` installs Bootstrap Sass source; pre-commit hook auto-compiles on `.scss` changes
 
 ### Changed

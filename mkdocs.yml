@@ -110,6 +110,7 @@ nav:
       - UI & Templates:
           - Bootstrap: contrib/bootstrap.md
           - Bootstrap Icons: contrib/bsicons.md
+          - Alpine.js: contrib/alpine.md
           - htmx: contrib/htmx.md
           - Static Files: contrib/staticfiles.md
       - Data & Background:
