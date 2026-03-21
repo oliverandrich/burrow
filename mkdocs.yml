@@ -85,6 +85,7 @@ nav:
           - Testing: guide/testing.md
       - Deployment:
           - Deployment: guide/deployment.md
+          - Building Releases: guide/releases.md
           - Logging: guide/logging.md
           - TLS: guide/tls.md
   - Tutorial:

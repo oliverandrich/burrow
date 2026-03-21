@@ -33,6 +33,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Changed
 
+- **Building Releases guide** — new documentation page covering local builds, cross-compilation with GoReleaser, automated GitHub releases, version injection, and CI workflows
 - **Pagination helpers moved to core** — `pageURL`, `pageNumbers` are now core template functions (registered in `baseFuncMap`); `PageResult.PageSize()` method replaces the old `pageLimit` template function; `bootstrap/pagination` template now uses `BasePath`/`RawQuery` instead of `BaseURL` for query-preserving pagination links
 - **`themeCSS` template function removed** — the CSS path is now baked into the `bootstrap/css` template at boot time via an overlay FS; this removes a potential FuncMap collision point for alternative CSS framework apps
 - **Icon template functions moved to `RegisterIconFunc`** — apps no longer register icon functions via `FuncMap()`; instead they call `cfg.RegisterIconFunc()` in `Register()`, which prevents FuncMap collisions when multiple apps use the same icons
