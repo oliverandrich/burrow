@@ -4,25 +4,38 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.7.0 — 2026-03-21
+
 ### Breaking Changes
 
 - **Uploads: flag names renamed** — `--upload-dir` → `--uploads-dir`, `--upload-url-prefix` → `--uploads-url-prefix`, `--upload-allowed-types` → `--uploads-allowed-types`. Environment variables changed accordingly (`UPLOAD_*` → `UPLOADS_*`). This aligns with the `{appname}-{property}` convention used by all other apps.
 - **Uploads: `Storage` interface renamed to `Store`** — the context getter is now `uploads.Storage(ctx)` returning `uploads.Store`. The old `GetStorage` and `StorageFromContext` remain as deprecated wrappers.
+- **Context getter renames** — `UserFromContext` → `CurrentUser`, `LogoFromContext` → `Logo`, `NavGroupsFromContext` → `NavGroups`, `RequestPathFromContext` → `RequestPath`. Old names remain as deprecated `//go:fix inline` wrappers.
+- **Auth: flag prefix corrected** — `webauthn-rp-id` → `auth-webauthn-rp-id`, `webauthn-rp-display-name` → `auth-webauthn-rp-display-name`, `webauthn-rp-origin` → `auth-webauthn-rp-origin`. Old names kept as CLI aliases.
+- **Auth: Renderer method renames** — `VerifyEmailSuccess` → `VerifyEmailSuccessPage`, `VerifyEmailError` → `VerifyEmailErrorPage`
 
 ### Added
 
-- **SSE contrib app** — new `sse` app providing an in-memory pub/sub broker for Server-Sent Events; supports static and dynamic topics, non-blocking publish, configurable buffer size, 30s keepalive, graceful shutdown, and seamless htmx SSE extension integration
+- **SSE contrib app** — new `sse` app providing an in-memory pub/sub broker for Server-Sent Events; supports static and dynamic topics, non-blocking publish, configurable buffer size, 30s keepalive, graceful shutdown, and seamless htmx SSE extension integration via `ContextHandler`
+- **Alpine.js contrib app** — new `alpine` app that embeds Alpine.js 3.15.8 and serves it via `staticfiles` with content-hashed URLs; include via `{{ template "alpine/js" . }}` in layout templates
 - **Jobs: separate database support** — new `--jobs-database` flag to store the job queue in a dedicated SQLite file, eliminating write contention with the main application database
 - **`burrow.OpenDB()`** — exported function to open SQLite databases with the framework's standard PRAGMAs; useful for contrib apps or user code that need dedicated database connections
+- **`burrow.RenderContent()`** — renders pre-rendered HTML with layout wrapping and HTMX support; used by modeladmin, replaces duplicated `renderWithLayout` logic
+- **Benchmarks** — 20 benchmarks for critical code paths (Handle, Render, JSON, Bind, Pagination, Template Clone)
+- **`internal/sqlitetest`** — shared test helper for consistent in-memory SQLite test databases
 
 ### Changed
 
+- **Auth repository: explicit ErrNotFound** — all Get* methods now explicitly check `sql.ErrNoRows` and return `ErrNotFound` directly, matching the jobs repository pattern
 - **Deployment guide improvements** — hardened systemd unit (dedicated user, RuntimeDirectory, EnvironmentFile), added SQLite production section (file permissions, WAL sidecar files, backup strategies)
 - **Error handling consistency** — fixed routing.md to correctly describe `RenderError` behavior; added `ValidationError` documentation to error handling guide
-- **Quickstart clarifications** — explained `HasRoutes` interface, error dispatch behavior, and `srv.Flags(nil)` purpose
-- **Tutorial Part 3** — explained the `emptyFS` pattern for staticfiles
-- **Middleware documentation** — added complete `HasMiddleware` authoring example; clarified that middleware runs in dependency-sorted order
-- **Configuration guide** — explained TOML file path behavior and what happens when the file is missing
+- **Comprehensive documentation improvements** — quickstart clarifications, middleware authoring example, template error behavior, navLinks explanation, migration rollback strategy, TOML config path, ACME rate limits, logging configuration, GoReleaser Homebrew Cask guidance
+- **Building Releases guide** — new documentation page covering local builds, cross-compilation with GoReleaser, automated GitHub releases, version injection, and CI workflows
+- **Multi-Tenant guide** — new documentation page explaining database-per-user architecture with `burrow.OpenDB()`
+
+### Fixed
+
+- **Empty context.go files removed** — package doc comments moved from `secure/context.go` and `jobs/context.go` to their respective `app.go` files
 
 ## 0.6.0 — 2026-03-21
 
