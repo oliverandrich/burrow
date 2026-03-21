@@ -1,6 +1,6 @@
 # Quick Start
 
-Build a working application with session management, a health check endpoint, and a custom homepage.
+Build a minimal working application with a custom homepage and health check endpoint.
 
 ## 1. Create the Project
 
@@ -56,7 +56,14 @@ func main() {
 }
 ```
 
-This shows the core pattern: define an app, implement `Routes()`, and use `burrow.Handle()` to write handlers that return errors. No layout needed yet — that comes later when you want to render HTML templates (see the [Tutorial](../tutorial/index.md)).
+This shows the core pattern:
+
+- Every app implements `Name()` and `Register()` (the `App` interface)
+- Apps that serve HTTP routes also implement `Routes(r chi.Router)` (the `HasRoutes` interface)
+- Handlers return `error` instead of silently failing — `burrow.Handle()` wraps them and handles errors automatically: `*HTTPError` renders an error page with the appropriate status code, any other error becomes a logged 500
+- `srv.Flags(nil)` adds built-in CLI flags (`--host`, `--port`, `--database-dsn`, etc.)
+
+No layout needed yet — that comes later when you want to render HTML templates (see the [Tutorial](../tutorial/index.md)).
 
 ## 3. Run It
 

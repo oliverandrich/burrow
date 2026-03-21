@@ -21,10 +21,36 @@ r.Get("/notes/:id", burrow.Handle(func(w http.ResponseWriter, r *http.Request) e
 The error handling chain:
 
 1. **`*HTTPError`** — `Handle()` calls `RenderError(w, r, code, message)`
-2. **Any other error** — logged as "unhandled error", rendered as 500
-3. **Response already started** — logged, no further action (can't change status code)
+2. **`*ValidationError`** — returned by `Bind()` when struct validation fails (see below)
+3. **Any other error** — logged as "unhandled error", rendered as 500
+4. **Response already started** — logged, no further action (can't change status code)
 
 Errors with status code >= 500 are logged automatically. 4xx errors are not logged (they're expected client errors).
+
+### Validation Errors
+
+`burrow.Bind()` parses and validates request bodies. When validation fails, it returns a `*ValidationError` containing per-field errors:
+
+```go
+func createItem(w http.ResponseWriter, r *http.Request) error {
+    var input struct {
+        Name  string `form:"name"  validate:"required"`
+        Email string `form:"email" validate:"required,email"`
+    }
+    if err := burrow.Bind(r, &input); err != nil {
+        var ve *burrow.ValidationError
+        if errors.As(err, &ve) {
+            // ve.Errors contains []FieldError with Field and Message
+            return burrow.JSON(w, http.StatusUnprocessableEntity, ve.Errors)
+        }
+        return err // other parse errors become 500
+    }
+    // input is valid
+    return burrow.JSON(w, http.StatusOK, input)
+}
+```
+
+`ValidationError` is not an `HTTPError` — it does not automatically render an error page. Your handler decides how to present validation failures (JSON response, re-render form with errors, etc.). See the [Validation guide](validation.md) for form-based patterns with `i18n.TranslateValidationErrors()`.
 
 ## RenderError
 

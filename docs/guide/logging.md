@@ -81,3 +81,24 @@ All log output goes to **stdout**. Both systemd and Docker capture stdout automa
 - **Docker** — logs are captured by the container runtime, queryable with `docker logs`
 
 No file-based logging configuration is needed. To persist logs beyond the journal or container lifecycle, configure your log aggregator to read from journald or the Docker log driver.
+
+## Log Level Configuration
+
+Burrow intentionally does not provide a `--log-level` CLI flag. Log level is configured in your `main.go` when you create the `slog` handler:
+
+```go
+slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+    Level: slog.LevelInfo, // Change to slog.LevelDebug for development
+})))
+```
+
+This keeps logging configuration in Go code where it belongs, rather than adding a framework-specific flag that duplicates `slog`'s built-in capabilities. If you need runtime log level changes, use `slog.LevelVar` with an atomic level:
+
+```go
+var logLevel slog.LevelVar
+logLevel.Set(slog.LevelInfo)
+slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+    Level: &logLevel,
+})))
+// Later: logLevel.Set(slog.LevelDebug)
+```

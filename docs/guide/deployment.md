@@ -67,10 +67,12 @@ After=network.target
 
 [Service]
 Type=forking
+User=myapp
+Group=myapp
 PIDFile=/run/myapp/server.pid
-Environment=SESSION_HASH_KEY=<your-key>
-Environment=CSRF_KEY=<your-key>
-ExecStart=/usr/local/bin/server --pid-file /run/myapp/server.pid
+RuntimeDirectory=myapp
+EnvironmentFile=/etc/myapp/env
+ExecStart=/usr/local/bin/server --pid-file /run/myapp/server.pid --database-dsn /var/lib/myapp/app.db
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5
@@ -78,11 +80,32 @@ RestartSec=5
 # Recommended hardening
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=/var/lib/myapp /run/myapp
+ReadWritePaths=/var/lib/myapp
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+Create the service user and environment file:
+
+```bash
+# Create dedicated service user (no login shell, no home directory)
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin myapp
+
+# Create data directory
+sudo mkdir -p /var/lib/myapp
+sudo chown myapp:myapp /var/lib/myapp
+
+# Create environment file with secrets (readable only by root)
+sudo tee /etc/myapp/env > /dev/null << 'EOF'
+SESSION_HASH_KEY=<your-key>
+CSRF_KEY=<your-key>
+EOF
+sudo chmod 600 /etc/myapp/env
+```
+
+!!! warning "Never put secrets in the unit file"
+    `Environment=` directives are visible to any user via `systemctl show`. Always use `EnvironmentFile=` with restricted permissions, or systemd's `LoadCredential=` for sensitive values.
 
 With this setup:
 
@@ -153,6 +176,32 @@ The server automatically falls back to simple mode (no graceful restart, only gr
 - **Concurrent upgrader** — if tableflip cannot initialize (e.g. in tests)
 
 In simple mode, `SIGINT` and `SIGTERM` still trigger a graceful shutdown that drains in-flight requests.
+
+## SQLite in Production
+
+Burrow stores all data in a single SQLite file (default: `app.db` in the working directory, configurable via `--database-dsn`). SQLite uses WAL mode, which creates two sidecar files alongside the main database:
+
+```
+/var/lib/myapp/
+├── app.db          ← main database
+├── app.db-wal      ← write-ahead log (created automatically)
+└── app.db-shm      ← shared memory index (created automatically)
+```
+
+**Permissions:** The service user needs read/write access to the directory (not just the file) because SQLite creates and deletes the WAL/SHM files. The systemd example above handles this with `ReadWritePaths=/var/lib/myapp`.
+
+**Backups:** SQLite in WAL mode can be backed up while the server is running:
+
+```bash
+# Option 1: Built-in SQLite backup (safe, consistent)
+sqlite3 /var/lib/myapp/app.db ".backup /backups/myapp-$(date +%Y%m%d).db"
+
+# Option 2: Litestream for continuous replication
+# See https://litestream.io/
+```
+
+!!! warning "Do not copy the .db file directly"
+    A plain `cp` of the database file while the server is running may produce a corrupted backup. Always use `sqlite3 .backup` or a tool like Litestream.
 
 ## TLS
 

@@ -15,6 +15,15 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Jobs: separate database support** — new `--jobs-database` flag to store the job queue in a dedicated SQLite file, eliminating write contention with the main application database
 - **`burrow.OpenDB()`** — exported function to open SQLite databases with the framework's standard PRAGMAs; useful for contrib apps or user code that need dedicated database connections
 
+### Changed
+
+- **Deployment guide improvements** — hardened systemd unit (dedicated user, RuntimeDirectory, EnvironmentFile), added SQLite production section (file permissions, WAL sidecar files, backup strategies)
+- **Error handling consistency** — fixed routing.md to correctly describe `RenderError` behavior; added `ValidationError` documentation to error handling guide
+- **Quickstart clarifications** — explained `HasRoutes` interface, error dispatch behavior, and `srv.Flags(nil)` purpose
+- **Tutorial Part 3** — explained the `emptyFS` pattern for staticfiles
+- **Middleware documentation** — added complete `HasMiddleware` authoring example; clarified that middleware runs in dependency-sorted order
+- **Configuration guide** — explained TOML file path behavior and what happens when the file is missing
+
 ## 0.6.0 — 2026-03-21
 
 ### Breaking Changes

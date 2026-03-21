@@ -27,6 +27,9 @@ To enable TOML configuration, pass a config source to `srv.Flags()`:
 import "github.com/urfave/cli/v3"
 
 // Load TOML file as a config source.
+// The path is relative to the working directory. If the file
+// does not exist, TOML values are silently skipped (CLI and
+// env vars still work).
 configSource := func(key string) cli.ValueSource {
     return cli.TOMLSourceFromFile("config.toml", key)
 }
@@ -36,6 +39,8 @@ cmd := &cli.Command{
     Action: srv.Run,
 }
 ```
+
+The file path (`"config.toml"`) is your choice — you can use any path (e.g., `/etc/myapp/config.toml` for production). Pass `nil` to `srv.Flags(nil)` if you don't need TOML support.
 
 Then create `config.toml`:
 

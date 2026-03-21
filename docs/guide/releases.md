@@ -157,6 +157,8 @@ homebrew_casks:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
 ```
 
+This uses GoReleaser's [Homebrew Cask](https://goreleaser.com/customization/homebrew/) support for macOS binary distribution. If you don't need Homebrew distribution, you can remove this section entirely.
+
 This requires a separate `homebrew-tap` repository and a personal access token with `repo` scope stored as `HOMEBREW_TAP_GITHUB_TOKEN` in your repository secrets.
 
 ## Publishing a Release

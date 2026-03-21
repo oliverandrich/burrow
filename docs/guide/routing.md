@@ -65,8 +65,8 @@ r.Get("/notes", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error
 
 | Error Type | Behavior |
 |---|---|
-| `*burrow.HTTPError` | Sends the error's status code and message as plain text |
-| Any other error | Sends a generic 500 Internal Server Error (the original error is logged but not exposed) |
+| `*burrow.HTTPError` | Renders an error page via `RenderError` (HTML with layout, or JSON for API requests) — see [Error Handling](error-handling.md) |
+| Any other error | Logged as "unhandled error", rendered as 500 via `RenderError` (the original error is not exposed to the client) |
 
 Errors on 5xx status codes are always logged with the request method and path.
 
@@ -190,7 +190,7 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 }
 ```
 
-Global middleware runs in app registration order, before any route-specific middleware.
+Global middleware runs in dependency-sorted app order, before any route-specific middleware. `NewServer()` sorts apps by their declared dependencies — middleware from an app that others depend on (e.g., `session`) always runs before middleware from apps that depend on it (e.g., `csrf`, `auth`).
 
 ## Response Helpers
 

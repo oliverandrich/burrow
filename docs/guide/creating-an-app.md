@@ -316,3 +316,24 @@ Your app can implement any combination of these interfaces:
 | `HasShutdown` | `Shutdown(ctx context.Context) error` | Clean up on shutdown |
 
 See [Core Interfaces](../reference/interfaces.md) for the full reference.
+
+### Example: Writing Middleware
+
+Middleware follows the standard Go pattern — `func(http.Handler) http.Handler`. Return it from `Middleware()` to apply it globally:
+
+```go
+// Middleware adds a request timing header to all responses.
+func (a *App) Middleware() []func(http.Handler) http.Handler {
+    return []func(http.Handler) http.Handler{
+        func(next http.Handler) http.Handler {
+            return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                start := time.Now()
+                next.ServeHTTP(w, r)
+                w.Header().Set("X-Response-Time", time.Since(start).String())
+            })
+        },
+    }
+}
+```
+
+Middleware from all apps runs in dependency-sorted order — apps registered earlier in `NewServer()` that have no dependency conflicts have their middleware applied first. Within a single app, middleware runs in the slice order returned by `Middleware()`.

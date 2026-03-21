@@ -82,6 +82,9 @@ CREATE INDEX IF NOT EXISTS idx_choices_question_id ON choices (question_id);
 
 Burrow runs migrations automatically at startup for apps that implement `Migratable`. Migrations are tracked per-app in the `_migrations` table — each file runs exactly once.
 
+!!! note "Rolling back migrations"
+    Burrow does not support down migrations. If you need to undo a migration, write a new migration that reverses the changes (e.g., `003_drop_column.up.sql`). In development, you can delete the database file and restart to re-run all migrations from scratch.
+
 ### Repository
 
 Still in `internal/polls/polls.go`, add the repository below the models:

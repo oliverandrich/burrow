@@ -76,6 +76,9 @@ ACME mode obtains and renews TLS certificates automatically from Let's Encrypt.
 - The `--port` flag must **not** be set — ACME always uses the standard ports
 - An email address (`--tls-email`) is required for Let's Encrypt registration
 
+!!! warning "Let's Encrypt rate limits"
+    Let's Encrypt enforces [rate limits](https://letsencrypt.org/docs/rate-limits/): 50 certificates per domain per week, and 5 failed validation attempts per hour. During development, test with a self-signed certificate (`--tls-mode selfsigned`) instead of ACME to avoid hitting these limits.
+
 !!! important
     Make sure your DNS points to the server **before** starting with ACME mode. Let's Encrypt validates domain ownership via HTTP, so the server must be reachable at the specified host.
 

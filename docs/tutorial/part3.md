@@ -48,6 +48,9 @@ func (a *App) NavItems() []burrow.NavItem {
 
 `TemplateFS()` returns the embedded `templates/` directory. Burrow walks this filesystem and parses all `.html` files into the global template set.
 
+!!! tip "Template errors"
+    If a template has a syntax error, the server will fail to start and print the parsing error to the console. Fix the template and restart — there is no need to clear a cache.
+
 ### Write the Templates
 
 Create `internal/polls/templates/polls/list.html`:
@@ -297,6 +300,8 @@ Create `internal/pages/templates/app/layout.html`:
 {{- end }}
 ```
 
+`navLinks` is a built-in template function that returns the navigation items registered by all apps (via `HasNavItems`), with `IsActive` pre-computed based on the current request path. Each item has `.Label`, `.URL`, `.Icon`, and `.IsActive` fields.
+
 The `{{ template "bootstrap/css" }}` and `{{ template "bootstrap/js" }}` calls include the Bootstrap stylesheet and JavaScript bundle. These are reusable templates provided by the `bootstrap` contrib app — internally they use `staticURL` to generate content-hashed URLs for cache busting.
 
 ### The Homepage Template
@@ -340,6 +345,9 @@ import (
     "polls/internal/polls"
 )
 
+// emptyFS is a placeholder — our app has no static files of its own yet.
+// Contrib apps (bootstrap, htmx) contribute their own assets via HasStaticFiles.
+// When you add your own CSS/JS later, replace this with //go:embed static.
 var emptyFS embed.FS
 
 func main() {
