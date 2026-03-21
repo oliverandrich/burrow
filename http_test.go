@@ -2,6 +2,7 @@ package burrow
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -422,4 +423,134 @@ func TestHandleUnhandledErrorIsLogged(t *testing.T) {
 	assert.Contains(t, buf.String(), "unhandled error")
 	assert.Contains(t, buf.String(), "unexpected failure")
 	assert.Contains(t, buf.String(), "/submit")
+}
+
+// Benchmarks
+
+func BenchmarkHandle_Success(b *testing.B) {
+	handler := Handle(func(w http.ResponseWriter, _ *http.Request) error {
+		return Text(w, http.StatusOK, "hello")
+	})
+
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+	}
+}
+
+func BenchmarkHandle_HTTPError(b *testing.B) {
+	handler := Handle(func(_ http.ResponseWriter, _ *http.Request) error {
+		return NewHTTPError(http.StatusNotFound, "not found")
+	})
+
+	ctx := TestErrorExecContext(context.Background())
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+
+	// Silence slog output during benchmarks.
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+	}
+}
+
+func BenchmarkJSON(b *testing.B) {
+	payload := map[string]any{
+		"id":     42,
+		"name":   "Test Item",
+		"active": true,
+		"tags":   []string{"go", "web", "framework"},
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		rec := httptest.NewRecorder()
+		_ = JSON(rec, http.StatusOK, payload)
+	}
+}
+
+func BenchmarkJSON_Struct(b *testing.B) {
+	type item struct { //nolint:govet // benchmark struct, readability over alignment
+		ID     int64    `json:"id"`
+		Name   string   `json:"name"`
+		Active bool     `json:"active"`
+		Tags   []string `json:"tags"`
+	}
+	payload := item{ID: 42, Name: "Test Item", Active: true, Tags: []string{"go", "web", "framework"}}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		rec := httptest.NewRecorder()
+		_ = JSON(rec, http.StatusOK, payload)
+	}
+}
+
+func BenchmarkBind_JSON(b *testing.B) {
+	type payload struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+		Age   int    `json:"age"`
+	}
+	body := `{"name":"alice","email":"alice@example.com","age":30}`
+
+	ctx := context.Background()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		var p payload
+		_ = Bind(req, &p)
+	}
+}
+
+func BenchmarkBind_Form(b *testing.B) {
+	type payload struct {
+		Name  string `form:"name"`
+		Email string `form:"email"`
+		Age   int    `form:"age"`
+	}
+	body := "name=alice&email=alice%40example.com&age=30"
+
+	ctx := context.Background()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		var p payload
+		_ = Bind(req, &p)
+	}
+}
+
+func BenchmarkBind_JSONWithValidation(b *testing.B) {
+	type payload struct {
+		Name  string `json:"name" validate:"required"`
+		Email string `json:"email" validate:"required,email"`
+		Age   int    `json:"age" validate:"required,min=1,max=150"`
+	}
+	body := `{"name":"alice","email":"alice@example.com","age":30}`
+
+	ctx := context.Background()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		var p payload
+		_ = Bind(req, &p)
+	}
 }

@@ -465,3 +465,102 @@ func (a *templateRequestFuncMapApp) TemplateFS() fs.FS           { return a.tplF
 func (a *templateRequestFuncMapApp) RequestFuncMap(r *http.Request) template.FuncMap {
 	return a.rfm(r)
 }
+
+// Benchmarks
+
+func BenchmarkExecuteTemplate_NoRequestFuncMap(b *testing.B) {
+	s := &Server{registry: NewRegistry()}
+
+	tplFS := fstest.MapFS{
+		"page.html": &fstest.MapFile{
+			Data: []byte(`{{ define "myapp/page" }}Hello, {{ .Name }}! You have {{ .Count }} items.{{ end }}`),
+		},
+	}
+	s.registry.Add(&templateApp{name: "myapp", tplFS: tplFS})
+
+	if err := s.buildTemplates(); err != nil {
+		b.Fatal(err)
+	}
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	data := map[string]any{"Name": "World", "Count": 42}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = s.executeTemplate(req, "myapp/page", data)
+	}
+}
+
+func BenchmarkExecuteTemplate_WithRequestFuncMap(b *testing.B) {
+	s := &Server{registry: NewRegistry()}
+
+	tplFS := fstest.MapFS{
+		"page.html": &fstest.MapFile{
+			Data: []byte(`{{ define "myapp/page" }}Token: {{ csrfToken }}. Lang: {{ currentLang }}. Hello, {{ .Name }}!{{ end }}`),
+		},
+	}
+
+	app := &templateRequestFuncMapApp{
+		name:  "myapp",
+		tplFS: tplFS,
+		rfm: func(_ *http.Request) template.FuncMap {
+			return template.FuncMap{
+				"csrfToken":   func() string { return "abc123def456" },
+				"currentLang": func() string { return "en" },
+			}
+		},
+	}
+	s.registry.Add(app)
+
+	if err := s.buildTemplates(); err != nil {
+		b.Fatal(err)
+	}
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	data := map[string]any{"Name": "World"}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = s.executeTemplate(req, "myapp/page", data)
+	}
+}
+
+func BenchmarkExecuteTemplate_LargerTemplate(b *testing.B) {
+	s := &Server{registry: NewRegistry()}
+
+	// A more realistic template with multiple elements.
+	tplFS := fstest.MapFS{
+		"list.html": &fstest.MapFile{
+			Data: []byte(`{{ define "myapp/list" }}<div class="container">` +
+				`<h1>{{ .Title }}</h1>` +
+				`<p>Showing page {{ .Page }} of {{ .TotalPages }}</p>` +
+				`<ul>{{ range .Items }}<li>{{ . }}</li>{{ end }}</ul>` +
+				`<nav>{{ if .HasPrev }}<a href="?page={{ sub .Page 1 }}">Prev</a>{{ end }}` +
+				`{{ if .HasNext }}<a href="?page={{ add .Page 1 }}">Next</a>{{ end }}</nav>` +
+				`</div>{{ end }}`),
+		},
+	}
+	s.registry.Add(&templateApp{name: "myapp", tplFS: tplFS})
+
+	if err := s.buildTemplates(); err != nil {
+		b.Fatal(err)
+	}
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	data := map[string]any{
+		"Title":      "All Items",
+		"Page":       3,
+		"TotalPages": 10,
+		"Items":      []string{"Item 1", "Item 2", "Item 3", "Item 4", "Item 5"},
+		"HasPrev":    true,
+		"HasNext":    true,
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = s.executeTemplate(req, "myapp/list", data)
+	}
+}

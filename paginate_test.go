@@ -1,6 +1,7 @@
 package burrow
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -257,4 +258,54 @@ func TestApplyOffset_Integration(t *testing.T) {
 		assert.Len(t, items, 1)
 		assert.Equal(t, int64(10), items[0].ID)
 	})
+}
+
+// Benchmarks
+
+func BenchmarkParsePageRequest_Default(b *testing.B) {
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/items", nil)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		ParsePageRequest(req)
+	}
+}
+
+func BenchmarkParsePageRequest_WithParams(b *testing.B) {
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/items?page=5&limit=50", nil)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		ParsePageRequest(req)
+	}
+}
+
+func BenchmarkOffsetResult(b *testing.B) {
+	pr := PageRequest{Limit: 20, Page: 3}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		OffsetResult(pr, 250)
+	}
+}
+
+func BenchmarkPageNumbers(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		PageNumbers(5, 20)
+	}
+}
+
+func BenchmarkPageURL(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		PageURL("/admin/notes", "q=alpha&sort=-created_at&limit=25", 3)
+	}
 }
