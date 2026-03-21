@@ -138,31 +138,19 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 		if req.Email == "" {
 			return errorJSON(w, http.StatusBadRequest, "email is required")
 		}
-		exists, err := h.repo.EmailExists(ctx, req.Email)
-		if err != nil {
-			return errorJSONLog(w, http.StatusInternalServerError, "database error", err)
-		}
-		if exists {
-			return errorJSON(w, http.StatusOK, "registration failed")
-		}
 		user, createErr = h.repo.CreateUserWithEmail(ctx, req.Email, req.Name)
 	} else {
 		if req.Username == "" {
 			return errorJSON(w, http.StatusBadRequest, "username is required")
 		}
-		exists, err := h.repo.UserExists(ctx, req.Username)
-		if err != nil {
-			return errorJSONLog(w, http.StatusInternalServerError, "database error", err)
-		}
-		if exists {
-			return errorJSON(w, http.StatusOK, "registration failed")
-		}
 		user, createErr = h.repo.CreateUser(ctx, req.Username, req.Name)
 	}
 
 	if createErr != nil {
-		slog.Error("failed to create user", "error", createErr)
-		return errorJSON(w, http.StatusInternalServerError, "failed to create user")
+		// UNIQUE constraint violation means the username/email is already taken.
+		// Return a generic message without revealing which field conflicted.
+		// This also eliminates the TOCTOU race between existence check and insert.
+		return errorJSON(w, http.StatusOK, "registration failed")
 	}
 
 	// Clean up the user if any subsequent step fails, so abandoned

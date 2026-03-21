@@ -176,17 +176,11 @@ func (r *Repository) Delete(ctx context.Context, id int64) error {
 }
 
 // Retry resets a dead or failed job back to pending for re-processing.
+// The status check is part of the UPDATE WHERE clause to prevent a TOCTOU
+// race where a concurrent worker could claim the job between read and write.
 func (r *Repository) Retry(ctx context.Context, id int64) error {
-	job, err := r.GetByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	if job.Status != StatusFailed && job.Status != StatusDead {
-		return ErrInvalidStatus
-	}
-
 	now := time.Now()
-	_, err = r.db.NewUpdate().Model((*Job)(nil)).
+	res, err := r.db.NewUpdate().Model((*Job)(nil)).
 		Set("status = ?", StatusPending).
 		Set("attempts = 0").
 		Set("last_error = ''").
@@ -195,33 +189,44 @@ func (r *Repository) Retry(ctx context.Context, id int64) error {
 		Set("run_at = ?", now).
 		Set("updated_at = ?", now).
 		Where("id = ?", id).
+		Where("status IN (?, ?)", StatusFailed, StatusDead).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("retry job %d: %w", id, err)
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		// Either the job doesn't exist or is not in a retryable status.
+		if _, err := r.GetByID(ctx, id); err != nil {
+			return err
+		}
+		return ErrInvalidStatus
 	}
 	return nil
 }
 
 // Cancel marks a pending, running, or failed job as dead.
+// The status check is part of the UPDATE WHERE clause to prevent a TOCTOU
+// race where a concurrent worker could change the job status between read and write.
 func (r *Repository) Cancel(ctx context.Context, id int64) error {
-	job, err := r.GetByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	if job.Status != StatusPending && job.Status != StatusRunning && job.Status != StatusFailed {
-		return ErrInvalidStatus
-	}
-
 	now := time.Now()
-	_, err = r.db.NewUpdate().Model((*Job)(nil)).
+	res, err := r.db.NewUpdate().Model((*Job)(nil)).
 		Set("status = ?", StatusDead).
 		Set("failed_at = ?", now).
 		Set("locked_at = NULL").
 		Set("updated_at = ?", now).
 		Where("id = ?", id).
+		Where("status IN (?, ?, ?)", StatusPending, StatusRunning, StatusFailed).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("cancel job %d: %w", id, err)
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		if _, err := r.GetByID(ctx, id); err != nil {
+			return err
+		}
+		return ErrInvalidStatus
 	}
 	return nil
 }

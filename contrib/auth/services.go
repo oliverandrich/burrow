@@ -168,6 +168,10 @@ func formatRecoveryCode(code string) string {
 
 const webauthnSessionTTL = 2 * time.Minute
 
+// maxWebAuthnSessions caps the in-memory session store to prevent
+// denial-of-service via unauthenticated registration/login endpoints.
+const maxWebAuthnSessions = 10000
+
 type webauthnService struct {
 	wa    *gowebauthn.WebAuthn
 	store map[string]*webauthnSessionEntry
@@ -221,9 +225,31 @@ func (s *webauthnService) GetDiscoverableSession(sessionID string) (*gowebauthn.
 func (s *webauthnService) put(key string, data *gowebauthn.SessionData) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Evict oldest entries when the store is at capacity.
+	if len(s.store) >= maxWebAuthnSessions {
+		s.evictOldestLocked()
+	}
+
 	s.store[key] = &webauthnSessionEntry{
 		data:      data,
 		expiresAt: time.Now().Add(webauthnSessionTTL),
+	}
+}
+
+// evictOldestLocked removes the entry with the earliest expiry.
+// Must be called with s.mu held.
+func (s *webauthnService) evictOldestLocked() {
+	var oldestKey string
+	var oldestTime time.Time
+	for k, v := range s.store {
+		if oldestKey == "" || v.expiresAt.Before(oldestTime) {
+			oldestKey = k
+			oldestTime = v.expiresAt
+		}
+	}
+	if oldestKey != "" {
+		delete(s.store, oldestKey)
 	}
 }
 

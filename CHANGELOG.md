@@ -8,6 +8,9 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **Uploads: path traversal protection** — `LocalStorage.Open`, `Delete`, and `Path` now validate that the resolved path stays within the root directory; returns `ErrPathTraversal` for keys containing `..` sequences
 - **Auth: timing-safe recovery login** — `RecoveryLogin` now runs a dummy bcrypt comparison when the username is not found, preventing timing-based username enumeration
+- **Auth: atomic registration** — removed TOCTOU race in `RegisterBegin` by eliminating pre-insert existence checks; UNIQUE constraint violations now return a clean "registration failed" instead of 500
+- **Auth: WebAuthn session store cap** — in-memory session store is now capped at 10,000 entries to prevent denial-of-service via unauthenticated endpoints
+- **Jobs: atomic Retry/Cancel** — status checks moved into the UPDATE WHERE clause to prevent a race where a running job could be reset to pending and executed twice
 
 ## 0.7.0 — 2026-03-21
 
