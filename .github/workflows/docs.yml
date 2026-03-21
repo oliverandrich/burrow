@@ -27,7 +27,7 @@ jobs:
         with:
           go-version: '1.26'
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
 
       - name: Install go-licenses
         run: go install github.com/google/go-licenses@latest
