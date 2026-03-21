@@ -2,12 +2,17 @@ package notes
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/uptrace/bun"
 )
+
+// ErrNotFound is returned when a note is not found.
+var ErrNotFound = sql.ErrNoRows
 
 // Repository provides data access for notes.
 type Repository struct {
@@ -105,6 +110,9 @@ func (r *Repository) GetByID(ctx context.Context, noteID, userID int64) (*Note, 
 	if err := r.db.NewSelect().Model(note).
 		Where("id = ? AND user_id = ?", noteID, userID).
 		Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get note %d: %w", noteID, err)
 	}
 	return note, nil

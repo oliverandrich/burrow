@@ -48,7 +48,7 @@ func TestTranslationFS(t *testing.T) {
 	assert.GreaterOrEqual(t, len(matches), 2, "expected at least en and de translation files")
 }
 
-func TestHome_UsesRenderTemplate(t *testing.T) {
+func TestHome_UsesRender(t *testing.T) {
 	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			return template.HTML("<layout>" + string(data["Content"].(template.HTML)) + "</layout>"), nil

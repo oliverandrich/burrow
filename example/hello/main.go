@@ -18,7 +18,6 @@ package main
 import (
 	"context"
 	"embed"
-	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
@@ -99,7 +98,6 @@ func main() {
 //
 //	HasRoutes       — registers HTTP routes
 //	HasTemplates    — contributes HTML templates to the global template set
-//	HasFuncMap      — contributes template functions (none here, but required)
 //	HasTranslations — contributes i18n translation files
 
 type helloApp struct{}
@@ -124,18 +122,13 @@ func (a *helloApp) TemplateFS() fs.FS {
 	return sub
 }
 
-// FuncMap returns custom template functions. This app doesn't need any,
-// but the interface must be satisfied. Other apps use this to provide
-// icon helpers, formatting functions, etc.
-func (a *helloApp) FuncMap() template.FuncMap { return nil }
-
 // Routes registers HTTP routes on the given chi router. burrow.Handle()
 // wraps a handler that returns an error into a standard http.HandlerFunc,
 // providing centralized error handling via HTTPError.
 //
-// RenderTemplate looks up the named template ("hello/home"), executes it
-// with the given data, and wraps it in the server's layout. For HTMX
-// requests, it automatically returns only the fragment (no layout).
+// Render looks up the named template ("hello/home"), executes it with
+// the given data, and wraps it in the server's layout. For HTMX requests,
+// it automatically returns only the fragment (no layout).
 func (a *helloApp) Routes(r chi.Router) {
 	r.Get("/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
 		return burrow.Render(w, r, http.StatusOK, "hello/home", map[string]any{

@@ -169,7 +169,7 @@ func TestGetByIDWrongUser(t *testing.T) {
 	require.NoError(t, repo.Create(ctx, note))
 
 	_, err := repo.GetByID(ctx, note.ID, 2)
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestUpdateNote(t *testing.T) {
@@ -286,7 +286,7 @@ func TestListNotesHTMXNavReturnsFragment(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
-	// HTMX nav request (no page param) → should use RenderTemplate → fragment only.
+	// HTMX nav request (no page param) → should use Render → fragment only.
 	req.Header.Set("HX-Request", "true")
 
 	ctx := burrow.WithLayout(req.Context(), "test-layout")
@@ -856,6 +856,7 @@ func TestDeleteNoteHandler(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/1", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = session.Inject(req, map[string]any{})
+	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 

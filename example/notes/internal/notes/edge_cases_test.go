@@ -121,7 +121,7 @@ func TestGetByIDNonExistent(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := repo.GetByID(ctx, 999999, 1)
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestUpdateNonExistentNote(t *testing.T) {
@@ -136,7 +136,7 @@ func TestUpdateNonExistentNote(t *testing.T) {
 
 	// Verify it was not actually created.
 	_, err = repo.GetByID(ctx, 999999, 1)
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNotFound)
 }
 
 // --- Handler edge cases ---
@@ -251,14 +251,15 @@ func TestDeleteNoteHandlerNonExistentNote(t *testing.T) {
 		}
 	})
 
-	// Delete a non-existent note — should still return OK (no-op delete).
+	// Delete a non-existent note — no-op delete, redirects to /notes.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/999999", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/notes", rec.Header().Get("Location"))
 }
 
 func TestSearchByUserIDEmptyDatabase(t *testing.T) {

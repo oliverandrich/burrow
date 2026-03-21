@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -50,7 +51,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 		notes, page, err = h.repo.ListByUserIDPaged(r.Context(), user.ID, pr)
 	}
 	if err != nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
+		return err
 	}
 
 	data := map[string]any{
@@ -112,7 +113,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 	note.UserID = user.ID
 
 	if err := h.repo.Create(r.Context(), note); err != nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to create note")
+		return err
 	}
 
 	if err := messages.AddSuccess(w, r, i18n.T(r.Context(), "notes-created")); err != nil {
@@ -145,7 +146,10 @@ func (h *Handlers) Edit(w http.ResponseWriter, r *http.Request) error {
 
 	note, err := h.repo.GetByID(r.Context(), id, user.ID)
 	if err != nil {
-		return burrow.NewHTTPError(http.StatusNotFound, "note not found")
+		if errors.Is(err, ErrNotFound) {
+			return burrow.NewHTTPError(http.StatusNotFound, "note not found")
+		}
+		return err
 	}
 
 	f := forms.FromModel(note, noteFormOpts()...)
@@ -171,7 +175,10 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 
 	note, err := h.repo.GetByID(r.Context(), id, user.ID)
 	if err != nil {
-		return burrow.NewHTTPError(http.StatusNotFound, "note not found")
+		if errors.Is(err, ErrNotFound) {
+			return burrow.NewHTTPError(http.StatusNotFound, "note not found")
+		}
+		return err
 	}
 
 	action := "/notes/" + strconv.FormatInt(note.ID, 10)
@@ -191,7 +198,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 	updated.UserID = note.UserID
 
 	if err := h.repo.Update(r.Context(), updated); err != nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to update note")
+		return err
 	}
 
 	if err := messages.AddSuccess(w, r, i18n.T(r.Context(), "notes-updated")); err != nil {
@@ -223,14 +230,19 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if err := h.repo.Delete(r.Context(), id, user.ID); err != nil {
-		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete note")
+		return err
 	}
 
 	if err := messages.AddSuccess(w, r, i18n.T(r.Context(), "notes-deleted")); err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	return burrow.Render(w, r, http.StatusOK, "app/alerts_oob", map[string]any{
-		"Messages": messages.Get(r.Context()),
-	})
+	if htmx.Request(r).IsHTMX() {
+		return burrow.Render(w, r, http.StatusOK, "app/alerts_oob", map[string]any{
+			"Messages": messages.Get(r.Context()),
+		})
+	}
+
+	http.Redirect(w, r, "/notes", http.StatusSeeOther)
+	return nil
 }
