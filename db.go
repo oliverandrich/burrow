@@ -60,12 +60,10 @@ func OpenDB(dsn string) (*bun.DB, error) {
 
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 
-	// Per-database PRAGMAs only need to run once (they persist in the DB file).
+	// journal_mode=WAL is a per-database PRAGMA that persists in the DB file.
+	// It only needs to run once — subsequent connections inherit it.
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
 		return nil, fmt.Errorf("set WAL mode: %w", err)
-	}
-	if _, err := db.Exec("PRAGMA journal_size_limit=27103364"); err != nil {
-		return nil, fmt.Errorf("set journal size limit: %w", err)
 	}
 
 	return db, nil
@@ -83,6 +81,7 @@ func withPerConnPragmas(dsn string) string {
 		"_pragma=temp_store(memory)",
 		"_pragma=mmap_size(134217728)",
 		"_pragma=cache_size(2000)",
+		"_pragma=journal_size_limit(27103364)",
 	}
 
 	sep := "&"

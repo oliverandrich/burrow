@@ -182,6 +182,7 @@ func signalDone(signals ...os.Signal) <-chan struct{} {
 	done := make(chan struct{})
 
 	go func() {
+		defer signal.Stop(sig)
 		<-sig
 		close(done)
 	}()
