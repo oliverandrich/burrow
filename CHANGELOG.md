@@ -19,6 +19,12 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Signal registration cleanup** — `signalDone` now calls `signal.Stop` to clean up OS signal registration after the first signal is received
 - **Uploads: extension from MIME type** — storage keys now derive the file extension from the detected MIME type instead of the attacker-controlled filename, preventing malicious extensions (e.g., uploading a JPEG as `evil.php`)
 - **Auth: admin promotion uses CountAdminUsers** — first-user admin promotion now checks `CountAdminUsers == 0` instead of `CountUsers == 1`, avoiding interference from phantom users created by abandoned registration flows
+- **Ratelimit: trust-proxy security warning** — added prominent documentation warning that `--ratelimit-trust-proxy` must only be enabled behind a reverse proxy that overwrites `X-Real-IP`
+
+### Fixed
+
+- **Dead code removed** — unused `db` field on `Registry` struct removed
+- **Signal cleanup** — `signalDone` now calls `signal.Stop` after receiving the first signal
 
 ## 0.7.0 — 2026-03-21
 

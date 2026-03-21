@@ -19,7 +19,6 @@ import (
 // [Registry.Get] to look up sibling apps during Register.
 type Registry struct {
 	index map[string]App
-	db    *bun.DB
 	apps  []App
 }
 
@@ -122,7 +121,6 @@ func (r *Registry) Apps() []App {
 // (DB + Registry only, no Config/migrations/seeds). This is a test convenience;
 // the real boot sequence lives in Server.bootstrap().
 func (r *Registry) RegisterAll(db *bun.DB) error {
-	r.db = db
 	cfg := &AppConfig{
 		DB:       db,
 		Registry: r,

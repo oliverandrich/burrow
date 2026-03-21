@@ -59,6 +59,9 @@ proxy_set_header X-Real-IP $remote_addr;
 !!! warning
     Without `--ratelimit-trust-proxy`, all traffic behind a reverse proxy appears to come from the proxy's IP — effectively rate limiting all clients as one. With the flag enabled but no `X-Real-IP` header set, the middleware falls back to `RemoteAddr`.
 
+!!! danger "Security: never enable trust-proxy without a reverse proxy"
+    When `--ratelimit-trust-proxy` is enabled, clients can spoof the `X-Real-IP` header to bypass rate limiting entirely. Only enable this flag when your application runs behind a reverse proxy (nginx, Caddy, etc.) that overwrites `X-Real-IP` with the actual client IP on every request.
+
 Override with `WithKeyFunc()` for custom identification (e.g., by API key or authenticated user).
 
 ## Context Helpers

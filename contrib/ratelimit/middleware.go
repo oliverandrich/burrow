@@ -31,6 +31,11 @@ func (a *App) rateLimitMiddleware(next http.Handler) http.Handler {
 // If trustProxy is true, it uses the X-Real-IP header set by the reverse proxy.
 // X-Forwarded-For is intentionally not used because it can contain multiple
 // comma-separated values that are trivially spoofed to bypass rate limiting.
+//
+// WARNING: trustProxy must only be enabled when the application runs behind a
+// reverse proxy (nginx, Caddy, etc.) that sets the X-Real-IP header and strips
+// any client-supplied value. Without a proxy, clients can spoof X-Real-IP to
+// bypass rate limiting entirely.
 func defaultKeyFunc(trustProxy bool) func(*http.Request) string {
 	return func(r *http.Request) string {
 		if trustProxy {
