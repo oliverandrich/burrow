@@ -12,6 +12,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Auth: WebAuthn session store cap** — in-memory session store is now capped at 10,000 entries to prevent denial-of-service via unauthenticated endpoints
 - **Jobs: atomic Retry/Cancel** — status checks moved into the UPDATE WHERE clause to prevent a race where a running job could be reset to pending and executed twice
 
+### Fixed
+
+- **RenderError: no more empty bodies** — added `error/default` fallback template and specific templates for 401, 422, 429 in both core and bootstrap; `RenderError` now falls back to `error/default` when the code-specific template is missing
+
 ## 0.7.0 — 2026-03-21
 
 ### Breaking Changes

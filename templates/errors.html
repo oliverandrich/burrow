@@ -1,23 +1,13 @@
-{{ define "error/403" }}
+{{ define "error/default" }}
 <h1>{{ .Code }}</h1>
 <h2>{{ .Title }}</h2>
 <p>{{ .Message }}</p>
 {{ end }}
 
-{{ define "error/404" }}
-<h1>{{ .Code }}</h1>
-<h2>{{ .Title }}</h2>
-<p>{{ .Message }}</p>
-{{ end }}
-
-{{ define "error/405" }}
-<h1>{{ .Code }}</h1>
-<h2>{{ .Title }}</h2>
-<p>{{ .Message }}</p>
-{{ end }}
-
-{{ define "error/500" }}
-<h1>{{ .Code }}</h1>
-<h2>{{ .Title }}</h2>
-<p>{{ .Message }}</p>
-{{ end }}
+{{ define "error/401" }}{{ template "error/default" . }}{{ end }}
+{{ define "error/403" }}{{ template "error/default" . }}{{ end }}
+{{ define "error/404" }}{{ template "error/default" . }}{{ end }}
+{{ define "error/405" }}{{ template "error/default" . }}{{ end }}
+{{ define "error/422" }}{{ template "error/default" . }}{{ end }}
+{{ define "error/429" }}{{ template "error/default" . }}{{ end }}
+{{ define "error/500" }}{{ template "error/default" . }}{{ end }}

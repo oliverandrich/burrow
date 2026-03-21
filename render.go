@@ -55,11 +55,16 @@ func RenderError(w http.ResponseWriter, r *http.Request, code int, message strin
 	// responsible for their own HTML shell (if they need one).
 	r = r.WithContext(WithLayout(r.Context(), ""))
 
-	_ = Render(w, r, code, fmt.Sprintf("error/%d", code), map[string]any{
+	data := map[string]any{
 		"Code":    code,
 		"Title":   localizedTitle,
 		"Message": localizedMessage,
-	})
+	}
+
+	// Try the code-specific template first, fall back to the generic default.
+	if err := Render(w, r, code, fmt.Sprintf("error/%d", code), data); err != nil {
+		_ = Render(w, r, code, "error/default", data)
+	}
 }
 
 // RenderContent writes pre-rendered HTML content, applying the same layout
