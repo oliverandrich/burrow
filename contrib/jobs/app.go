@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/uptrace/bun"
 	"github.com/urfave/cli/v3"
 )
 
@@ -32,6 +34,8 @@ type Option func(*App)
 
 // App implements the jobs contrib app.
 type App struct {
+	defaultDB  *bun.DB
+	ownDB      *bun.DB
 	repo       *Repository
 	registry   *burrow.Registry
 	handlers   map[string]burrow.JobHandlerFunc
@@ -56,49 +60,13 @@ func New(opts ...Option) *App {
 func (a *App) Name() string { return "jobs" }
 
 func (a *App) Register(cfg *burrow.AppConfig) error {
-	a.repo = NewRepository(cfg.DB)
+	a.defaultDB = cfg.DB
 	a.registry = cfg.Registry
 
 	cfg.RegisterIconFunc("iconArrowCounterclockwise", bsicons.ArrowCounterclockwise)
 	cfg.RegisterIconFunc("iconXCircle", bsicons.XCircle)
 	cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
 
-	a.jobsAdmin = &modeladmin.ModelAdmin[Job]{
-		Slug:              "jobs",
-		DisplayName:       "Job",
-		DisplayPluralName: "Jobs",
-		DB:                cfg.DB,
-		Renderer:          newJobsRenderer(),
-		CanCreate:         false,
-		CanEdit:           false,
-		CanDelete:         true,
-		ListFields:        []string{"ID", "Type", "Status", "Attempts", "CreatedAt"},
-		OrderBy:           "created_at DESC, id DESC",
-		PageSize:          25,
-		EmptyMessageKey:   "admin-jobs-empty",
-		Filters: []modeladmin.FilterDef{
-			{Field: "status", Label: "Status", Type: "select", Choices: statusChoices()},
-		},
-		RowActions: []modeladmin.RowAction{
-			{
-				Slug:     "retry",
-				Label:    "admin-jobs-action-retry",
-				Icon:     bsicons.ArrowCounterclockwise(),
-				Class:    "btn-outline-success",
-				Handler:  retryHandler(a.repo),
-				ShowWhen: isRetryable,
-			},
-			{
-				Slug:     "cancel",
-				Label:    "admin-jobs-action-cancel",
-				Icon:     bsicons.XCircle(),
-				Class:    "btn-outline-warning",
-				Confirm:  "admin-jobs-cancel-confirm",
-				Handler:  cancelHandler(a.repo),
-				ShowWhen: isCancellable,
-			},
-		},
-	}
 	return nil
 }
 
@@ -109,6 +77,11 @@ func (a *App) MigrationFS() fs.FS {
 
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
+		&cli.StringFlag{
+			Name:    "jobs-database",
+			Usage:   "SQLite DSN for a separate jobs database (empty = use shared DB)",
+			Sources: burrow.FlagSources(configSource, "JOBS_DATABASE", "jobs.database"),
+		},
 		&cli.IntFlag{
 			Name:    "jobs-workers",
 			Value:   2,
@@ -131,6 +104,15 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 }
 
 func (a *App) Configure(cmd *cli.Command) error {
+	// Determine effective database: separate DB if configured, shared DB otherwise.
+	effectiveDB, err := a.resolveDB(cmd.String("jobs-database"))
+	if err != nil {
+		return err
+	}
+
+	a.repo = NewRepository(effectiveDB)
+	a.jobsAdmin = newJobsAdmin(effectiveDB, a.repo)
+
 	// Discover HasJobs implementors and let them register their handlers.
 	if a.registry != nil {
 		for _, app := range a.registry.Apps() {
@@ -153,13 +135,80 @@ func (a *App) Configure(cmd *cli.Command) error {
 	return nil
 }
 
-// Shutdown stops the worker pool and waits for in-flight jobs to finish.
+// resolveDB opens a separate database if dsn is non-empty, runs migrations on it,
+// and returns it. Otherwise it returns the shared defaultDB.
+func (a *App) resolveDB(dsn string) (*bun.DB, error) {
+	if dsn == "" {
+		return a.defaultDB, nil
+	}
+
+	db, err := burrow.OpenDB(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("jobs: open separate database: %w", err)
+	}
+	a.ownDB = db
+
+	if err := burrow.RunAppMigrations(context.Background(), db, a.Name(), a.MigrationFS()); err != nil {
+		return nil, fmt.Errorf("jobs: migrate separate database: %w", err)
+	}
+
+	slog.Info("jobs: using separate database", "dsn", dsn)
+	return db, nil
+}
+
+// newJobsAdmin creates the ModelAdmin for the jobs admin panel.
+func newJobsAdmin(db *bun.DB, repo *Repository) *modeladmin.ModelAdmin[Job] {
+	return &modeladmin.ModelAdmin[Job]{
+		Slug:              "jobs",
+		DisplayName:       "Job",
+		DisplayPluralName: "Jobs",
+		DB:                db,
+		Renderer:          newJobsRenderer(),
+		CanCreate:         false,
+		CanEdit:           false,
+		CanDelete:         true,
+		ListFields:        []string{"ID", "Type", "Status", "Attempts", "CreatedAt"},
+		OrderBy:           "created_at DESC, id DESC",
+		PageSize:          25,
+		EmptyMessageKey:   "admin-jobs-empty",
+		Filters: []modeladmin.FilterDef{
+			{Field: "status", Label: "Status", Type: "select", Choices: statusChoices()},
+		},
+		RowActions: []modeladmin.RowAction{
+			{
+				Slug:     "retry",
+				Label:    "admin-jobs-action-retry",
+				Icon:     bsicons.ArrowCounterclockwise(),
+				Class:    "btn-outline-success",
+				Handler:  retryHandler(repo),
+				ShowWhen: isRetryable,
+			},
+			{
+				Slug:     "cancel",
+				Label:    "admin-jobs-action-cancel",
+				Icon:     bsicons.XCircle(),
+				Class:    "btn-outline-warning",
+				Confirm:  "admin-jobs-cancel-confirm",
+				Handler:  cancelHandler(repo),
+				ShowWhen: isCancellable,
+			},
+		},
+	}
+}
+
+// Shutdown stops the worker pool, waits for in-flight jobs to finish,
+// and closes the separate database connection if one was opened.
 func (a *App) Shutdown(_ context.Context) error {
 	if a.cancelFunc != nil {
 		a.cancelFunc()
 	}
 	if a.worker != nil {
 		<-a.worker.Done()
+	}
+	if a.ownDB != nil {
+		if err := a.ownDB.Close(); err != nil {
+			return fmt.Errorf("jobs: close separate database: %w", err)
+		}
 	}
 	return nil
 }

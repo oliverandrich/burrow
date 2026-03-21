@@ -10,11 +10,41 @@ import (
 
 func TestOpenDBMissingDirectory(t *testing.T) {
 	dsn := filepath.Join(t.TempDir(), "nonexistent", "subdir", "app.db")
-	_, err := openDB(dsn)
+	_, err := OpenDB(dsn)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "directory")
 	assert.Contains(t, err.Error(), "mkdir -p")
 	assert.NotContains(t, err.Error(), "out of memory")
+}
+
+func TestOpenDB_MemoryDatabase(t *testing.T) {
+	db, err := OpenDB(":memory:")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	// Verify PRAGMAs are applied.
+	var journalMode string
+	err = db.QueryRow("PRAGMA journal_mode").Scan(&journalMode)
+	require.NoError(t, err)
+	assert.Equal(t, "memory", journalMode) // in-memory DBs use "memory" not "wal"
+
+	var foreignKeys int
+	err = db.QueryRow("PRAGMA foreign_keys").Scan(&foreignKeys)
+	require.NoError(t, err)
+	assert.Equal(t, 1, foreignKeys)
+}
+
+func TestOpenDB_FileDatabase(t *testing.T) {
+	dsn := filepath.Join(t.TempDir(), "test.db")
+	db, err := OpenDB(dsn)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	// File-based DBs should use WAL mode.
+	var journalMode string
+	err = db.QueryRow("PRAGMA journal_mode").Scan(&journalMode)
+	require.NoError(t, err)
+	assert.Equal(t, "wal", journalMode)
 }
 
 func TestCheckDBDirSkipsMemory(t *testing.T) {

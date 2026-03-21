@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"io/fs"
+	"path/filepath"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -140,7 +141,7 @@ func TestApp_MigrationFS(t *testing.T) {
 func TestApp_Flags(t *testing.T) {
 	app := New()
 	flags := app.Flags(nil)
-	assert.Len(t, flags, 3)
+	assert.Len(t, flags, 4)
 }
 
 func TestApp_Dequeue(t *testing.T) {
@@ -177,8 +178,11 @@ func TestApp_AdminRoutes_NilJobsAdmin(t *testing.T) {
 func TestApp_AdminRoutes_WithJobsAdmin(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	err := app.Register(&burrow.AppConfig{DB: db})
-	require.NoError(t, err)
+	app.defaultDB = db
+
+	// Simulate Configure to create the jobsAdmin.
+	app.repo = NewRepository(db)
+	app.jobsAdmin = newJobsAdmin(db, app.repo)
 
 	r := chi.NewRouter()
 	// Should not panic; registers routes on the router.
@@ -323,7 +327,7 @@ var _ burrow.HasJobs = (*stubHasJobsApp)(nil)
 func TestApp_Configure(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	app.repo = NewRepository(db)
+	app.defaultDB = db
 
 	// Set up a registry with a HasJobs implementor.
 	registry := burrow.NewRegistry()
@@ -366,7 +370,7 @@ func TestApp_Configure(t *testing.T) {
 func TestApp_Configure_DefaultFlags(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	app.repo = NewRepository(db)
+	app.defaultDB = db
 
 	cmd := &cli.Command{
 		Name:   "test",
@@ -390,7 +394,7 @@ func TestApp_Configure_DefaultFlags(t *testing.T) {
 func TestApp_Configure_NilRegistry(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	app.repo = NewRepository(db)
+	app.defaultDB = db
 	// registry is nil — should not panic.
 
 	cmd := &cli.Command{
@@ -411,7 +415,7 @@ func TestApp_Configure_NilRegistry(t *testing.T) {
 func TestApp_Configure_RegistryWithoutHasJobs(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	app.repo = NewRepository(db)
+	app.defaultDB = db
 
 	// Registry with an app that does NOT implement HasJobs.
 	registry := burrow.NewRegistry()
@@ -429,6 +433,136 @@ func TestApp_Configure_RegistryWithoutHasJobs(t *testing.T) {
 
 	// No handlers should have been registered from HasJobs discovery.
 	assert.Empty(t, app.handlers)
+
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
+}
+
+func TestApp_Configure_SeparateDatabase(t *testing.T) {
+	sharedDB := testDB(t)
+	separateDSN := filepath.Join(t.TempDir(), "jobs.db")
+
+	app := New()
+	app.defaultDB = sharedDB
+
+	cmd := &cli.Command{
+		Name:   "test",
+		Flags:  app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+	}
+
+	err := cmd.Run(t.Context(), []string{"test", "--jobs-database", separateDSN})
+	require.NoError(t, err)
+
+	// Verify the separate DB was opened and migrations ran.
+	require.NotNil(t, app.ownDB)
+	require.NotNil(t, app.repo)
+
+	// Enqueue a job — it should go to the separate DB.
+	app.Handle("test_job", func(_ context.Context, _ []byte) error { return nil })
+	jobID, err := app.Enqueue(context.Background(), "test_job", "payload")
+	require.NoError(t, err)
+	assert.NotEmpty(t, jobID)
+
+	// Verify the job is in the separate DB.
+	var count int
+	err = app.ownDB.NewRaw("SELECT COUNT(*) FROM _jobs").Scan(context.Background(), &count)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+
+	// Verify the shared DB's _jobs table is empty (migration ran on it via MigrationFS,
+	// but no jobs were enqueued there).
+	var sharedCount int
+	err = sharedDB.NewRaw("SELECT COUNT(*) FROM _jobs").Scan(context.Background(), &sharedCount)
+	require.NoError(t, err)
+	assert.Equal(t, 0, sharedCount)
+
+	// Shutdown should close the separate DB.
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
+}
+
+func TestApp_Configure_SharedDatabase_Default(t *testing.T) {
+	sharedDB := testDB(t)
+
+	app := New()
+	app.defaultDB = sharedDB
+
+	cmd := &cli.Command{
+		Name:   "test",
+		Flags:  app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+	}
+
+	// No --jobs-database flag: should use the shared DB.
+	err := cmd.Run(t.Context(), []string{"test"})
+	require.NoError(t, err)
+
+	// ownDB should be nil (no separate DB opened).
+	assert.Nil(t, app.ownDB)
+
+	// repo should use the shared DB.
+	require.NotNil(t, app.repo)
+
+	// Enqueue a job — it should go to the shared DB.
+	app.Handle("test_job", func(_ context.Context, _ []byte) error { return nil })
+	_, err = app.Enqueue(context.Background(), "test_job", "payload")
+	require.NoError(t, err)
+
+	var count int
+	err = sharedDB.NewRaw("SELECT COUNT(*) FROM _jobs").Scan(context.Background(), &count)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
+}
+
+func TestApp_Shutdown_ClosesSeparateDB(t *testing.T) {
+	separateDSN := filepath.Join(t.TempDir(), "jobs.db")
+
+	sharedDB := testDB(t)
+	app := New()
+	app.defaultDB = sharedDB
+
+	cmd := &cli.Command{
+		Name:   "test",
+		Flags:  app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+	}
+
+	err := cmd.Run(t.Context(), []string{"test", "--jobs-database", separateDSN})
+	require.NoError(t, err)
+	require.NotNil(t, app.ownDB)
+
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
+
+	// After shutdown, the separate DB should be closed — queries should fail.
+	var count int
+	err = app.ownDB.NewRaw("SELECT 1").Scan(context.Background(), &count)
+	require.Error(t, err)
+}
+
+func TestApp_Configure_SeparateDatabase_CreatesJobsAdmin(t *testing.T) {
+	sharedDB := testDB(t)
+	separateDSN := filepath.Join(t.TempDir(), "jobs.db")
+
+	app := New()
+	app.defaultDB = sharedDB
+
+	cmd := &cli.Command{
+		Name:   "test",
+		Flags:  app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+	}
+
+	err := cmd.Run(t.Context(), []string{"test", "--jobs-database", separateDSN})
+	require.NoError(t, err)
+
+	// jobsAdmin should be created and use the separate DB.
+	require.NotNil(t, app.jobsAdmin)
+	assert.Equal(t, app.ownDB, app.jobsAdmin.DB)
 
 	err = app.Shutdown(context.Background())
 	require.NoError(t, err)

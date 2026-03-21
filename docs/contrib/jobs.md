@@ -136,6 +136,19 @@ The worker pool runs two automatic maintenance tasks every 5 minutes:
 | `--jobs-workers` | `JOBS_WORKERS` | `2` | Number of concurrent worker goroutines |
 | `--jobs-poll-interval` | `JOBS_POLL_INTERVAL` | `1s` | Interval between queue polls |
 | `--jobs-retry-base-delay` | `JOBS_RETRY_BASE_DELAY` | `30s` | Base delay for exponential retry backoff |
+| `--jobs-database` | `JOBS_DATABASE` | (empty) | Path to a separate SQLite database for the job queue |
+
+### Separate Database
+
+By default, jobs are stored in the main application database. For applications with high write throughput, you can move the job queue to a dedicated SQLite file:
+
+```bash
+./myapp --jobs-database data/jobs.db
+```
+
+This eliminates write contention between the job queue (which produces 3-4 writes per job) and your application's business data. The separate database gets the same PRAGMA configuration (WAL mode, foreign keys, busy timeout, etc.) as the main database.
+
+When no value is set, the jobs app uses the shared database — no configuration change is needed.
 
 ## Graceful Shutdown
 

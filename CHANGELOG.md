@@ -7,6 +7,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Added
 
 - **SSE contrib app** — new `sse` app providing an in-memory pub/sub broker for Server-Sent Events; supports static and dynamic topics, non-blocking publish, configurable buffer size, 30s keepalive, graceful shutdown, and seamless htmx SSE extension integration
+- **Jobs: separate database support** — new `--jobs-database` flag to store the job queue in a dedicated SQLite file, eliminating write contention with the main application database
+- **`burrow.OpenDB()`** — exported function to open SQLite databases with the framework's standard PRAGMAs; useful for contrib apps or user code that need dedicated database connections
 
 ## 0.6.0 — 2026-03-21
 

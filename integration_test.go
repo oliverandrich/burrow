@@ -72,7 +72,7 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	srv.SetLayout("integration/layout")
 
 	// Open an in-memory database, matching the real boot sequence.
-	db, err := openDB(":memory:")
+	db, err := OpenDB(":memory:")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 

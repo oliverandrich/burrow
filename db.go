@@ -37,7 +37,11 @@ func checkDBDir(dsn string) error {
 	return nil
 }
 
-func openDB(dsn string) (*bun.DB, error) {
+// OpenDB opens a SQLite database with the framework's standard PRAGMAs
+// (WAL mode, foreign keys, busy timeout, etc.) and connection pool settings.
+// This is useful for contrib apps that need their own dedicated database
+// connection, such as the jobs app with a separate queue database.
+func OpenDB(dsn string) (*bun.DB, error) {
 	if err := checkDBDir(dsn); err != nil {
 		return nil, err
 	}
