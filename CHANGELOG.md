@@ -4,6 +4,11 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Security
+
+- **Uploads: path traversal protection** — `LocalStorage.Open`, `Delete`, and `Path` now validate that the resolved path stays within the root directory; returns `ErrPathTraversal` for keys containing `..` sequences
+- **Auth: timing-safe recovery login** — `RecoveryLogin` now runs a dummy bcrypt comparison when the username is not found, preventing timing-based username enumeration
+
 ## 0.7.0 — 2026-03-21
 
 ### Breaking Changes

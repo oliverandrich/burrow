@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/session"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Renderer defines the page rendering interface for auth templates.
@@ -483,6 +484,12 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 
 	user, err := h.repo.GetUserByUsername(r.Context(), req.Username)
 	if err != nil {
+		// Run a dummy bcrypt comparison to prevent timing side-channel
+		// that would reveal whether the username exists.
+		_ = bcrypt.CompareHashAndPassword(
+			[]byte("$2a$12$000000000000000000000000000000000000000000000000000000"),
+			[]byte(req.Code),
+		)
 		return errorJSON(w, http.StatusUnauthorized, "invalid username or recovery code")
 	}
 

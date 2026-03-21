@@ -7,7 +7,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+// ErrPathTraversal is returned when a storage key attempts to escape the root directory.
+var ErrPathTraversal = errors.New("uploads: key escapes root directory")
 
 // LocalStorage stores files on the local filesystem.
 type LocalStorage struct {
@@ -89,9 +93,14 @@ func atomicWrite(dst string, content []byte) error {
 }
 
 // Delete removes the file at the given key. It does not return an error
-// if the file does not exist.
+// if the file does not exist. Returns [ErrPathTraversal] if the key
+// would escape the root directory.
 func (s *LocalStorage) Delete(_ context.Context, key string) error {
-	err := os.Remove(filepath.Join(s.root, key))
+	path, err := s.safeJoin(key)
+	if err != nil {
+		return err
+	}
+	err = os.Remove(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
@@ -99,8 +108,13 @@ func (s *LocalStorage) Delete(_ context.Context, key string) error {
 }
 
 // Open returns a reader for the file at the given key.
+// Returns [ErrPathTraversal] if the key would escape the root directory.
 func (s *LocalStorage) Open(_ context.Context, key string) (io.ReadCloser, error) {
-	return os.Open(filepath.Join(s.root, key)) //nolint:gosec // key is a storage key, not user input
+	path, err := s.safeJoin(key)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(path) //nolint:gosec // path is validated by safeJoin
 }
 
 // URL returns the public URL for the given storage key.
@@ -109,7 +123,18 @@ func (s *LocalStorage) URL(key string) string {
 }
 
 // Path returns the filesystem path for the given storage key.
-// This is specific to LocalStorage and not part of the Storage interface.
-func (s *LocalStorage) Path(key string) string {
-	return filepath.Join(s.root, key)
+// Returns [ErrPathTraversal] if the key would escape the root directory.
+// This is specific to LocalStorage and not part of the Store interface.
+func (s *LocalStorage) Path(key string) (string, error) {
+	return s.safeJoin(key)
+}
+
+// safeJoin joins the root and key, then verifies the result is still
+// under root. This prevents path traversal attacks via keys containing "..".
+func (s *LocalStorage) safeJoin(key string) (string, error) {
+	path := filepath.Join(s.root, key)
+	if !strings.HasPrefix(path, filepath.Clean(s.root)+string(os.PathSeparator)) {
+		return "", ErrPathTraversal
+	}
+	return path, nil
 }

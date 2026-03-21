@@ -171,8 +171,43 @@ func TestLocalStorage_URL(t *testing.T) {
 
 func TestLocalStorage_Path(t *testing.T) {
 	s := newTestStorage(t)
-	p := s.Path("avatars/abc.jpg")
+	p, err := s.Path("avatars/abc.jpg")
+	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(s.root, "avatars/abc.jpg"), p)
+}
+
+func TestLocalStorage_OpenRejectsPathTraversal(t *testing.T) {
+	s := newTestStorage(t)
+	ctx := context.Background()
+
+	traversalKeys := []string{
+		"../../etc/passwd",
+		"../secret.txt",
+		"subdir/../../etc/shadow",
+	}
+
+	for _, key := range traversalKeys {
+		_, err := s.Open(ctx, key)
+		require.Error(t, err, "Open should reject traversal key: %s", key)
+		assert.ErrorIs(t, err, ErrPathTraversal, "Open should return ErrPathTraversal for: %s", key)
+	}
+}
+
+func TestLocalStorage_DeleteRejectsPathTraversal(t *testing.T) {
+	s := newTestStorage(t)
+	ctx := context.Background()
+
+	err := s.Delete(ctx, "../../etc/passwd")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrPathTraversal)
+}
+
+func TestLocalStorage_PathRejectsPathTraversal(t *testing.T) {
+	s := newTestStorage(t)
+
+	_, err := s.Path("../../etc/passwd")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrPathTraversal)
 }
 
 func TestLocalStorage_Deduplication(t *testing.T) {
@@ -241,7 +276,9 @@ func TestLocalStorage_PrefixSubdirectory(t *testing.T) {
 	assert.True(t, strings.HasPrefix(key, "deep/nested/"))
 
 	// File should exist on disk
-	_, err = os.Stat(s.Path(key))
+	diskPath, pathErr := s.Path(key)
+	require.NoError(t, pathErr)
+	_, err = os.Stat(diskPath)
 	assert.NoError(t, err)
 }
 
@@ -313,7 +350,9 @@ func TestLocalStorage_LargeFile(t *testing.T) {
 	assert.True(t, strings.HasSuffix(key, ".bin"))
 
 	// Verify the file exists on disk with the correct size.
-	info, err := os.Stat(s.Path(key))
+	diskPath, pathErr := s.Path(key)
+	require.NoError(t, pathErr)
+	info, err := os.Stat(diskPath)
 	require.NoError(t, err)
 	assert.Equal(t, int64(size), info.Size())
 
