@@ -81,6 +81,7 @@ nav:
           - Pagination: guide/pagination.md
           - Full-Text Search: guide/fts5.md
           - Inter-App Communication: guide/inter-app-communication.md
+          - "Multi-Tenant: Database per User": guide/multi-tenant.md
       - Testing:
           - Testing: guide/testing.md
       - Deployment:
