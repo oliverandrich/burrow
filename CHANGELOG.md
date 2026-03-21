@@ -4,6 +4,12 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.7.2 — 2026-03-21
+
+### Fixed
+
+- **Jobs: flaky test fix** — `sqlitetest.OpenDB` now uses a file-backed SQLite database in `t.TempDir()` instead of `file::memory:`, preventing data loss when the connection pool recycles connections
+
 ## 0.7.1 — 2026-03-21
 
 ### Security

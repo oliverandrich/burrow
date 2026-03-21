@@ -4,6 +4,7 @@ package sqlitetest
 
 import (
 	"database/sql"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,14 +13,16 @@ import (
 	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
-// OpenDB returns an in-memory SQLite *bun.DB for testing. It uses a single
-// connection (SetMaxOpenConns(1)) to ensure all operations within a test see
-// the same data without needing shared cache mode.
+// OpenDB returns a file-backed SQLite *bun.DB for testing. It creates the
+// database in t.TempDir() so it is automatically cleaned up. A file-backed
+// database avoids the data-loss hazard of :memory: databases whose content
+// disappears when the connection pool closes and reopens a connection.
 // The database is closed automatically when the test finishes.
 func OpenDB(t *testing.T) *bun.DB {
 	t.Helper()
 
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
+	dsn := filepath.Join(t.TempDir(), "test.db") + "?_pragma=foreign_keys(1)"
+	sqldb, err := sql.Open(sqliteshim.ShimName, dsn)
 	require.NoError(t, err)
 	sqldb.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = sqldb.Close() })
