@@ -44,7 +44,7 @@ func (s *LocalStorage) Store(_ context.Context, file io.Reader, opts StoreOption
 	}
 
 	hash := contentHash(content)
-	key := buildKey(opts.Prefix, hash, opts.Filename)
+	key := buildKey(opts.Prefix, hash, mimeType, opts.Filename)
 	dst := filepath.Join(s.root, key)
 
 	// Deduplication: skip write if file already exists.

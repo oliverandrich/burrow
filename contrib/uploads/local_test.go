@@ -32,17 +32,19 @@ func TestBuildKey(t *testing.T) {
 		name     string
 		prefix   string
 		hash     string
+		mimeType string
 		filename string
 		want     string
 	}{
-		{"with prefix", "avatars", "abc123", "photo.JPG", "avatars/abc123.jpg"},
-		{"no prefix", "", "abc123", "photo.png", "abc123.png"},
-		{"no extension", "", "abc123", "noext", "abc123.bin"},
-		{"uppercase ext", "docs", "abc123", "file.PDF", "docs/abc123.pdf"},
+		{"ext from mime", "avatars", "abc123", "image/jpeg", "photo.JPG", "avatars/abc123.jpg"},
+		{"no prefix", "", "abc123", "image/png", "photo.png", "abc123.png"},
+		{"unknown mime falls back to filename", "", "abc123", "application/x-unknown", "data.csv", "abc123.csv"},
+		{"no mime no ext", "", "abc123", "", "noext", "abc123.bin"},
+		{"mime prevents malicious ext", "uploads", "abc123", "image/jpeg", "evil.php", "uploads/abc123.jpg"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildKey(tt.prefix, tt.hash, tt.filename)
+			got := buildKey(tt.prefix, tt.hash, tt.mimeType, tt.filename)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -259,9 +261,10 @@ func TestLocalStorage_NoExtension(t *testing.T) {
 	s := newTestStorage(t)
 	ctx := context.Background()
 
+	// "data" is detected as text/plain → extension derived from MIME type, not filename.
 	key, err := s.Store(ctx, bytes.NewReader([]byte("data")), StoreOptions{Filename: "noext"})
 	require.NoError(t, err)
-	assert.True(t, strings.HasSuffix(key, ".bin"))
+	assert.True(t, strings.HasSuffix(key, ".txt"), "text content should get .txt extension from MIME detection")
 }
 
 func TestLocalStorage_PrefixSubdirectory(t *testing.T) {
@@ -293,7 +296,8 @@ func TestStoreFile(t *testing.T) {
 	part, err := writer.CreateFormFile("avatar", "photo.jpg")
 	require.NoError(t, err)
 
-	content := []byte("fake image content")
+	// Minimal JPEG: SOI marker + padding (detected as image/jpeg by http.DetectContentType).
+	content := append([]byte{0xFF, 0xD8, 0xFF, 0xE0}, bytes.Repeat([]byte{0x00}, 20)...)
 	_, err = part.Write(content)
 	require.NoError(t, err)
 	require.NoError(t, writer.Close())
@@ -304,7 +308,7 @@ func TestStoreFile(t *testing.T) {
 	key, err := StoreFile(req, "avatar", s, StoreOptions{Prefix: "avatars"})
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(key, "avatars/"))
-	assert.True(t, strings.HasSuffix(key, ".jpg"))
+	assert.True(t, strings.HasSuffix(key, ".jpg"), "JPEG content should get .jpg extension from MIME detection, got: %s", key)
 
 	// Verify stored content
 	rc, err := s.Open(context.Background(), key)

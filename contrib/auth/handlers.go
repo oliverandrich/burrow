@@ -164,9 +164,11 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 		}
 	}()
 
-	// Promote the first registered user to admin.
-	count, countErr := h.repo.CountUsers(ctx)
-	if countErr == nil && count == 1 {
+	// Promote to admin if no admin exists yet. Using CountAdminUsers
+	// instead of CountUsers avoids a race with phantom users from
+	// abandoned registration flows.
+	adminCount, countErr := h.repo.CountAdminUsers(ctx)
+	if countErr == nil && adminCount == 0 {
 		if roleErr := h.repo.SetUserRole(ctx, user.ID, RoleAdmin); roleErr != nil {
 			slog.Error("failed to promote first user to admin", "user_id", user.ID, "error", roleErr) //nolint:gosec // G706: user_id is int64
 		}

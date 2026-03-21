@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"path"
 	"strings"
@@ -71,9 +72,17 @@ func contentHash(data []byte) string {
 	return fmt.Sprintf("%x", h[:8])
 }
 
-// buildKey constructs a storage key from prefix, hash, and original filename.
-func buildKey(prefix, hash, filename string) string {
-	ext := strings.ToLower(path.Ext(filename))
+// buildKey constructs a storage key from prefix, hash, and MIME type.
+// The extension is derived from the detected MIME type rather than the
+// original filename to prevent attacker-controlled extensions (e.g.,
+// uploading a JPEG with filename "evil.php").
+func buildKey(prefix, hash, mimeType, filename string) string {
+	ext := extFromMIME(mimeType)
+	if ext == "" {
+		// Fall back to the original filename extension if the MIME type
+		// has no known mapping.
+		ext = strings.ToLower(path.Ext(filename))
+	}
 	if ext == "" {
 		ext = ".bin"
 	}
@@ -83,6 +92,42 @@ func buildKey(prefix, hash, filename string) string {
 		return prefix + "/" + name
 	}
 	return name
+}
+
+// preferredExts maps common MIME types to their preferred extension.
+// mime.ExtensionsByType returns extensions in alphabetical order, which
+// can pick obscure extensions (e.g., ".jfif" for "image/jpeg").
+var preferredExts = map[string]string{
+	"image/jpeg":       ".jpg",
+	"image/png":        ".png",
+	"image/gif":        ".gif",
+	"image/webp":       ".webp",
+	"image/svg+xml":    ".svg",
+	"application/pdf":  ".pdf",
+	"text/plain":       ".txt",
+	"text/html":        ".html",
+	"text/css":         ".css",
+	"text/csv":         ".csv",
+	"application/json": ".json",
+	"application/xml":  ".xml",
+	"application/zip":  ".zip",
+}
+
+// extFromMIME returns a safe file extension for the given MIME type.
+// Returns "" if the MIME type has no known extension.
+func extFromMIME(mimeType string) string {
+	// Strip parameters (e.g., "text/plain; charset=utf-8" → "text/plain").
+	if i := strings.IndexByte(mimeType, ';'); i >= 0 {
+		mimeType = strings.TrimSpace(mimeType[:i])
+	}
+	if ext, ok := preferredExts[mimeType]; ok {
+		return ext
+	}
+	exts, err := mime.ExtensionsByType(mimeType)
+	if err != nil || len(exts) == 0 {
+		return ""
+	}
+	return exts[0]
 }
 
 // detectMIME reads the first 512 bytes to detect the content type.

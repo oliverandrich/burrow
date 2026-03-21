@@ -15,6 +15,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Fixed
 
 - **RenderError: no more empty bodies** — added `error/default` fallback template and specific templates for 401, 422, 429 in both core and bootstrap; `RenderError` now falls back to `error/default` when the code-specific template is missing
+- **`journal_size_limit` PRAGMA per-connection** — moved from one-shot `db.Exec` to `withPerConnPragmas` so it is applied to every new pool connection, not just the first
+- **Signal registration cleanup** — `signalDone` now calls `signal.Stop` to clean up OS signal registration after the first signal is received
+- **Uploads: extension from MIME type** — storage keys now derive the file extension from the detected MIME type instead of the attacker-controlled filename, preventing malicious extensions (e.g., uploading a JPEG as `evil.php`)
+- **Auth: admin promotion uses CountAdminUsers** — first-user admin promotion now checks `CountAdminUsers == 0` instead of `CountUsers == 1`, avoiding interference from phantom users created by abandoned registration flows
 
 ## 0.7.0 — 2026-03-21
 
