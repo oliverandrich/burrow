@@ -80,9 +80,9 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `--upload-dir` | `UPLOAD_DIR` | `./uploads` | Directory for uploaded files |
-| `--upload-url-prefix` | `UPLOAD_URL_PREFIX` | `/uploads` | URL prefix for serving uploaded files |
-| `--upload-allowed-types` | `UPLOAD_ALLOWED_TYPES` | (all) | Comma-separated list of allowed MIME types |
+| `--uploads-dir` | `UPLOADS_DIR` | `./uploads` | Directory for uploaded files |
+| `--uploads-url-prefix` | `UPLOADS_URL_PREFIX` | `/uploads` | URL prefix for serving uploaded files |
+| `--uploads-allowed-types` | `UPLOADS_ALLOWED_TYPES` | (all) | Comma-separated list of allowed MIME types |
 
 ### Rate Limit
 

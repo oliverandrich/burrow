@@ -33,6 +33,14 @@ Provided by the [`htmx`](../contrib/htmx.md) contrib app.
 | `{{ template "htmx/js" . }}` | `<script defer>` tag for htmx JS |
 | `{{ template "htmx/config" . }}` | `<meta>` tag configuring htmx to swap `422` responses (for form validation) |
 
+### alpine
+
+Provided by the [`alpine`](../contrib/alpine.md) contrib app.
+
+| Template | Output |
+|----------|--------|
+| `{{ template "alpine/js" . }}` | `<script defer>` tag for Alpine.js |
+
 ## UI Components
 
 ### bootstrap

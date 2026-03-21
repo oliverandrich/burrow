@@ -11,7 +11,7 @@ Burrow is designed for server-rendered web applications, not API-only services.
 - [Quick Start](https://burrow.someonewho.codes/getting-started/quickstart/): Minimal app setup
 - [Creating an App](https://burrow.someonewho.codes/guide/creating-an-app/): Build a custom app with routes, templates, and migrations
 - [Core Interfaces](https://burrow.someonewho.codes/reference/interfaces/): App, Migratable, HasRoutes, HasMiddleware, HasTemplates, Configurable, and more
-- [Core Functions](https://burrow.someonewho.codes/reference/core-functions/): HandlerFunc, Handle, RenderTemplate, Bind, Validate, JSON, Text, HTML
+- [Core Functions](https://burrow.someonewho.codes/reference/core-functions/): HandlerFunc, Handle, Render, Bind, Validate, JSON, Text, HTML
 - [Routing](https://burrow.someonewho.codes/guide/routing/): Handlers, error handling, URL parameters, middleware
 - [Database](https://burrow.someonewho.codes/guide/database/): SQLite setup, PRAGMAs, Bun ORM usage, repository pattern
 - [Layouts & Rendering](https://burrow.someonewho.codes/guide/layouts/): Template rendering, layout wrapping, HTMX support
@@ -21,20 +21,23 @@ Burrow is designed for server-rendered web applications, not API-only services.
 
 ## Contrib Apps
 
-- [Auth](https://burrow.someonewho.codes/contrib/auth/): WebAuthn/passkey authentication with recovery codes
-- [Session](https://burrow.someonewho.codes/contrib/session/): Cookie-based sessions via gorilla/sessions
-- [CSRF](https://burrow.someonewho.codes/contrib/csrf/): CSRF protection via gorilla/csrf
 - [Admin](https://burrow.someonewho.codes/contrib/admin/): Admin panel coordinator with ModelAdmin CRUD
-- [Bootstrap](https://burrow.someonewho.codes/contrib/bootstrap/): Bootstrap 5 CSS/JS, dark mode, layout
 - [Alpine.js](https://burrow.someonewho.codes/contrib/alpine/): Alpine.js asset serving with content-hashed URLs
+- [Auth](https://burrow.someonewho.codes/contrib/auth/): WebAuthn/passkey authentication with recovery codes
+- [Auth Mail](https://burrow.someonewho.codes/contrib/authmail/): Pluggable email rendering with SMTP backend
+- [Bootstrap](https://burrow.someonewho.codes/contrib/bootstrap/): Bootstrap 5 CSS/JS, dark mode, layout
+- [Bootstrap Icons](https://burrow.someonewho.codes/contrib/bsicons/): Bootstrap Icons as inline SVG template functions
+- [CSRF](https://burrow.someonewho.codes/contrib/csrf/): CSRF protection via gorilla/csrf
+- [Healthcheck](https://burrow.someonewho.codes/contrib/healthcheck/): Liveness and readiness probes
 - [htmx](https://burrow.someonewho.codes/contrib/htmx/): HTMX integration with request/response helpers
 - [Jobs](https://burrow.someonewho.codes/contrib/jobs/): SQLite-backed background job queue
-- [SSE](https://burrow.someonewho.codes/contrib/sse/): Server-Sent Events with in-memory pub/sub broker
-- [Uploads](https://burrow.someonewho.codes/contrib/uploads/): File upload storage with content-hashed serving
 - [Messages](https://burrow.someonewho.codes/contrib/messages/): Flash messages
 - [Rate Limiting](https://burrow.someonewho.codes/contrib/ratelimit/): Per-client token bucket rate limiting
+- [Security Headers](https://burrow.someonewho.codes/contrib/secure/): Security response headers (X-Content-Type-Options, HSTS, CSP)
+- [Session](https://burrow.someonewho.codes/contrib/session/): Cookie-based sessions via gorilla/sessions
+- [SSE](https://burrow.someonewho.codes/contrib/sse/): Server-Sent Events with in-memory pub/sub broker
 - [Static Files](https://burrow.someonewho.codes/contrib/staticfiles/): Content-hashed static file serving
-- [Healthcheck](https://burrow.someonewho.codes/contrib/healthcheck/): Liveness and readiness probes
+- [Uploads](https://burrow.someonewho.codes/contrib/uploads/): File upload storage with content-hashed serving
 
 ## Reference
 

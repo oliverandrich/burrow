@@ -91,10 +91,10 @@ func (h *Handlers) DeleteAvatar(w http.ResponseWriter, r *http.Request) error {
 
 ## Storage Interface
 
-The uploads app uses a `Storage` interface, making the backend pluggable:
+The uploads app uses a `Store` interface, making the backend pluggable:
 
 ```go
-type Storage interface {
+type Store interface {
     Store(ctx context.Context, file io.Reader, opts StoreOptions) (key string, err error)
     Delete(ctx context.Context, key string) error
     Open(ctx context.Context, key string) (io.ReadCloser, error)
@@ -106,7 +106,7 @@ The built-in `LocalStorage` stores files on the local filesystem with content-ha
 
 ## Custom Storage Backends
 
-To implement a custom backend (e.g., S3, GCS), implement the four methods of the `Storage` interface:
+To implement a custom backend (e.g., S3, GCS), implement the four methods of the `Store` interface:
 
 ```go
 type S3Storage struct { /* ... */ }
@@ -186,9 +186,9 @@ Since filenames are content-hashed, files are effectively immutable — a change
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `--upload-dir` | `UPLOAD_DIR` | `data/uploads` | Directory for uploaded files |
-| `--upload-url-prefix` | `UPLOAD_URL_PREFIX` | `/uploads/` | URL prefix for serving files |
-| `--upload-allowed-types` | `UPLOAD_ALLOWED_TYPES` | (all) | Comma-separated allowed MIME types |
+| `--uploads-dir` | `UPLOADS_DIR` | `data/uploads` | Directory for uploaded files |
+| `--uploads-url-prefix` | `UPLOADS_URL_PREFIX` | `/uploads/` | URL prefix for serving files |
+| `--uploads-allowed-types` | `UPLOADS_ALLOWED_TYPES` | (all) | Comma-separated allowed MIME types |
 
 ## Interfaces Implemented
 

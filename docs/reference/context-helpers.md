@@ -76,7 +76,7 @@ func NavGroups(ctx context.Context) []NavGroup
 
 Returns the admin nav groups from the context. Each `NavGroup` contains an app name and its navigation items. Returns `nil` if not set.
 
-> **Deprecated alias:** `NavGroupsFromContext` still works but prefer `NavGroups`.
+> **Deprecated:** `NavGroupsFromContext` will be removed in a future version. Use `NavGroups` instead.
 
 ### WithNavGroups
 
@@ -94,7 +94,7 @@ func RequestPath(ctx context.Context) string
 
 Returns the current request path from the context. Used by admin templates to highlight the active sidebar link. Returns `""` if not set.
 
-> **Deprecated alias:** `RequestPathFromContext` still works but prefer `RequestPath`.
+> **Deprecated:** `RequestPathFromContext` will be removed in a future version. Use `RequestPath` instead.
 
 ### WithRequestPath
 
@@ -139,7 +139,7 @@ func CurrentUser(ctx context.Context) *User
 
 Returns the authenticated user from the context, or `nil` if not logged in.
 
-> **Deprecated alias:** `UserFromContext` still works but prefer `CurrentUser`.
+> **Deprecated:** `UserFromContext` will be removed in a future version. Use `CurrentUser` instead.
 
 ### IsAuthenticated
 
@@ -233,3 +233,67 @@ func URL(ctx context.Context, name string) string
 ```
 
 Returns the content-hashed URL for a static file. Falls back to the original name if the file is not in the manifest or the middleware is not active.
+
+## Uploads Helpers
+
+Defined in `github.com/oliverandrich/burrow/contrib/uploads`.
+
+### Storage
+
+```go
+func Storage(ctx context.Context) Store
+```
+
+Returns the `Store` from the context. Injected by the uploads middleware.
+
+### URL
+
+```go
+func URL(ctx context.Context, key string) string
+```
+
+Returns the public URL for a storage key. If no storage is in the context, returns the key as-is.
+
+## SSE Helpers
+
+Defined in `github.com/oliverandrich/burrow/contrib/sse`.
+
+### Broker
+
+```go
+func Broker(ctx context.Context) *EventBroker
+```
+
+Returns the `*EventBroker` from the context. Injected by the SSE middleware.
+
+## Messages Helpers
+
+Defined in `github.com/oliverandrich/burrow/contrib/messages`.
+
+### Get
+
+```go
+func Get(ctx context.Context) []Message
+```
+
+Returns flash messages from the context. Returns `nil` if no messages are set.
+
+### Add
+
+```go
+func Add(w http.ResponseWriter, r *http.Request, level, text string)
+```
+
+Adds a flash message to the session. The message will be available on the next request.
+
+## Rate Limit Helpers
+
+Defined in `github.com/oliverandrich/burrow/contrib/ratelimit`.
+
+### RetryAfter
+
+```go
+func RetryAfter(ctx context.Context) time.Duration
+```
+
+Returns the duration until the client can retry. Set by the rate limit middleware when a request is throttled.

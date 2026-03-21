@@ -92,9 +92,9 @@ func TestConfigureDefaults(t *testing.T) {
 func TestConfigureFlagOverrides(t *testing.T) {
 	dir := t.TempDir()
 	app := configuredApp(t,
-		"--upload-dir", dir,
-		"--upload-url-prefix", "/files/",
-		"--upload-allowed-types", "image/jpeg, image/png",
+		"--uploads-dir", dir,
+		"--uploads-url-prefix", "/files/",
+		"--uploads-allowed-types", "image/jpeg, image/png",
 	)
 	assert.Equal(t, dir, app.dir)
 	assert.Equal(t, "/files/", app.urlPrefix)
@@ -103,7 +103,7 @@ func TestConfigureFlagOverrides(t *testing.T) {
 }
 
 func TestConfigureInvalidDir(t *testing.T) {
-	// Point upload-dir at an invalid path to trigger NewLocalStorage error
+	// Point uploads-dir at an invalid path to trigger NewLocalStorage error
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "afile")
 	require.NoError(t, os.WriteFile(filePath, []byte("x"), 0o644))
@@ -118,7 +118,7 @@ func TestConfigureInvalidDir(t *testing.T) {
 			return app.Configure(cmd)
 		},
 	}
-	err := cmd.Run(t.Context(), []string{"test", "--upload-dir", filepath.Join(filePath, "subdir")})
+	err := cmd.Run(t.Context(), []string{"test", "--uploads-dir", filepath.Join(filePath, "subdir")})
 	require.Error(t, err)
 }
 
@@ -130,9 +130,9 @@ func TestConfigureOptionDefaultsShownInFlags(t *testing.T) {
 	for _, f := range flags {
 		if sf, ok := f.(*cli.StringFlag); ok {
 			switch sf.Name {
-			case "upload-dir":
+			case "uploads-dir":
 				dirDefault = sf.Value
-			case "upload-url-prefix":
+			case "uploads-url-prefix":
 				prefixDefault = sf.Value
 			}
 		}

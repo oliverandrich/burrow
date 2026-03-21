@@ -103,7 +103,7 @@ In templates, pass the current query string and use `pageURL` to generate links:
 ```html
 {{- $base := "/notes" }}
 {{- $query := .Query }}
-{{- range pageRange .Page.TotalPages }}
+{{- range pageNumbers .Page.Page .Page.TotalPages }}
 <a href="{{ pageURL $base $query . }}">{{ . }}</a>
 {{- end }}
 ```

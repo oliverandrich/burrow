@@ -4,6 +4,11 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Uploads: flag names renamed** — `--upload-dir` → `--uploads-dir`, `--upload-url-prefix` → `--uploads-url-prefix`, `--upload-allowed-types` → `--uploads-allowed-types`. Environment variables changed accordingly (`UPLOAD_*` → `UPLOADS_*`). This aligns with the `{appname}-{property}` convention used by all other apps.
+- **Uploads: `Storage` interface renamed to `Store`** — the context getter is now `uploads.Storage(ctx)` returning `uploads.Store`. The old `GetStorage` and `StorageFromContext` remain as deprecated wrappers.
+
 ### Added
 
 - **SSE contrib app** — new `sse` app providing an in-memory pub/sub broker for Server-Sent Events; supports static and dynamic topics, non-blocking publish, configurable buffer size, 30s keepalive, graceful shutdown, and seamless htmx SSE extension integration

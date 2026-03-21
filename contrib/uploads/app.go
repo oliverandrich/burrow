@@ -75,30 +75,30 @@ func (a *App) Register(_ *burrow.AppConfig) error { return nil }
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
-			Name:    "upload-dir",
+			Name:    "uploads-dir",
 			Value:   a.dir,
 			Usage:   "Directory for uploaded files",
-			Sources: burrow.FlagSources(configSource, "UPLOAD_DIR", "uploads.dir"),
+			Sources: burrow.FlagSources(configSource, "UPLOADS_DIR", "uploads.dir"),
 		},
 		&cli.StringFlag{
-			Name:    "upload-url-prefix",
+			Name:    "uploads-url-prefix",
 			Value:   a.urlPrefix,
 			Usage:   "URL prefix for serving uploaded files",
-			Sources: burrow.FlagSources(configSource, "UPLOAD_URL_PREFIX", "uploads.url_prefix"),
+			Sources: burrow.FlagSources(configSource, "UPLOADS_URL_PREFIX", "uploads.url_prefix"),
 		},
 		&cli.StringFlag{
-			Name:    "upload-allowed-types",
+			Name:    "uploads-allowed-types",
 			Usage:   "Comma-separated list of allowed MIME types (empty = all)",
-			Sources: burrow.FlagSources(configSource, "UPLOAD_ALLOWED_TYPES", "uploads.allowed_types"),
+			Sources: burrow.FlagSources(configSource, "UPLOADS_ALLOWED_TYPES", "uploads.allowed_types"),
 		},
 	}
 }
 
 func (a *App) Configure(cmd *cli.Command) error {
-	a.dir = cmd.String("upload-dir")
-	a.urlPrefix = cmd.String("upload-url-prefix")
+	a.dir = cmd.String("uploads-dir")
+	a.urlPrefix = cmd.String("uploads-url-prefix")
 
-	if v := cmd.String("upload-allowed-types"); v != "" {
+	if v := cmd.String("uploads-allowed-types"); v != "" {
 		a.allowedTypes = strings.Split(v, ",")
 		for i := range a.allowedTypes {
 			a.allowedTypes[i] = strings.TrimSpace(a.allowedTypes[i])

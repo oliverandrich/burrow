@@ -105,6 +105,20 @@ return burrow.Render(w, r, http.StatusOK, "notes/list", map[string]any{
 
 See [Layouts & Rendering](../guide/layouts.md) for details on templates and layout wrapping.
 
+### RenderContent
+
+```go
+func RenderContent(w http.ResponseWriter, r *http.Request, statusCode int, content template.HTML, data map[string]any) error
+```
+
+Writes pre-rendered HTML content with layout wrapping. Unlike `Render`, which executes a named template, `RenderContent` takes already-rendered HTML and wraps it in the active layout. Used by `modeladmin` to render admin pages with dynamically generated content.
+
+```go
+return burrow.RenderContent(w, r, http.StatusOK, rendered, map[string]any{
+    "Title": "Edit Note",
+})
+```
+
 ### RenderError
 
 ```go
@@ -123,6 +137,7 @@ Template data:
 | Key       | Type   | Description                          |
 |-----------|--------|--------------------------------------|
 | `Code`    | `int`  | HTTP status code                     |
+| `Title`   | `string` | HTTP status text (e.g. "Not Found") |
 | `Message` | `string` | i18n-translated error message      |
 
 ```go
