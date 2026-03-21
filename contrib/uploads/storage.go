@@ -19,8 +19,8 @@ var (
 	ErrMissingField   = errors.New("uploads: missing form field")
 )
 
-// Storage defines the interface for file storage backends.
-type Storage interface {
+// Store defines the interface for file storage backends.
+type Store interface {
 	// Store persists a file and returns its storage key.
 	Store(ctx context.Context, file io.Reader, opts StoreOptions) (key string, err error)
 
@@ -44,7 +44,7 @@ type StoreOptions struct {
 
 // StoreFile extracts a file from a multipart request and stores it.
 // It returns the storage key on success.
-func StoreFile(r *http.Request, fieldName string, storage Storage, opts StoreOptions) (string, error) {
+func StoreFile(r *http.Request, fieldName string, storage Store, opts StoreOptions) (string, error) {
 	file, header, err := r.FormFile(fieldName)
 	if err != nil {
 		return "", fmt.Errorf("%w: %s", ErrMissingField, fieldName)

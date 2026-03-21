@@ -20,7 +20,7 @@ const (
 type App struct {
 	dir          string
 	urlPrefix    string
-	storage      Storage
+	storage      Store
 	allowedTypes []string
 }
 
@@ -113,8 +113,8 @@ func (a *App) Configure(cmd *cli.Command) error {
 	return nil
 }
 
-// Storage returns the configured Storage backend.
-func (a *App) Storage() Storage {
+// Store returns the configured Store backend.
+func (a *App) Store() Store {
 	return a.storage
 }
 

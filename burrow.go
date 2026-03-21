@@ -126,6 +126,7 @@
 //   - alpine — Alpine.js asset serving via staticfiles
 //   - htmx — HTMX asset serving and request/response helpers
 //   - jobs — SQLite-backed in-process job queue with retry
+//   - sse — Server-Sent Events with in-memory pub/sub broker
 //   - uploads — pluggable file upload storage
 //   - messages — flash messages via session storage
 //   - ratelimit — per-client token bucket rate limiting

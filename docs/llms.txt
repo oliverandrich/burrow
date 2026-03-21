@@ -29,6 +29,7 @@ Burrow is designed for server-rendered web applications, not API-only services.
 - [Alpine.js](https://burrow.someonewho.codes/contrib/alpine/): Alpine.js asset serving with content-hashed URLs
 - [htmx](https://burrow.someonewho.codes/contrib/htmx/): HTMX integration with request/response helpers
 - [Jobs](https://burrow.someonewho.codes/contrib/jobs/): SQLite-backed background job queue
+- [SSE](https://burrow.someonewho.codes/contrib/sse/): Server-Sent Events with in-memory pub/sub broker
 - [Uploads](https://burrow.someonewho.codes/contrib/uploads/): File upload storage with content-hashed serving
 - [Messages](https://burrow.someonewho.codes/contrib/messages/): Flash messages
 - [Rate Limiting](https://burrow.someonewho.codes/contrib/ratelimit/): Per-client token bucket rate limiting

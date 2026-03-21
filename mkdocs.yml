@@ -117,6 +117,7 @@ nav:
       - Data & Background:
           - Admin: contrib/admin.md
           - Jobs: contrib/jobs.md
+          - SSE: contrib/sse.md
           - Uploads: contrib/uploads.md
   - Reference:
       - Core Interfaces: reference/interfaces.md

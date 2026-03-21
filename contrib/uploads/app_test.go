@@ -79,7 +79,7 @@ func TestName(t *testing.T) {
 
 func TestConfigureCreatesStorage(t *testing.T) {
 	app := configuredApp(t)
-	require.NotNil(t, app.Storage())
+	require.NotNil(t, app.Store())
 }
 
 func TestConfigureDefaults(t *testing.T) {
@@ -99,7 +99,7 @@ func TestConfigureFlagOverrides(t *testing.T) {
 	assert.Equal(t, dir, app.dir)
 	assert.Equal(t, "/files/", app.urlPrefix)
 	assert.Equal(t, []string{"image/jpeg", "image/png"}, app.AllowedTypes())
-	require.NotNil(t, app.Storage())
+	require.NotNil(t, app.Store())
 }
 
 func TestConfigureInvalidDir(t *testing.T) {
@@ -151,7 +151,7 @@ func TestContextHelpers(t *testing.T) {
 
 	t.Run("storage from context", func(t *testing.T) {
 		ctx := WithStorage(ctx, s) //nolint:govet // intentional shadow for test clarity
-		got := GetStorage(ctx)
+		got := Storage(ctx)
 		require.NotNil(t, got)
 		assert.Equal(t, "/media/some/key.jpg", URL(ctx, "some/key.jpg"))
 	})
@@ -164,9 +164,9 @@ func TestMiddlewareInjectsStorage(t *testing.T) {
 	mw := app.Middleware()
 	require.Len(t, mw, 1)
 
-	var gotStorage Storage
+	var gotStorage Store
 	handler := mw[0](http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotStorage = GetStorage(r.Context())
+		gotStorage = Storage(r.Context())
 	}))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
@@ -207,7 +207,7 @@ func TestDefaultAllowedTypesApplied(t *testing.T) {
 	r.Use(app.Middleware()...)
 
 	r.Post("/upload", func(w http.ResponseWriter, r *http.Request) {
-		storage := GetStorage(r.Context())
+		storage := Storage(r.Context())
 		// No AllowedTypes in opts → should use app defaults
 		key, err := StoreFile(r, "file", storage, StoreOptions{Prefix: "uploads"})
 		if err != nil {
@@ -245,7 +245,7 @@ func TestPerCallAllowedTypesOverrideDefault(t *testing.T) {
 	r.Use(app.Middleware()...)
 
 	r.Post("/upload", func(w http.ResponseWriter, r *http.Request) {
-		storage := GetStorage(r.Context())
+		storage := Storage(r.Context())
 		// Per-call opts explicitly allow text/plain → should override app default
 		key, err := StoreFile(r, "file", storage, StoreOptions{
 			Prefix:       "docs",
@@ -285,7 +285,7 @@ func TestFullUploadFlow(t *testing.T) {
 
 	// Upload handler
 	r.Post("/upload", func(w http.ResponseWriter, r *http.Request) {
-		storage := GetStorage(r.Context())
+		storage := Storage(r.Context())
 		key, err := StoreFile(r, "file", storage, StoreOptions{Prefix: "uploads"})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

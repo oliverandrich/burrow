@@ -4,6 +4,12 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Added
+
+- **SSE contrib app** — new `sse` app providing an in-memory pub/sub broker for Server-Sent Events; supports static and dynamic topics, non-blocking publish, configurable buffer size, 30s keepalive, graceful shutdown, and seamless htmx SSE extension integration
+
+## 0.6.0 — 2026-03-21
+
 ### Breaking Changes
 
 - **ModelAdmin: `Renderer.ConfirmDelete` signature changed** — `ConfirmDelete(w, r, item *T, cfg)` is now `ConfirmDelete(w, r, ids []string, impacts []CascadeImpact, cfg)`. Custom renderers must update their implementation.
@@ -14,11 +20,6 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **ModelAdmin: `ConfirmPage` on `BulkAction`** — bulk actions with `ConfirmPage: true` redirect to a confirm page instead of using a JS `confirm()` dialog; the built-in `DeleteBulkAction` uses this by default
 - **Admin layout: `hx-boost` on `<body>`** — replaces manual `hx-get`/`hx-target`/`hx-push-url` on every link; all navigation and form submissions are automatically boosted to swap `<main>` without full page reloads
-
-### Fixed
-
-- **Auth middleware: HTMX-aware login redirect** — when a session expires during HTMX navigation (e.g. in the admin), the auth middleware now uses `HX-Redirect` to force a full page navigation to the login page instead of swapping it into `<main>`
-
 - **`AppConfig.RegisterIconFunc()`** — apps register icon template functions in their `Register()` method via `cfg.RegisterIconFunc("iconName", bsicons.IconFunc)`; duplicate registrations are silently ignored, allowing multiple apps to depend on the same icon without collisions
 - **Bootstrap color themes** — three Sass-compiled color themes (blue, purple, gray) selectable via `bootstrap.WithColor()`; default is purple; vanilla Bootstrap available via `bootstrap.WithColor(bootstrap.Default)`
 - **`bootstrap.NavLayout()`** — layout template with empty `bootstrap/navbar`, `bootstrap/alerts`, and `bootstrap/nav_scripts` slots that apps can override via `HasTemplates`
@@ -28,8 +29,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **ModelAdmin: search input** — admin list views with `SearchFields` now show a search input with HTMX support; uses FTS5 when available, falls back to LIKE
 - **`add`/`sub` template functions in core** — integer arithmetic available in all templates without contrib app registration
 - **Core htmx template stubs** — `htmx/js` and `htmx/config` defined as empty stubs in core; htmx app overrides them when registered
-- **Alpine.js contrib app** — new `alpine` app that embeds Alpine.js 3.15.8 and serves it via `staticfiles` with content-hashed URLs; include via `{{ template "alpine/js" . }}` in layout templates
 - **Sass build pipeline** — `just sass` compiles themes, `just sass-setup` installs Bootstrap Sass source; pre-commit hook auto-compiles on `.scss` changes
+- **Alpine.js contrib app** — new `alpine` app that embeds Alpine.js 3.15.8 and serves it via `staticfiles` with content-hashed URLs; include via `{{ template "alpine/js" . }}` in layout templates
 
 ### Changed
 
@@ -41,6 +42,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Auth layout removed** — `auth/layout` template removed; auth pages now use `bootstrap/layout` directly
 - **Notes example uses `bootstrap.NavLayout()`** — app-specific layout replaced by framework-provided nav layout with slot overrides
 - **Notes homepage redesign** — full-width hero section with primary color background, shadow cards
+
+### Fixed
+
+- **Auth middleware: HTMX-aware login redirect** — when a session expires during HTMX navigation (e.g. in the admin), the auth middleware now uses `HX-Redirect` to force a full page navigation to the login page instead of swapping it into `<main>`
 
 ## 0.5.0 — 2026-03-15
 
