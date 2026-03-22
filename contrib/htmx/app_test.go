@@ -54,7 +54,12 @@ func TestStaticFS(t *testing.T) {
 	assert.Equal(t, "htmx", prefix)
 	require.NotNil(t, fsys)
 
-	f, err := fsys.Open("htmx.min.js")
-	require.NoError(t, err, "expected htmx.min.js to exist in static FS")
-	_ = f.Close()
+	for _, name := range []string{
+		"htmx.min.js",
+		"ext/sse.min.js",
+	} {
+		f, err := fsys.Open(name)
+		require.NoError(t, err, "expected %s to exist in static FS", name)
+		_ = f.Close()
+	}
 }

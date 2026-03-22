@@ -4,6 +4,12 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.8.0 — 2026-03-22
+
+### Added
+
+- **htmx: bundle SSE extension** — `htmx/js` template now includes the [htmx SSE extension](https://htmx.org/extensions/sse/) (`htmx-ext-sse` v2.2.4) alongside htmx itself
+
 ## 0.7.4 — 2026-03-22
 
 ### Added

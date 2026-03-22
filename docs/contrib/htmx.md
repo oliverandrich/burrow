@@ -16,7 +16,7 @@ srv := burrow.NewServer(
 )
 ```
 
-The htmx app embeds `htmx.min.js` and serves it via the `staticfiles` app under the `"htmx"` prefix. It also provides a `htmx/config` template with sensible defaults. Include both in your layout template:
+The htmx app embeds `htmx.min.js` and the [SSE extension](https://htmx.org/extensions/sse/) (`ext/sse.min.js`), serving both via the `staticfiles` app under the `"htmx"` prefix. It also provides a `htmx/config` template with sensible defaults. Include both in your layout template:
 
 ```html
 {{ template "htmx/js" . }}
