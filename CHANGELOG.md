@@ -4,6 +4,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.7.4 — 2026-03-22
+
 ### Added
 
 - **`PostConfigurable` interface** — new optional app interface for second-pass configuration after all `Configure()` calls complete; used by `contrib/jobs` to guarantee that `RegisterJobs()` runs after all apps are fully configured
