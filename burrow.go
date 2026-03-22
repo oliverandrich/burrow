@@ -95,6 +95,7 @@
 //   - [HasStaticFiles] — embedded static file assets
 //   - [HasTranslations] — i18n translation files
 //   - [HasDependencies] — declared app dependencies for ordering
+//   - [PostConfigurable] — second-pass configuration after all apps are configured
 //   - [HasShutdown] — graceful shutdown hooks
 //
 // # Templates
@@ -272,6 +273,15 @@ type HasTranslations interface {
 // required apps; registration panics if any are missing.
 type HasDependencies interface {
 	Dependencies() []string
+}
+
+// PostConfigurable is implemented by apps that need a second configuration
+// pass after all [Configurable] apps have been configured. This is useful
+// when an app needs to interact with other apps' state that is only available
+// after Configure() has run (e.g., the jobs app discovering HasJobs handlers).
+// PostConfigure is called once, after all Configure() calls have completed.
+type PostConfigurable interface {
+	PostConfigure(cmd *cli.Command) error
 }
 
 // HasShutdown is implemented by apps that need to perform cleanup

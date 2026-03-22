@@ -75,7 +75,7 @@ func (a *myApp) Name() string          { return "notes" }
 func (a *myApp) Register(cfg *burrow.AppConfig) error { /* init repos, services */ }
 ```
 
-Optional interfaces add capabilities: `HasRoutes`, `HasMiddleware`, `HasTemplates`, `Migratable`, `Configurable`, `HasFuncMap`, `HasRequestFuncMap`, `HasNavItems`, `HasAdmin`, `HasTranslations`, `HasDependencies`, `HasJobs`, `HasStaticFiles`, `HasShutdown`.
+Optional interfaces add capabilities: `HasRoutes`, `HasMiddleware`, `HasTemplates`, `Migratable`, `Configurable`, `PostConfigurable`, `HasFuncMap`, `HasRequestFuncMap`, `HasNavItems`, `HasAdmin`, `HasTranslations`, `HasDependencies`, `HasJobs`, `HasStaticFiles`, `HasShutdown`.
 
 File layout: `app.go`, `context.go`, `handlers.go`, `middleware.go`, `models.go`, `repository.go`, `templates/*.html`, `migrations/*.sql`.
 

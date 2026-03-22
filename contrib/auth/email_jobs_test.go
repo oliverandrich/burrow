@@ -69,6 +69,7 @@ func TestRegisterJobs_NoEmailService(t *testing.T) {
 	app := &App{}
 	app.RegisterJobs(q)
 
+	// No handler registered when email service is not configured.
 	assert.Empty(t, q.handlers)
 	assert.Nil(t, app.jobs)
 }

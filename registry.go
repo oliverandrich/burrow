@@ -101,6 +101,9 @@ func (r *Registry) Add(app App) {
 	if _, ok := app.(HasJobs); ok {
 		caps = append(caps, "jobs")
 	}
+	if _, ok := app.(PostConfigurable); ok {
+		caps = append(caps, "postconfigure")
+	}
 	slog.Debug("app registered", "name", name, "capabilities", caps)
 }
 
@@ -173,13 +176,23 @@ func (r *Registry) AllFlags(configSource func(key string) cli.ValueSource) []cli
 	return flags
 }
 
-// Configure calls Configure on each Configurable app.
-// It stops and returns on the first error.
+// Configure calls Configure on each Configurable app, then calls
+// PostConfigure on each PostConfigurable app. This two-phase approach
+// guarantees that all apps are fully configured before any PostConfigure
+// runs, which is important for apps that need to interact with other
+// apps' state (e.g., the jobs app discovering HasJobs handlers).
 func (r *Registry) Configure(cmd *cli.Command) error {
 	for _, app := range r.apps {
 		if provider, ok := app.(Configurable); ok {
 			if err := provider.Configure(cmd); err != nil {
 				return fmt.Errorf("configure app %q: %w", app.Name(), err)
+			}
+		}
+	}
+	for _, app := range r.apps {
+		if provider, ok := app.(PostConfigurable); ok {
+			if err := provider.PostConfigure(cmd); err != nil {
+				return fmt.Errorf("post-configure app %q: %w", app.Name(), err)
 			}
 		}
 	}

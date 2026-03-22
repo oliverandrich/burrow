@@ -33,7 +33,9 @@ type Queue interface {
 }
 
 // HasJobs is implemented by apps that register background job handlers.
-// Called by the Queue implementation during Configure(), before workers start.
+// Called by the Queue implementation during PostConfigure(), after all apps
+// have been configured and before workers start. This guarantees that state
+// set in Configure() is available when RegisterJobs is invoked.
 type HasJobs interface {
 	RegisterJobs(q Queue)
 }

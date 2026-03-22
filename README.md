@@ -148,6 +148,7 @@ Apps can optionally implement additional interfaces:
 | `HasTranslations` | Contribute translation files |
 | `HasDependencies` | Declare required apps |
 | `HasJobs` | Register background job handlers |
+| `PostConfigurable` | Second-pass configuration after all apps are configured |
 | `HasShutdown` | Clean up on graceful shutdown |
 
 ### Layouts

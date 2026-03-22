@@ -22,6 +22,7 @@ func TestApp_InterfaceAssertions(t *testing.T) {
 	assert.Implements(t, (*burrow.Queue)(nil), app)
 	assert.Implements(t, (*burrow.Migratable)(nil), app)
 	assert.Implements(t, (*burrow.Configurable)(nil), app)
+	assert.Implements(t, (*burrow.PostConfigurable)(nil), app)
 	assert.Implements(t, (*burrow.HasShutdown)(nil), app)
 }
 
@@ -329,17 +330,13 @@ func TestApp_Configure(t *testing.T) {
 	app := New()
 	app.defaultDB = db
 
-	// Set up a registry with a HasJobs implementor.
-	registry := burrow.NewRegistry()
-	stub := &stubHasJobsApp{}
-	registry.Add(stub)
-	app.registry = registry
-
 	// Build a cli.Command with the jobs flags so Configure can read them.
 	cmd := &cli.Command{
-		Name:   "test",
-		Flags:  app.Flags(nil),
-		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+		Name:  "test",
+		Flags: app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
 	}
 
 	err := cmd.Run(t.Context(), []string{"test",
@@ -349,7 +346,46 @@ func TestApp_Configure(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Verify HasJobs discovery happened.
+	// Verify repo and admin were created in Configure.
+	require.NotNil(t, app.repo)
+	require.NotNil(t, app.jobsAdmin)
+
+	// Worker should NOT be started yet — that happens in PostConfigure.
+	assert.Nil(t, app.worker)
+	assert.Nil(t, app.cancelFunc)
+}
+
+func TestApp_PostConfigure(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.defaultDB = db
+
+	// Set up a registry with a HasJobs implementor.
+	registry := burrow.NewRegistry()
+	stub := &stubHasJobsApp{}
+	registry.Add(stub)
+	app.registry = registry
+
+	// Run Configure first (sets up repo, admin, worker config).
+	cmd := &cli.Command{
+		Name:  "test",
+		Flags: app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			if err := app.Configure(cmd); err != nil {
+				return err
+			}
+			return app.PostConfigure(cmd)
+		},
+	}
+
+	err := cmd.Run(t.Context(), []string{"test",
+		"--jobs-workers", "4",
+		"--jobs-poll-interval", "500ms",
+		"--jobs-retry-base-delay", "10s",
+	})
+	require.NoError(t, err)
+
+	// Verify HasJobs discovery happened in PostConfigure.
 	assert.True(t, stub.registered, "HasJobs.RegisterJobs should have been called")
 	assert.NotNil(t, app.handlers["stub_job"], "handler from stub should be registered")
 
@@ -367,15 +403,20 @@ func TestApp_Configure(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestApp_Configure_DefaultFlags(t *testing.T) {
+func TestApp_PostConfigure_DefaultFlags(t *testing.T) {
 	db := testDB(t)
 	app := New()
 	app.defaultDB = db
 
 	cmd := &cli.Command{
-		Name:   "test",
-		Flags:  app.Flags(nil),
-		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+		Name:  "test",
+		Flags: app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			if err := app.Configure(cmd); err != nil {
+				return err
+			}
+			return app.PostConfigure(cmd)
+		},
 	}
 
 	err := cmd.Run(t.Context(), []string{"test"})
@@ -391,16 +432,21 @@ func TestApp_Configure_DefaultFlags(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestApp_Configure_NilRegistry(t *testing.T) {
+func TestApp_PostConfigure_NilRegistry(t *testing.T) {
 	db := testDB(t)
 	app := New()
 	app.defaultDB = db
 	// registry is nil — should not panic.
 
 	cmd := &cli.Command{
-		Name:   "test",
-		Flags:  app.Flags(nil),
-		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+		Name:  "test",
+		Flags: app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			if err := app.Configure(cmd); err != nil {
+				return err
+			}
+			return app.PostConfigure(cmd)
+		},
 	}
 
 	err := cmd.Run(t.Context(), []string{"test"})
@@ -412,7 +458,7 @@ func TestApp_Configure_NilRegistry(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestApp_Configure_RegistryWithoutHasJobs(t *testing.T) {
+func TestApp_PostConfigure_RegistryWithoutHasJobs(t *testing.T) {
 	db := testDB(t)
 	app := New()
 	app.defaultDB = db
@@ -423,9 +469,14 @@ func TestApp_Configure_RegistryWithoutHasJobs(t *testing.T) {
 	app.registry = registry
 
 	cmd := &cli.Command{
-		Name:   "test",
-		Flags:  app.Flags(nil),
-		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+		Name:  "test",
+		Flags: app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			if err := app.Configure(cmd); err != nil {
+				return err
+			}
+			return app.PostConfigure(cmd)
+		},
 	}
 
 	err := cmd.Run(t.Context(), []string{"test"})
@@ -446,9 +497,11 @@ func TestApp_Configure_SeparateDatabase(t *testing.T) {
 	app.defaultDB = sharedDB
 
 	cmd := &cli.Command{
-		Name:   "test",
-		Flags:  app.Flags(nil),
-		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+		Name:  "test",
+		Flags: app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
 	}
 
 	err := cmd.Run(t.Context(), []string{"test", "--jobs-database", separateDSN})
@@ -489,9 +542,11 @@ func TestApp_Configure_SharedDatabase_Default(t *testing.T) {
 	app.defaultDB = sharedDB
 
 	cmd := &cli.Command{
-		Name:   "test",
-		Flags:  app.Flags(nil),
-		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+		Name:  "test",
+		Flags: app.Flags(nil),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			return app.Configure(cmd)
+		},
 	}
 
 	// No --jobs-database flag: should use the shared DB.
@@ -513,9 +568,6 @@ func TestApp_Configure_SharedDatabase_Default(t *testing.T) {
 	err = sharedDB.NewRaw("SELECT COUNT(*) FROM _jobs").Scan(context.Background(), &count)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
-
-	err = app.Shutdown(context.Background())
-	require.NoError(t, err)
 }
 
 func TestApp_Shutdown_ClosesSeparateDB(t *testing.T) {

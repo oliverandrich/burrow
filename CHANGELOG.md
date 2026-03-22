@@ -4,6 +4,14 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Added
+
+- **`PostConfigurable` interface** — new optional app interface for second-pass configuration after all `Configure()` calls complete; used by `contrib/jobs` to guarantee that `RegisterJobs()` runs after all apps are fully configured
+
+### Fixed
+
+- **Jobs: `RegisterJobs` timing** — `HasJobs.RegisterJobs()` is now called during `PostConfigure()` instead of `Configure()`, ensuring that apps can safely access state set in their own `Configure()` when registering job handlers (fixes [#4](https://github.com/oliverandrich/burrow/issues/4))
+
 ## 0.7.3 — 2026-03-22
 
 ### Changed

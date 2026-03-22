@@ -33,13 +33,14 @@ var htmlTemplateFS embed.FS
 type Option func(*App)
 
 // App implements the jobs contrib app.
-type App struct {
+type App struct { //nolint:govet // fieldalignment: readability over optimization
 	defaultDB  *bun.DB
 	ownDB      *bun.DB
 	repo       *Repository
 	registry   *burrow.Registry
 	handlers   map[string]burrow.JobHandlerFunc
 	retries    map[string]int
+	workerCfg  WorkerConfig
 	worker     *Worker
 	cancelFunc context.CancelFunc
 	jobsAdmin  *modeladmin.ModelAdmin[Job]
@@ -113,6 +114,18 @@ func (a *App) Configure(cmd *cli.Command) error {
 	a.repo = NewRepository(effectiveDB)
 	a.jobsAdmin = newJobsAdmin(effectiveDB, a.repo)
 
+	// Store worker config for PostConfigure (which starts the worker).
+	a.workerCfg = DefaultWorkerConfig()
+	a.workerCfg.NumWorkers = int(cmd.Int("jobs-workers"))
+	a.workerCfg.PollInterval = cmd.Duration("jobs-poll-interval")
+	a.workerCfg.RetryBaseDelay = cmd.Duration("jobs-retry-base-delay")
+	return nil
+}
+
+// PostConfigure discovers HasJobs implementors and starts the worker pool.
+// It runs after all apps have been configured, so apps can safely rely
+// on state set in their own Configure() when RegisterJobs is called.
+func (a *App) PostConfigure(_ *cli.Command) error {
 	// Discover HasJobs implementors and let them register their handlers.
 	if a.registry != nil {
 		for _, app := range a.registry.Apps() {
@@ -122,14 +135,9 @@ func (a *App) Configure(cmd *cli.Command) error {
 		}
 	}
 
-	cfg := DefaultWorkerConfig()
-	cfg.NumWorkers = int(cmd.Int("jobs-workers"))
-	cfg.PollInterval = cmd.Duration("jobs-poll-interval")
-	cfg.RetryBaseDelay = cmd.Duration("jobs-retry-base-delay")
-
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancelFunc = cancel
-	a.worker = NewWorker(a.repo, a.handlers, cfg)
+	a.worker = NewWorker(a.repo, a.handlers, a.workerCfg)
 
 	go a.worker.Start(ctx)
 	return nil
@@ -214,7 +222,7 @@ func (a *App) Shutdown(_ context.Context) error {
 }
 
 // Handle registers a handler function for a job type. Call this during
-// your app's RegisterJobs() phase, before Configure() starts the workers.
+// your app's RegisterJobs() phase, before PostConfigure() starts the workers.
 func (a *App) Handle(typeName string, fn burrow.JobHandlerFunc, opts ...burrow.JobOption) {
 	cfg := burrow.JobConfig{MaxRetries: 3}
 	for _, o := range opts {
@@ -312,13 +320,14 @@ func (a *App) TranslationFS() fs.FS { return translationFS }
 
 // Compile-time interface assertions.
 var (
-	_ burrow.App             = (*App)(nil)
-	_ burrow.Queue           = (*App)(nil)
-	_ burrow.Migratable      = (*App)(nil)
-	_ burrow.Configurable    = (*App)(nil)
-	_ burrow.HasShutdown     = (*App)(nil)
-	_ burrow.HasAdmin        = (*App)(nil)
-	_ burrow.HasTranslations = (*App)(nil)
-	_ burrow.HasTemplates    = (*App)(nil)
-	_ burrow.HasFuncMap      = (*App)(nil)
+	_ burrow.App              = (*App)(nil)
+	_ burrow.Queue            = (*App)(nil)
+	_ burrow.Migratable       = (*App)(nil)
+	_ burrow.Configurable     = (*App)(nil)
+	_ burrow.PostConfigurable = (*App)(nil)
+	_ burrow.HasShutdown      = (*App)(nil)
+	_ burrow.HasAdmin         = (*App)(nil)
+	_ burrow.HasTranslations  = (*App)(nil)
+	_ burrow.HasTemplates     = (*App)(nil)
+	_ burrow.HasFuncMap       = (*App)(nil)
 )

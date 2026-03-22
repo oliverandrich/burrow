@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v3"
 )
 
 // stubApp is a minimal App with no shutdown support.
@@ -77,4 +78,103 @@ func TestRegistryShutdown_SkipsNonImplementing(t *testing.T) {
 	err := reg.Shutdown(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, []string{"with-shutdown"}, order)
+}
+
+// configurableApp tracks Configure call order.
+type configurableApp struct { //nolint:govet // fieldalignment: readability over optimization
+	name  string
+	order *[]string
+}
+
+func (a *configurableApp) Name() string                { return a.name }
+func (a *configurableApp) Register(_ *AppConfig) error { return nil }
+func (a *configurableApp) Flags(_ func(string) cli.ValueSource) []cli.Flag {
+	return nil
+}
+func (a *configurableApp) Configure(_ *cli.Command) error {
+	*a.order = append(*a.order, a.name+".Configure")
+	return nil
+}
+
+// postConfigurableApp tracks both Configure and PostConfigure call order.
+type postConfigurableApp struct { //nolint:govet // fieldalignment: readability over optimization
+	name  string
+	order *[]string
+}
+
+func (a *postConfigurableApp) Name() string                { return a.name }
+func (a *postConfigurableApp) Register(_ *AppConfig) error { return nil }
+func (a *postConfigurableApp) Flags(_ func(string) cli.ValueSource) []cli.Flag {
+	return nil
+}
+func (a *postConfigurableApp) Configure(_ *cli.Command) error {
+	*a.order = append(*a.order, a.name+".Configure")
+	return nil
+}
+func (a *postConfigurableApp) PostConfigure(_ *cli.Command) error {
+	*a.order = append(*a.order, a.name+".PostConfigure")
+	return nil
+}
+
+func TestRegistryConfigure_PostConfigureRunsAfterAllConfigure(t *testing.T) {
+	var order []string
+	a1 := &configurableApp{name: "alpha", order: &order}
+	a2 := &postConfigurableApp{name: "beta", order: &order}
+	a3 := &configurableApp{name: "gamma", order: &order}
+
+	reg := NewRegistry()
+	reg.Add(a1)
+	reg.Add(a2)
+	reg.Add(a3)
+
+	err := reg.Configure(nil)
+	require.NoError(t, err)
+
+	// All Configure calls must happen before any PostConfigure call.
+	assert.Equal(t, []string{
+		"alpha.Configure",
+		"beta.Configure",
+		"gamma.Configure",
+		"beta.PostConfigure",
+	}, order)
+}
+
+func TestRegistryConfigure_PostConfigureError(t *testing.T) {
+	var order []string
+	a1 := &configurableApp{name: "alpha", order: &order}
+
+	reg := NewRegistry()
+	reg.Add(a1)
+	reg.Add(&postConfigErrorApp{name: "failing"})
+
+	err := reg.Configure(nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "post-configure app \"failing\"")
+}
+
+// postConfigErrorApp returns an error from PostConfigure.
+type postConfigErrorApp struct {
+	name string
+}
+
+func (a *postConfigErrorApp) Name() string                                    { return a.name }
+func (a *postConfigErrorApp) Register(_ *AppConfig) error                     { return nil }
+func (a *postConfigErrorApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
+func (a *postConfigErrorApp) Configure(_ *cli.Command) error                  { return nil }
+func (a *postConfigErrorApp) PostConfigure(_ *cli.Command) error              { return errors.New("boom") }
+
+func TestRegistryConfigure_SkipsNonPostConfigurable(t *testing.T) {
+	var order []string
+	a1 := &configurableApp{name: "alpha", order: &order}
+	a2 := &configurableApp{name: "beta", order: &order}
+
+	reg := NewRegistry()
+	reg.Add(a1)
+	reg.Add(a2)
+
+	err := reg.Configure(nil)
+	require.NoError(t, err)
+
+	// Only Configure calls, no PostConfigure.
+	assert.Equal(t, []string{"alpha.Configure", "beta.Configure"}, order)
 }

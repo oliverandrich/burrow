@@ -313,6 +313,7 @@ Your app can implement any combination of these interfaces:
 | `HasStaticFiles` | `StaticFS() (prefix string, fsys fs.FS)` | Contribute static assets |
 | `HasTranslations` | `TranslationFS() fs.FS` | Contribute translation files |
 | `HasJobs` | `RegisterJobs(q Queue)` | Register background job handlers |
+| `PostConfigurable` | `PostConfigure(cmd *cli.Command) error` | Second-pass configuration after all apps are configured |
 | `HasShutdown` | `Shutdown(ctx context.Context) error` | Clean up on shutdown |
 
 See [Core Interfaces](../reference/interfaces.md) for the full reference.

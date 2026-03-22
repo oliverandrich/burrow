@@ -417,13 +417,28 @@ type HasJobs interface {
 }
 ```
 
-Registers background job handlers with the job queue. The queue implementation (e.g., `contrib/jobs`) discovers all `HasJobs` apps during `Configure()` and calls `RegisterJobs` on each one. Use `q.Handle()` to register named handlers:
+Registers background job handlers with the job queue. The queue implementation (e.g., `contrib/jobs`) discovers all `HasJobs` apps during its `PostConfigure()` phase and calls `RegisterJobs` on each one. Because `PostConfigure()` runs after all `Configure()` calls, your app can safely use state set in `Configure()` inside `RegisterJobs`.
+
+Use `q.Handle()` to register named handlers and save the queue reference for later enqueueing:
 
 ```go
 func (a *App) RegisterJobs(q burrow.Queue) {
-    q.Handle("notes.cleanup", burrow.JobHandlerFunc(a.handleCleanup))
+    q.Handle("notes.cleanup", a.handleCleanup)
+    a.jobs = q
 }
 ```
+
+### PostConfigurable
+
+```go
+type PostConfigurable interface {
+    PostConfigure(cmd *cli.Command) error
+}
+```
+
+Runs a second configuration pass after all `Configurable.Configure()` calls have completed. This is useful when an app needs to interact with other apps' state that is only available after `Configure()` — for example, `contrib/jobs` uses `PostConfigure()` to discover `HasJobs` handlers and start the worker pool.
+
+Most apps do not need this interface. Prefer `Configurable` unless you specifically need cross-app coordination that depends on post-Configure state.
 
 ### HasShutdown
 

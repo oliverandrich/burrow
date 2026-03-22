@@ -21,7 +21,7 @@ srv := burrow.NewServer(
 
 ## Registering Job Handlers
 
-Register handlers during your app's `Register()` phase — before `Configure()` starts the workers. The handler type is `burrow.JobHandlerFunc`:
+The recommended way to register handlers is via the `burrow.HasJobs` interface. Implement `RegisterJobs(q burrow.Queue)` on your app — the jobs app discovers all `HasJobs` implementors automatically during its `PostConfigure()` phase:
 
 ```go
 // Defined in the burrow root package:
@@ -29,11 +29,8 @@ Register handlers during your app's `Register()` phase — before `Configure()` 
 ```
 
 ```go
-func (a *App) Register(cfg *burrow.AppConfig) error {
-    app, _ := cfg.Registry.Get("jobs")
-    jobsApp := app.(*jobs.App)
-
-    jobsApp.Handle("send-welcome-email", func(ctx context.Context, payload []byte) error {
+func (a *App) RegisterJobs(q burrow.Queue) {
+    q.Handle("send-welcome-email", func(ctx context.Context, payload []byte) error {
         var data struct{ Email string }
         if err := json.Unmarshal(payload, &data); err != nil {
             return fmt.Errorf("invalid payload: %w", err)
@@ -42,11 +39,14 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
     })
 
     // With custom max retries (default: 3)
-    jobsApp.Handle("process-upload", processUpload, burrow.WithMaxRetries(5))
+    q.Handle("process-upload", a.processUpload, burrow.WithMaxRetries(5))
 
-    return nil
+    // Save the queue reference for enqueueing later
+    a.jobs = q
 }
 ```
+
+Because `PostConfigure()` runs after all `Configure()` calls, your app can safely use state set in `Configure()` inside `RegisterJobs` (e.g., services, config values, clients).
 
 ### Accessing Job Data in Handlers
 

@@ -18,6 +18,8 @@ type emailJobPayload struct {
 }
 
 // RegisterJobs registers auth email job handlers with the queue.
+// Skipped when no email service is configured (WithEmailService was not called),
+// since there is nothing to deliver.
 func (a *App) RegisterJobs(q burrow.Queue) {
 	if a.emailService == nil {
 		return
