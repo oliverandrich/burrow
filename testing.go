@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -14,14 +15,21 @@ import (
 	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
-// TestDB returns an in-memory SQLite database wrapped in a [bun.DB].
-// The database is automatically closed when the test finishes.
+// TestDB returns a file-backed SQLite database wrapped in a [bun.DB] for
+// testing. The database is created in [testing.T.TempDir] and closed
+// automatically when the test finishes.
+//
+// A file-backed database avoids the data-loss hazard of :memory: databases
+// whose content disappears when the connection pool closes and reopens a
+// connection.
 func TestDB(t *testing.T) *bun.DB {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
+	dsn := filepath.Join(t.TempDir(), "test.db") + "?_pragma=foreign_keys(1)"
+	sqldb, err := sql.Open(sqliteshim.ShimName, dsn)
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}
+	sqldb.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = sqldb.Close() })
 	return bun.NewDB(sqldb, sqlitedialect.New())
 }

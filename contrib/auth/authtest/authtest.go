@@ -9,7 +9,6 @@ import (
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
-	"github.com/oliverandrich/burrow/internal/sqlitetest"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
 )
@@ -21,7 +20,7 @@ var userCounter atomic.Int64
 func NewDB(t *testing.T) *bun.DB {
 	t.Helper()
 
-	db := sqlitetest.OpenDB(t)
+	db := burrow.TestDB(t)
 
 	authApp := auth.New()
 	err := burrow.RunAppMigrations(t.Context(), db, authApp.Name(), authApp.MigrationFS())

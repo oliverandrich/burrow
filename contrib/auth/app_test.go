@@ -18,7 +18,6 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
-	"github.com/oliverandrich/burrow/internal/sqlitetest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,7 +87,7 @@ func TestMigrationFS(t *testing.T) {
 
 func openTestDB(t *testing.T) *bun.DB {
 	t.Helper()
-	db := sqlitetest.OpenDB(t)
+	db := burrow.TestDB(t)
 
 	app := New()
 	err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())

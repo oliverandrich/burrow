@@ -4,6 +4,13 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.7.3 — 2026-03-22
+
+### Changed
+
+- **`burrow.TestDB` uses file-backed SQLite** — `TestDB(t)` now creates the database in `t.TempDir()` instead of using `file::memory:`, preventing data loss when the connection pool recycles connections
+- **Removed `internal/sqlitetest`** — all internal test code now uses the public `burrow.TestDB(t)` helper
+
 ## 0.7.2 — 2026-03-21
 
 ### Fixed

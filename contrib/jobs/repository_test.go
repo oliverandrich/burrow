@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/internal/sqlitetest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
@@ -14,7 +13,7 @@ import (
 
 func testDB(t *testing.T) *bun.DB {
 	t.Helper()
-	db := sqlitetest.OpenDB(t)
+	db := burrow.TestDB(t)
 
 	app := New()
 	err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())

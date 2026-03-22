@@ -35,7 +35,7 @@ Burrow provides shared test helpers in the root package. These are prefixed with
 
 ### TestDB
 
-`burrow.TestDB` returns an in-memory SQLite database wrapped in a `*bun.DB`. The database is automatically closed when the test finishes:
+`burrow.TestDB` returns a file-backed SQLite database wrapped in a `*bun.DB`. The database is created in `t.TempDir()` and closed automatically when the test finishes:
 
 ```go
 func TestListNotes(t *testing.T) {
@@ -49,9 +49,6 @@ func TestListNotes(t *testing.T) {
     // ... test your handlers/repositories with db
 }
 ```
-
-!!! tip "Shared cache for concurrent access"
-    `TestDB` uses `file::memory:` with foreign keys enabled. If your tests need concurrent access from multiple goroutines, use `file::memory:?cache=shared` instead by creating your own database setup.
 
 ### TestErrorExecContext
 
