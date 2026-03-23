@@ -42,6 +42,26 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
+The `data` parameter is a `map[string]any`. You don't need to flatten structs into individual map keys — pass them as values and access their fields directly in templates:
+
+```go
+return burrow.Render(w, r, http.StatusOK, "articles/detail", map[string]any{
+    "Article": article,
+    "Related": relatedArticles,
+})
+```
+
+```html
+<h1>{{ .Article.Title }}</h1>
+<p>{{ .Article.Description }}</p>
+
+{{ range .Related }}
+    <a href="{{ .URL }}">{{ .Title }}</a>
+{{ end }}
+```
+
+Go's `html/template` can access exported struct fields, methods, and pointer fields — so there's no need to convert models to maps.
+
 `Render` does the following:
 
 1. Executes the named template with the provided data, producing an HTML fragment
