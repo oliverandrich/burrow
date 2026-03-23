@@ -41,6 +41,10 @@ coverage:
     go tool cover -html=coverage.out -o coverage.html
     echo "Coverage report: coverage.html"
 
+# List active beans (excludes completed and scrapped)
+beans:
+    beans list --no-status completed --no-status scrapped
+
 # Check that all required dev tools are installed
 setup:
     #!/usr/bin/env bash
