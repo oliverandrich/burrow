@@ -147,6 +147,56 @@ r.Get("/notes/{id}", burrow.Handle(func(w http.ResponseWriter, r *http.Request) 
 }))
 ```
 
+### Regex Constraints
+
+Add regex patterns to URL parameters to restrict matching at the router level:
+
+```go
+r.Get("/notes/{id:[0-9]+}", burrow.Handle(a.handlers.Detail))
+```
+
+With this pattern, `/notes/abc` returns 404 before the handler runs — only numeric IDs reach the handler.
+
+### Parsing Numeric URL Parameters
+
+Burrow provides two helpers for the common case of parsing numeric URL parameters:
+
+**`URLParamInt64`** — returns an error on invalid input:
+
+```go
+func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
+    id, err := burrow.URLParamInt64(r, "id")
+    if err != nil {
+        return err // 400 Bad Request
+    }
+    // ...
+}
+```
+
+**`MustURLParamInt64`** — panics on invalid input, for use with regex-constrained routes:
+
+```go
+// Route: r.Get("/notes/{id:[0-9]+}", ...)
+func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
+    id := burrow.MustURLParamInt64(r, "id") // safe — regex guarantees numeric
+    // ...
+}
+```
+
+Use `MustURLParamInt64` when the route pattern already guarantees a valid integer (e.g., `{id:[0-9]+}`). Use `URLParamInt64` when you need graceful error handling for routes without constraints.
+
+!!! tip "Before and After"
+    ```go
+    // Before — 4 lines of boilerplate per handler
+    id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+    if err != nil {
+        return burrow.NewHTTPError(http.StatusBadRequest, "invalid id")
+    }
+
+    // After — 1 line with regex-constrained route
+    id := burrow.MustURLParamInt64(r, "id")
+    ```
+
 Chi also supports catch-all parameters with `*`:
 
 ```go

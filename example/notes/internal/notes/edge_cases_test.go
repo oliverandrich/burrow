@@ -244,7 +244,7 @@ func TestDeleteNoteHandlerNonExistentNote(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Delete("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Delete(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

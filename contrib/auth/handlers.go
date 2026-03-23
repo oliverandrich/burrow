@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/oliverandrich/burrow"
@@ -428,7 +427,7 @@ func (h *Handlers) AddCredentialFinish(w http.ResponseWriter, r *http.Request) e
 // DeleteCredential removes a credential.
 func (h *Handlers) DeleteCredential(w http.ResponseWriter, r *http.Request) error {
 	user := MustCurrentUser(r.Context())
-	credID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	credID, err := burrow.URLParamInt64(r, "id")
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid credential id")
 	}

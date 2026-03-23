@@ -132,8 +132,8 @@ func (a *App) Routes(r chi.Router) {
 		r.Get("/", burrow.Handle(h.List))
 		r.Get("/new", burrow.Handle(h.New))
 		r.Post("/", burrow.Handle(h.Create))
-		r.Get("/{id}/edit", burrow.Handle(h.Edit))
-		r.Post("/{id}", burrow.Handle(h.Update))
-		r.Delete("/{id}", burrow.Handle(h.Delete))
+		r.Get("/{id:[0-9]+}/edit", burrow.Handle(h.Edit))
+		r.Post("/{id:[0-9]+}", burrow.Handle(h.Update))
+		r.Delete("/{id:[0-9]+}", burrow.Handle(h.Delete))
 	})
 }

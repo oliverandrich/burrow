@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -423,6 +424,83 @@ func TestHandleUnhandledErrorIsLogged(t *testing.T) {
 	assert.Contains(t, buf.String(), "unhandled error")
 	assert.Contains(t, buf.String(), "unexpected failure")
 	assert.Contains(t, buf.String(), "/submit")
+}
+
+// --- URLParamInt64 tests ---
+
+func TestURLParamInt64Valid(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/42", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "42")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	id, err := URLParamInt64(req, "id")
+	require.NoError(t, err)
+	assert.Equal(t, int64(42), id)
+}
+
+func TestURLParamInt64InvalidString(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/abc", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "abc")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	_, err := URLParamInt64(req, "id")
+	require.Error(t, err)
+
+	var httpErr *HTTPError
+	require.ErrorAs(t, err, &httpErr)
+	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+	assert.Contains(t, httpErr.Message, "abc")
+}
+
+func TestURLParamInt64Empty(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	_, err := URLParamInt64(req, "id")
+	require.Error(t, err)
+
+	var httpErr *HTTPError
+	require.ErrorAs(t, err, &httpErr)
+	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+}
+
+func TestURLParamInt64Missing(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
+	rctx := chi.NewRouteContext()
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	_, err := URLParamInt64(req, "id")
+	require.Error(t, err)
+
+	var httpErr *HTTPError
+	require.ErrorAs(t, err, &httpErr)
+	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+}
+
+func TestMustURLParamInt64Valid(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/7", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "7")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	id := MustURLParamInt64(req, "id")
+	assert.Equal(t, int64(7), id)
+}
+
+func TestMustURLParamInt64PanicsOnInvalid(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/abc", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "abc")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	assert.PanicsWithValue(t,
+		`burrow: MustURLParamInt64("id") failed: invalid id: "abc" — is the route using a numeric regex constraint?`,
+		func() { MustURLParamInt64(req, "id") },
+	)
 }
 
 // Benchmarks

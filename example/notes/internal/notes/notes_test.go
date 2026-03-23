@@ -572,7 +572,7 @@ func TestEditNoteHTMX(t *testing.T) {
 	h := NewHandlers(repo)
 
 	r := chi.NewRouter()
-	r.Get("/notes/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/notes/{id:[0-9]+}/edit", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Edit(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -615,7 +615,7 @@ func TestEditNoteNotFound(t *testing.T) {
 	h := NewHandlers(repo)
 
 	r := chi.NewRouter()
-	r.Get("/notes/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/notes/{id:[0-9]+}/edit", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Edit(w, r)
 		if err != nil {
 			var httpErr *burrow.HTTPError
@@ -655,7 +655,7 @@ func TestUpdateNoteHTMX(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	r.Post("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Update(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -699,7 +699,7 @@ func TestUpdateNoteNonHTMX(t *testing.T) {
 	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
 	r.Use(msgMW)
-	r.Post("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Update(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -739,7 +739,7 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	r.Post("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Update(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -788,7 +788,7 @@ func TestUpdateNoteNotFound(t *testing.T) {
 	h := NewHandlers(repo)
 
 	r := chi.NewRouter()
-	r.Post("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Update(w, r)
 		if err != nil {
 			var httpErr *burrow.HTTPError
@@ -831,7 +831,7 @@ func TestDeleteNoteHandler(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Delete("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Delete(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -863,14 +863,14 @@ func TestDeleteNoteUnauthenticatedPanics(t *testing.T) {
 	})
 }
 
-func TestDeleteNoteInvalidID(t *testing.T) {
+func TestDeleteNoteInvalidIDNotMatched(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
 	h := NewHandlers(repo)
 
 	r := chi.NewRouter()
-	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Delete("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Delete(w, r)
 		if err != nil {
 			var httpErr *burrow.HTTPError
@@ -880,12 +880,13 @@ func TestDeleteNoteInvalidID(t *testing.T) {
 		}
 	})
 
+	// With regex-constrained routes, non-numeric IDs don't match the route at all.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/abc", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 // --- ModelAdmin integration tests ---

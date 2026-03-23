@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/htmx"
@@ -129,11 +128,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 // Edit renders the edit form pre-filled with an existing note.
 func (h *Handlers) Edit(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
-
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		return burrow.NewHTTPError(http.StatusBadRequest, "invalid note id")
-	}
+	id := burrow.MustURLParamInt64(r, "id")
 
 	note, err := h.repo.GetByID(r.Context(), id, user.ID)
 	if err != nil {
@@ -155,11 +150,7 @@ func (h *Handlers) Edit(w http.ResponseWriter, r *http.Request) error {
 // Update binds, validates, and updates an existing note.
 func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
-
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		return burrow.NewHTTPError(http.StatusBadRequest, "invalid note id")
-	}
+	id := burrow.MustURLParamInt64(r, "id")
 
 	note, err := h.repo.GetByID(r.Context(), id, user.ID)
 	if err != nil {
@@ -208,11 +199,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 // Delete removes a note owned by the authenticated user.
 func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
-
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		return burrow.NewHTTPError(http.StatusBadRequest, "invalid note id")
-	}
+	id := burrow.MustURLParamInt64(r, "id")
 
 	if err := h.repo.Delete(r.Context(), id, user.ID); err != nil {
 		return err
