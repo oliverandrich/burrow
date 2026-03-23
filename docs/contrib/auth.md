@@ -195,6 +195,36 @@ user := auth.CurrentUser(r.Context())    // *auth.User or nil
 if auth.IsAuthenticated(r.Context()) { ... }
 ```
 
+### MustCurrentUser
+
+`MustCurrentUser` returns the authenticated `*User` from the context or panics if no user is present. Use it **only** in handlers that are protected by `RequireAuth` middleware, where the nil case is unreachable.
+
+This eliminates the repetitive nil-check boilerplate:
+
+**Before:**
+
+```go
+func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+    user := auth.CurrentUser(r.Context())
+    if user == nil {
+        return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+    }
+    // use user ...
+}
+```
+
+**After:**
+
+```go
+func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+    user := auth.MustCurrentUser(r.Context())
+    // use user ...
+}
+```
+
+!!! warning
+    `MustCurrentUser` panics with a descriptive message if called without an authenticated user in the context. Only use it behind `RequireAuth` middleware. For handlers that may be accessed without authentication, continue using `CurrentUser` with a nil check.
+
 In templates (via `HasRequestFuncMap`):
 
 ```html

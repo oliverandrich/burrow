@@ -333,7 +333,7 @@ func TestListNotesNormalRequestUsesLayout(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "<layout>")
 }
 
-func TestListNotesUnauthenticated(t *testing.T) {
+func TestListNotesUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
@@ -341,12 +341,9 @@ func TestListNotesUnauthenticated(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	rec := httptest.NewRecorder()
 
-	err := h.List(rec, req)
-
-	require.Error(t, err)
-	var httpErr *burrow.HTTPError
-	require.ErrorAs(t, err, &httpErr)
-	assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+	assert.Panics(t, func() {
+		_ = h.List(rec, req)
+	})
 }
 
 // --- New handler ---
@@ -375,7 +372,7 @@ func TestNewNoteHandler(t *testing.T) {
 	assert.Contains(t, body, `name="content"`)
 }
 
-func TestNewNoteUnauthenticated(t *testing.T) {
+func TestNewNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
@@ -383,12 +380,9 @@ func TestNewNoteUnauthenticated(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/new", nil)
 	rec := httptest.NewRecorder()
 
-	err := h.New(rec, req)
-
-	require.Error(t, err)
-	var httpErr *burrow.HTTPError
-	require.ErrorAs(t, err, &httpErr)
-	assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+	assert.Panics(t, func() {
+		_ = h.New(rec, req)
+	})
 }
 
 // --- Create handler ---
@@ -551,7 +545,7 @@ func TestCreateNoteValidationErrorNonHTMX(t *testing.T) {
 	assert.Contains(t, body, `action="/notes"`)
 }
 
-func TestCreateNoteUnauthenticated(t *testing.T) {
+func TestCreateNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
@@ -561,12 +555,9 @@ func TestCreateNoteUnauthenticated(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 
-	err := h.Create(rec, req)
-
-	require.Error(t, err)
-	var httpErr *burrow.HTTPError
-	require.ErrorAs(t, err, &httpErr)
-	assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+	assert.Panics(t, func() {
+		_ = h.Create(rec, req)
+	})
 }
 
 // --- Edit handler ---
@@ -604,7 +595,7 @@ func TestEditNoteHTMX(t *testing.T) {
 	assert.Contains(t, body, fmt.Sprintf(`hx-post="/notes/%d"`, note.ID))
 }
 
-func TestEditNoteUnauthenticated(t *testing.T) {
+func TestEditNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
@@ -612,12 +603,9 @@ func TestEditNoteUnauthenticated(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/1/edit", nil)
 	rec := httptest.NewRecorder()
 
-	err := h.Edit(rec, req)
-
-	require.Error(t, err)
-	var httpErr *burrow.HTTPError
-	require.ErrorAs(t, err, &httpErr)
-	assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+	assert.Panics(t, func() {
+		_ = h.Edit(rec, req)
+	})
 }
 
 func TestEditNoteNotFound(t *testing.T) {
@@ -778,7 +766,7 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 	assert.Equal(t, "Original", found.Title)
 }
 
-func TestUpdateNoteUnauthenticated(t *testing.T) {
+func TestUpdateNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
@@ -788,12 +776,9 @@ func TestUpdateNoteUnauthenticated(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 
-	err := h.Update(rec, req)
-
-	require.Error(t, err)
-	var httpErr *burrow.HTTPError
-	require.ErrorAs(t, err, &httpErr)
-	assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+	assert.Panics(t, func() {
+		_ = h.Update(rec, req)
+	})
 }
 
 func TestUpdateNoteNotFound(t *testing.T) {
@@ -865,7 +850,7 @@ func TestDeleteNoteHandler(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "notes-deleted")
 }
 
-func TestDeleteNoteUnauthenticated(t *testing.T) {
+func TestDeleteNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
@@ -873,12 +858,9 @@ func TestDeleteNoteUnauthenticated(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/1", nil)
 	rec := httptest.NewRecorder()
 
-	err := h.Delete(rec, req)
-
-	require.Error(t, err)
-	var httpErr *burrow.HTTPError
-	require.ErrorAs(t, err, &httpErr)
-	assert.Equal(t, http.StatusUnauthorized, httpErr.Code)
+	assert.Panics(t, func() {
+		_ = h.Delete(rec, req)
+	})
 }
 
 func TestDeleteNoteInvalidID(t *testing.T) {

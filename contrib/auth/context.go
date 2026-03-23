@@ -21,6 +21,16 @@ func CurrentUser(ctx context.Context) *User {
 	return nil
 }
 
+// MustCurrentUser returns the authenticated user from the context.
+// It panics if no user is present — only use in handlers protected by [RequireAuth] middleware.
+func MustCurrentUser(ctx context.Context) *User {
+	user := CurrentUser(ctx)
+	if user == nil {
+		panic("auth: MustCurrentUser called without authenticated user — is RequireAuth middleware applied?")
+	}
+	return user
+}
+
 // UserFromContext is a deprecated alias for [CurrentUser].
 //
 //go:fix inline

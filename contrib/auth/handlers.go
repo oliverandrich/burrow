@@ -383,7 +383,7 @@ func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) error {
 
 // CredentialsPage renders the credentials management page.
 func (h *Handlers) CredentialsPage(w http.ResponseWriter, r *http.Request) error {
-	user := CurrentUser(r.Context())
+	user := MustCurrentUser(r.Context())
 	creds, err := h.repo.GetCredentialsByUserID(r.Context(), user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to get credentials", err)
@@ -393,7 +393,7 @@ func (h *Handlers) CredentialsPage(w http.ResponseWriter, r *http.Request) error
 
 // AddCredentialBegin starts the process of adding a new credential.
 func (h *Handlers) AddCredentialBegin(w http.ResponseWriter, r *http.Request) error {
-	user := CurrentUser(r.Context())
+	user := MustCurrentUser(r.Context())
 	options, sessionData, err := h.webauthn.WebAuthn().BeginRegistration(user)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to begin registration", err)
@@ -405,7 +405,7 @@ func (h *Handlers) AddCredentialBegin(w http.ResponseWriter, r *http.Request) er
 
 // AddCredentialFinish completes adding a new credential.
 func (h *Handlers) AddCredentialFinish(w http.ResponseWriter, r *http.Request) error {
-	user := CurrentUser(r.Context())
+	user := MustCurrentUser(r.Context())
 	sessionData, err := h.webauthn.GetRegistrationSession(user.ID)
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "registration session expired")
@@ -427,7 +427,7 @@ func (h *Handlers) AddCredentialFinish(w http.ResponseWriter, r *http.Request) e
 
 // DeleteCredential removes a credential.
 func (h *Handlers) DeleteCredential(w http.ResponseWriter, r *http.Request) error {
-	user := CurrentUser(r.Context())
+	user := MustCurrentUser(r.Context())
 	credID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid credential id")
@@ -515,7 +515,7 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 // RegenerateRecoveryCodes generates new recovery codes and invalidates old ones.
 // Stores codes in session and returns a redirect to the recovery codes page.
 func (h *Handlers) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
-	user := CurrentUser(r.Context())
+	user := MustCurrentUser(r.Context())
 	codes, err := h.generateAndStoreRecoveryCodes(r.Context(), user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to regenerate codes", err)
