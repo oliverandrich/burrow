@@ -51,6 +51,22 @@ func (a *App) Broker() *EventBroker {
 	return a.broker
 }
 
+// BrokerFromRegistry retrieves the EventBroker from the given registry.
+// Returns nil if the SSE app is not registered or not yet configured.
+// Use this for non-HTTP code (background jobs, CLI commands) that cannot
+// access the broker via request context.
+func BrokerFromRegistry(registry *burrow.Registry) *EventBroker {
+	app, ok := registry.Get("sse")
+	if !ok {
+		return nil
+	}
+	sseApp, ok := app.(*App)
+	if !ok {
+		return nil
+	}
+	return sseApp.Broker()
+}
+
 // Middleware injects the broker into every request context.
 func (a *App) Middleware() []func(http.Handler) http.Handler {
 	return []func(http.Handler) http.Handler{

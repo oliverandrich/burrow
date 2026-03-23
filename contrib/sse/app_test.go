@@ -55,6 +55,34 @@ func TestBroker_Missing(t *testing.T) {
 	assert.Nil(t, got)
 }
 
+func TestBrokerFromRegistry_NotRegistered(t *testing.T) {
+	registry := burrow.NewRegistry()
+	got := BrokerFromRegistry(registry)
+	assert.Nil(t, got)
+}
+
+func TestBrokerFromRegistry_BeforeConfigure(t *testing.T) {
+	registry := burrow.NewRegistry()
+	registry.Add(New())
+
+	got := BrokerFromRegistry(registry)
+	assert.Nil(t, got)
+}
+
+func TestBrokerFromRegistry_AfterConfigure(t *testing.T) {
+	app := New()
+	registry := burrow.NewRegistry()
+	registry.Add(app)
+
+	// Simulate Configure by setting the broker directly.
+	app.broker = NewEventBroker(16)
+	defer app.broker.Close()
+
+	got := BrokerFromRegistry(registry)
+	require.NotNil(t, got)
+	assert.Equal(t, app.broker, got)
+}
+
 func TestApp_MiddlewareInjectsBroker(t *testing.T) {
 	app := New()
 	app.broker = NewEventBroker(16)

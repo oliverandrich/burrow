@@ -128,6 +128,26 @@ broker.Publish("alerts", sse.Event{Data: "fire!"})
 
 When a client's buffer is full, new events are silently dropped for that client. The publisher is never blocked.
 
+## Accessing the Broker Outside HTTP Handlers
+
+The context-based `sse.Broker(ctx)` helper requires a request context with injected middleware. For background jobs, CLI commands, or other non-HTTP code, use `BrokerFromRegistry` instead:
+
+```go
+func (h *NotificationJobHandler) Run(ctx context.Context) error {
+    broker := sse.BrokerFromRegistry(h.registry)
+    if broker == nil {
+        return nil // SSE not available, skip notification
+    }
+
+    broker.Publish("notifications", sse.Event{
+        Data: "<p>Background task completed!</p>",
+    })
+    return nil
+}
+```
+
+`BrokerFromRegistry` returns `nil` if the SSE app is not registered or has not been configured yet — always check for `nil` before using the broker.
+
 ## Advanced: Explicit Broker
 
 For cases where you need a standalone broker (e.g., in tests or with multiple brokers), you can create one explicitly and pass it to `Handler` / `HandlerFunc` directly:

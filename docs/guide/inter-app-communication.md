@@ -76,6 +76,28 @@ session.Delete(w, r, "theme")
 session.Clear(w, r)
 ```
 
+## Using the SSE Broker from Non-HTTP Code
+
+The SSE broker is normally accessed via `sse.Broker(ctx)` in request handlers. For background jobs and other non-HTTP code, use `sse.BrokerFromRegistry`:
+
+```go
+import "github.com/oliverandrich/burrow/contrib/sse"
+
+func (h *MyJobHandler) Run(ctx context.Context) error {
+    broker := sse.BrokerFromRegistry(h.registry)
+    if broker == nil {
+        return nil // SSE not available
+    }
+
+    broker.Publish("updates", sse.Event{
+        Data: "<span>Job finished</span>",
+    })
+    return nil
+}
+```
+
+This avoids manual type assertions on the registry entry and returns `nil` safely when the SSE app is missing or not yet configured.
+
 ## Patterns
 
 **Repository sharing** — expose a `Repo()` method on your app and let other apps access it via type assertion through the registry.
