@@ -239,7 +239,7 @@ func TestRenderError_JSONForAPIRequest(t *testing.T) {
 }
 
 func TestRenderError_WithTemplate(t *testing.T) {
-	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "error/404" {
 			return template.HTML(fmt.Sprintf("<h1>%d - %s - %s</h1>", data["Code"], data["Title"], data["Message"])), nil
 		}
@@ -259,7 +259,7 @@ func TestRenderError_WithTemplate(t *testing.T) {
 }
 
 func TestRenderError_SkipsAppLayout(t *testing.T) {
-	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		switch name {
 		case "error/500":
 			return template.HTML(fmt.Sprintf("<p>%s</p>", data["Message"])), nil
@@ -284,7 +284,7 @@ func TestRenderError_SkipsAppLayout(t *testing.T) {
 }
 
 func TestRenderError_HTMXRequestGetsFragmentOnly(t *testing.T) {
-	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		switch name {
 		case "error/404":
 			return template.HTML(fmt.Sprintf("<p>%s</p>", data["Message"])), nil
@@ -309,7 +309,7 @@ func TestRenderError_HTMXRequestGetsFragmentOnly(t *testing.T) {
 }
 
 func TestHandle_UsesRenderError(t *testing.T) {
-	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "error/403" {
 			return template.HTML(fmt.Sprintf("<h1>%d</h1>", data["Code"])), nil
 		}

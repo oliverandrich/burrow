@@ -38,7 +38,7 @@ func TestDB(t *testing.T) *bun.DB {
 // renders error templates as "<code>: <message>". Use this in tests that
 // trigger error responses through [Handle] or [RenderError].
 func TestErrorExecContext(ctx context.Context) context.Context {
-	exec := TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if strings.HasPrefix(name, "error/") {
 			return template.HTML(fmt.Sprintf("%d: %s", data["Code"], data["Message"])), nil //nolint:gosec // test helper
 		}

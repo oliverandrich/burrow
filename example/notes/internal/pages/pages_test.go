@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -49,7 +50,7 @@ func TestTranslationFS(t *testing.T) {
 }
 
 func TestHome_UsesRender(t *testing.T) {
-	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := burrow.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			return template.HTML("<layout>" + string(data["Content"].(template.HTML)) + "</layout>"), nil
 		}
@@ -128,7 +129,7 @@ func TestRegister_RegistersIcons(t *testing.T) {
 func TestRoutes_RegistersHomeRoute(t *testing.T) {
 	app := New()
 
-	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := burrow.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			return template.HTML(string(data["Content"].(template.HTML))), nil
 		}

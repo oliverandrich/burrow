@@ -263,7 +263,7 @@ func TestRequestFuncMap(t *testing.T) {
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		addErr = Add(w, r, Info, "hello from funcmap")
 
-		fm := app.RequestFuncMap(r)
+		fm := app.RequestFuncMap(r.Context())
 		assert.Contains(t, fm, "messages")
 
 		fn := fm["messages"].(func() []Message)
@@ -286,7 +286,7 @@ func TestRequestFuncMapEmpty(t *testing.T) {
 	mw := app.Middleware()[0]
 
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fm := app.RequestFuncMap(r)
+		fm := app.RequestFuncMap(r.Context())
 		fn := fm["messages"].(func() []Message)
 		msgs := fn()
 		assert.Nil(t, msgs, "should return nil when no messages exist")

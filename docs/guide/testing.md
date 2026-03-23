@@ -510,7 +510,7 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
     })
     require.NoError(t, err)
 
-    return func(r *http.Request, name string, data map[string]any) (template.HTML, error) {
+    return func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
         var buf strings.Builder
         if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
             return "", err
@@ -523,11 +523,10 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 Inject it into the request context:
 
 ```go
-func injectTemplateExecutor(t *testing.T, req *http.Request) *http.Request {
+func injectTemplateExecutor(t *testing.T, ctx context.Context) context.Context {
     t.Helper()
     exec := testTemplateExecutor(t)
-    ctx := burrow.WithTemplateExecutor(req.Context(), exec)
-    return req.WithContext(ctx)
+    return burrow.WithTemplateExecutor(ctx, exec)
 }
 ```
 

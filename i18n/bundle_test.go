@@ -113,7 +113,7 @@ func TestRequestFuncMap(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = req.WithContext(ctx)
 
-	fm := b.RequestFuncMap(req)
+	fm := b.RequestFuncMap(req.Context())
 
 	tFunc := fm["t"].(func(string) string)
 	assert.Equal(t, "Hallo", tFunc("hello"))
@@ -204,7 +204,7 @@ func TestRequestFuncMapLang(t *testing.T) {
 	ctx := b.WithLocale(context.Background(), "de")
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 
-	fm := b.RequestFuncMap(req)
+	fm := b.RequestFuncMap(req.Context())
 	langFunc := fm["lang"].(func() string)
 	assert.Equal(t, "de", langFunc())
 }

@@ -105,8 +105,7 @@ func TestCsrfHxHeadersFallbackRendersCleanBody(t *testing.T) {
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	html, err := s.executeTemplate(r, "test/page", nil)
+	html, err := s.executeTemplate(t.Context(), "test/page", nil)
 	require.NoError(t, err)
 	// Clean body tag when csrf is not registered.
 	assert.Equal(t, template.HTML("<body>"), html)
@@ -125,7 +124,7 @@ func TestCsrfTokenFallbackOverriddenByRequestFuncMap(t *testing.T) {
 	app := &templateRequestFuncMapApp{
 		name:  "csrf",
 		tplFS: tplFS,
-		rfm: func(_ *http.Request) template.FuncMap {
+		rfm: func(_ context.Context) template.FuncMap {
 			return template.FuncMap{
 				"csrfToken":     func() string { return "real-token" },
 				"csrfHxHeaders": func() template.HTMLAttr { return ` hx-headers='{"X-CSRF-Token":"real-token"}'` },
@@ -138,8 +137,7 @@ func TestCsrfTokenFallbackOverriddenByRequestFuncMap(t *testing.T) {
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	html, err := s.executeTemplate(r, "test/page", nil)
+	html, err := s.executeTemplate(t.Context(), "test/page", nil)
 	require.NoError(t, err)
 	assert.Equal(t, template.HTML(`<body hx-headers='{"X-CSRF-Token":"real-token"}'>real-token`), html)
 }
@@ -251,12 +249,16 @@ func TestBuildTemplatesDuplicateRequestFuncMapPanics(t *testing.T) {
 	app1 := &templateRequestFuncMapApp{
 		name:  "csrf",
 		tplFS: fstest.MapFS{},
-		rfm:   func(_ *http.Request) template.FuncMap { return template.FuncMap{"token": func() string { return "a" }} },
+		rfm: func(_ context.Context) template.FuncMap {
+			return template.FuncMap{"token": func() string { return "a" }}
+		},
 	}
 	app2 := &templateRequestFuncMapApp{
 		name:  "other",
 		tplFS: fstest.MapFS{},
-		rfm:   func(_ *http.Request) template.FuncMap { return template.FuncMap{"token": func() string { return "b" }} },
+		rfm: func(_ context.Context) template.FuncMap {
+			return template.FuncMap{"token": func() string { return "b" }}
+		},
 	}
 	s.registry.Add(app1)
 	s.registry.Add(app2)
@@ -289,8 +291,7 @@ func TestExecuteTemplate(t *testing.T) {
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	html, err := s.executeTemplate(r, "myapp/hello", map[string]any{"Name": "World"})
+	html, err := s.executeTemplate(t.Context(), "myapp/hello", map[string]any{"Name": "World"})
 	require.NoError(t, err)
 	assert.Equal(t, template.HTML("Hello, World!"), html)
 }
@@ -307,7 +308,7 @@ func TestExecuteTemplateWithRequestFuncMap(t *testing.T) {
 	app := &templateRequestFuncMapApp{
 		name:  "myapp",
 		tplFS: tplFS,
-		rfm: func(r *http.Request) template.FuncMap {
+		rfm: func(_ context.Context) template.FuncMap {
 			return template.FuncMap{
 				"csrfToken": func() string { return "abc123" },
 			}
@@ -318,8 +319,7 @@ func TestExecuteTemplateWithRequestFuncMap(t *testing.T) {
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	html, err := s.executeTemplate(r, "myapp/page", nil)
+	html, err := s.executeTemplate(t.Context(), "myapp/page", nil)
 	require.NoError(t, err)
 	assert.Equal(t, template.HTML("Token: abc123"), html)
 }
@@ -337,8 +337,7 @@ func TestExecuteTemplateNotFound(t *testing.T) {
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	_, err = s.executeTemplate(r, "myapp/nonexistent", nil)
+	_, err = s.executeTemplate(t.Context(), "myapp/nonexistent", nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nonexistent")
 }
@@ -458,9 +457,9 @@ func TestCoreRequestFuncMap_NavLinks(t *testing.T) {
 	ctx = WithNavItems(ctx, []NavItem{
 		{Label: "Home", URL: "/", Position: 1},
 	})
-	r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	ctx = WithRequestPath(ctx, "/")
 
-	fm := coreRequestFuncMap(r)
+	fm := coreRequestFuncMap(ctx)
 
 	navLinksFn, ok := fm["navLinks"].(func() []NavLink)
 	require.True(t, ok)
@@ -521,14 +520,14 @@ func (a *templateFuncMapApp) FuncMap() template.FuncMap   { return a.fm }
 type templateRequestFuncMapApp struct { //nolint:govet // fieldalignment: readability over optimization
 	name  string
 	tplFS fstest.MapFS
-	rfm   func(r *http.Request) template.FuncMap
+	rfm   func(ctx context.Context) template.FuncMap
 }
 
 func (a *templateRequestFuncMapApp) Name() string                { return a.name }
 func (a *templateRequestFuncMapApp) Register(_ *AppConfig) error { return nil }
 func (a *templateRequestFuncMapApp) TemplateFS() fs.FS           { return a.tplFS }
-func (a *templateRequestFuncMapApp) RequestFuncMap(r *http.Request) template.FuncMap {
-	return a.rfm(r)
+func (a *templateRequestFuncMapApp) RequestFuncMap(ctx context.Context) template.FuncMap {
+	return a.rfm(ctx)
 }
 
 // Benchmarks
@@ -547,13 +546,13 @@ func BenchmarkExecuteTemplate_NoRequestFuncMap(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	ctx := context.Background()
 	data := map[string]any{"Name": "World", "Count": 42}
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		_, _ = s.executeTemplate(req, "myapp/page", data)
+		_, _ = s.executeTemplate(ctx, "myapp/page", data)
 	}
 }
 
@@ -569,7 +568,7 @@ func BenchmarkExecuteTemplate_WithRequestFuncMap(b *testing.B) {
 	app := &templateRequestFuncMapApp{
 		name:  "myapp",
 		tplFS: tplFS,
-		rfm: func(_ *http.Request) template.FuncMap {
+		rfm: func(_ context.Context) template.FuncMap {
 			return template.FuncMap{
 				"csrfToken":   func() string { return "abc123def456" },
 				"currentLang": func() string { return "en" },
@@ -582,13 +581,13 @@ func BenchmarkExecuteTemplate_WithRequestFuncMap(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	ctx := context.Background()
 	data := map[string]any{"Name": "World"}
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		_, _ = s.executeTemplate(req, "myapp/page", data)
+		_, _ = s.executeTemplate(ctx, "myapp/page", data)
 	}
 }
 
@@ -613,7 +612,7 @@ func BenchmarkExecuteTemplate_LargerTemplate(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	ctx := context.Background()
 	data := map[string]any{
 		"Title":      "All Items",
 		"Page":       3,
@@ -626,6 +625,6 @@ func BenchmarkExecuteTemplate_LargerTemplate(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		_, _ = s.executeTemplate(req, "myapp/list", data)
+		_, _ = s.executeTemplate(ctx, "myapp/list", data)
 	}
 }

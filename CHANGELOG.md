@@ -4,8 +4,16 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Breaking Changes
+
+- **HasRequestFuncMap**: Changed signature from `RequestFuncMap(*http.Request)` to `RequestFuncMap(context.Context)` — update all implementations by replacing `r *http.Request` with `ctx context.Context` and `r.Context()` with `ctx` ([#5](https://github.com/oliverandrich/burrow/issues/5))
+- **TemplateExecutor**: Changed signature from `func(*http.Request, string, map[string]any)` to `func(context.Context, string, map[string]any)` ([#5](https://github.com/oliverandrich/burrow/issues/5))
+
 ### Added
 
+- Added `RenderFragment()` for rendering templates outside HTTP handlers (background jobs, SSE, CLI) ([#5](https://github.com/oliverandrich/burrow/issues/5))
+- Added `Server.TemplateExecutor()` accessor to obtain the template executor after boot ([#5](https://github.com/oliverandrich/burrow/issues/5))
+- Added `WithRequestPath()`/`RequestPath()` context helpers for request path propagation ([#5](https://github.com/oliverandrich/burrow/issues/5))
 - **htmx**: Added smart response helpers `SmartRedirect` and `RenderOrRedirect` that handle htmx/non-htmx branching, plus `Reselect` header setter and `StatusStopPolling` constant ([#9](https://github.com/oliverandrich/burrow/issues/9))
 - Added `URLParamInt64()` and `MustURLParamInt64()` helpers for parsing numeric URL parameters ([#8](https://github.com/oliverandrich/burrow/issues/8))
 - **auth**: Added `MustCurrentUser()` helper that returns the authenticated user or panics — for use behind `RequireAuth` middleware ([#7](https://github.com/oliverandrich/burrow/issues/7))

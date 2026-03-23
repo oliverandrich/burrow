@@ -51,7 +51,7 @@ func TestRenderOrRedirect_HTMX(t *testing.T) {
 
 	// Inject a mock template executor that returns fixed HTML.
 	ctx := r.Context()
-	ctx = burrow.WithTemplateExecutor(ctx, func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+	ctx = burrow.WithTemplateExecutor(ctx, func(_ context.Context, name string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<div>" + name + "</div>"), nil //nolint:gosec // test-only, name is not user input
 	})
 	r = r.WithContext(ctx)

@@ -1,6 +1,10 @@
 package admin
 
-import "context"
+import (
+	"context"
+
+	"github.com/oliverandrich/burrow"
+)
 
 type ctxKeyNavGroups struct{}
 
@@ -24,24 +28,23 @@ func NavGroupsFromContext(ctx context.Context) []NavGroup {
 	return NavGroups(ctx)
 }
 
-type ctxKeyRequestPath struct{}
-
-// WithRequestPath stores the current request path in the context.
+// WithRequestPath is a deprecated alias for [burrow.WithRequestPath].
+//
+//go:fix inline
 func WithRequestPath(ctx context.Context, path string) context.Context {
-	return context.WithValue(ctx, ctxKeyRequestPath{}, path)
+	return burrow.WithRequestPath(ctx, path)
 }
 
-// RequestPath retrieves the current request path from the context.
+// RequestPath is a deprecated alias for [burrow.RequestPath].
+//
+//go:fix inline
 func RequestPath(ctx context.Context) string {
-	if path, ok := ctx.Value(ctxKeyRequestPath{}).(string); ok {
-		return path
-	}
-	return ""
+	return burrow.RequestPath(ctx)
 }
 
-// RequestPathFromContext is a deprecated alias for [RequestPath].
+// RequestPathFromContext is a deprecated alias for [burrow.RequestPath].
 //
 //go:fix inline
 func RequestPathFromContext(ctx context.Context) string {
-	return RequestPath(ctx)
+	return burrow.RequestPath(ctx)
 }

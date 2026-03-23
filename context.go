@@ -3,13 +3,13 @@ package burrow
 import (
 	"context"
 	"html/template"
-	"net/http"
 )
 
 // TemplateExecutor executes a named template with the given data and returns
 // the rendered HTML. It is stored in the request context by the template
-// middleware and used by RenderTemplate.
-type TemplateExecutor func(r *http.Request, name string, data map[string]any) (template.HTML, error)
+// middleware and used by Render. The context carries all request-scoped
+// values needed for template rendering.
+type TemplateExecutor func(ctx context.Context, name string, data map[string]any) (template.HTML, error)
 
 // AuthChecker provides authentication and authorization checks via closures.
 // This allows the core framework to filter nav items by auth state without
@@ -26,6 +26,7 @@ type (
 	ctxKeyNavItems         struct{}
 	ctxKeyTemplateExecutor struct{}
 	ctxKeyAuthChecker      struct{}
+	ctxKeyRequestPath      struct{}
 )
 
 // WithContextValue returns a new context with the given key-value pair.
@@ -96,6 +97,23 @@ func TemplateExecutorFromContext(ctx context.Context) TemplateExecutor {
 // core template functions without an import cycle.
 func WithAuthChecker(ctx context.Context, checker AuthChecker) context.Context {
 	return context.WithValue(ctx, ctxKeyAuthChecker{}, checker)
+}
+
+// WithRequestPath stores the request path in the context.
+// This is set automatically by the template middleware for HTTP requests.
+// For non-HTTP rendering (background jobs, SSE, CLI), callers should set
+// it explicitly if nav-link highlighting is needed.
+func WithRequestPath(ctx context.Context, path string) context.Context {
+	return context.WithValue(ctx, ctxKeyRequestPath{}, path)
+}
+
+// RequestPath retrieves the request path from the context.
+// Returns an empty string if no path is set.
+func RequestPath(ctx context.Context) string {
+	if path, ok := ctx.Value(ctxKeyRequestPath{}).(string); ok {
+		return path
+	}
+	return ""
 }
 
 // isAuthenticated returns true if the AuthChecker in context reports

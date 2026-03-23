@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"embed"
 	"fmt"
 	"html/template"
@@ -44,7 +45,7 @@ func rendererTestExecutor() burrow.TemplateExecutor {
 	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(`{{ define "bootstrap/theme_script" }}{{ end }}`))
 	template.Must(tmpl.ParseFS(testRendererTemplateFS, "templates/*.html"))
 
-	return func(r *http.Request, name string, data map[string]any) (template.HTML, error) {
+	return func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		var buf bytes.Buffer
 		if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 			return "", err
@@ -227,12 +228,12 @@ func TestDefaultRendererWithLayout(t *testing.T) {
 	r := DefaultRenderer()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
-	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			content, _ := data["Content"].(template.HTML)
 			return template.HTML("<layout-wrapper>" + string(content) + "</layout-wrapper>"), nil //nolint:gosec // test
 		}
-		return rendererTestExecutor()(nil, name, data)
+		return rendererTestExecutor()(context.Background(), name, data)
 	}
 
 	ctx := burrow.WithLayout(req.Context(), "test-layout")
@@ -271,7 +272,7 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 	}
 	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(`{{ define "bootstrap/theme_script" }}{{ end }}`))
 	template.Must(tmpl.ParseFS(testRendererTemplateFS, "templates/*.html"))
-	exec := func(r *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		var buf bytes.Buffer
 		if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 			return "", err
@@ -328,7 +329,7 @@ func TestRenderCenteredExecError(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
 	// Executor that always returns an error.
-	exec := func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return "", fmt.Errorf("template exec error")
 	}
 	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
@@ -345,7 +346,7 @@ func TestRenderCardExecError(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil)
 
 	// Executor that always returns an error.
-	exec := func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return "", fmt.Errorf("template exec error")
 	}
 	ctx := burrow.WithTemplateExecutor(req.Context(), exec)
@@ -378,7 +379,7 @@ func rendererTestExecutorWithLogo(logoHTML template.HTML) burrow.TemplateExecuto
 	}
 	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(`{{ define "bootstrap/theme_script" }}{{ end }}`))
 	template.Must(tmpl.ParseFS(testRendererTemplateFS, "templates/*.html"))
-	return func(r *http.Request, name string, data map[string]any) (template.HTML, error) {
+	return func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		var buf bytes.Buffer
 		if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 			return "", err

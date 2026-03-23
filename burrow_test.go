@@ -29,21 +29,21 @@ type fullApp struct {
 	registered bool
 }
 
-func (a *fullApp) Name() string                                    { return "full" }
-func (a *fullApp) Register(_ *AppConfig) error                     { a.registered = true; return nil }
-func (a *fullApp) MigrationFS() fs.FS                              { return nil }
-func (a *fullApp) Middleware() []func(http.Handler) http.Handler   { return nil }
-func (a *fullApp) NavItems() []NavItem                             { return nil }
-func (a *fullApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
-func (a *fullApp) Configure(_ *cli.Command) error                  { return nil }
-func (a *fullApp) CLICommands() []*cli.Command                     { return nil }
-func (a *fullApp) Seed(_ context.Context) error                    { return nil }
-func (a *fullApp) Routes(_ chi.Router)                             {}
-func (a *fullApp) AdminRoutes(_ chi.Router)                        {}
-func (a *fullApp) AdminNavItems() []NavItem                        { return nil }
-func (a *fullApp) TemplateFS() fs.FS                               { return nil }
-func (a *fullApp) FuncMap() template.FuncMap                       { return nil }
-func (a *fullApp) RequestFuncMap(_ *http.Request) template.FuncMap { return nil }
+func (a *fullApp) Name() string                                      { return "full" }
+func (a *fullApp) Register(_ *AppConfig) error                       { a.registered = true; return nil }
+func (a *fullApp) MigrationFS() fs.FS                                { return nil }
+func (a *fullApp) Middleware() []func(http.Handler) http.Handler     { return nil }
+func (a *fullApp) NavItems() []NavItem                               { return nil }
+func (a *fullApp) Flags(_ func(string) cli.ValueSource) []cli.Flag   { return nil }
+func (a *fullApp) Configure(_ *cli.Command) error                    { return nil }
+func (a *fullApp) CLICommands() []*cli.Command                       { return nil }
+func (a *fullApp) Seed(_ context.Context) error                      { return nil }
+func (a *fullApp) Routes(_ chi.Router)                               {}
+func (a *fullApp) AdminRoutes(_ chi.Router)                          {}
+func (a *fullApp) AdminNavItems() []NavItem                          { return nil }
+func (a *fullApp) TemplateFS() fs.FS                                 { return nil }
+func (a *fullApp) FuncMap() template.FuncMap                         { return nil }
+func (a *fullApp) RequestFuncMap(_ context.Context) template.FuncMap { return nil }
 
 // trackingApp records calls and provides test data for lifecycle methods.
 type trackingApp struct {

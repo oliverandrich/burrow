@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -21,7 +22,7 @@ func TestDefaultLayout(t *testing.T) {
 func TestDefaultDashboardRendererDashboardPage(t *testing.T) {
 	r := DefaultDashboardRenderer()
 
-	exec := func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "admin/layout" {
 			content, _ := data["Content"].(template.HTML)
 			return template.HTML("<layout>" + string(content) + "</layout>"), nil //nolint:gosec // test
@@ -47,7 +48,7 @@ func TestDefaultDashboardRendererDashboardPage(t *testing.T) {
 func TestDefaultDashboardRendererWithoutLayout(t *testing.T) {
 	r := DefaultDashboardRenderer()
 
-	exec := func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, name string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<rendered:" + name + ">"), nil //nolint:gosec // test
 	}
 
@@ -66,7 +67,7 @@ func TestDefaultDashboardRendererPreservesTitle(t *testing.T) {
 	r := DefaultDashboardRenderer()
 
 	var capturedData map[string]any
-	exec := func(_ *http.Request, _ string, data map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, _ string, data map[string]any) (template.HTML, error) {
 		capturedData = data
 		return "ok", nil
 	}

@@ -1412,7 +1412,7 @@ func TestRequestFuncMap(t *testing.T) {
 	ctx := WithUser(req.Context(), user)
 	req = req.WithContext(ctx)
 
-	fm := app.RequestFuncMap(req)
+	fm := app.RequestFuncMap(req.Context())
 
 	currentUserFunc := fm["currentUser"].(func() *User)
 	assert.Equal(t, user, currentUserFunc())
@@ -1425,7 +1425,7 @@ func TestRequestFuncMapUnauthenticated(t *testing.T) {
 	app := &App{}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
-	fm := app.RequestFuncMap(req)
+	fm := app.RequestFuncMap(req.Context())
 
 	currentUserFunc := fm["currentUser"].(func() *User)
 	assert.Nil(t, currentUserFunc())
@@ -1625,7 +1625,7 @@ func TestRequestFuncMapAuthLogo(t *testing.T) {
 	ctx := WithLogo(req.Context(), logo)
 	req = req.WithContext(ctx)
 
-	fm := app.RequestFuncMap(req)
+	fm := app.RequestFuncMap(req.Context())
 	logoFunc := fm["authLogo"].(func() template.HTML)
 	assert.Equal(t, logo, logoFunc())
 }

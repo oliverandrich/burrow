@@ -21,22 +21,26 @@ func TestRenderNoExecutor(t *testing.T) {
 }
 
 func TestRenderFragment(t *testing.T) {
-	exec := TemplateExecutor(func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		return template.HTML("<p>" + name + "</p>"), nil
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	ctx := WithTemplateExecutor(req.Context(), exec)
-	req = req.WithContext(ctx)
-	rec := httptest.NewRecorder()
+	ctx := WithTemplateExecutor(context.Background(), exec)
+	html, err := RenderFragment(ctx, "greeting", nil)
 
-	err := Render(rec, req, http.StatusOK, "greeting", nil)
 	require.NoError(t, err)
-	assert.Equal(t, "<p>greeting</p>", rec.Body.String())
+	assert.Equal(t, template.HTML("<p>greeting</p>"), html)
+}
+
+func TestRenderFragmentWithoutExecutor(t *testing.T) {
+	_, err := RenderFragment(context.Background(), "greeting", nil)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNoTemplateExecutor)
 }
 
 func TestRenderWithLayout(t *testing.T) {
-	exec := TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			return template.HTML("<html><body>" + string(data["Content"].(template.HTML)) + "</body></html>"), nil
 		}
@@ -55,7 +59,7 @@ func TestRenderWithLayout(t *testing.T) {
 }
 
 func TestRenderHTMXSkipsLayout(t *testing.T) {
-	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>fragment</p>"), nil
 	})
 
@@ -73,7 +77,7 @@ func TestRenderHTMXSkipsLayout(t *testing.T) {
 
 func TestRenderBoostedRequestAppliesLayout(t *testing.T) {
 	layoutCalled := false
-	exec := TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			layoutCalled = true
 			return template.HTML("<html>" + string(data["Content"].(template.HTML)) + "</html>"), nil
@@ -96,7 +100,7 @@ func TestRenderBoostedRequestAppliesLayout(t *testing.T) {
 }
 
 func TestRenderWithoutLayout(t *testing.T) {
-	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>bare</p>"), nil
 	})
 
@@ -113,7 +117,7 @@ func TestRenderWithoutLayout(t *testing.T) {
 // Benchmarks
 
 func BenchmarkRender_Fragment(b *testing.B) {
-	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>Hello, World!</p>"), nil
 	})
 
@@ -129,7 +133,7 @@ func BenchmarkRender_Fragment(b *testing.B) {
 }
 
 func BenchmarkRender_WithLayout(b *testing.B) {
-	exec := TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "app/layout" {
 			return template.HTML("<html><body>" + string(data["Content"].(template.HTML)) + "</body></html>"), nil
 		}
@@ -150,7 +154,7 @@ func BenchmarkRender_WithLayout(b *testing.B) {
 }
 
 func BenchmarkRender_HTMXFragment(b *testing.B) {
-	exec := TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>fragment</p>"), nil
 	})
 
@@ -168,7 +172,7 @@ func BenchmarkRender_HTMXFragment(b *testing.B) {
 }
 
 func BenchmarkRenderContent_WithLayout(b *testing.B) {
-	exec := TemplateExecutor(func(_ *http.Request, _ string, data map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, _ string, data map[string]any) (template.HTML, error) {
 		return template.HTML("<html><body>" + string(data["Content"].(template.HTML)) + "</body></html>"), nil
 	})
 
@@ -187,7 +191,7 @@ func BenchmarkRenderContent_WithLayout(b *testing.B) {
 }
 
 func BenchmarkRenderContent_NoLayout(b *testing.B) {
-	ctx := WithTemplateExecutor(context.Background(), TemplateExecutor(func(_ *http.Request, _ string, _ map[string]any) (template.HTML, error) {
+	ctx := WithTemplateExecutor(context.Background(), TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return "", nil
 	}))
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)

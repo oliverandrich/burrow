@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"context"
 	"html/template"
 	"net/http"
 
@@ -26,8 +27,7 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 }
 
 // RequestFuncMap returns request-scoped template functions for flash messages.
-func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
-	ctx := r.Context()
+func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
 	return template.FuncMap{
 		"messages": func() []Message { return Get(ctx) },
 	}

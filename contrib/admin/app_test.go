@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -227,7 +228,7 @@ func TestIndexPageWithDashboardRenderer(t *testing.T) {
 func TestIndexPageUsesDefaultDashboardRenderer(t *testing.T) {
 	app := New()
 
-	exec := func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+	exec := func(_ context.Context, name string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<rendered:" + name + ">"), nil //nolint:gosec // test
 	}
 
@@ -375,7 +376,7 @@ func TestRequestFuncMap(t *testing.T) {
 	app := New()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
 
-	fm := app.RequestFuncMap(req)
+	fm := app.RequestFuncMap(req.Context())
 
 	assert.Contains(t, fm, "adminSidebar")
 }

@@ -235,20 +235,20 @@ func (a *App) FuncMap() template.FuncMap {
 
 ```go
 type HasRequestFuncMap interface {
-    RequestFuncMap(r *http.Request) template.FuncMap
+    RequestFuncMap(ctx context.Context) template.FuncMap
 }
 ```
 
-Returns request-scoped template functions that are injected per-request via `template.Clone()`. Use this for functions that depend on the request context (e.g., current user, CSRF token, locale).
+Returns context-scoped template functions that are injected per-request via `template.Clone()`. Use this for functions that depend on the context (e.g., current user, CSRF token, locale). The `context.Context` parameter enables template rendering both inside HTTP handlers (where the context comes from the request) and outside them (background jobs, SSE broadcasts) via `RenderFragment`.
 
 ```go
-func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
+func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
     return template.FuncMap{
         "currentUser": func() *User {
-            return CurrentUser(r.Context())
+            return CurrentUser(ctx)
         },
         "isAuthenticated": func() bool {
-            return CurrentUser(r.Context()) != nil
+            return CurrentUser(ctx) != nil
         },
     }
 }

@@ -312,9 +312,12 @@ type HasFuncMap interface {
 	FuncMap() template.FuncMap
 }
 
-// HasRequestFuncMap is implemented by apps that provide request-scoped
+// HasRequestFuncMap is implemented by apps that provide context-scoped
 // template functions (e.g., CSRF tokens, current user, translations).
 // These are added per request via middleware using template.Clone().
+// The context carries all request-scoped values needed by the functions;
+// this enables template rendering outside HTTP handlers (background jobs,
+// SSE broadcasts, CLI commands).
 type HasRequestFuncMap interface {
-	RequestFuncMap(r *http.Request) template.FuncMap
+	RequestFuncMap(ctx context.Context) template.FuncMap
 }

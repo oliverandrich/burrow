@@ -148,6 +148,55 @@ func (h *NotificationJobHandler) Run(ctx context.Context) error {
 
 `BrokerFromRegistry` returns `nil` if the SSE app is not registered or has not been configured yet — always check for `nil` before using the broker.
 
+## Rendering Templates in Background Jobs
+
+In HTTP handlers, `burrow.Render` has access to the full request context (locale, user, CSRF token, etc.). Background jobs don't have a request, but you can still render templates using `burrow.RenderFragment` with a manually enriched context.
+
+**Step 1:** Store the server's template executor when setting up your job handler. Since templates are built during `Server.Run()`, obtain the executor from an HTTP handler or a startup hook that runs after boot — not from `Register` or `Configure`:
+
+```go
+type ArticleNotifier struct {
+    exec     burrow.TemplateExecutor
+    broker   *sse.EventBroker
+    registry *burrow.Registry
+}
+
+func NewArticleNotifier(srv *burrow.Server, registry *burrow.Registry) *ArticleNotifier {
+    return &ArticleNotifier{
+        exec:     srv.TemplateExecutor(),
+        broker:   sse.BrokerFromRegistry(registry),
+        registry: registry,
+    }
+}
+```
+
+**Step 2:** In the job, build a context with the values your template needs and call `RenderFragment`:
+
+```go
+func (n *ArticleNotifier) Notify(ctx context.Context, article *Article, locale string) error {
+    if n.broker == nil {
+        return nil
+    }
+
+    // Enrich context with template executor and locale
+    ctx = burrow.WithTemplateExecutor(ctx, n.exec)
+    ctx = i18n.WithLocale(ctx, locale)
+
+    html, err := burrow.RenderFragment(ctx, "articles/list_item", map[string]any{
+        "Article": article,
+    })
+    if err != nil {
+        return err
+    }
+
+    n.broker.Publish("articles", sse.Event{Data: string(html)})
+    return nil
+}
+```
+
+!!! tip
+    Only enrich the context with values your template actually uses. SSE fragments typically need the **locale** for translations, but not CSRF tokens, flash messages, or navigation items — those are HTTP-only concerns.
+
 ## Advanced: Explicit Broker
 
 For cases where you need a standalone broker (e.g., in tests or with multiple brokers), you can create one explicitly and pass it to `Handler` / `HandlerFunc` directly:

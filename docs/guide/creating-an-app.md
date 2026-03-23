@@ -304,7 +304,7 @@ Your app can implement any combination of these interfaces:
 | `HasNavItems` | `NavItems() []burrow.NavItem` | Contribute navigation entries |
 | `HasTemplates` | `TemplateFS() fs.FS` | Contribute HTML template files |
 | `HasFuncMap` | `FuncMap() template.FuncMap` | Contribute static template functions |
-| `HasRequestFuncMap` | `RequestFuncMap(r *http.Request) template.FuncMap` | Contribute request-scoped template functions |
+| `HasRequestFuncMap` | `RequestFuncMap(ctx context.Context) template.FuncMap` | Contribute context-scoped template functions |
 | `Configurable` | `Flags(configSource func(key string) cli.ValueSource) []cli.Flag` + `Configure(cmd *cli.Command) error` | Add CLI flags |
 | `HasCLICommands` | `CLICommands() []*cli.Command` | Add CLI subcommands |
 | `Seedable` | `Seed(ctx context.Context) error` | Seed initial data |

@@ -180,7 +180,7 @@ func TestRequestFuncMap(t *testing.T) {
 
 	var gotToken string
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fm := a.RequestFuncMap(r)
+		fm := a.RequestFuncMap(r.Context())
 		csrfTokenFunc := fm["csrfToken"].(func() string)
 		gotToken = csrfTokenFunc()
 		w.WriteHeader(http.StatusOK)
@@ -201,7 +201,7 @@ func TestRequestFuncMapCsrfField(t *testing.T) {
 
 	var gotField template.HTML
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fm := a.RequestFuncMap(r)
+		fm := a.RequestFuncMap(r.Context())
 		csrfFieldFunc := fm["csrfField"].(func() template.HTML)
 		gotField = csrfFieldFunc()
 		w.WriteHeader(http.StatusOK)
@@ -223,7 +223,7 @@ func TestRequestFuncMapCsrfHxHeaders(t *testing.T) {
 
 	var gotAttr template.HTMLAttr
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fm := a.RequestFuncMap(r)
+		fm := a.RequestFuncMap(r.Context())
 		fn := fm["csrfHxHeaders"].(func() template.HTMLAttr)
 		gotAttr = fn()
 		w.WriteHeader(http.StatusOK)

@@ -394,8 +394,7 @@ func (a *App) FuncMap() template.FuncMap {
 }
 
 // RequestFuncMap returns request-scoped template functions for auth state.
-func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
-	ctx := r.Context()
+func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
 	return template.FuncMap{
 		"currentUser":     func() *User { return CurrentUser(ctx) },
 		"isAuthenticated": func() bool { return IsAuthenticated(ctx) },

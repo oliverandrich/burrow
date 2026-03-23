@@ -3,8 +3,6 @@ package burrow
 import (
 	"context"
 	"html/template"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,7 +63,7 @@ func TestLayoutMissing(t *testing.T) {
 }
 
 func TestTemplateExecutorContext(t *testing.T) {
-	exec := TemplateExecutor(func(_ *http.Request, name string, _ map[string]any) (template.HTML, error) {
+	exec := TemplateExecutor(func(_ context.Context, name string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>" + name + "</p>"), nil
 	})
 
@@ -75,8 +73,7 @@ func TestTemplateExecutorContext(t *testing.T) {
 	got := TemplateExec(ctx)
 	require.NotNil(t, got)
 
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	html, err := got(r, "test", nil)
+	html, err := got(t.Context(), "test", nil)
 	require.NoError(t, err)
 	assert.Equal(t, template.HTML("<p>test</p>"), html)
 }
@@ -84,6 +81,19 @@ func TestTemplateExecutorContext(t *testing.T) {
 func TestTemplateExecutorMissing(t *testing.T) {
 	ctx := context.Background()
 	assert.Nil(t, TemplateExec(ctx))
+}
+
+func TestRequestPathContext(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithRequestPath(ctx, "/notes/42")
+
+	got := RequestPath(ctx)
+	assert.Equal(t, "/notes/42", got)
+}
+
+func TestRequestPathMissing(t *testing.T) {
+	ctx := context.Background()
+	assert.Empty(t, RequestPath(ctx))
 }
 
 func TestWithAuthChecker(t *testing.T) {

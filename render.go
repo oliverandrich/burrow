@@ -1,6 +1,8 @@
 package burrow
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"maps"
@@ -10,6 +12,10 @@ import (
 	"github.com/oliverandrich/burrow/i18n"
 )
 
+// ErrNoTemplateExecutor is returned when Render or RenderFragment is called
+// without a TemplateExecutor in the context.
+var ErrNoTemplateExecutor = errors.New("burrow: no template executor in context")
+
 // Render executes a named template and writes the result.
 // It applies automatic layout/HTMX logic:
 //   - HTMX request (HX-Request header) → fragment only, no layout
@@ -18,10 +24,10 @@ import (
 func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error {
 	exec := TemplateExec(r.Context())
 	if exec == nil {
-		return fmt.Errorf("burrow: no template executor in context")
+		return ErrNoTemplateExecutor
 	}
 
-	content, err := exec(r, name, data)
+	content, err := exec(r.Context(), name, data)
 	if err != nil {
 		return fmt.Errorf("burrow: execute template %q: %w", name, err)
 	}
@@ -95,11 +101,26 @@ func RenderContent(w http.ResponseWriter, r *http.Request, statusCode int, conte
 	maps.Copy(layoutData, data)
 	layoutData["Content"] = content
 
-	html, err := exec(r, layoutTmpl, layoutData)
+	html, err := exec(r.Context(), layoutTmpl, layoutData)
 	if err != nil {
 		return fmt.Errorf("burrow: execute layout template %q: %w", layoutTmpl, err)
 	}
 	return HTML(w, statusCode, string(html))
+}
+
+// RenderFragment renders a named template outside of an HTTP request.
+// It retrieves the [TemplateExecutor] from ctx, so the context must have been
+// enriched with [WithTemplateExecutor] (plus any request-scoped values the
+// template needs, e.g., i18n.WithLocale).
+//
+// Use this for background jobs, SSE broadcasts, CLI commands, or any
+// non-HTTP code that needs to render templates.
+func RenderFragment(ctx context.Context, name string, data map[string]any) (template.HTML, error) {
+	exec := TemplateExec(ctx)
+	if exec == nil {
+		return "", ErrNoTemplateExecutor
+	}
+	return exec(ctx, name, data)
 }
 
 // Deprecated: Use [Render] instead.

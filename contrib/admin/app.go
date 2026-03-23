@@ -4,6 +4,7 @@
 package admin
 
 import (
+	"context"
 	"embed"
 	"html/template"
 	"io/fs"
@@ -107,8 +108,7 @@ func (a *App) TemplateFS() fs.FS {
 }
 
 // RequestFuncMap returns request-scoped template functions for the admin sidebar.
-func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
-	ctx := r.Context()
+func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
 	return template.FuncMap{
 		"adminSidebar": func() []SidebarGroup {
 			return PrepareSidebar(ctx, NavGroups(ctx))
@@ -135,7 +135,7 @@ func (a *App) Routes(r chi.Router) {
 					ctx = burrow.WithLayout(ctx, a.layout)
 				}
 				ctx = WithNavGroups(ctx, groups)
-				ctx = WithRequestPath(ctx, r.URL.Path)
+				ctx = burrow.WithRequestPath(ctx, r.URL.Path)
 				next.ServeHTTP(w, r.WithContext(ctx))
 			})
 		})

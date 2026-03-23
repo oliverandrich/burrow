@@ -42,14 +42,10 @@ func baseFuncMap() template.FuncMap {
 	}
 }
 
-// coreRequestFuncMap provides request-scoped template functions for core
+// coreRequestFuncMap provides context-scoped template functions for core
 // framework values like navigation items.
-func coreRequestFuncMap(r *http.Request) template.FuncMap {
-	ctx := r.Context()
-	var requestPath string
-	if r.URL != nil {
-		requestPath = r.URL.Path
-	}
+func coreRequestFuncMap(ctx context.Context) template.FuncMap {
+	requestPath := RequestPath(ctx)
 	return template.FuncMap{
 		"navItems": func() []NavItem { return NavItems(ctx) },
 		"navLinks": func() []NavLink { return buildNavLinks(ctx, requestPath) },
@@ -144,9 +140,9 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 
 	// Register stubs for any pre-registered request func map providers
 	// (e.g. the core i18n bundle, added before buildTemplates).
-	stubReq := &http.Request{}
+	stubCtx := context.Background()
 	for _, provider := range s.requestFuncMapProviders {
-		for k := range provider(stubReq) {
+		for k := range provider(stubCtx) {
 			checkDuplicate(k, "core provider")
 			funcMap[k] = func() string { return "" }
 		}
@@ -165,7 +161,7 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 			s.requestFuncMapProviders = append(s.requestFuncMapProviders, provider.RequestFuncMap)
 			// Register stub functions so templates can be parsed.
 			// The real implementations are injected per request via Clone()+Funcs().
-			for k := range provider.RequestFuncMap(stubReq) {
+			for k := range provider.RequestFuncMap(stubCtx) {
 				checkDuplicate(k, fmt.Sprintf("app %q", app.Name()))
 				funcMap[k] = func() string { return "" }
 			}
@@ -209,8 +205,8 @@ func parseTemplateFS(t *template.Template, fsys fs.FS) error {
 
 // executeTemplate runs a named template with the given data. If any
 // HasRequestFuncMap providers are registered, the template is cloned
-// and request-scoped functions are added.
-func (s *Server) executeTemplate(r *http.Request, name string, data map[string]any) (template.HTML, error) {
+// and context-scoped functions are added.
+func (s *Server) executeTemplate(ctx context.Context, name string, data map[string]any) (template.HTML, error) {
 	t := s.templates
 
 	if len(s.requestFuncMapProviders) > 0 {
@@ -220,7 +216,7 @@ func (s *Server) executeTemplate(r *http.Request, name string, data map[string]a
 			return "", fmt.Errorf("clone templates: %w", err)
 		}
 		for _, provider := range s.requestFuncMapProviders {
-			t.Funcs(provider(r))
+			t.Funcs(provider(ctx))
 		}
 	}
 
@@ -238,11 +234,13 @@ func (s *Server) executeTemplate(r *http.Request, name string, data map[string]a
 }
 
 // templateMiddleware returns middleware that injects the TemplateExecutor
-// into the request context.
+// and request path into the request context.
 func (s *Server) templateMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := WithTemplateExecutor(r.Context(), s.executeTemplate)
+			ctx := r.Context()
+			ctx = WithRequestPath(ctx, r.URL.Path)
+			ctx = WithTemplateExecutor(ctx, s.executeTemplate)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

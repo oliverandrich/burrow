@@ -102,9 +102,8 @@ func (b *Bundle) LocaleMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// RequestFuncMap returns request-scoped template functions for translations.
-func (b *Bundle) RequestFuncMap(r *http.Request) template.FuncMap {
-	ctx := r.Context()
+// RequestFuncMap returns context-scoped template functions for translations.
+func (b *Bundle) RequestFuncMap(ctx context.Context) template.FuncMap {
 	return template.FuncMap{
 		"lang":    func() string { return Locale(ctx) },
 		"t":       func(key string) string { return T(ctx, key) },

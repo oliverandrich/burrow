@@ -28,7 +28,7 @@ type Server struct { //nolint:govet // fieldalignment: readability over optimiza
 	registry                *Registry
 	layout                  string
 	templates               *template.Template
-	requestFuncMapProviders []func(r *http.Request) template.FuncMap
+	requestFuncMapProviders []func(ctx context.Context) template.FuncMap
 	i18nBundle              *i18n.Bundle
 	appCfg                  *AppConfig
 }
@@ -131,6 +131,17 @@ func sortApps(apps []App) []App {
 	}
 
 	return sorted
+}
+
+// TemplateExecutor returns the server's template executor function.
+// Use this after boot to obtain an executor for non-HTTP rendering via
+// [WithTemplateExecutor] and [RenderFragment]. Returns nil if templates
+// have not been built yet (i.e., before [Server.Run]).
+func (s *Server) TemplateExecutor() TemplateExecutor {
+	if s.templates == nil {
+		return nil
+	}
+	return s.executeTemplate
 }
 
 // SetLayout configures the layout template name used for all pages.

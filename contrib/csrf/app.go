@@ -1,6 +1,7 @@
 package csrf
 
 import (
+	"context"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -67,9 +68,9 @@ func (a *App) configure(keyHex string, secure bool) error {
 	return nil
 }
 
-// RequestFuncMap returns request-scoped template functions for CSRF tokens.
-func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
-	token := Token(r.Context())
+// RequestFuncMap returns context-scoped template functions for CSRF tokens.
+func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
+	token := Token(ctx)
 	return template.FuncMap{
 		"csrfToken": func() string { return token },
 		"csrfField": func() template.HTML {

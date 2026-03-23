@@ -23,7 +23,7 @@ type testItem struct { //nolint:govet // fieldalignment: test struct
 }
 
 func TestRenderContent_SkipsLayoutForHTMX(t *testing.T) {
-	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := burrow.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			content, _ := data["Content"].(template.HTML)
 			return template.HTML("<layout>" + string(content) + "</layout>"), nil //nolint:gosec // test

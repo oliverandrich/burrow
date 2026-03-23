@@ -154,10 +154,10 @@ func (a *App) FuncMap() template.FuncMap {
     }
 }
 
-func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
+func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
     return template.FuncMap{
         "uploadURL": func(key string) string {
-            return uploads.URL(r.Context(), key)
+            return uploads.URL(ctx, key)
         },
     }
 }

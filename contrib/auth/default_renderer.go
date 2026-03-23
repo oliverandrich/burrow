@@ -78,7 +78,7 @@ func renderCentered(w http.ResponseWriter, r *http.Request, title, name string, 
 		return burrow.Render(w, r, http.StatusOK, name, data)
 	}
 
-	inner, err := exec(r, name, data)
+	inner, err := exec(r.Context(), name, data)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func renderCard(w http.ResponseWriter, r *http.Request, title, cardTitle, name s
 		return burrow.Render(w, r, http.StatusOK, name, data)
 	}
 
-	inner, err := exec(r, name, data)
+	inner, err := exec(r.Context(), name, data)
 	if err != nil {
 		return err
 	}

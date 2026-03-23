@@ -258,13 +258,13 @@ Stores authentication state in the context via closures, allowing the core `navL
 ### TemplateExecutor
 
 ```go
-type TemplateExecutor func(r *http.Request, name string, data map[string]any) (template.HTML, error)
+type TemplateExecutor func(ctx context.Context, name string, data map[string]any) (template.HTML, error)
 
 func WithTemplateExecutor(ctx context.Context, exec TemplateExecutor) context.Context
 func TemplateExec(ctx context.Context) TemplateExecutor
 ```
 
-Gets or sets the template executor in the request context. The framework injects this automatically. Used internally by `Render`.
+Gets or sets the template executor in a context. The framework injects this automatically for HTTP requests. For non-HTTP rendering, use `Server.TemplateExecutor()` to obtain an executor after boot, then pass it via `WithTemplateExecutor`. Used internally by `Render` and `RenderFragment`.
 
 ### Generic Context Helpers
 

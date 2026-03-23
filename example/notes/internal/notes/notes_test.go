@@ -236,7 +236,7 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 {{- end }}`)
 	require.NoError(t, err)
 
-	return func(r *http.Request, name string, data map[string]any) (template.HTML, error) {
+	return func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		var buf strings.Builder
 		if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 			return "", err
@@ -312,7 +312,7 @@ func TestListNotesNormalRequestUsesLayout(t *testing.T) {
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 
 	layoutCalled := false
-	exec := burrow.TemplateExecutor(func(_ *http.Request, name string, data map[string]any) (template.HTML, error) {
+	exec := burrow.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			layoutCalled = true
 			assert.Equal(t, "Notes", data["Title"])
