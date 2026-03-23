@@ -6,6 +6,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
+- **htmx**: Added smart response helpers `SmartRedirect` and `RenderOrRedirect` that handle htmx/non-htmx branching, plus `Reselect` header setter and `StatusStopPolling` constant ([#9](https://github.com/oliverandrich/burrow/issues/9))
 - Added `URLParamInt64()` and `MustURLParamInt64()` helpers for parsing numeric URL parameters ([#8](https://github.com/oliverandrich/burrow/issues/8))
 - **auth**: Added `MustCurrentUser()` helper that returns the authenticated user or panics — for use behind `RequireAuth` middleware ([#7](https://github.com/oliverandrich/burrow/issues/7))
 - **sse**: Added `BrokerFromRegistry()` for package-level access to the SSE broker without type assertions ([#6](https://github.com/oliverandrich/burrow/issues/6))

@@ -33,8 +33,7 @@ func retryHandler(repo *Repository) burrow.HandlerFunc {
 		if err := repo.Retry(r.Context(), id); err != nil {
 			return mapRepoError(err)
 		}
-		htmx.Redirect(w, "/admin/jobs/"+strconv.FormatInt(id, 10))
-		w.WriteHeader(http.StatusOK)
+		htmx.SmartRedirect(w, r, "/admin/jobs/"+strconv.FormatInt(id, 10))
 		return nil
 	}
 }
@@ -49,8 +48,7 @@ func cancelHandler(repo *Repository) burrow.HandlerFunc {
 		if err := repo.Cancel(r.Context(), id); err != nil {
 			return mapRepoError(err)
 		}
-		htmx.Redirect(w, "/admin/jobs/"+strconv.FormatInt(id, 10))
-		w.WriteHeader(http.StatusOK)
+		htmx.SmartRedirect(w, r, "/admin/jobs/"+strconv.FormatInt(id, 10))
 		return nil
 	}
 }

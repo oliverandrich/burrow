@@ -941,6 +941,7 @@ func TestRevokeInviteSuccess(t *testing.T) {
 	router.Delete("/admin/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(repo)))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10)+"/revoke", nil)
+	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1160,6 +1161,7 @@ func TestDeactivateUserSuccess(t *testing.T) {
 	router := userActionRouter(deactivateUserHandler(repo), adminUser)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/deactivate", target.ID), nil)
+	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1186,6 +1188,7 @@ func TestActivateUserSuccess(t *testing.T) {
 	router := userActionRouter(activateUserHandler(repo), adminUser)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/activate", target.ID), nil)
+	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 

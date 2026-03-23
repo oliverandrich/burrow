@@ -31,6 +31,7 @@ func TestRetryHandler(t *testing.T) {
 	r.Post("/admin/jobs/{id}/retry", burrow.Handle(handler))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/jobs/%d/retry", job.ID), nil)
+	req.Header.Set("HX-Request", "true")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -77,6 +78,7 @@ func TestCancelHandler(t *testing.T) {
 	r.Post("/admin/jobs/{id}/cancel", burrow.Handle(handler))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/jobs/%d/cancel", job.ID), nil)
+	req.Header.Set("HX-Request", "true")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

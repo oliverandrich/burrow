@@ -89,8 +89,7 @@ func revokeInviteHandler(repo *Repository) burrow.HandlerFunc {
 			return burrow.NewHTTPError(http.StatusInternalServerError, "failed to delete invite")
 		}
 
-		htmx.Redirect(w, "/admin/invites")
-		w.WriteHeader(http.StatusOK)
+		htmx.SmartRedirect(w, r, "/admin/invites")
 		return nil
 	}
 }

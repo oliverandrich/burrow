@@ -114,15 +114,10 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// HTMX: prepend new card via OOB + clear the form.
-	if htmx.Request(r).IsHTMX() {
-		return burrow.Render(w, r, http.StatusOK, "notes/create_response", map[string]any{
-			"Note":     note,
-			"Messages": messages.Get(r.Context()),
-		})
-	}
-
-	http.Redirect(w, r, "/notes", http.StatusSeeOther)
-	return nil
+	return htmx.RenderOrRedirect(w, r, "/notes", "notes/create_response", map[string]any{
+		"Note":     note,
+		"Messages": messages.Get(r.Context()),
+	})
 }
 
 // Edit renders the edit form pre-filled with an existing note.
@@ -185,15 +180,10 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// HTMX: replace existing card via OOB + clear the form.
-	if htmx.Request(r).IsHTMX() {
-		return burrow.Render(w, r, http.StatusOK, "notes/update_response", map[string]any{
-			"Note":     updated,
-			"Messages": messages.Get(r.Context()),
-		})
-	}
-
-	http.Redirect(w, r, "/notes", http.StatusSeeOther)
-	return nil
+	return htmx.RenderOrRedirect(w, r, "/notes", "notes/update_response", map[string]any{
+		"Note":     updated,
+		"Messages": messages.Get(r.Context()),
+	})
 }
 
 // Delete removes a note owned by the authenticated user.
@@ -209,12 +199,7 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	if htmx.Request(r).IsHTMX() {
-		return burrow.Render(w, r, http.StatusOK, "app/alerts_oob", map[string]any{
-			"Messages": messages.Get(r.Context()),
-		})
-	}
-
-	http.Redirect(w, r, "/notes", http.StatusSeeOther)
-	return nil
+	return htmx.RenderOrRedirect(w, r, "/notes", "app/alerts_oob", map[string]any{
+		"Messages": messages.Get(r.Context()),
+	})
 }

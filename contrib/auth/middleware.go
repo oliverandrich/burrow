@@ -77,12 +77,7 @@ func RequireAdmin() func(http.Handler) http.Handler {
 // HX-Redirect to force a full page navigation instead of swapping into the
 // current target (which would render the login page inside <main>).
 func redirectToLogin(w http.ResponseWriter, r *http.Request) {
-	if htmx.Request(r).IsHTMX() {
-		htmx.Redirect(w, "/auth/login")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+	htmx.SmartRedirect(w, r, "/auth/login")
 }
 
 // SafeRedirectPath validates a redirect path, falling back to defaultPath.

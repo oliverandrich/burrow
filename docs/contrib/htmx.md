@@ -75,6 +75,47 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 
 ## Response Helpers
 
+### Smart Helpers
+
+These helpers handle the common pattern of branching between htmx and non-htmx requests:
+
+#### SmartRedirect
+
+Issues an `HX-Redirect` for htmx requests or a standard 303 redirect for normal requests.
+
+```go
+// Before:
+if htmx.Request(r).IsHTMX() {
+    htmx.Redirect(w, "/dashboard")
+    w.WriteHeader(http.StatusOK)
+    return nil
+}
+http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+return nil
+
+// After:
+htmx.SmartRedirect(w, r, "/dashboard")
+return nil
+```
+
+#### RenderOrRedirect
+
+Renders a template fragment for htmx requests, or issues a 303 redirect for standard requests.
+
+```go
+// Before:
+if htmx.Request(r).IsHTMX() {
+    return burrow.Render(w, r, http.StatusOK, "notes/create_response", data)
+}
+http.Redirect(w, r, "/notes", http.StatusSeeOther)
+return nil
+
+// After:
+return htmx.RenderOrRedirect(w, r, "/notes", "notes/create_response", data)
+```
+
+### Header Setters
+
 Set htmx response headers to control client-side behaviour:
 
 ```go
@@ -89,8 +130,6 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
-### Available Response Functions
-
 | Function | Header | Description |
 |----------|--------|-------------|
 | `Redirect(w, url)` | `HX-Redirect` | Client-side redirect |
@@ -102,7 +141,14 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 | `ReplaceURL(w, url)` | `HX-Replace-Url` | Replace current URL |
 | `Reswap(w, strategy)` | `HX-Reswap` | Override swap strategy |
 | `Retarget(w, selector)` | `HX-Retarget` | Change target element |
+| `Reselect(w, selector)` | `HX-Reselect` | Change content selection |
 | `Location(w, url)` | `HX-Location` | Navigate without full reload |
+
+### Constants
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `StatusStopPolling` | `286` | HTTP status code that instructs htmx to stop polling |
 
 ## Interfaces Implemented
 
