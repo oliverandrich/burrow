@@ -69,10 +69,14 @@ func (a *App) configure(keyHex string, secure bool) error {
 
 // RequestFuncMap returns request-scoped template functions for CSRF tokens.
 func (a *App) RequestFuncMap(r *http.Request) template.FuncMap {
+	token := Token(r.Context())
 	return template.FuncMap{
-		"csrfToken": func() string { return Token(r.Context()) },
+		"csrfToken": func() string { return token },
 		"csrfField": func() template.HTML {
-			return template.HTML(`<input type="hidden" name="gorilla.csrf.Token" value="` + Token(r.Context()) + `">`) // #nosec G203 -- token is framework-generated
+			return template.HTML(`<input type="hidden" name="gorilla.csrf.Token" value="` + token + `">`) //nolint:gosec // G203: token is a base64-encoded opaque value from gorilla/csrf
+		},
+		"csrfHxHeaders": func() template.HTMLAttr {
+			return template.HTMLAttr(` hx-headers='{"X-CSRF-Token":"` + token + `"}'`) //nolint:gosec // G203: token is a base64-encoded opaque value from gorilla/csrf
 		},
 	}
 }

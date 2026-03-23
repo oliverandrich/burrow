@@ -14,7 +14,7 @@
         [aria-expanded="true"] > .sidebar-chevron { transform: rotate(90deg); }
     </style>
 </head>
-<body hx-boost="true" hx-target="main" hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'>
+<body hx-boost="true" hx-target="main" {{- csrfHxHeaders }}>
     <!-- Mobile navbar with offcanvas toggle -->
     <nav class="navbar d-md-none bg-body-tertiary border-bottom">
         <div class="container-fluid">

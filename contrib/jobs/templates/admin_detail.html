@@ -73,7 +73,6 @@
     <button
         class="btn btn-success"
         hx-post="/admin/jobs/{{ itoa .Job.ID }}/retry"
-        hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
     >
         {{ iconArrowCounterclockwise }}
         {{ t "admin-job-detail-action-retry" }}
@@ -83,7 +82,6 @@
     <button
         class="btn btn-warning"
         hx-post="/admin/jobs/{{ itoa .Job.ID }}/cancel"
-        hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
         hx-confirm="{{ t "admin-job-detail-cancel-confirm" }}"
     >
         {{ iconXCircle }}
@@ -93,7 +91,6 @@
     <button
         class="btn btn-outline-danger ms-auto"
         hx-delete="/admin/jobs/{{ itoa .Job.ID }}"
-        hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
         hx-confirm="{{ t "admin-job-detail-delete-confirm" }}"
     >
         {{ iconTrash }}

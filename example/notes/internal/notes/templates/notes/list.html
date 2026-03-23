@@ -75,7 +75,6 @@
                 hx-delete="/notes/{{ itoa .ID }}"
                 hx-target="#note-{{ itoa .ID }}"
                 hx-swap="outerHTML swap:0.3s"
-                hx-headers='{"X-CSRF-Token":"{{ csrfToken }}"}'
                 hx-confirm="{{ t "notes-delete-confirm" }}">
             <span class="me-1">{{ iconTrash }}</span>{{ t "notes-delete-button" }}
         </button>

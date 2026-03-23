@@ -50,11 +50,15 @@ Use `csrfToken` when you need just the token value, e.g. for meta tags or JavaSc
 
 ### htmx
 
-Add `hx-headers` to the `<body>` tag so all htmx requests include the token automatically:
+The Bootstrap and admin layouts use `{{ csrfHxHeaders }}` on the `<body>` tag, so all htmx requests include the CSRF token automatically. No manual setup is needed when using these layouts.
+
+If you use a custom layout, add the `csrfHxHeaders` function to your `<body>` tag:
 
 ```html
-<body hx-headers='{"X-CSRF-Token": "{{ csrfToken }}"}'>
+<body{{- csrfHxHeaders }}>
 ```
+
+This renders `hx-headers='{"X-CSRF-Token":"..."}'` when the csrf app is registered, or nothing when it is not — keeping the HTML clean.
 
 ### fetch / XMLHttpRequest
 

@@ -11,7 +11,7 @@
     {{ template "htmx/js" . }}
     {{ template "htmx/config" . }}
 </head>
-<body>
+<body {{- csrfHxHeaders }}>
     {{ template "bootstrap/navbar" . }}
     <div class="container">{{ template "bootstrap/alerts" . }}</div>
     <main>

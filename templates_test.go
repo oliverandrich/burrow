@@ -79,6 +79,71 @@ func TestBaseFuncMapLang(t *testing.T) {
 	assert.Equal(t, "en", fn())
 }
 
+func TestBaseFuncMapCsrfFallbacks(t *testing.T) {
+	fm := baseFuncMap()
+
+	tokenFn := fm["csrfToken"].(func() string)
+	assert.Empty(t, tokenFn(), "csrfToken fallback should return empty string")
+
+	fieldFn := fm["csrfField"].(func() template.HTML)
+	assert.Equal(t, template.HTML(""), fieldFn(), "csrfField fallback should return empty HTML")
+
+	hxFn := fm["csrfHxHeaders"].(func() template.HTMLAttr)
+	assert.Equal(t, template.HTMLAttr(""), hxFn(), "csrfHxHeaders fallback should return empty attr")
+}
+
+func TestCsrfHxHeadersFallbackRendersCleanBody(t *testing.T) {
+	s := &Server{registry: NewRegistry()}
+
+	tplFS := fstest.MapFS{
+		"page.html": &fstest.MapFile{
+			Data: []byte(`{{ define "test/page" }}<body{{- csrfHxHeaders }}>{{ end }}`),
+		},
+	}
+	s.registry.Add(&templateApp{name: "test", tplFS: tplFS})
+
+	err := s.buildTemplates()
+	require.NoError(t, err)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	html, err := s.executeTemplate(r, "test/page", nil)
+	require.NoError(t, err)
+	// Clean body tag when csrf is not registered.
+	assert.Equal(t, template.HTML("<body>"), html)
+}
+
+func TestCsrfTokenFallbackOverriddenByRequestFuncMap(t *testing.T) {
+	s := &Server{registry: NewRegistry()}
+
+	tplFS := fstest.MapFS{
+		"page.html": &fstest.MapFile{
+			Data: []byte(`{{ define "test/page" }}<body{{- csrfHxHeaders }}>{{ csrfToken }}{{ end }}`),
+		},
+	}
+
+	// App that overrides csrf funcs via RequestFuncMap (like csrf app does).
+	app := &templateRequestFuncMapApp{
+		name:  "csrf",
+		tplFS: tplFS,
+		rfm: func(_ *http.Request) template.FuncMap {
+			return template.FuncMap{
+				"csrfToken":     func() string { return "real-token" },
+				"csrfHxHeaders": func() template.HTMLAttr { return ` hx-headers='{"X-CSRF-Token":"real-token"}'` },
+			}
+		},
+	}
+	s.registry.Add(app)
+
+	// Should NOT panic despite keys being in both baseFuncMap and RequestFuncMap.
+	err := s.buildTemplates()
+	require.NoError(t, err)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	html, err := s.executeTemplate(r, "test/page", nil)
+	require.NoError(t, err)
+	assert.Equal(t, template.HTML(`<body hx-headers='{"X-CSRF-Token":"real-token"}'>real-token`), html)
+}
+
 func TestParseTemplateFS_ReadError(t *testing.T) {
 	badFS := fstest.MapFS{
 		"dir/nested.html": &fstest.MapFile{

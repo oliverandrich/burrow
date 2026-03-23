@@ -32,10 +32,13 @@ func baseFuncMap() template.FuncMap {
 			}
 			return m
 		},
-		"add":         func(a, b int) int { return a + b },
-		"sub":         func(a, b int) int { return a - b },
-		"pageNumbers": PageNumbers,
-		"pageURL":     PageURL,
+		"add":           func(a, b int) int { return a + b },
+		"sub":           func(a, b int) int { return a - b },
+		"pageNumbers":   PageNumbers,
+		"pageURL":       PageURL,
+		"csrfToken":     func() string { return "" },
+		"csrfField":     func() template.HTML { return "" },
+		"csrfHxHeaders": func() template.HTMLAttr { return "" },
 	}
 }
 

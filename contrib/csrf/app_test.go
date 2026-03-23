@@ -218,6 +218,28 @@ func TestRequestFuncMapCsrfField(t *testing.T) {
 	assert.Contains(t, string(gotField), `value="`)
 }
 
+func TestRequestFuncMapCsrfHxHeaders(t *testing.T) {
+	a := newTestApp(t)
+
+	var gotAttr template.HTMLAttr
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fm := a.RequestFuncMap(r)
+		fn := fm["csrfHxHeaders"].(func() template.HTMLAttr)
+		gotAttr = fn()
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := a.Middleware()[0](inner)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, string(gotAttr), ` hx-headers='{"X-CSRF-Token":"`)
+	assert.Contains(t, string(gotAttr), `"}'`)
+}
+
 func TestFlags(t *testing.T) {
 	a := New()
 	flags := a.Flags(nil)

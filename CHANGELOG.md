@@ -4,6 +4,15 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Added
+
+- **`csrfHxHeaders` template function** — renders `hx-headers='{"X-CSRF-Token":"..."}'` as an HTML attribute when the csrf app is registered, or nothing when it is not. Use `<body {{ csrfHxHeaders }}>` for automatic CSRF protection on all htmx requests.
+- **`csrfToken` / `csrfField` / `csrfHxHeaders` fallbacks** — these template functions are always available (return empty values when the csrf app is not registered), so layouts can reference them unconditionally.
+
+### Fixed
+
+- **Bootstrap/admin layouts: automatic CSRF token for htmx** — `bootstrap/layout`, `bootstrap/nav_layout`, and `admin/layout` now use `{{ csrfHxHeaders }}` on the `<body>` tag, so all htmx requests include the CSRF token automatically.
+
 ## 0.8.0 — 2026-03-22
 
 ### Added
