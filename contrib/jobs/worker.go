@@ -31,22 +31,25 @@ func DefaultWorkerConfig() WorkerConfig {
 
 // Worker manages a poller goroutine and a pool of worker goroutines.
 type Worker struct { //nolint:govet // fieldalignment: readability over optimization
-	repo     *Repository
-	handlers map[string]burrow.JobHandlerFunc
-	config   WorkerConfig
-	jobs     chan Job
-	wg       sync.WaitGroup
-	done     chan struct{}
+	repo         *Repository
+	handlers     map[string]burrow.JobHandlerFunc
+	config       WorkerConfig
+	templateExec burrow.TemplateExecutor
+	jobs         chan Job
+	wg           sync.WaitGroup
+	done         chan struct{}
 }
 
-// NewWorker creates a new Worker.
-func NewWorker(repo *Repository, handlers map[string]burrow.JobHandlerFunc, config WorkerConfig) *Worker {
+// NewWorker creates a new Worker. The exec parameter may be nil when
+// template rendering is not needed (e.g., in tests).
+func NewWorker(repo *Repository, handlers map[string]burrow.JobHandlerFunc, config WorkerConfig, exec burrow.TemplateExecutor) *Worker {
 	return &Worker{
-		repo:     repo,
-		handlers: handlers,
-		config:   config,
-		jobs:     make(chan Job, config.BatchSize),
-		done:     make(chan struct{}),
+		repo:         repo,
+		handlers:     handlers,
+		config:       config,
+		templateExec: exec,
+		jobs:         make(chan Job, config.BatchSize),
+		done:         make(chan struct{}),
 	}
 }
 
@@ -137,8 +140,13 @@ func (w *Worker) processJob(job Job) {
 	}
 
 	// Handlers get a background context so they can finish even after
-	// the poller context is cancelled.
-	err := handler(context.Background(), []byte(job.Payload))
+	// the poller context is cancelled. If a template executor is available,
+	// inject it so handlers can use RenderFragment.
+	ctx := context.Background()
+	if w.templateExec != nil {
+		ctx = burrow.WithTemplateExecutor(ctx, w.templateExec)
+	}
+	err := handler(ctx, []byte(job.Payload))
 	if err != nil {
 		slog.Error("jobs: handler failed", "type", job.Type, "id", job.ID, "error", err, "attempt", job.Attempts)
 		if failErr := w.repo.Fail(context.Background(), job.ID, err.Error(), job.Attempts, job.MaxRetries, w.config.RetryBaseDelay); failErr != nil {

@@ -122,11 +122,11 @@ func (a *App) Configure(cmd *cli.Command) error {
 	return nil
 }
 
-// PostConfigure discovers HasJobs implementors and starts the worker pool.
+// PostConfigure discovers HasJobs implementors and registers their handlers.
 // It runs after all apps have been configured, so apps can safely rely
 // on state set in their own Configure() when RegisterJobs is called.
+// The actual worker start happens in Start() after the full boot sequence.
 func (a *App) PostConfigure(_ *cli.Command) error {
-	// Discover HasJobs implementors and let them register their handlers.
 	if a.registry != nil {
 		for _, app := range a.registry.Apps() {
 			if hj, ok := app.(burrow.HasJobs); ok {
@@ -134,11 +134,16 @@ func (a *App) PostConfigure(_ *cli.Command) error {
 			}
 		}
 	}
+	return nil
+}
 
+// Start creates the worker pool with the server's TemplateExecutor and
+// launches the background goroutines. Called after the full boot sequence
+// completes (templates built, middleware and routes registered).
+func (a *App) Start(srv *burrow.Server) error {
+	a.worker = NewWorker(a.repo, a.handlers, a.workerCfg, srv.TemplateExecutor())
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancelFunc = cancel
-	a.worker = NewWorker(a.repo, a.handlers, a.workerCfg)
-
 	go a.worker.Start(ctx)
 	return nil
 }
@@ -330,4 +335,5 @@ var (
 	_ burrow.HasTranslations  = (*App)(nil)
 	_ burrow.HasTemplates     = (*App)(nil)
 	_ burrow.HasFuncMap       = (*App)(nil)
+	_ burrow.Startable        = (*App)(nil)
 )

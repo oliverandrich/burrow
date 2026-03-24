@@ -11,6 +11,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
+- **`Startable` lifecycle interface** — counterpart to `HasShutdown`, called after the full boot sequence (templates built, middleware and routes registered); receives `*Server` so apps can access server resources like `TemplateExecutor()` ([#11](https://github.com/oliverandrich/burrow/issues/11))
+- **jobs: automatic `TemplateExecutor` injection** — the jobs app now implements `Startable` and injects the `TemplateExecutor` into every job handler's context, enabling `RenderFragment` in background jobs without manual setup ([#11](https://github.com/oliverandrich/burrow/issues/11))
 - Added `RenderFragment()` for rendering templates outside HTTP handlers (background jobs, SSE, CLI) ([#5](https://github.com/oliverandrich/burrow/issues/5))
 - Added `Server.TemplateExecutor()` accessor to obtain the template executor after boot ([#5](https://github.com/oliverandrich/burrow/issues/5))
 - Added `WithRequestPath()`/`RequestPath()` context helpers for request path propagation ([#5](https://github.com/oliverandrich/burrow/issues/5))

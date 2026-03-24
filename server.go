@@ -253,6 +253,15 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		return NewHTTPError(http.StatusMethodNotAllowed, "method not allowed")
 	}))
 
+	// Start background processes (e.g., job workers).
+	for _, app := range s.registry.Apps() {
+		if starter, ok := app.(Startable); ok {
+			if err := starter.Start(s); err != nil {
+				return fmt.Errorf("start %s: %w", app.Name(), err)
+			}
+		}
+	}
+
 	return startServer(ctx, r, cfg, s.registry)
 }
 

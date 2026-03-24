@@ -104,6 +104,9 @@ func (r *Registry) Add(app App) {
 	if _, ok := app.(PostConfigurable); ok {
 		caps = append(caps, "postconfigure")
 	}
+	if _, ok := app.(Startable); ok {
+		caps = append(caps, "startable")
+	}
 	slog.Debug("app registered", "name", name, "capabilities", caps)
 }
 

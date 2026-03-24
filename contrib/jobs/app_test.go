@@ -24,6 +24,7 @@ func TestApp_InterfaceAssertions(t *testing.T) {
 	assert.Implements(t, (*burrow.Configurable)(nil), app)
 	assert.Implements(t, (*burrow.PostConfigurable)(nil), app)
 	assert.Implements(t, (*burrow.HasShutdown)(nil), app)
+	assert.Implements(t, (*burrow.Startable)(nil), app)
 }
 
 func TestApp_Name(t *testing.T) {
@@ -106,11 +107,11 @@ func TestApp_FullLifecycle(t *testing.T) {
 		return nil
 	})
 
-	// Simulate Configure — start the worker directly.
+	// Simulate Start — create and start the worker directly.
 	cfg := testWorkerConfig()
 	ctx, cancel := context.WithCancel(context.Background())
 	app.cancelFunc = cancel
-	app.worker = NewWorker(app.repo, app.handlers, cfg)
+	app.worker = NewWorker(app.repo, app.handlers, cfg, nil)
 	go app.worker.Start(ctx)
 
 	// Enqueue a job.
@@ -389,18 +390,9 @@ func TestApp_PostConfigure(t *testing.T) {
 	assert.True(t, stub.registered, "HasJobs.RegisterJobs should have been called")
 	assert.NotNil(t, app.handlers["stub_job"], "handler from stub should be registered")
 
-	// Verify worker was created with the right config.
-	require.NotNil(t, app.worker)
-	assert.Equal(t, 4, app.worker.config.NumWorkers)
-	assert.Equal(t, 500*time.Millisecond, app.worker.config.PollInterval)
-	assert.Equal(t, 10*time.Second, app.worker.config.RetryBaseDelay)
-
-	// Verify cancelFunc was set.
-	assert.NotNil(t, app.cancelFunc)
-
-	// Clean shutdown.
-	err = app.Shutdown(context.Background())
-	require.NoError(t, err)
+	// Worker should NOT be started in PostConfigure — that happens in Start().
+	assert.Nil(t, app.worker)
+	assert.Nil(t, app.cancelFunc)
 }
 
 func TestApp_PostConfigure_DefaultFlags(t *testing.T) {
@@ -422,14 +414,13 @@ func TestApp_PostConfigure_DefaultFlags(t *testing.T) {
 	err := cmd.Run(t.Context(), []string{"test"})
 	require.NoError(t, err)
 
-	// Verify defaults from the flags.
-	require.NotNil(t, app.worker)
-	assert.Equal(t, 2, app.worker.config.NumWorkers)
-	assert.Equal(t, time.Second, app.worker.config.PollInterval)
-	assert.Equal(t, 30*time.Second, app.worker.config.RetryBaseDelay)
+	// Worker should NOT be started in PostConfigure — that happens in Start().
+	assert.Nil(t, app.worker)
 
-	err = app.Shutdown(context.Background())
-	require.NoError(t, err)
+	// Verify worker config defaults were stored.
+	assert.Equal(t, 2, app.workerCfg.NumWorkers)
+	assert.Equal(t, time.Second, app.workerCfg.PollInterval)
+	assert.Equal(t, 30*time.Second, app.workerCfg.RetryBaseDelay)
 }
 
 func TestApp_PostConfigure_NilRegistry(t *testing.T) {
@@ -452,10 +443,8 @@ func TestApp_PostConfigure_NilRegistry(t *testing.T) {
 	err := cmd.Run(t.Context(), []string{"test"})
 	require.NoError(t, err)
 
-	require.NotNil(t, app.worker)
-
-	err = app.Shutdown(context.Background())
-	require.NoError(t, err)
+	// Worker not started — that happens in Start().
+	assert.Nil(t, app.worker)
 }
 
 func TestApp_PostConfigure_RegistryWithoutHasJobs(t *testing.T) {
@@ -484,9 +473,6 @@ func TestApp_PostConfigure_RegistryWithoutHasJobs(t *testing.T) {
 
 	// No handlers should have been registered from HasJobs discovery.
 	assert.Empty(t, app.handlers)
-
-	err = app.Shutdown(context.Background())
-	require.NoError(t, err)
 }
 
 func TestApp_Configure_SeparateDatabase(t *testing.T) {
@@ -594,6 +580,25 @@ func TestApp_Shutdown_ClosesSeparateDB(t *testing.T) {
 	var count int
 	err = app.ownDB.NewRaw("SELECT 1").Scan(context.Background(), &count)
 	require.Error(t, err)
+}
+
+func TestApp_Start_CreatesWorkerWithExecutor(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+	app.workerCfg = testWorkerConfig()
+
+	// Create a minimal server to pass to Start.
+	srv := burrow.NewServer()
+
+	err := app.Start(srv)
+	require.NoError(t, err)
+	require.NotNil(t, app.worker)
+	require.NotNil(t, app.cancelFunc)
+
+	// Clean shutdown.
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
 }
 
 func TestApp_Configure_SeparateDatabase_CreatesJobsAdmin(t *testing.T) {

@@ -440,6 +440,30 @@ Runs a second configuration pass after all `Configurable.Configure()` calls have
 
 Most apps do not need this interface. Prefer `Configurable` unless you specifically need cross-app coordination that depends on post-Configure state.
 
+### Startable
+
+```go
+type Startable interface {
+    Start(srv *Server) error
+}
+```
+
+Called after the full boot sequence completes — templates built, middleware and routes registered — but before the HTTP listener starts. This is the counterpart to `HasShutdown`: use `Startable` to launch background processes and `HasShutdown` to stop them.
+
+The `*Server` parameter gives access to server resources like `TemplateExecutor()` that are only available after boot. For example, `contrib/jobs` implements `Startable` to create its worker pool with the template executor, so job handlers can use `RenderFragment`:
+
+```go
+func (a *App) Start(srv *burrow.Server) error {
+    a.worker = NewWorker(a.repo, a.handlers, a.workerCfg, srv.TemplateExecutor())
+    ctx, cancel := context.WithCancel(context.Background())
+    a.cancelFunc = cancel
+    go a.worker.Start(ctx)
+    return nil
+}
+```
+
+Most apps do not need this interface. Use it only when you need to start background goroutines that depend on the fully initialized server.
+
 ### HasShutdown
 
 ```go

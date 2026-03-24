@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -34,7 +35,7 @@ func TestWorker_ProcessJob(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, testWorkerConfig())
+	w := NewWorker(repo, handlers, testWorkerConfig(), nil)
 
 	// Enqueue a job.
 	_, err := repo.Enqueue(context.Background(), "test", `{}`, 3, time.Now())
@@ -67,7 +68,7 @@ func TestWorker_RetryOnFailure(t *testing.T) {
 	// Use fast poll + short config so retries happen quickly.
 	cfg := testWorkerConfig()
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue with maxRetries=3.
 	_, err := repo.Enqueue(context.Background(), "flaky", `{}`, 3, time.Now())
@@ -106,7 +107,7 @@ func TestWorker_DeadAfterMaxRetries(t *testing.T) {
 
 	cfg := testWorkerConfig()
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue with maxRetries=1 (only 1 attempt allowed).
 	_, err := repo.Enqueue(context.Background(), "always_fail", `{}`, 1, time.Now())
@@ -134,7 +135,7 @@ func TestWorker_UnknownType(t *testing.T) {
 
 	cfg := testWorkerConfig()
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	_, err := repo.Enqueue(context.Background(), "nonexistent", `{}`, 3, time.Now())
 	require.NoError(t, err)
@@ -168,7 +169,7 @@ func TestWorker_GracefulShutdown(t *testing.T) {
 
 	cfg := testWorkerConfig()
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	_, err := repo.Enqueue(context.Background(), "slow", `{}`, 3, time.Now())
 	require.NoError(t, err)
@@ -213,7 +214,7 @@ func TestNewWorker(t *testing.T) {
 	handlers := map[string]burrow.JobHandlerFunc{}
 	cfg := DefaultWorkerConfig()
 
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 	require.NotNil(t, w)
 	assert.Equal(t, cfg.NumWorkers, w.config.NumWorkers)
 	assert.Equal(t, cfg.PollInterval, w.config.PollInterval)
@@ -227,7 +228,7 @@ func TestWorker_Maintenance(t *testing.T) {
 
 	handlers := map[string]burrow.JobHandlerFunc{}
 	cfg := testWorkerConfig()
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Create a stale running job (locked 30 min ago).
 	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
@@ -269,7 +270,7 @@ func TestWorker_Maintenance_NoStaleNoCompleted(t *testing.T) {
 
 	handlers := map[string]burrow.JobHandlerFunc{}
 	cfg := testWorkerConfig()
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Run maintenance with no stale or completed jobs — exercises the n==0 branches.
 	w.maintenance(ctx)
@@ -323,7 +324,7 @@ func TestWorker_ProcessJob_Direct(t *testing.T) {
 			handlers := map[string]burrow.JobHandlerFunc{tt.typeName: tt.handler}
 			cfg := testWorkerConfig()
 			cfg.RetryBaseDelay = time.Millisecond
-			w := NewWorker(repo, handlers, cfg)
+			w := NewWorker(repo, handlers, cfg, nil)
 
 			_, err := repo.Enqueue(context.Background(), tt.typeName, `{}`, tt.maxRetries, time.Now())
 			require.NoError(t, err)
@@ -348,7 +349,7 @@ func TestWorker_ProcessJob_Direct(t *testing.T) {
 
 		handlers := map[string]burrow.JobHandlerFunc{} // no handlers
 		cfg := testWorkerConfig()
-		w := NewWorker(repo, handlers, cfg)
+		w := NewWorker(repo, handlers, cfg, nil)
 
 		_, err := repo.Enqueue(context.Background(), "unknown", `{}`, 3, time.Now())
 		require.NoError(t, err)
@@ -365,6 +366,74 @@ func TestWorker_ProcessJob_Direct(t *testing.T) {
 	})
 }
 
+func TestWorker_InjectsTemplateExecutor(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+
+	gotExec := make(chan bool, 1)
+	handlers := map[string]burrow.JobHandlerFunc{
+		"check_exec": func(ctx context.Context, _ []byte) error {
+			gotExec <- burrow.TemplateExec(ctx) != nil
+			return nil
+		},
+	}
+
+	exec := burrow.TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
+		return "test", nil
+	})
+	cfg := testWorkerConfig()
+	w := NewWorker(repo, handlers, cfg, exec)
+
+	_, err := repo.Enqueue(context.Background(), "check_exec", `{}`, 3, time.Now())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go w.Start(ctx)
+
+	select {
+	case hasExec := <-gotExec:
+		assert.True(t, hasExec, "job handler should have TemplateExecutor in context")
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for job handler")
+	}
+
+	cancel()
+	<-w.Done()
+}
+
+func TestWorker_NoTemplateExecutor(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+
+	gotExec := make(chan bool, 1)
+	handlers := map[string]burrow.JobHandlerFunc{
+		"check_no_exec": func(ctx context.Context, _ []byte) error {
+			gotExec <- burrow.TemplateExec(ctx) != nil
+			return nil
+		},
+	}
+
+	cfg := testWorkerConfig()
+	w := NewWorker(repo, handlers, cfg, nil)
+	// templateExec is nil — not set.
+
+	_, err := repo.Enqueue(context.Background(), "check_no_exec", `{}`, 3, time.Now())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go w.Start(ctx)
+
+	select {
+	case hasExec := <-gotExec:
+		assert.False(t, hasExec, "job handler should NOT have TemplateExecutor when not set")
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for job handler")
+	}
+
+	cancel()
+	<-w.Done()
+}
+
 func TestWorker_ScheduledJob(t *testing.T) {
 	db := testDB(t)
 	repo := NewRepository(db)
@@ -379,7 +448,7 @@ func TestWorker_ScheduledJob(t *testing.T) {
 
 	cfg := testWorkerConfig()
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Schedule for 100ms in the future.
 	_, err := repo.Enqueue(context.Background(), "scheduled", `{}`, 3, time.Now().Add(100*time.Millisecond))

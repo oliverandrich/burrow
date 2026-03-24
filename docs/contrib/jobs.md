@@ -113,6 +113,44 @@ Once a job has exhausted its `MaxRetries` (default: 3), it transitions to `dead`
 
 Jobs can also reach `dead` by being manually cancelled via the admin UI.
 
+## Rendering Templates in Job Handlers
+
+The jobs app automatically injects the `TemplateExecutor` into every job handler's context via the [`Startable`](../reference/interfaces.md#startable) lifecycle interface. This means you can use `burrow.RenderFragment` directly in background jobs — no manual setup required.
+
+```go
+func (a *App) handleSendEmail(ctx context.Context, payload []byte) error {
+    var data struct {
+        UserID int64  `json:"user_id"`
+        Locale string `json:"locale"`
+    }
+    if err := json.Unmarshal(payload, &data); err != nil {
+        return fmt.Errorf("invalid payload: %w", err)
+    }
+
+    user, err := a.repo.GetUser(ctx, data.UserID)
+    if err != nil {
+        return err
+    }
+
+    // Set locale for i18n template functions.
+    ctx = a.withLocale(ctx, data.Locale)
+
+    // Render the email body using a template — works because
+    // the TemplateExecutor is already in the context.
+    body, err := burrow.RenderFragment(ctx, "emails/welcome", map[string]any{
+        "User": user,
+    })
+    if err != nil {
+        return fmt.Errorf("render email: %w", err)
+    }
+
+    return a.mailer.Send(user.Email, "Welcome!", string(body))
+}
+```
+
+!!! tip "i18n in job handlers"
+    Template functions like `t`, `tData`, and `tPlural` depend on the locale in the context. When rendering localized templates in jobs, pass `WithLocale` (from `AppConfig.WithLocale`, saved during `Register`) to set the locale before calling `RenderFragment`.
+
 ## Admin UI
 
 The jobs app implements `HasAdmin` and provides a ModelAdmin-based admin interface at `/admin/jobs`:
@@ -170,3 +208,4 @@ The jobs app implements `HasShutdown`. When the server shuts down:
 | `HasTranslations` | English and German labels for admin UI |
 | `HasTemplates` | Admin page templates |
 | `HasFuncMap` | Icon and utility template functions |
+| `Startable` | Starts the worker pool after full boot, with `TemplateExecutor` for job handlers |

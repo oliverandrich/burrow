@@ -28,7 +28,7 @@ func TestJobPoolProcesses100Jobs(t *testing.T) {
 	cfg.NumWorkers = 4
 	cfg.BatchSize = 20
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue 100 jobs.
 	for range 100 {
@@ -75,7 +75,7 @@ func TestJobPoolHandlerFailuresDoNotCrashPool(t *testing.T) {
 	cfg.NumWorkers = 3
 	cfg.RetryBaseDelay = time.Millisecond // fast retries for test
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue a mix of good and bad jobs. Bad jobs have maxRetries=1 so they go dead immediately.
 	for range 10 {
@@ -133,7 +133,7 @@ func TestJobPoolMaxRetriesExhaustedEndsDead(t *testing.T) {
 	cfg.NumWorkers = 2
 	cfg.RetryBaseDelay = time.Millisecond
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue 5 jobs with maxRetries=3 (3 attempts allowed before dead).
 	jobIDs := make([]int64, 0, 5)
@@ -192,7 +192,7 @@ func TestJobPoolPanicInHandlerDoesNotCrashPool(t *testing.T) {
 	cfg := testWorkerConfig()
 	cfg.NumWorkers = 2
 	ctx, cancel := context.WithCancel(context.Background())
-	w := NewWorker(repo, handlers, cfg)
+	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue error jobs first (maxRetries=1 so they die quickly).
 	for range 5 {

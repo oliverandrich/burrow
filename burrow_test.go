@@ -44,6 +44,7 @@ func (a *fullApp) AdminNavItems() []NavItem                          { return ni
 func (a *fullApp) TemplateFS() fs.FS                                 { return nil }
 func (a *fullApp) FuncMap() template.FuncMap                         { return nil }
 func (a *fullApp) RequestFuncMap(_ context.Context) template.FuncMap { return nil }
+func (a *fullApp) Start(_ *Server) error                             { return nil }
 
 // trackingApp records calls and provides test data for lifecycle methods.
 type trackingApp struct {
@@ -122,6 +123,7 @@ var (
 	_ HasTemplates      = (*fullApp)(nil)
 	_ HasFuncMap        = (*fullApp)(nil)
 	_ HasRequestFuncMap = (*fullApp)(nil)
+	_ Startable         = (*fullApp)(nil)
 )
 
 func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
@@ -161,6 +163,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	_, hasTemplates := app.(HasTemplates)
 	_, hasFuncMap := app.(HasFuncMap)
 	_, hasRequestFuncMap := app.(HasRequestFuncMap)
+	_, isStartable := app.(Startable)
 
 	assert.True(t, isMigratable)
 	assert.True(t, hasMiddleware)
@@ -173,6 +176,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	assert.True(t, hasTemplates)
 	assert.True(t, hasFuncMap)
 	assert.True(t, hasRequestFuncMap)
+	assert.True(t, isStartable)
 }
 
 func TestNavItemFields(t *testing.T) {

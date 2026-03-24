@@ -96,6 +96,7 @@
 //   - [HasTranslations] — i18n translation files
 //   - [HasDependencies] — declared app dependencies for ordering
 //   - [PostConfigurable] — second-pass configuration after all apps are configured
+//   - [Startable] — start background processes after boot (counterpart to HasShutdown)
 //   - [HasShutdown] — graceful shutdown hooks
 //
 // # Templates
@@ -297,6 +298,13 @@ type HasShutdown interface {
 // to serve traffic, or an error describing what is not ready.
 type ReadinessChecker interface {
 	ReadinessCheck(ctx context.Context) error
+}
+
+// Startable is implemented by apps that need to start background processes
+// after the full boot sequence completes (templates built, middleware and
+// routes registered). It is the counterpart to HasShutdown.
+type Startable interface {
+	Start(srv *Server) error
 }
 
 // HasTemplates is implemented by apps that provide HTML template files.
