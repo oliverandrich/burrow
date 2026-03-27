@@ -18,6 +18,14 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// Compile-time interface assertions.
+var (
+	_ burrow.App           = (*App)(nil)
+	_ burrow.Configurable  = (*App)(nil)
+	_ burrow.HasMiddleware = (*App)(nil)
+	_ burrow.HasRoutes     = (*App)(nil)
+)
+
 func TestNewDefaults(t *testing.T) {
 	app := New()
 	assert.Equal(t, "data/uploads", app.dir)

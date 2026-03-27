@@ -115,7 +115,7 @@ Jobs can also reach `dead` by being manually cancelled via the admin UI.
 
 ## Rendering Templates in Job Handlers
 
-The jobs app automatically injects the `TemplateExecutor` into every job handler's context via the [`Startable`](../reference/interfaces.md#startable) lifecycle interface. This means you can use `burrow.RenderFragment` directly in background jobs — no manual setup required.
+The jobs app receives the `TemplateExecutor` from the server during the [`Startable`](../reference/interfaces.md#startable) lifecycle phase and injects it into every job handler's context at execution time. This means you can use `burrow.RenderFragment` directly in background jobs — no manual setup required.
 
 ```go
 func (a *App) handleSendEmail(ctx context.Context, payload []byte) error {
@@ -149,7 +149,7 @@ func (a *App) handleSendEmail(ctx context.Context, payload []byte) error {
 ```
 
 !!! tip "i18n in job handlers"
-    Template functions like `t`, `tData`, and `tPlural` depend on the locale in the context. When rendering localized templates in jobs, pass `WithLocale` (from `AppConfig.WithLocale`, saved during `Register`) to set the locale before calling `RenderFragment`.
+    Template functions like `t`, `tData`, and `tPlural` depend on the locale in the context. When rendering localized templates in jobs, save the `WithLocale` function from `AppConfig` during `Register` and use it to set the locale before calling `RenderFragment`.
 
 ## Admin UI
 

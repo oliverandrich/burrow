@@ -16,16 +16,20 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func TestApp_InterfaceAssertions(t *testing.T) {
-	app := New()
-	assert.Implements(t, (*burrow.App)(nil), app)
-	assert.Implements(t, (*burrow.Queue)(nil), app)
-	assert.Implements(t, (*burrow.Migratable)(nil), app)
-	assert.Implements(t, (*burrow.Configurable)(nil), app)
-	assert.Implements(t, (*burrow.PostConfigurable)(nil), app)
-	assert.Implements(t, (*burrow.HasShutdown)(nil), app)
-	assert.Implements(t, (*burrow.Startable)(nil), app)
-}
+// Compile-time interface assertions.
+var (
+	_ burrow.App              = (*App)(nil)
+	_ burrow.Queue            = (*App)(nil)
+	_ burrow.Migratable       = (*App)(nil)
+	_ burrow.Configurable     = (*App)(nil)
+	_ burrow.PostConfigurable = (*App)(nil)
+	_ burrow.HasShutdown      = (*App)(nil)
+	_ burrow.HasAdmin         = (*App)(nil)
+	_ burrow.HasTranslations  = (*App)(nil)
+	_ burrow.HasTemplates     = (*App)(nil)
+	_ burrow.HasFuncMap       = (*App)(nil)
+	_ burrow.Startable        = (*App)(nil)
+)
 
 func TestApp_Name(t *testing.T) {
 	app := New()

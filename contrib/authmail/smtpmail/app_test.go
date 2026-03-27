@@ -10,6 +10,12 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// Compile-time interface assertions.
+var (
+	_ burrow.App          = (*App)(nil)
+	_ burrow.Configurable = (*App)(nil)
+)
+
 func TestAppName(t *testing.T) {
 	a := New()
 	assert.Equal(t, "authmail-smtp", a.Name())

@@ -141,6 +141,9 @@ func (a *App) PostConfigure(_ *cli.Command) error {
 // launches the background goroutines. Called after the full boot sequence
 // completes (templates built, middleware and routes registered).
 func (a *App) Start(srv *burrow.Server) error {
+	// srv.TemplateExecutor() may return nil when no HasRequestFuncMap providers
+	// exist. Worker handles this gracefully — RenderFragment will simply not
+	// have request-scoped template functions available.
 	a.worker = NewWorker(a.repo, a.handlers, a.workerCfg, srv.TemplateExecutor())
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancelFunc = cancel
@@ -322,18 +325,3 @@ func prettyJSON(s string) string {
 
 // TranslationFS returns the embedded translation files.
 func (a *App) TranslationFS() fs.FS { return translationFS }
-
-// Compile-time interface assertions.
-var (
-	_ burrow.App              = (*App)(nil)
-	_ burrow.Queue            = (*App)(nil)
-	_ burrow.Migratable       = (*App)(nil)
-	_ burrow.Configurable     = (*App)(nil)
-	_ burrow.PostConfigurable = (*App)(nil)
-	_ burrow.HasShutdown      = (*App)(nil)
-	_ burrow.HasAdmin         = (*App)(nil)
-	_ burrow.HasTranslations  = (*App)(nil)
-	_ burrow.HasTemplates     = (*App)(nil)
-	_ burrow.HasFuncMap       = (*App)(nil)
-	_ burrow.Startable        = (*App)(nil)
-)

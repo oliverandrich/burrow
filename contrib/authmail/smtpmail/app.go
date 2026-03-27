@@ -92,9 +92,3 @@ func (a *App) Configure(cmd *cli.Command) error {
 func (a *App) Mailer() *Mailer {
 	return a.mailer
 }
-
-// Compile-time interface assertions.
-var (
-	_ burrow.App          = (*App)(nil)
-	_ burrow.Configurable = (*App)(nil)
-)

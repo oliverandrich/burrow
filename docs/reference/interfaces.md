@@ -436,7 +436,7 @@ type PostConfigurable interface {
 }
 ```
 
-Runs a second configuration pass after all `Configurable.Configure()` calls have completed. This is useful when an app needs to interact with other apps' state that is only available after `Configure()` — for example, `contrib/jobs` uses `PostConfigure()` to discover `HasJobs` handlers and start the worker pool.
+Runs a second configuration pass after all `Configurable.Configure()` calls have completed. This is useful when an app needs to interact with other apps' state that is only available after `Configure()` — for example, `contrib/jobs` uses `PostConfigure()` to discover and register `HasJobs` handlers from other apps.
 
 Most apps do not need this interface. Prefer `Configurable` unless you specifically need cross-app coordination that depends on post-Configure state.
 
