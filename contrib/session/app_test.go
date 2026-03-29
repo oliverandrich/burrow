@@ -19,13 +19,13 @@ var testHashKey = hex.EncodeToString(make([]byte, 32))
 func configuredApp(t *testing.T) *App {
 	t.Helper()
 	app := New()
-	_ = app.Register(&burrow.AppConfig{})
+	appCfg := &burrow.AppConfig{}
 
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
+			return app.Configure(appCfg, cmd)
 		},
 	}
 	err := cmd.Run(t.Context(), []string{

@@ -14,6 +14,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/urfave/cli/v3"
 )
 
 //go:embed templates/*.html
@@ -65,7 +66,7 @@ func (a *App) Name() string { return "admin" }
 
 func (a *App) Dependencies() []string { return []string{"auth"} }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.registry = cfg.Registry
 	cfg.RegisterIconFunc("iconGearFill", bsicons.GearFill)
 	cfg.RegisterIconFunc("iconChevronRight", bsicons.ChevronRight)

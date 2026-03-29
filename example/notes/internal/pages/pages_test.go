@@ -111,10 +111,10 @@ func TestTemplateFS_ReturnsNonNil(t *testing.T) {
 	assert.NotNil(t, fsys)
 }
 
-func TestRegister_RegistersIcons(t *testing.T) {
+func TestConfigure_RegistersIcons(t *testing.T) {
 	app := New()
 	cfg := &burrow.AppConfig{}
-	require.NoError(t, app.Register(cfg))
+	require.NoError(t, app.Configure(cfg, nil))
 
 	icons := cfg.IconFuncs()
 	assert.Contains(t, icons, "iconHouse")

@@ -211,10 +211,10 @@ func (r *Repository) CreateNote(ctx context.Context, note *Note) error {
 }
 ```
 
-Wire it up in your app's `Register()` method:
+Wire it up in your app's `Configure()` method:
 
 ```go
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     a.repo = NewRepository(cfg.DB)
     return nil
 }

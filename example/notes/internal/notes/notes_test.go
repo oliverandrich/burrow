@@ -899,7 +899,7 @@ func TestModelAdminRoutes_List(t *testing.T) {
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Admin View", Content: "Visible", UserID: 42}))
 
 	app := New()
-	require.NoError(t, app.Register(&burrow.AppConfig{DB: db}))
+	require.NoError(t, app.Configure(&burrow.AppConfig{DB: db}, nil))
 
 	r := chi.NewRouter()
 	app.AdminRoutes(r)
@@ -921,7 +921,7 @@ func TestModelAdminRoutes_Delete(t *testing.T) {
 	require.NoError(t, repo.Create(ctx, note))
 
 	app := New()
-	require.NoError(t, app.Register(&burrow.AppConfig{DB: db}))
+	require.NoError(t, app.Configure(&burrow.AppConfig{DB: db}, nil))
 
 	r := chi.NewRouter()
 	app.AdminRoutes(r)
@@ -962,7 +962,7 @@ func TestDependencies(t *testing.T) {
 }
 
 func TestRoutesNilHandlers(t *testing.T) {
-	// Before Register is called, handlers is nil — Routes should be a no-op.
+	// Before Configure is called, handlers is nil — Routes should be a no-op.
 	app := New()
 	r := chi.NewRouter()
 	app.Routes(r)
@@ -974,7 +974,7 @@ func TestRoutesNilHandlers(t *testing.T) {
 }
 
 func TestAdminRoutesNilNotesAdmin(t *testing.T) {
-	// Before Register is called, notesAdmin is nil — AdminRoutes should be a no-op.
+	// Before Configure is called, notesAdmin is nil — AdminRoutes should be a no-op.
 	app := New()
 	r := chi.NewRouter()
 	app.AdminRoutes(r)

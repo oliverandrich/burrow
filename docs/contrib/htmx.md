@@ -154,7 +154,7 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `HasStaticFiles` | Contributes embedded `htmx.min.js` under `"htmx"` prefix |
 | `HasTemplates` | Contributes `htmx/js` and `htmx/config` templates |
 | `HasDependencies` | Requires `staticfiles` |

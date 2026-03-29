@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/urfave/cli/v3"
 )
 
 // App implements the staticfiles contrib app for serving static assets.
@@ -53,7 +54,9 @@ func New(fsys fs.FS, opts ...Option) (*App, error) {
 
 func (a *App) Name() string { return "staticfiles" }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+// Configure discovers static file providers from the registry and builds
+// the hashed manifest for contrib apps.
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	if cfg.Registry == nil {
 		return nil
 	}

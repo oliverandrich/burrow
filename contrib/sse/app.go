@@ -22,10 +22,6 @@ func New() *App {
 
 func (a *App) Name() string { return "sse" }
 
-func (a *App) Register(_ *burrow.AppConfig) error {
-	return nil
-}
-
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.IntFlag{
@@ -37,7 +33,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	}
 }
 
-func (a *App) Configure(cmd *cli.Command) error {
+func (a *App) Configure(_ *burrow.AppConfig, cmd *cli.Command) error {
 	bufSize := int(cmd.Int("sse-buffer-size"))
 	if bufSize < 1 {
 		bufSize = defaultBufferSize

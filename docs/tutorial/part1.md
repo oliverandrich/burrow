@@ -55,13 +55,12 @@ func main() {
 
 Add the following code to the same `main.go` file, below the `main()` function.
 
-Every Burrow application is composed of **apps**. Each app implements the [`burrow.App`](../reference/interfaces.md#app) interface — a `Name()` that returns a unique identifier and a `Register()` method for initialisation. Our homepage app also implements `HasRoutes` to register an HTTP endpoint:
+Every Burrow application is composed of **apps**. Each app implements the [`burrow.App`](../reference/interfaces.md#app) interface — a `Name()` that returns a unique identifier. Our homepage app also implements `HasRoutes` to register an HTTP endpoint:
 
 ```go
 type homepageApp struct{}
 
-func (a *homepageApp) Name() string                        { return "homepage" }
-func (a *homepageApp) Register(_ *burrow.AppConfig) error  { return nil }
+func (a *homepageApp) Name() string { return "homepage" }
 func (a *homepageApp) Routes(r chi.Router) {
     r.Get("/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
         return burrow.Text(w, http.StatusOK, "Hello, Polls!")
@@ -90,7 +89,7 @@ When `srv.Run` is called, Burrow follows this sequence:
 1. Parse configuration from CLI flags, environment variables, and TOML files
 2. Open the SQLite database (WAL mode, foreign keys enabled)
 3. Run migrations for all `Migratable` apps
-4. Call `Register()` on each app with the shared `AppConfig`
+4. Call `Configure()` on each `Configurable` app with the shared `AppConfig`
 5. Build the global template set from all `HasTemplates` apps
 6. Set up the Chi router with core middleware
 7. Apply middleware from all `HasMiddleware` apps

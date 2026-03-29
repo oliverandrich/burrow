@@ -139,7 +139,7 @@ func New() *App { return &App{} }
 
 func (a *App) Name() string { return "polls" }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     a.repo = NewRepository(cfg.DB)
     return nil
 }
@@ -150,11 +150,12 @@ func (a *App) MigrationFS() fs.FS {
 }
 ```
 
-The app implements two interfaces:
+The app implements three interfaces:
 
 | Interface | Method | Purpose |
 |-----------|--------|---------|
-| `burrow.App` | `Name()`, `Register()` | Required for all apps |
+| `burrow.App` | `Name()` | Required for all apps |
+| `burrow.Configurable` | `Configure()` | App initialisation with database access |
 | `burrow.Migratable` | `MigrationFS()` | Automatic database migrations |
 
 ### Update main.go

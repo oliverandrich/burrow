@@ -49,7 +49,7 @@ Returns the server's app registry for direct access.
 func (s *Server) Flags(configSource func(key string) cli.ValueSource) []cli.Flag
 ```
 
-Returns all CLI flags: core framework flags merged with flags from all `Configurable` apps. Pass a config source function to enable TOML file sourcing, or `nil` for CLI+ENV only.
+Returns all CLI flags: core framework flags merged with flags from all `HasFlags` apps. Pass a config source function to enable TOML file sourcing, or `nil` for CLI+ENV only.
 
 #### Run
 
@@ -66,9 +66,9 @@ When `Run()` is called, the following happens in order:
 1. **Parse config** — reads CLI flags, env vars, and TOML into a `Config` struct
 2. **Open database** — connects to SQLite with WAL mode, foreign keys, and connection pool
 3. **Run migrations** — calls `RunAppMigrations` for every `Migratable` app
-4. **Register apps** — calls `Register()` on each app with the shared `AppConfig`
+4. **Configure apps** — calls `Configure()` on each `Configurable` app with the shared `AppConfig`
 5. **Seed database** — calls `Seed()` on each `Seedable` app
-6. **Configure apps** — calls `Configure()` on each `Configurable` app
+6. **Post-configure apps** — calls `PostConfigure()` on each `PostConfigurable` app
 7. **Build i18n bundle** — creates the i18n bundle from configured languages, loads translation files from all `HasTranslations` apps, and registers locale detection middleware
 8. **Build templates** — collects `.html` files from all `HasTemplates` apps and template functions from all `HasFuncMap` apps, parses them into a single global `*template.Template`
 9. **Create router** — sets up Chi with core middleware (request logger, request ID, gzip, body limit)
@@ -82,7 +82,7 @@ When `Run()` is called, the following happens in order:
 
 ### Why urfave/cli?
 
-`Server.Run()` is a `cli.ActionFunc` by design. The framework uses `urfave/cli` throughout — `NewConfig()` reads values from `*cli.Command`, `Configure()` passes the command to each app, and flags define the three-layer config cascade (CLI flags → ENV vars → TOML file).
+`Server.Run()` is a `cli.ActionFunc` by design. The framework uses `urfave/cli` throughout — `NewConfig()` reads values from `*cli.Command`, `Configure()` passes the `AppConfig` and command to each app, and flags define the three-layer config cascade (CLI flags → ENV vars → TOML file).
 
 This means you cannot start the server with a different CLI framework (cobra, kong, etc.) or without one. This is intentional: the tight integration gives every app a consistent way to declare and read configuration without boilerplate. The trade-off is that `urfave/cli` is a load-bearing dependency — it's part of the framework contract, not a swappable implementation detail.
 
@@ -154,15 +154,15 @@ Calls `Routes()` on all `HasRoutes` apps.
 func (r *Registry) AllFlags(configSource func(key string) cli.ValueSource) []cli.Flag
 ```
 
-Collects CLI flags from all `Configurable` apps. Pass `nil` for CLI+ENV only.
+Collects CLI flags from all `HasFlags` apps. Pass `nil` for CLI+ENV only.
 
-#### Configure
+#### ConfigureAll
 
 ```go
-func (r *Registry) Configure(cmd *cli.Command) error
+func (r *Registry) ConfigureAll(cfg *AppConfig) error
 ```
 
-Calls `Configure()` on each `Configurable` app.
+Calls `Configure()` on each `Configurable` app with the shared `AppConfig`.
 
 #### AllCLICommands
 

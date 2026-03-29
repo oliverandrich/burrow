@@ -58,7 +58,6 @@ func New(opts ...Option) *App {
 
 // App implements security response headers as a burrow contrib app.
 type App struct {
-	config            *burrow.Config
 	handler           func(http.Handler) http.Handler
 	csp               *string
 	permissionsPolicy *string
@@ -70,11 +69,6 @@ type App struct {
 }
 
 func (a *App) Name() string { return "secure" }
-
-func (a *App) Register(cfg *burrow.AppConfig) error {
-	a.config = cfg.Config
-	return nil
-}
 
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
@@ -111,8 +105,8 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	}
 }
 
-func (a *App) Configure(cmd *cli.Command) error {
-	isHTTPS := a.config != nil && strings.HasPrefix(a.config.Server.BaseURL, "https://")
+func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
+	isHTTPS := cfg.Config != nil && strings.HasPrefix(cfg.Config.Server.BaseURL, "https://")
 
 	if a.csp == nil {
 		if v := cmd.String("secure-csp"); v != "" {

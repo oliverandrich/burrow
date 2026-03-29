@@ -60,17 +60,6 @@ func New(opts ...Option) *App {
 
 func (a *App) Name() string { return "jobs" }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
-	a.defaultDB = cfg.DB
-	a.registry = cfg.Registry
-
-	cfg.RegisterIconFunc("iconArrowCounterclockwise", bsicons.ArrowCounterclockwise)
-	cfg.RegisterIconFunc("iconXCircle", bsicons.XCircle)
-	cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
-
-	return nil
-}
-
 func (a *App) MigrationFS() fs.FS {
 	sub, _ := fs.Sub(migrationFS, "migrations")
 	return sub
@@ -104,7 +93,14 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	}
 }
 
-func (a *App) Configure(cmd *cli.Command) error {
+func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
+	a.defaultDB = cfg.DB
+	a.registry = cfg.Registry
+
+	cfg.RegisterIconFunc("iconArrowCounterclockwise", bsicons.ArrowCounterclockwise)
+	cfg.RegisterIconFunc("iconXCircle", bsicons.XCircle)
+	cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
+
 	// Determine effective database: separate DB if configured, shared DB otherwise.
 	effectiveDB, err := a.resolveDB(cmd.String("jobs-database"))
 	if err != nil {
@@ -126,7 +122,7 @@ func (a *App) Configure(cmd *cli.Command) error {
 // It runs after all apps have been configured, so apps can safely rely
 // on state set in their own Configure() when RegisterJobs is called.
 // The actual worker start happens in Start() after the full boot sequence.
-func (a *App) PostConfigure(_ *cli.Command) error {
+func (a *App) PostConfigure(_ *burrow.AppConfig, _ *cli.Command) error {
 	if a.registry != nil {
 		for _, app := range a.registry.Apps() {
 			if hj, ok := app.(burrow.HasJobs); ok {

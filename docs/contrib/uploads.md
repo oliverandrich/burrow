@@ -194,7 +194,7 @@ Since filenames are content-hashed, files are effectively immutable — a change
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `Configurable` | Upload directory, URL prefix, and allowed types flags |
 | `HasMiddleware` | Injects storage and allowed types into context |
 | `HasRoutes` | Serves uploaded files at the URL prefix |

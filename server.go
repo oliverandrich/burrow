@@ -205,7 +205,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	// Load translations from all HasTranslations apps (after Register).
+	// Load translations from all HasTranslations apps.
 	for _, app := range s.registry.Apps() {
 		if p, ok := app.(HasTranslations); ok {
 			if err := s.i18nBundle.AddTranslations(p.TranslationFS()); err != nil {
@@ -214,8 +214,12 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	if err := s.registry.Configure(cmd); err != nil {
+	if err := s.registry.Configure(s.appCfg, cmd); err != nil {
 		return err
+	}
+
+	if err := s.registry.Seed(ctx); err != nil {
+		return fmt.Errorf("seed: %w", err)
 	}
 
 	// Register core request func map providers.
@@ -265,7 +269,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	return startServer(ctx, r, cfg, s.registry)
 }
 
-// bootstrap runs migrations, registers all apps, and seeds the database.
+// bootstrap runs migrations and prepares the shared AppConfig.
 func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
 	if err := s.registry.RunMigrations(ctx, db); err != nil {
 		return fmt.Errorf("run migrations: %w", err)
@@ -277,13 +281,8 @@ func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
 		Config:     cfg,
 		WithLocale: s.i18nBundle.WithLocale,
 	}
-	for _, app := range s.registry.Apps() {
-		if err := app.Register(s.appCfg); err != nil {
-			return fmt.Errorf("register app %q: %w", app.Name(), err)
-		}
-	}
 
-	return s.registry.Seed(ctx)
+	return nil
 }
 
 func layoutMiddleware(name string) func(http.Handler) http.Handler {

@@ -79,5 +79,5 @@ Use these endpoints for:
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `HasRoutes` | `/healthz/live`, `/healthz/ready` endpoints |

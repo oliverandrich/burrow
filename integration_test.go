@@ -20,8 +20,7 @@ import (
 // integrationApp implements HasRoutes, HasTemplates, HasFuncMap, and HasNavItems.
 type integrationApp struct{}
 
-func (a *integrationApp) Name() string                { return "integration" }
-func (a *integrationApp) Register(_ *AppConfig) error { return nil }
+func (a *integrationApp) Name() string { return "integration" }
 
 func (a *integrationApp) TemplateFS() fs.FS {
 	return fstest.MapFS{
@@ -81,7 +80,7 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	require.NoError(t, err)
 	srv.i18nBundle = bundle
 
-	// Bootstrap: migrations, Register, seed.
+	// Bootstrap: migrations.
 	cfg := &Config{
 		Server:   ServerConfig{Host: "localhost", Port: 8080, BaseURL: "http://localhost:8080"},
 		Database: DatabaseConfig{DSN: ":memory:"},
@@ -89,6 +88,10 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	}
 	ctx := context.Background()
 	err = srv.bootstrap(ctx, db, cfg)
+	require.NoError(t, err)
+
+	// Configure apps (mirrors Run()).
+	err = srv.registry.Configure(srv.appCfg, nil)
 	require.NoError(t, err)
 
 	// Register core request func map providers (mirrors Run()).

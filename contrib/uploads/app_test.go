@@ -66,13 +66,13 @@ func TestNewCombinedOptions(t *testing.T) {
 func configuredApp(t *testing.T, args ...string) *App {
 	t.Helper()
 	app := New()
-	_ = app.Register(&burrow.AppConfig{})
+	appCfg := &burrow.AppConfig{}
 
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
+			return app.Configure(appCfg, cmd)
 		},
 	}
 	allArgs := append([]string{"test"}, args...)
@@ -117,13 +117,13 @@ func TestConfigureInvalidDir(t *testing.T) {
 	require.NoError(t, os.WriteFile(filePath, []byte("x"), 0o644))
 
 	app := New()
-	_ = app.Register(&burrow.AppConfig{})
+	appCfg := &burrow.AppConfig{}
 
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
+			return app.Configure(appCfg, cmd)
 		},
 	}
 	err := cmd.Run(t.Context(), []string{"test", "--uploads-dir", filepath.Join(filePath, "subdir")})

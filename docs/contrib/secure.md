@@ -151,6 +151,6 @@ Development mode disables HSTS, SSL redirect, and allowed host checking. It is a
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `Configurable` | CSP, permissions policy, COOP, allowed hosts, SSL redirect, development mode |
 | `HasMiddleware` | Security headers middleware |

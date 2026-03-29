@@ -32,10 +32,10 @@ html := bsicons.People("fs-1", "text-primary")
 
 ### In Templates via RegisterIconFunc
 
-Apps register icons for template use in their `Register()` method via `cfg.RegisterIconFunc()`:
+Apps register icons for template use in their `Configure()` method via `cfg.RegisterIconFunc()`:
 
 ```go
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     cfg.RegisterIconFunc("iconGearFill", bsicons.GearFill)
     cfg.RegisterIconFunc("iconPencil", bsicons.Pencil)
     return nil

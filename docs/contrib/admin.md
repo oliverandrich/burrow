@@ -450,7 +450,7 @@ The admin app collects all `HasAdmin` implementations and mounts their routes un
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `HasRoutes` | Creates `/admin` group and delegates to `HasAdmin` apps |
 | `HasTemplates` | Contributes admin layout and page templates |
 | `HasFuncMap` | Contributes admin icon template functions |

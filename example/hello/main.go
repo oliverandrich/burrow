@@ -90,8 +90,7 @@ func main() {
 //
 // Every burrow app must implement the burrow.App interface:
 //
-//	Name() string                   — unique identifier for the app
-//	Register(cfg *AppConfig) error  — called once during server boot
+//	Name() string  — unique identifier for the app
 //
 // Beyond that, apps opt into additional features by implementing optional
 // interfaces. This app implements:
@@ -103,10 +102,6 @@ func main() {
 type helloApp struct{}
 
 func (a *helloApp) Name() string { return "hello" }
-
-// Register is called during server boot with the app's configuration
-// (database, logger, etc.). This simple app doesn't need any setup.
-func (a *helloApp) Register(_ *burrow.AppConfig) error { return nil }
 
 // TranslationFS returns the embedded translations/ directory. The i18n app
 // automatically discovers and loads all .toml files from this filesystem.

@@ -101,6 +101,6 @@ func TestMyHandler(t *testing.T) {
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `Configurable` | CLI flags for cookie name, max age, keys |
 | `HasMiddleware` | Session parsing middleware |

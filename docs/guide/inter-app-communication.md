@@ -7,7 +7,7 @@ Apps can interact with each other through the `Registry` and by declaring depend
 Use `Registry.Get()` to retrieve another app by name, then type-assert to access its methods:
 
 ```go
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     authApp, ok := cfg.Registry.Get("auth")
     if !ok {
         return fmt.Errorf("auth app not registered")

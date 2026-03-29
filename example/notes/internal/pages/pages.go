@@ -12,6 +12,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
 	"github.com/oliverandrich/burrow/contrib/messages"
+	"github.com/urfave/cli/v3"
 )
 
 //go:embed translations
@@ -28,7 +29,7 @@ func New() *App { return &App{} }
 
 func (a *App) Name() string { return "pages" }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	cfg.RegisterIconFunc("iconHouse", bsicons.House)
 	cfg.RegisterIconFunc("iconKey", bsicons.Key)
 	cfg.RegisterIconFunc("iconPuzzle", bsicons.Puzzle)

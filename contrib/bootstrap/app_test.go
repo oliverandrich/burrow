@@ -18,6 +18,7 @@ func newGetRequest() *http.Request {
 // Compile-time interface assertions.
 var (
 	_ burrow.App             = (*App)(nil)
+	_ burrow.Configurable    = (*App)(nil)
 	_ burrow.HasStaticFiles  = (*App)(nil)
 	_ burrow.HasMiddleware   = (*App)(nil)
 	_ burrow.HasTemplates    = (*App)(nil)
@@ -28,9 +29,9 @@ func TestAppName(t *testing.T) {
 	assert.Equal(t, "bootstrap", New().Name())
 }
 
-func TestAppRegister(t *testing.T) {
+func TestAppConfigure(t *testing.T) {
 	cfg := &burrow.AppConfig{}
-	require.NoError(t, New().Register(cfg))
+	require.NoError(t, New().Configure(cfg, nil))
 
 	icons := cfg.IconFuncs()
 	assert.Contains(t, icons, "iconSunFill")

@@ -10,7 +10,7 @@ A single-file application (~150 lines) that serves a "Hello, World!" page with B
 
 **What you can learn from it:**
 
-- The `burrow.App` interface — `Name()`, `Register()`, and optional interfaces (`HasRoutes`, `HasTemplates`, `HasTranslations`, `HasFuncMap`)
+- The `burrow.App` interface — `Name()`, and optional interfaces (`HasRoutes`, `HasTemplates`, `HasTranslations`, `HasFuncMap`, `Configurable`)
 - Server setup with `burrow.NewServer()` and `srv.SetLayout()`
 - Rendering pages with `burrow.Render()`
 - Embedding templates and translations with `//go:embed`

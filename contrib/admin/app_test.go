@@ -14,17 +14,56 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v3"
 )
 
 // Compile-time interface assertions.
 var (
 	_ burrow.App               = (*App)(nil)
+	_ burrow.Configurable      = (*App)(nil)
 	_ burrow.HasRoutes         = (*App)(nil)
 	_ burrow.HasDependencies   = (*App)(nil)
 	_ burrow.HasTemplates      = (*App)(nil)
 	_ burrow.HasTranslations   = (*App)(nil)
 	_ burrow.HasRequestFuncMap = (*App)(nil)
 )
+
+// configuredRegistry returns a registry with session and auth apps
+// properly configured via CLI commands (required because Configure
+// reads flag values from the cli.Command).
+func configuredRegistry(t *testing.T) *burrow.Registry {
+	t.Helper()
+	registry := burrow.NewRegistry()
+
+	sessionApp := session.New()
+	registry.Add(sessionApp)
+	authApp := auth.New()
+	registry.Add(authApp)
+
+	cfg := &burrow.AppConfig{Registry: registry, Config: &burrow.Config{}}
+
+	cmd := &cli.Command{
+		Name:  "test",
+		Flags: append(sessionApp.Flags(nil), authApp.Flags(nil)...),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			if err := sessionApp.Configure(cfg, cmd); err != nil {
+				return err
+			}
+			return authApp.Configure(cfg, cmd)
+		},
+	}
+	require.NoError(t, cmd.Run(t.Context(), []string{
+		"test",
+		"--auth-webauthn-rp-id", "localhost",
+		"--auth-webauthn-rp-display-name", "Test",
+		"--auth-webauthn-rp-origin", "http://localhost",
+	}))
+
+	// Clean up auth's background goroutine.
+	t.Cleanup(func() { _ = authApp.Shutdown(context.Background()) })
+
+	return registry
+}
 
 func TestAppName(t *testing.T) {
 	app := New()
@@ -36,24 +75,22 @@ func TestAppDependencies(t *testing.T) {
 	assert.Equal(t, []string{"auth"}, app.Dependencies())
 }
 
-func TestAppRegister(t *testing.T) {
+func TestAppConfigure(t *testing.T) {
 	app := New()
 	registry := burrow.NewRegistry()
 
 	registry.Add(session.New())
 	authApp := auth.New()
 	registry.Add(authApp)
-	require.NoError(t, registry.RegisterAll(nil))
 
-	err := app.Register(&burrow.AppConfig{
-		Registry: registry,
-	})
+	cfg := &burrow.AppConfig{Registry: registry}
+	err := app.Configure(cfg, nil)
 
 	require.NoError(t, err)
 	assert.NotNil(t, app.registry)
 }
 
-func TestAppRegisterMissingAuthPanics(t *testing.T) {
+func TestAppAddMissingAuthPanics(t *testing.T) {
 	registry := burrow.NewRegistry()
 
 	assert.PanicsWithValue(t,
@@ -67,8 +104,7 @@ type hasAdminApp struct {
 	routesCalled bool
 }
 
-func (a *hasAdminApp) Name() string                       { return "test-admin-provider" }
-func (a *hasAdminApp) Register(_ *burrow.AppConfig) error { return nil }
+func (a *hasAdminApp) Name() string { return "test-admin-provider" }
 func (a *hasAdminApp) AdminRoutes(r chi.Router) {
 	a.routesCalled = true
 	r.Get("/test-resource", func(w http.ResponseWriter, _ *http.Request) {
@@ -83,19 +119,14 @@ func (a *hasAdminApp) AdminNavItems() []burrow.NavItem {
 }
 
 func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
-	registry := burrow.NewRegistry()
-
-	registry.Add(session.New())
-	authApp := auth.New()
-	registry.Add(authApp)
-	require.NoError(t, registry.RegisterAll(nil))
+	registry := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
 	app := New()
 	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
 
 	r := chi.NewRouter()
 	// Inject admin user for RequireAuth + RequireAdmin.
@@ -118,19 +149,14 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 }
 
 func TestRoutesRequiresAuth(t *testing.T) {
-	registry := burrow.NewRegistry()
-
-	registry.Add(session.New())
-	authApp := auth.New()
-	registry.Add(authApp)
-	require.NoError(t, registry.RegisterAll(nil))
+	registry := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
 	app := New()
 	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
 
 	r := chi.NewRouter()
 	app.Routes(r)
@@ -145,19 +171,14 @@ func TestRoutesRequiresAuth(t *testing.T) {
 }
 
 func TestRoutesRequiresAdmin(t *testing.T) {
-	registry := burrow.NewRegistry()
-
-	registry.Add(session.New())
-	authApp := auth.New()
-	registry.Add(authApp)
-	require.NoError(t, registry.RegisterAll(nil))
+	registry := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
 	app := New()
 	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
 
 	r := chi.NewRouter()
 	// Inject non-admin user and TemplateExecutor.
@@ -248,8 +269,7 @@ type layoutCheckApp struct {
 	gotLayout string
 }
 
-func (a *layoutCheckApp) Name() string                       { return "layout-check" }
-func (a *layoutCheckApp) Register(_ *burrow.AppConfig) error { return nil }
+func (a *layoutCheckApp) Name() string { return "layout-check" }
 func (a *layoutCheckApp) AdminRoutes(r chi.Router) {
 	r.Get("/layout-check", func(w http.ResponseWriter, r *http.Request) {
 		a.gotLayout = burrow.Layout(r.Context())
@@ -259,18 +279,14 @@ func (a *layoutCheckApp) AdminRoutes(r chi.Router) {
 func (a *layoutCheckApp) AdminNavItems() []burrow.NavItem { return nil }
 
 func TestRoutesInjectLayoutInGroup(t *testing.T) {
-	registry := burrow.NewRegistry()
-	registry.Add(session.New())
-	authApp := auth.New()
-	registry.Add(authApp)
-	require.NoError(t, registry.RegisterAll(nil))
+	registry := configuredRegistry(t)
 
 	checker := &layoutCheckApp{}
 	registry.Add(checker)
 
 	app := New(WithLayout("custom/admin-layout"))
 	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
 
 	r := chi.NewRouter()
 	// Inject admin user for RequireAuth + RequireAdmin.
@@ -291,19 +307,14 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 }
 
 func TestBuildNavGroups(t *testing.T) {
-	registry := burrow.NewRegistry()
-
-	registry.Add(session.New())
-	authApp := auth.New()
-	registry.Add(authApp)
-	require.NoError(t, registry.RegisterAll(nil))
+	registry := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
 	registry.Add(provider)
 
 	app := New()
 	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
 
 	groups := app.buildNavGroups()
 
@@ -323,8 +334,7 @@ type navGroupsCheckApp struct {
 	gotGroups []NavGroup
 }
 
-func (a *navGroupsCheckApp) Name() string                       { return "nav-groups-check" }
-func (a *navGroupsCheckApp) Register(_ *burrow.AppConfig) error { return nil }
+func (a *navGroupsCheckApp) Name() string { return "nav-groups-check" }
 func (a *navGroupsCheckApp) AdminRoutes(r chi.Router) {
 	r.Get("/nav-groups-check", func(w http.ResponseWriter, r *http.Request) {
 		a.gotGroups = NavGroups(r.Context())
@@ -336,18 +346,14 @@ func (a *navGroupsCheckApp) AdminNavItems() []burrow.NavItem {
 }
 
 func TestRoutesInjectNavGroups(t *testing.T) {
-	registry := burrow.NewRegistry()
-	registry.Add(session.New())
-	authApp := auth.New()
-	registry.Add(authApp)
-	require.NoError(t, registry.RegisterAll(nil))
+	registry := configuredRegistry(t)
 
 	checker := &navGroupsCheckApp{}
 	registry.Add(checker)
 
 	app := New()
 	registry.Add(app)
-	require.NoError(t, app.Register(&burrow.AppConfig{Registry: registry}))
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
 
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {

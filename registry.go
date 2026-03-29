@@ -8,7 +8,6 @@ import (
 	"sort"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/uptrace/bun"
 	"github.com/urfave/cli/v3"
 )
 
@@ -16,7 +15,7 @@ import (
 // to collect capabilities (routes, middleware, flags, etc.) from all apps.
 // Application code typically does not interact with Registry directly —
 // [Server] manages it internally. Contrib app authors may use
-// [Registry.Get] to look up sibling apps during Register.
+// [Registry.Get] to look up sibling apps during Configure.
 type Registry struct {
 	index map[string]App
 	apps  []App
@@ -61,6 +60,9 @@ func (r *Registry) Add(app App) {
 	}
 	if _, ok := app.(HasNavItems); ok {
 		caps = append(caps, "nav")
+	}
+	if _, ok := app.(HasFlags); ok {
+		caps = append(caps, "flags")
 	}
 	if _, ok := app.(Configurable); ok {
 		caps = append(caps, "config")
@@ -123,17 +125,15 @@ func (r *Registry) Apps() []App {
 	return result
 }
 
-// RegisterAll calls Register on each app in order, passing a partial AppConfig
-// (DB + Registry only, no Config/migrations/seeds). This is a test convenience;
-// the real boot sequence lives in Server.bootstrap().
-func (r *Registry) RegisterAll(db *bun.DB) error {
-	cfg := &AppConfig{
-		DB:       db,
-		Registry: r,
-	}
+// ConfigureAll calls Configure on each Configurable app, passing the given
+// AppConfig with a nil *cli.Command. This is a test convenience; the real
+// boot sequence uses [Registry.Configure].
+func (r *Registry) ConfigureAll(cfg *AppConfig) error {
 	for _, app := range r.apps {
-		if err := app.Register(cfg); err != nil {
-			return fmt.Errorf("register app %q: %w", app.Name(), err)
+		if provider, ok := app.(Configurable); ok {
+			if err := provider.Configure(cfg, nil); err != nil {
+				return fmt.Errorf("configure app %q: %w", app.Name(), err)
+			}
 		}
 	}
 	return nil
@@ -167,12 +167,12 @@ func (r *Registry) RegisterMiddleware(router chi.Router) {
 	}
 }
 
-// AllFlags collects CLI flags from all Configurable apps.
+// AllFlags collects CLI flags from all HasFlags apps.
 // Pass configSource to enable TOML file sourcing (or nil for ENV-only).
 func (r *Registry) AllFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	var flags []cli.Flag
 	for _, app := range r.apps {
-		if provider, ok := app.(Configurable); ok {
+		if provider, ok := app.(HasFlags); ok {
 			flags = append(flags, provider.Flags(configSource)...)
 		}
 	}
@@ -184,17 +184,17 @@ func (r *Registry) AllFlags(configSource func(key string) cli.ValueSource) []cli
 // guarantees that all apps are fully configured before any PostConfigure
 // runs, which is important for apps that need to interact with other
 // apps' state (e.g., the jobs app discovering HasJobs handlers).
-func (r *Registry) Configure(cmd *cli.Command) error {
+func (r *Registry) Configure(cfg *AppConfig, cmd *cli.Command) error {
 	for _, app := range r.apps {
 		if provider, ok := app.(Configurable); ok {
-			if err := provider.Configure(cmd); err != nil {
+			if err := provider.Configure(cfg, cmd); err != nil {
 				return fmt.Errorf("configure app %q: %w", app.Name(), err)
 			}
 		}
 	}
 	for _, app := range r.apps {
 		if provider, ok := app.(PostConfigurable); ok {
-			if err := provider.PostConfigure(cmd); err != nil {
+			if err := provider.PostConfigure(cfg, cmd); err != nil {
 				return fmt.Errorf("post-configure app %q: %w", app.Name(), err)
 			}
 		}

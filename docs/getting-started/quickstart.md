@@ -29,8 +29,7 @@ import (
 // homeApp is a minimal app with a single route.
 type homeApp struct{}
 
-func (a *homeApp) Name() string                        { return "home" }
-func (a *homeApp) Register(_ *burrow.AppConfig) error   { return nil }
+func (a *homeApp) Name() string { return "home" }
 func (a *homeApp) Routes(r chi.Router) {
     r.Get("/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
         return burrow.Text(w, http.StatusOK, "Hello from Burrow!")
@@ -58,7 +57,7 @@ func main() {
 
 This shows the core pattern:
 
-- Every app implements `Name()` and `Register()` (the `App` interface)
+- Every app implements `Name()` (the `App` interface)
 - Apps that serve HTTP routes also implement `Routes(r chi.Router)` (the `HasRoutes` interface)
 - Handlers return `error` instead of silently failing — `burrow.Handle()` wraps them and handles errors automatically: `*HTTPError` renders an error page with the appropriate status code, any other error becomes a logged 500
 - `srv.Flags(nil)` adds built-in CLI flags (`--host`, `--port`, `--database-dsn`, etc.)

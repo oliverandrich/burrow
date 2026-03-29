@@ -28,13 +28,6 @@ func TestName(t *testing.T) {
 func newTestApp(t *testing.T, baseURL string, opts ...Option) *App {
 	t.Helper()
 	a := New(opts...)
-	err := a.Register(&burrow.AppConfig{
-		Config: &burrow.Config{
-			Server: burrow.ServerConfig{BaseURL: baseURL},
-		},
-	})
-	require.NoError(t, err)
-
 	isHTTPS := len(baseURL) >= 8 && baseURL[:8] == "https://"
 	a.configure(isHTTPS)
 	return a
@@ -218,12 +211,6 @@ func TestConstructorOptionsPrecedence(t *testing.T) {
 	// Constructor sets CSP — should not be overridden by flags.
 	csp := "default-src 'self'"
 	a := New(WithContentSecurityPolicy(csp))
-	err := a.Register(&burrow.AppConfig{
-		Config: &burrow.Config{
-			Server: burrow.ServerConfig{BaseURL: "http://localhost:8080"},
-		},
-	})
-	require.NoError(t, err)
 
 	// Simulate what Configure() does: if constructor already set a value,
 	// the flag value is ignored.
@@ -284,22 +271,21 @@ func TestFlags(t *testing.T) {
 func configuredAppViaCLI(t *testing.T, baseURL string, args []string, opts ...Option) *App {
 	t.Helper()
 	a := New(opts...)
-	err := a.Register(&burrow.AppConfig{
+	appCfg := &burrow.AppConfig{
 		Config: &burrow.Config{
 			Server: burrow.ServerConfig{BaseURL: baseURL},
 		},
-	})
-	require.NoError(t, err)
+	}
 
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: a.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			return a.Configure(cmd)
+			return a.Configure(appCfg, cmd)
 		},
 	}
 	fullArgs := append([]string{"test"}, args...)
-	err = cmd.Run(t.Context(), fullArgs)
+	err := cmd.Run(t.Context(), fullArgs)
 	require.NoError(t, err)
 	return a
 }

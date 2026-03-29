@@ -90,7 +90,7 @@ Each record stores the app name and migration filename. This namespacing means t
 
 ## Migration Order
 
-Migrations run in app registration order (the order you pass apps to `NewServer`), then by filename within each app. All migrations run before any app's `Register()` method is called.
+Migrations run in app registration order (the order you pass apps to `NewServer`), then by filename within each app. All migrations run before any app's `Configure()` method is called.
 
 ## Tips
 

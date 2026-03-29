@@ -23,7 +23,8 @@ func setupRouter(t *testing.T, apps ...burrow.App) chi.Router {
 
 	app := New()
 	reg.Add(app)
-	require.NoError(t, reg.RegisterAll(db))
+	cfg := &burrow.AppConfig{DB: db, Registry: reg}
+	require.NoError(t, reg.ConfigureAll(cfg))
 
 	r := chi.NewRouter()
 	app.Routes(r)
@@ -32,8 +33,9 @@ func setupRouter(t *testing.T, apps ...burrow.App) chi.Router {
 
 // Compile-time assertions.
 var (
-	_ burrow.App       = (*App)(nil)
-	_ burrow.HasRoutes = (*App)(nil)
+	_ burrow.App          = (*App)(nil)
+	_ burrow.Configurable = (*App)(nil)
+	_ burrow.HasRoutes    = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -41,13 +43,13 @@ func TestAppName(t *testing.T) {
 	assert.Equal(t, "healthcheck", app.Name())
 }
 
-func TestAppRegister(t *testing.T) {
+func TestAppConfigure(t *testing.T) {
 	app := New()
 	db := burrow.TestDB(t)
 	reg := burrow.NewRegistry()
 	cfg := &burrow.AppConfig{DB: db, Registry: reg}
 
-	err := app.Register(cfg)
+	err := app.Configure(cfg, nil)
 	require.NoError(t, err)
 	assert.Equal(t, db, app.db)
 	assert.Equal(t, reg, app.registry)
@@ -82,7 +84,6 @@ type mockReadinessApp struct {
 }
 
 func (m *mockReadinessApp) Name() string                           { return m.name }
-func (m *mockReadinessApp) Register(_ *burrow.AppConfig) error     { return nil }
 func (m *mockReadinessApp) ReadinessCheck(_ context.Context) error { return m.err }
 
 // Compile-time assertion.

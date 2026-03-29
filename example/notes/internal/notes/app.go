@@ -11,6 +11,7 @@ import (
 	matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/urfave/cli/v3"
 )
 
 //go:embed migrations
@@ -38,7 +39,7 @@ func (a *App) Name() string { return "notes" }
 
 func (a *App) Dependencies() []string { return []string{"auth"} }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	cfg.RegisterIconFunc("iconPlusLg", bsicons.PlusLg)
 	cfg.RegisterIconFunc("iconPencil", bsicons.Pencil)
 	cfg.RegisterIconFunc("iconJournalText", bsicons.JournalText)

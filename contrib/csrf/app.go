@@ -18,17 +18,11 @@ func New() *App { return &App{} }
 
 // App implements CSRF protection as a burrow contrib app.
 type App struct {
-	config  *burrow.Config
 	protect func(http.Handler) http.Handler
 	secure  bool
 }
 
 func (a *App) Name() string { return "csrf" }
-
-func (a *App) Register(cfg *burrow.AppConfig) error {
-	a.config = cfg.Config
-	return nil
-}
 
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
@@ -40,9 +34,9 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	}
 }
 
-func (a *App) Configure(cmd *cli.Command) error {
+func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	keyHex := cmd.String("csrf-key")
-	secure := a.config != nil && strings.HasPrefix(a.config.Server.BaseURL, "https://")
+	secure := cfg.Config != nil && strings.HasPrefix(cfg.Config.Server.BaseURL, "https://")
 	return a.configure(keyHex, secure)
 }
 

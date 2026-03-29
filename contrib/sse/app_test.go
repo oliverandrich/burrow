@@ -24,12 +24,6 @@ func TestApp_Name(t *testing.T) {
 	assert.Equal(t, "sse", app.Name())
 }
 
-func TestApp_Register(t *testing.T) {
-	app := New()
-	err := app.Register(&burrow.AppConfig{})
-	require.NoError(t, err)
-}
-
 func TestApp_BrokerNilBeforeConfigure(t *testing.T) {
 	app := New()
 	assert.Nil(t, app.Broker())

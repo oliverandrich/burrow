@@ -2,6 +2,16 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Breaking Changes
+
+- **App interface simplified**: `App` now only requires `Name() string` — `Register(cfg *AppConfig) error` has been removed. All setup logic moves into `Configure(cfg *AppConfig, cmd *cli.Command) error` via the `Configurable` interface.
+- **Configurable signature changed**: `Configure(cmd *cli.Command) error` → `Configure(cfg *AppConfig, cmd *cli.Command) error` — update all implementations to accept the new `cfg` parameter
+- **PostConfigurable signature changed**: `PostConfigure(cmd *cli.Command) error` → `PostConfigure(cfg *AppConfig, cmd *cli.Command) error`
+- **HasFlags extracted**: `Flags()` is no longer part of `Configurable` — it is now a standalone `HasFlags` interface
+- **Registry.RegisterAll removed**: Use `Registry.ConfigureAll(cfg *AppConfig)` instead (calls `Configure(cfg, nil)` on each `Configurable` app)
+
 ## 0.9.0 — 2026-03-28
 
 ### Breaking Changes

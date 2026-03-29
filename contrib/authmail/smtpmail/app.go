@@ -33,8 +33,6 @@ func New(opts ...Option) *App {
 
 func (a *App) Name() string { return "authmail-smtp" }
 
-func (a *App) Register(_ *burrow.AppConfig) error { return nil }
-
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
@@ -74,7 +72,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	}
 }
 
-func (a *App) Configure(cmd *cli.Command) error {
+func (a *App) Configure(_ *burrow.AppConfig, cmd *cli.Command) error {
 	config := SMTPConfig{
 		Host:     cmd.String("smtp-host"),
 		Port:     int(cmd.Int("smtp-port")),

@@ -40,7 +40,7 @@ srv := burrow.NewServer(
 )
 ```
 
-Every app implements the `App` interface (`Name()` + `Register()`). Optional interfaces like `HasRoutes`, `HasMiddleware`, or `HasTemplates` add capabilities. The framework auto-sorts apps by their declared dependencies — no manual ordering needed.
+Every app implements the `App` interface (`Name()`). Optional interfaces like `HasRoutes`, `HasMiddleware`, `Configurable`, or `HasTemplates` add capabilities. The framework auto-sorts apps by their declared dependencies — no manual ordering needed.
 
 ## Models & Database
 
@@ -280,16 +280,16 @@ Django uses a `settings.py` module with Python constants. Burrow layers three co
 2. **Environment variables**
 3. **TOML config file** (lowest priority)
 
-Apps declare their own flags via the `Configurable` interface. Values are read in the `Configure()` callback:
+Apps declare their own flags via the `HasFlags` interface. Values are read in the `Configure()` callback (`Configurable` interface):
 
 ```go
-func (a *myApp) Flags() []cli.Flag {
+func (a *myApp) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
     return []cli.Flag{
         &cli.StringFlag{Name: "my-api-key", Sources: cli.EnvVars("MY_API_KEY")},
     }
 }
 
-func (a *myApp) Configure(cmd *cli.Command) error {
+func (a *myApp) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
     a.apiKey = cmd.String("my-api-key")
     return nil
 }

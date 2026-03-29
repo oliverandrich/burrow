@@ -16,6 +16,7 @@ import (
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/urfave/cli/v3"
 )
 
 //go:embed static
@@ -71,7 +72,8 @@ func New(opts ...Option) *App {
 func (a *App) Name() string           { return "bootstrap" }
 func (a *App) Dependencies() []string { return []string{"staticfiles", "htmx"} } //nolint:goconst
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+// Configure registers theme-switcher icon functions.
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	cfg.RegisterIconFunc("iconSunFill", bsicons.SunFill)
 	cfg.RegisterIconFunc("iconMoonStarsFill", bsicons.MoonStarsFill)
 	cfg.RegisterIconFunc("iconCircleHalf", bsicons.CircleHalf)

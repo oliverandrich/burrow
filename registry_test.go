@@ -15,8 +15,7 @@ type stubApp struct {
 	name string
 }
 
-func (a *stubApp) Name() string                { return a.name }
-func (a *stubApp) Register(_ *AppConfig) error { return nil }
+func (a *stubApp) Name() string { return a.name }
 
 // shutdownApp is an App that implements HasShutdown and records call order.
 type shutdownApp struct { //nolint:govet // fieldalignment: readability over optimization
@@ -25,8 +24,7 @@ type shutdownApp struct { //nolint:govet // fieldalignment: readability over opt
 	err   error
 }
 
-func (a *shutdownApp) Name() string                { return a.name }
-func (a *shutdownApp) Register(_ *AppConfig) error { return nil }
+func (a *shutdownApp) Name() string { return a.name }
 func (a *shutdownApp) Shutdown(_ context.Context) error {
 	*a.order = append(*a.order, a.name)
 	return a.err
@@ -86,12 +84,8 @@ type configurableApp struct { //nolint:govet // fieldalignment: readability over
 	order *[]string
 }
 
-func (a *configurableApp) Name() string                { return a.name }
-func (a *configurableApp) Register(_ *AppConfig) error { return nil }
-func (a *configurableApp) Flags(_ func(string) cli.ValueSource) []cli.Flag {
-	return nil
-}
-func (a *configurableApp) Configure(_ *cli.Command) error {
+func (a *configurableApp) Name() string { return a.name }
+func (a *configurableApp) Configure(_ *AppConfig, _ *cli.Command) error {
 	*a.order = append(*a.order, a.name+".Configure")
 	return nil
 }
@@ -102,16 +96,12 @@ type postConfigurableApp struct { //nolint:govet // fieldalignment: readability 
 	order *[]string
 }
 
-func (a *postConfigurableApp) Name() string                { return a.name }
-func (a *postConfigurableApp) Register(_ *AppConfig) error { return nil }
-func (a *postConfigurableApp) Flags(_ func(string) cli.ValueSource) []cli.Flag {
-	return nil
-}
-func (a *postConfigurableApp) Configure(_ *cli.Command) error {
+func (a *postConfigurableApp) Name() string { return a.name }
+func (a *postConfigurableApp) Configure(_ *AppConfig, _ *cli.Command) error {
 	*a.order = append(*a.order, a.name+".Configure")
 	return nil
 }
-func (a *postConfigurableApp) PostConfigure(_ *cli.Command) error {
+func (a *postConfigurableApp) PostConfigure(_ *AppConfig, _ *cli.Command) error {
 	*a.order = append(*a.order, a.name+".PostConfigure")
 	return nil
 }
@@ -127,7 +117,7 @@ func TestRegistryConfigure_PostConfigureRunsAfterAllConfigure(t *testing.T) {
 	reg.Add(a2)
 	reg.Add(a3)
 
-	err := reg.Configure(nil)
+	err := reg.Configure(&AppConfig{Registry: reg}, nil)
 	require.NoError(t, err)
 
 	// All Configure calls must happen before any PostConfigure call.
@@ -147,7 +137,7 @@ func TestRegistryConfigure_PostConfigureError(t *testing.T) {
 	reg.Add(a1)
 	reg.Add(&postConfigErrorApp{name: "failing"})
 
-	err := reg.Configure(nil)
+	err := reg.Configure(&AppConfig{Registry: reg}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "post-configure app \"failing\"")
 }
@@ -157,11 +147,11 @@ type postConfigErrorApp struct {
 	name string
 }
 
-func (a *postConfigErrorApp) Name() string                                    { return a.name }
-func (a *postConfigErrorApp) Register(_ *AppConfig) error                     { return nil }
-func (a *postConfigErrorApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
-func (a *postConfigErrorApp) Configure(_ *cli.Command) error                  { return nil }
-func (a *postConfigErrorApp) PostConfigure(_ *cli.Command) error              { return errors.New("boom") }
+func (a *postConfigErrorApp) Name() string                                 { return a.name }
+func (a *postConfigErrorApp) Configure(_ *AppConfig, _ *cli.Command) error { return nil }
+func (a *postConfigErrorApp) PostConfigure(_ *AppConfig, _ *cli.Command) error {
+	return errors.New("boom")
+}
 
 func TestRegistryConfigure_SkipsNonPostConfigurable(t *testing.T) {
 	var order []string
@@ -172,7 +162,7 @@ func TestRegistryConfigure_SkipsNonPostConfigurable(t *testing.T) {
 	reg.Add(a1)
 	reg.Add(a2)
 
-	err := reg.Configure(nil)
+	err := reg.Configure(&AppConfig{Registry: reg}, nil)
 	require.NoError(t, err)
 
 	// Only Configure calls, no PostConfigure.

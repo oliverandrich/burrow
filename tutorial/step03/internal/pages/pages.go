@@ -19,8 +19,7 @@ type App struct{}
 // New creates a new pages app.
 func New() *App { return &App{} }
 
-func (a *App) Name() string                       { return "pages" }
-func (a *App) Register(_ *burrow.AppConfig) error { return nil }
+func (a *App) Name() string { return "pages" }
 
 func (a *App) TemplateFS() fs.FS {
 	sub, _ := fs.Sub(templateFS, "templates")

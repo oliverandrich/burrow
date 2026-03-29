@@ -11,29 +11,22 @@ Every app must implement this interface:
 ```go
 type App interface {
     Name() string
-    Register(cfg *AppConfig) error
 }
 ```
 
 - `Name()` returns a unique identifier for the app (e.g., `"auth"`, `"notes"`)
-- `Register()` receives the shared `AppConfig` for initialisation
+
+Apps that don't need configuration only need `Name()`. Setup logic (initialising repositories, services, etc.) goes in `Configure()` — see [Configurable](#configurable).
 
 ```go
-type myApp struct {
-    repo *Repository
-}
+type myApp struct{}
 
 func (a *myApp) Name() string { return "notes" }
-
-func (a *myApp) Register(cfg *burrow.AppConfig) error {
-    a.repo = NewRepository(cfg.DB)
-    return nil
-}
 ```
 
 ### AppConfig
 
-Passed to every app's `Register` method:
+Passed to every app's `Configure` method:
 
 ```go
 type AppConfig struct {
@@ -60,10 +53,10 @@ type IconFunc = func(...string) template.HTML
 func (cfg *AppConfig) RegisterIconFunc(name string, fn IconFunc)
 ```
 
-Registers an icon function as a template function. Apps call this in their `Register()` method to make icons available in templates without polluting the global `FuncMap`. Duplicate registrations of the same name are silently ignored, so multiple apps can depend on the same icon.
+Registers an icon function as a template function. Apps call this in their `Configure()` method to make icons available in templates without polluting the global `FuncMap`. Duplicate registrations of the same name are silently ignored, so multiple apps can depend on the same icon.
 
 ```go
-func (a *myApp) Register(cfg *burrow.AppConfig) error {
+func (a *myApp) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
     cfg.RegisterIconFunc("iconPencil", bsicons.Pencil)
     return nil
@@ -84,7 +77,7 @@ type Migratable interface {
 }
 ```
 
-Provides an `fs.FS` containing `.up.sql` migration files at the root level. Called during startup before `Register()`. When using `//go:embed migrations`, you must strip the directory prefix:
+Provides an `fs.FS` containing `.up.sql` migration files at the root level. Called during startup before `Configure()`. When using `//go:embed migrations`, you must strip the directory prefix:
 
 ```go
 //go:embed migrations
@@ -254,17 +247,15 @@ func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
 }
 ```
 
-### Configurable
+### HasFlags
 
 ```go
-type Configurable interface {
+type HasFlags interface {
     Flags(configSource func(key string) cli.ValueSource) []cli.Flag
-    Configure(cmd *cli.Command) error
 }
 ```
 
-- `Flags()` returns CLI flags merged into the application's flag set. The `configSource` parameter enables TOML file sourcing — pass `nil` when no config file is used.
-- `Configure()` is called after CLI parsing to read flag values
+Returns CLI flags merged into the application's flag set. The `configSource` parameter enables TOML file sourcing — pass `nil` when no config file is used.
 
 ```go
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
@@ -277,8 +268,21 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
         },
     }
 }
+```
 
-func (a *App) Configure(cmd *cli.Command) error {
+### Configurable
+
+```go
+type Configurable interface {
+    Configure(cfg *AppConfig, cmd *cli.Command) error
+}
+```
+
+Called after CLI parsing to read flag values and initialise the app. Receives the shared `AppConfig` (database, registry, config) and the parsed CLI command for reading flag values. All setup logic that needs database access or flag values belongs here.
+
+```go
+func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
+    a.repo = NewRepository(cfg.DB)
     a.pageSize = int(cmd.Int("notes-page-size"))
     return nil
 }
@@ -432,7 +436,7 @@ func (a *App) RegisterJobs(q burrow.Queue) {
 
 ```go
 type PostConfigurable interface {
-    PostConfigure(cmd *cli.Command) error
+    PostConfigure(cfg *AppConfig, cmd *cli.Command) error
 }
 ```
 

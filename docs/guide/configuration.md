@@ -61,7 +61,7 @@ email = "admin@example.com"
 
 ## Adding Custom Flags
 
-Apps implement the `Configurable` interface to add their own flags:
+Apps implement the `HasFlags` interface to declare flags and `Configurable` to read them:
 
 ```go
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
@@ -75,7 +75,8 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
     }
 }
 
-func (a *App) Configure(cmd *cli.Command) error {
+func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
+    a.repo = NewRepository(cfg.DB)
     a.pageSize = int(cmd.Int("notes-page-size"))
     return nil
 }

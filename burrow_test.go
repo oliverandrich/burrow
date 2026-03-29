@@ -21,21 +21,19 @@ import (
 // minimalApp implements only the required App interface.
 type minimalApp struct{}
 
-func (a *minimalApp) Name() string                { return "minimal" }
-func (a *minimalApp) Register(_ *AppConfig) error { return nil }
+func (a *minimalApp) Name() string { return "minimal" }
 
 // fullApp implements App + all optional interfaces.
 type fullApp struct {
-	registered bool
+	configured bool
 }
 
 func (a *fullApp) Name() string                                      { return "full" }
-func (a *fullApp) Register(_ *AppConfig) error                       { a.registered = true; return nil }
 func (a *fullApp) MigrationFS() fs.FS                                { return nil }
 func (a *fullApp) Middleware() []func(http.Handler) http.Handler     { return nil }
 func (a *fullApp) NavItems() []NavItem                               { return nil }
 func (a *fullApp) Flags(_ func(string) cli.ValueSource) []cli.Flag   { return nil }
-func (a *fullApp) Configure(_ *cli.Command) error                    { return nil }
+func (a *fullApp) Configure(_ *AppConfig, _ *cli.Command) error      { a.configured = true; return nil }
 func (a *fullApp) CLICommands() []*cli.Command                       { return nil }
 func (a *fullApp) Seed(_ context.Context) error                      { return nil }
 func (a *fullApp) Routes(_ chi.Router)                               {}
@@ -48,36 +46,37 @@ func (a *fullApp) Start(_ *Server) error                             { return ni
 
 // trackingApp records calls and provides test data for lifecycle methods.
 type trackingApp struct {
-	registerFn    func(cfg *AppConfig) error
+	configureFn   func(cfg *AppConfig) error
 	name          string
 	navItems      []NavItem
 	adminNavItems []NavItem
 	middleware    []func(http.Handler) http.Handler
 	flags         []cli.Flag
 	commands      []*cli.Command
-	registered    bool
 	configured    bool
 	seeded        bool
 }
 
-func (a *trackingApp) Name() string { return a.name }
-func (a *trackingApp) Register(cfg *AppConfig) error {
-	a.registered = true
-	if a.registerFn != nil {
-		return a.registerFn(cfg)
-	}
-	return nil
-}
+func (a *trackingApp) Name() string                                    { return a.name }
 func (a *trackingApp) NavItems() []NavItem                             { return a.navItems }
 func (a *trackingApp) Middleware() []func(http.Handler) http.Handler   { return a.middleware }
 func (a *trackingApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return a.flags }
-func (a *trackingApp) Configure(_ *cli.Command) error                  { a.configured = true; return nil }
-func (a *trackingApp) CLICommands() []*cli.Command                     { return a.commands }
-func (a *trackingApp) Seed(_ context.Context) error                    { a.seeded = true; return nil }
-func (a *trackingApp) AdminRoutes(_ chi.Router)                        {}
-func (a *trackingApp) AdminNavItems() []NavItem                        { return a.adminNavItems }
+func (a *trackingApp) Configure(cfg *AppConfig, _ *cli.Command) error {
+	a.configured = true
+	if a.configureFn != nil {
+		return a.configureFn(cfg)
+	}
+	return nil
+}
+func (a *trackingApp) CLICommands() []*cli.Command { return a.commands }
+func (a *trackingApp) Seed(_ context.Context) error {
+	a.seeded = true
+	return nil
+}
+func (a *trackingApp) AdminRoutes(_ chi.Router) {}
+func (a *trackingApp) AdminNavItems() []NavItem { return a.adminNavItems }
 
-// failingApp returns errors from Register, Configure, or Seed.
+// failingApp returns errors from Configure or Seed.
 type failingApp struct {
 	err     error
 	name    string
@@ -85,15 +84,9 @@ type failingApp struct {
 	reached bool
 }
 
-func (a *failingApp) Name() string { return a.name }
-func (a *failingApp) Register(_ *AppConfig) error {
-	if a.failOn == "register" {
-		return a.err
-	}
-	return nil
-}
+func (a *failingApp) Name() string                                    { return a.name }
 func (a *failingApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
-func (a *failingApp) Configure(_ *cli.Command) error {
+func (a *failingApp) Configure(_ *AppConfig, _ *cli.Command) error {
 	if a.failOn == "configure" {
 		return a.err
 	}
@@ -114,6 +107,7 @@ var (
 	_ Migratable        = (*fullApp)(nil)
 	_ HasMiddleware     = (*fullApp)(nil)
 	_ HasNavItems       = (*fullApp)(nil)
+	_ HasFlags          = (*fullApp)(nil)
 	_ Configurable      = (*fullApp)(nil)
 	_ HasCLICommands    = (*fullApp)(nil)
 	_ Seedable          = (*fullApp)(nil)
@@ -155,6 +149,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	_, isMigratable := app.(Migratable)
 	_, hasMiddleware := app.(HasMiddleware)
 	_, hasNavItems := app.(HasNavItems)
+	_, hasFlags := app.(HasFlags)
 	_, isConfigurable := app.(Configurable)
 	_, hasCLI := app.(HasCLICommands)
 	_, isSeedable := app.(Seedable)
@@ -168,6 +163,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	assert.True(t, isMigratable)
 	assert.True(t, hasMiddleware)
 	assert.True(t, hasNavItems)
+	assert.True(t, hasFlags)
 	assert.True(t, isConfigurable)
 	assert.True(t, hasCLI)
 	assert.True(t, isSeedable)
@@ -243,9 +239,8 @@ type dependentApp struct {
 	deps []string
 }
 
-func (a *dependentApp) Name() string                { return a.name }
-func (a *dependentApp) Register(_ *AppConfig) error { return nil }
-func (a *dependentApp) Dependencies() []string      { return a.deps }
+func (a *dependentApp) Name() string           { return a.name }
+func (a *dependentApp) Dependencies() []string { return a.deps }
 
 func TestRegistryAddPanicsOnMissingDependency(t *testing.T) {
 	reg := NewRegistry()
@@ -288,6 +283,7 @@ func TestRegistryAddLogsCapabilities(t *testing.T) {
 	assert.Contains(t, output, "routes")
 	assert.Contains(t, output, "middleware")
 	assert.Contains(t, output, "nav")
+	assert.Contains(t, output, "flags")
 	assert.Contains(t, output, "config")
 	assert.Contains(t, output, "commands")
 	assert.Contains(t, output, "seed")
@@ -312,49 +308,50 @@ func TestRegistryAddLogsMinimalCapabilities(t *testing.T) {
 	assert.NotContains(t, output, "routes")
 }
 
-func TestRegistryRegisterAllCallsRegister(t *testing.T) {
+func TestRegistryConfigureAllCallsConfigure(t *testing.T) {
 	reg := NewRegistry()
 	app1 := &trackingApp{name: "first"}
 	app2 := &trackingApp{name: "second"}
 	reg.Add(app1)
 	reg.Add(app2)
 
-	err := reg.RegisterAll(nil)
+	err := reg.ConfigureAll(&AppConfig{Registry: reg})
 	require.NoError(t, err)
-	assert.True(t, app1.registered)
-	assert.True(t, app2.registered)
+	assert.True(t, app1.configured)
+	assert.True(t, app2.configured)
 }
 
-func TestRegistryRegisterAllPassesConfig(t *testing.T) {
+func TestRegistryConfigureAllPassesConfig(t *testing.T) {
 	reg := NewRegistry()
 	var received *AppConfig
 	app := &trackingApp{
 		name: "checker",
-		registerFn: func(cfg *AppConfig) error {
+		configureFn: func(cfg *AppConfig) error {
 			received = cfg
 			return nil
 		},
 	}
 	reg.Add(app)
 
-	err := reg.RegisterAll(nil)
+	appCfg := &AppConfig{Registry: reg}
+	err := reg.ConfigureAll(appCfg)
 	require.NoError(t, err)
 	require.NotNil(t, received)
 	assert.Equal(t, reg, received.Registry)
 }
 
-func TestRegistryRegisterAllStopsOnError(t *testing.T) {
+func TestRegistryConfigureAllStopsOnError(t *testing.T) {
 	reg := NewRegistry()
 	errBoom := errors.New("boom")
-	app1 := &failingApp{name: "bad", failOn: "register", err: errBoom}
+	app1 := &failingApp{name: "bad", failOn: "configure", err: errBoom}
 	app2 := &trackingApp{name: "never"}
 	reg.Add(app1)
 	reg.Add(app2)
 
-	err := reg.RegisterAll(nil)
+	err := reg.ConfigureAll(&AppConfig{Registry: reg})
 	require.ErrorIs(t, err, errBoom)
 	assert.Contains(t, err.Error(), "bad")
-	assert.False(t, app2.registered)
+	assert.False(t, app2.configured)
 }
 
 func TestRegistryAllNavItemsSortedByPosition(t *testing.T) {
@@ -439,7 +436,7 @@ func TestRegistryConfigureCallsConfigurableApps(t *testing.T) {
 	reg.Add(app2)
 	reg.Add(&minimalApp{}) // Not Configurable, should be skipped.
 
-	err := reg.Configure(nil)
+	err := reg.Configure(&AppConfig{Registry: reg}, nil)
 	require.NoError(t, err)
 	assert.True(t, app1.configured)
 	assert.True(t, app2.configured)
@@ -450,7 +447,7 @@ func TestRegistryConfigureStopsOnError(t *testing.T) {
 	errCfg := errors.New("config error")
 	reg.Add(&failingApp{name: "bad-cfg", failOn: "configure", err: errCfg})
 
-	err := reg.Configure(nil)
+	err := reg.Configure(&AppConfig{Registry: reg}, nil)
 	require.ErrorIs(t, err, errCfg)
 	assert.Contains(t, err.Error(), "bad-cfg")
 }
@@ -520,8 +517,7 @@ type routeApp struct {
 	name string
 }
 
-func (a *routeApp) Name() string                { return a.name }
-func (a *routeApp) Register(_ *AppConfig) error { return nil }
+func (a *routeApp) Name() string { return a.name }
 func (a *routeApp) Routes(r chi.Router) {
 	r.Get("/from-app", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("route-registered"))

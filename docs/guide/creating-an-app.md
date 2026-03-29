@@ -9,11 +9,10 @@ Every app implements `burrow.App`:
 ```go
 type App interface {
     Name() string
-    Register(cfg *AppConfig) error
 }
 ```
 
-`Name()` returns a unique identifier. `Register()` receives the shared `AppConfig` with the database, registry, config, and layouts.
+`Name()` returns a unique identifier. Apps that need setup (database access, flag values) implement `Configurable` — see [Configuration](configuration.md).
 
 ## Step 1: Define the Model
 
@@ -214,7 +213,7 @@ func (a *App) Name() string { return "notes" }
 
 func (a *App) Dependencies() []string { return []string{"auth"} } // (1)!
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     a.repo = NewRepository(cfg.DB)
     a.handlers = NewHandlers(a.repo)
     return nil
@@ -266,7 +265,7 @@ For multi-file apps, name files by their purpose rather than repeating the packa
 
 | File | Content |
 |------|---------|
-| `app.go` | App struct, `Name()`, `Register()`, `Routes()`, framework wiring |
+| `app.go` | App struct, `Name()`, `Configure()`, `Routes()`, framework wiring |
 | `context.go` | Package doc comment, context key types, context helpers |
 | `handlers.go` | HTTP handlers |
 | `middleware.go` | Middleware functions |
@@ -305,7 +304,8 @@ Your app can implement any combination of these interfaces:
 | `HasTemplates` | `TemplateFS() fs.FS` | Contribute HTML template files |
 | `HasFuncMap` | `FuncMap() template.FuncMap` | Contribute static template functions |
 | `HasRequestFuncMap` | `RequestFuncMap(ctx context.Context) template.FuncMap` | Contribute context-scoped template functions |
-| `Configurable` | `Flags(configSource func(key string) cli.ValueSource) []cli.Flag` + `Configure(cmd *cli.Command) error` | Add CLI flags |
+| `HasFlags` | `Flags(configSource func(key string) cli.ValueSource) []cli.Flag` | Add CLI flags |
+| `Configurable` | `Configure(cfg *AppConfig, cmd *cli.Command) error` | App initialisation and configuration |
 | `HasCLICommands` | `CLICommands() []*cli.Command` | Add CLI subcommands |
 | `Seedable` | `Seed(ctx context.Context) error` | Seed initial data |
 | `HasDependencies` | `Dependencies() []string` | Declare required apps |
@@ -313,7 +313,7 @@ Your app can implement any combination of these interfaces:
 | `HasStaticFiles` | `StaticFS() (prefix string, fsys fs.FS)` | Contribute static assets |
 | `HasTranslations` | `TranslationFS() fs.FS` | Contribute translation files |
 | `HasJobs` | `RegisterJobs(q Queue)` | Register background job handlers |
-| `PostConfigurable` | `PostConfigure(cmd *cli.Command) error` | Second-pass configuration after all apps are configured |
+| `PostConfigurable` | `PostConfigure(cfg *AppConfig, cmd *cli.Command) error` | Second-pass configuration after all apps are configured |
 | `HasShutdown` | `Shutdown(ctx context.Context) error` | Clean up on shutdown |
 
 See [Core Interfaces](../reference/interfaces.md) for the full reference.

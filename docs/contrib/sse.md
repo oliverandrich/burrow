@@ -222,7 +222,7 @@ On server shutdown, the broker closes all client connections. SSE handlers detec
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `burrow.Configurable` | `sse-buffer-size` flag |
 | `burrow.HasMiddleware` | Injects broker into request context |
 | `burrow.HasShutdown` | Closes broker and disconnects all clients |

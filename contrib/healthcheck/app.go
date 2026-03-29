@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/uptrace/bun"
+	"github.com/urfave/cli/v3"
 )
 
 // New creates a new healthcheck app.
@@ -25,7 +26,8 @@ type App struct {
 
 func (a *App) Name() string { return "healthcheck" }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+// Configure stores the shared database and registry for health probes.
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.db = cfg.DB
 	a.registry = cfg.Registry
 	return nil

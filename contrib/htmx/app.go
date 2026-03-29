@@ -3,8 +3,6 @@ package htmx
 import (
 	"embed"
 	"io/fs"
-
-	"github.com/oliverandrich/burrow"
 )
 
 //go:embed static
@@ -20,9 +18,8 @@ type App struct{}
 // New creates a new htmx app.
 func New() *App { return &App{} }
 
-func (a *App) Name() string                       { return "htmx" }
-func (a *App) Register(_ *burrow.AppConfig) error { return nil }
-func (a *App) Dependencies() []string             { return []string{"staticfiles"} } //nolint:goconst
+func (a *App) Name() string           { return "htmx" }
+func (a *App) Dependencies() []string { return []string{"staticfiles"} } //nolint:goconst
 
 // TemplateFS returns the embedded HTML template files.
 func (a *App) TemplateFS() fs.FS {

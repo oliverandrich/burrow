@@ -348,7 +348,7 @@ Without the i18n app, templates fall back to displaying translation keys (which 
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `Migratable` | User, credential, recovery code, invite tables |
 | `HasRoutes` | Auth routes |
 | `HasMiddleware` | User loading from session |

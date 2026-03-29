@@ -52,7 +52,7 @@ See the [Alpine.js documentation](https://alpinejs.dev/) for the full API refere
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `HasStaticFiles` | Contributes embedded `alpine.min.js` under `"alpine"` prefix |
 | `HasTemplates` | Contributes `alpine/js` template |
 | `HasDependencies` | Requires `staticfiles` |

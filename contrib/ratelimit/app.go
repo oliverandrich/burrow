@@ -46,8 +46,6 @@ type App struct {
 
 func (a *App) Name() string { return "ratelimit" }
 
-func (a *App) Register(_ *burrow.AppConfig) error { return nil }
-
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.FloatFlag{
@@ -82,7 +80,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	}
 }
 
-func (a *App) Configure(cmd *cli.Command) error {
+func (a *App) Configure(_ *burrow.AppConfig, cmd *cli.Command) error {
 	rps := cmd.Float("ratelimit-rate")
 	burst := int(cmd.Int("ratelimit-burst"))
 	trustProxy := cmd.Bool("ratelimit-trust-proxy")

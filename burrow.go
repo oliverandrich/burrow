@@ -21,8 +21,8 @@
 //	_ = app.Run(context.Background(), os.Args)
 //
 // NewServer sorts apps by declared dependencies automatically. The boot
-// sequence runs migrations, calls Register on each app, configures them
-// from CLI/ENV/TOML flags, and starts the HTTP server with graceful shutdown.
+// sequence runs migrations, configures each app from CLI/ENV/TOML flags,
+// and starts the HTTP server with graceful shutdown.
 //
 // # Handler Functions
 //
@@ -78,7 +78,7 @@
 //
 // # App Interface
 //
-// Every app implements [App] (Name + Register). Apps gain additional capabilities
+// Every app implements [App] (Name only). Apps gain additional capabilities
 // by implementing optional interfaces:
 //
 //   - [Migratable] — embedded SQL migration files
@@ -88,7 +88,8 @@
 //   - [HasTemplates] — .html template files parsed into the global template set
 //   - [HasFuncMap] — static template functions
 //   - [HasRequestFuncMap] — per-request template functions
-//   - [Configurable] — CLI/ENV/TOML flags and configuration
+//   - [HasFlags] — CLI/ENV/TOML flag definitions
+//   - [Configurable] — app configuration and setup
 //   - [HasCLICommands] — CLI subcommands
 //   - [Seedable] — database seeding
 //   - [HasAdmin] — admin panel routes and navigation
@@ -148,18 +149,17 @@ import (
 )
 
 // App is the required interface that all apps must implement.
-// An app has a unique name and a Register method that receives
-// the shared configuration needed to wire into the framework.
+// An app has a unique name used for identification in the registry,
+// migrations, and logging.
 type App interface {
 	Name() string
-	Register(cfg *AppConfig) error
 }
 
 // IconFunc is the function signature for icon template functions.
 // It matches the signature used by bsicons and other icon packages.
 type IconFunc = func(...string) template.HTML
 
-// AppConfig is passed to each app's Register method, providing
+// AppConfig is passed to each app's Configure method, providing
 // access to shared framework resources.
 type AppConfig struct {
 	DB         *bun.DB
@@ -222,13 +222,18 @@ type HasNavItems interface {
 	NavItems() []NavItem
 }
 
-// Configurable is implemented by apps that define CLI flags
-// and need to read their configuration from the CLI command.
+// HasFlags is implemented by apps that define CLI flags.
 // The configSource parameter enables TOML file sourcing; it may be nil
 // when only ENV/CLI sources are used.
-type Configurable interface {
+type HasFlags interface {
 	Flags(configSource func(key string) cli.ValueSource) []cli.Flag
-	Configure(cmd *cli.Command) error
+}
+
+// Configurable is implemented by apps that need to read their configuration
+// and perform setup (create repositories, register icons, wire handlers).
+// Configure receives the shared [AppConfig] and the parsed CLI command.
+type Configurable interface {
+	Configure(cfg *AppConfig, cmd *cli.Command) error
 }
 
 // HasCLICommands is implemented by apps that contribute subcommands.
@@ -282,7 +287,7 @@ type HasDependencies interface {
 // after Configure() has run (e.g., the jobs app discovering HasJobs handlers).
 // PostConfigure is called once, after all Configure() calls have completed.
 type PostConfigurable interface {
-	PostConfigure(cmd *cli.Command) error
+	PostConfigure(cfg *AppConfig, cmd *cli.Command) error
 }
 
 // HasShutdown is implemented by apps that need to perform cleanup

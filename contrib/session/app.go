@@ -17,15 +17,9 @@ func New() *App { return &App{} }
 // App implements the session contrib app.
 type App struct {
 	manager *Manager
-	config  *burrow.Config
 }
 
 func (a *App) Name() string { return "session" }
-
-func (a *App) Register(cfg *burrow.AppConfig) error {
-	a.config = cfg.Config
-	return nil
-}
 
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
@@ -54,7 +48,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	}
 }
 
-func (a *App) Configure(cmd *cli.Command) error {
+func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	hashKey, err := cryptokey.Resolve(cmd.String("session-hash-key"), "session hash")
 	if err != nil {
 		return err
@@ -71,7 +65,7 @@ func (a *App) Configure(cmd *cli.Command) error {
 	cookieName := cmd.String("session-cookie-name")
 	maxAge := int(cmd.Int("session-max-age"))
 
-	secure := a.config != nil && strings.HasPrefix(a.config.Server.BaseURL, "https://")
+	secure := cfg.Config != nil && strings.HasPrefix(cfg.Config.Server.BaseURL, "https://")
 
 	sc := securecookie.New(hashKey, blockKey)
 	sc.MaxAge(maxAge)

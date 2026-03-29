@@ -121,5 +121,5 @@ mailer.SendInvite(ctx, "bob@example.com", "https://example.com/auth/register?inv
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `Configurable` | SMTP configuration flags |

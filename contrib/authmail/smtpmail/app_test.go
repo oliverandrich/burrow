@@ -21,12 +21,6 @@ func TestAppName(t *testing.T) {
 	assert.Equal(t, "authmail-smtp", a.Name())
 }
 
-func TestAppRegister(t *testing.T) {
-	a := New()
-	err := a.Register(&burrow.AppConfig{})
-	require.NoError(t, err)
-}
-
 func TestAppFlags(t *testing.T) {
 	a := New()
 	flags := a.Flags(nil)
@@ -51,7 +45,7 @@ func TestConfigureCreatesMailer(t *testing.T) {
 		Name:  "test",
 		Flags: a.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			return a.Configure(cmd)
+			return a.Configure(nil, cmd)
 		},
 	}
 	err := cmd.Run(t.Context(), []string{"test"})
@@ -72,7 +66,7 @@ func TestConfigureWithCustomFlags(t *testing.T) {
 		Name:  "test",
 		Flags: a.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			return a.Configure(cmd)
+			return a.Configure(nil, cmd)
 		},
 	}
 	err := cmd.Run(t.Context(), []string{

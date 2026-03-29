@@ -34,8 +34,7 @@ func main() {
 // homepageApp serves a simple homepage at /.
 type homepageApp struct{}
 
-func (a *homepageApp) Name() string                       { return "homepage" }
-func (a *homepageApp) Register(_ *burrow.AppConfig) error { return nil }
+func (a *homepageApp) Name() string { return "homepage" }
 func (a *homepageApp) Routes(r chi.Router) {
 	r.Get("/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
 		return burrow.Text(w, http.StatusOK, "Hello, Polls!")

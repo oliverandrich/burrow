@@ -276,9 +276,8 @@ type migratableApp struct {
 	name string
 }
 
-func (a *migratableApp) Name() string                { return a.name }
-func (a *migratableApp) Register(_ *AppConfig) error { return nil }
-func (a *migratableApp) MigrationFS() fs.FS          { return a.fs }
+func (a *migratableApp) Name() string       { return a.name }
+func (a *migratableApp) MigrationFS() fs.FS { return a.fs }
 
 // depApp is a test helper implementing App + Migratable + HasDependencies.
 type depApp struct {
@@ -287,10 +286,9 @@ type depApp struct {
 	deps []string
 }
 
-func (a *depApp) Name() string                { return a.name }
-func (a *depApp) Register(_ *AppConfig) error { return nil }
-func (a *depApp) MigrationFS() fs.FS          { return a.fs }
-func (a *depApp) Dependencies() []string      { return a.deps }
+func (a *depApp) Name() string           { return a.name }
+func (a *depApp) MigrationFS() fs.FS     { return a.fs }
+func (a *depApp) Dependencies() []string { return a.deps }
 
 func TestMigrationDependencyOrder(t *testing.T) {
 	db := TestDB(t)

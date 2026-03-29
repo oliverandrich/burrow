@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/session"
 )
 
@@ -17,8 +16,6 @@ func New() *App { return &App{} }
 type App struct{}
 
 func (a *App) Name() string { return "messages" }
-
-func (a *App) Register(_ *burrow.AppConfig) error { return nil }
 
 func (a *App) Dependencies() []string { return []string{"session"} }
 

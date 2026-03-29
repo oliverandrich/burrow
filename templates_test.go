@@ -502,9 +502,8 @@ type templateApp struct { //nolint:govet // fieldalignment: readability over opt
 	tplFS fstest.MapFS
 }
 
-func (a *templateApp) Name() string                { return a.name }
-func (a *templateApp) Register(_ *AppConfig) error { return nil }
-func (a *templateApp) TemplateFS() fs.FS           { return a.tplFS }
+func (a *templateApp) Name() string      { return a.name }
+func (a *templateApp) TemplateFS() fs.FS { return a.tplFS }
 
 type templateFuncMapApp struct { //nolint:govet // fieldalignment: readability over optimization
 	name  string
@@ -512,10 +511,9 @@ type templateFuncMapApp struct { //nolint:govet // fieldalignment: readability o
 	fm    template.FuncMap
 }
 
-func (a *templateFuncMapApp) Name() string                { return a.name }
-func (a *templateFuncMapApp) Register(_ *AppConfig) error { return nil }
-func (a *templateFuncMapApp) TemplateFS() fs.FS           { return a.tplFS }
-func (a *templateFuncMapApp) FuncMap() template.FuncMap   { return a.fm }
+func (a *templateFuncMapApp) Name() string              { return a.name }
+func (a *templateFuncMapApp) TemplateFS() fs.FS         { return a.tplFS }
+func (a *templateFuncMapApp) FuncMap() template.FuncMap { return a.fm }
 
 type templateRequestFuncMapApp struct { //nolint:govet // fieldalignment: readability over optimization
 	name  string
@@ -523,9 +521,8 @@ type templateRequestFuncMapApp struct { //nolint:govet // fieldalignment: readab
 	rfm   func(ctx context.Context) template.FuncMap
 }
 
-func (a *templateRequestFuncMapApp) Name() string                { return a.name }
-func (a *templateRequestFuncMapApp) Register(_ *AppConfig) error { return nil }
-func (a *templateRequestFuncMapApp) TemplateFS() fs.FS           { return a.tplFS }
+func (a *templateRequestFuncMapApp) Name() string      { return a.name }
+func (a *templateRequestFuncMapApp) TemplateFS() fs.FS { return a.tplFS }
 func (a *templateRequestFuncMapApp) RequestFuncMap(ctx context.Context) template.FuncMap {
 	return a.rfm(ctx)
 }

@@ -94,7 +94,7 @@ The rate limiter implements `HasShutdown` to stop the background cleanup gorouti
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `Configurable` | Rate, burst, cleanup interval, and trust-proxy flags |
 | `HasMiddleware` | Rate limiting middleware |
 | `HasShutdown` | Stops the cleanup goroutine |

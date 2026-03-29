@@ -175,7 +175,7 @@ func TestApp_Dequeue_InvalidID(t *testing.T) {
 
 func TestApp_AdminRoutes_NilJobsAdmin(t *testing.T) {
 	app := New()
-	// jobsAdmin is nil when Register has not been called.
+	// jobsAdmin is nil when Configure has not been called.
 	r := chi.NewRouter()
 	// Should not panic.
 	app.AdminRoutes(r)
@@ -320,8 +320,7 @@ type stubHasJobsApp struct {
 	registered bool
 }
 
-func (s *stubHasJobsApp) Name() string                       { return "stub" }
-func (s *stubHasJobsApp) Register(_ *burrow.AppConfig) error { return nil }
+func (s *stubHasJobsApp) Name() string { return "stub" }
 func (s *stubHasJobsApp) RegisterJobs(q burrow.Queue) {
 	s.registered = true
 	q.Handle("stub_job", func(_ context.Context, _ []byte) error { return nil })
@@ -333,14 +332,14 @@ var _ burrow.HasJobs = (*stubHasJobsApp)(nil)
 func TestApp_Configure(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	app.defaultDB = db
+	appCfg := &burrow.AppConfig{DB: db}
 
 	// Build a cli.Command with the jobs flags so Configure can read them.
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
+			return app.Configure(appCfg, cmd)
 		},
 	}
 
@@ -363,23 +362,22 @@ func TestApp_Configure(t *testing.T) {
 func TestApp_PostConfigure(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	app.defaultDB = db
 
 	// Set up a registry with a HasJobs implementor.
 	registry := burrow.NewRegistry()
 	stub := &stubHasJobsApp{}
 	registry.Add(stub)
-	app.registry = registry
+	appCfg := &burrow.AppConfig{DB: db, Registry: registry}
 
 	// Run Configure first (sets up repo, admin, worker config).
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			if err := app.Configure(cmd); err != nil {
+			if err := app.Configure(appCfg, cmd); err != nil {
 				return err
 			}
-			return app.PostConfigure(cmd)
+			return app.PostConfigure(appCfg, cmd)
 		},
 	}
 
@@ -402,16 +400,16 @@ func TestApp_PostConfigure(t *testing.T) {
 func TestApp_PostConfigure_DefaultFlags(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	app.defaultDB = db
+	appCfg := &burrow.AppConfig{DB: db}
 
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			if err := app.Configure(cmd); err != nil {
+			if err := app.Configure(appCfg, cmd); err != nil {
 				return err
 			}
-			return app.PostConfigure(cmd)
+			return app.PostConfigure(appCfg, cmd)
 		},
 	}
 
@@ -430,17 +428,17 @@ func TestApp_PostConfigure_DefaultFlags(t *testing.T) {
 func TestApp_PostConfigure_NilRegistry(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	app.defaultDB = db
+	appCfg := &burrow.AppConfig{DB: db}
 	// registry is nil — should not panic.
 
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			if err := app.Configure(cmd); err != nil {
+			if err := app.Configure(appCfg, cmd); err != nil {
 				return err
 			}
-			return app.PostConfigure(cmd)
+			return app.PostConfigure(appCfg, cmd)
 		},
 	}
 
@@ -454,21 +452,20 @@ func TestApp_PostConfigure_NilRegistry(t *testing.T) {
 func TestApp_PostConfigure_RegistryWithoutHasJobs(t *testing.T) {
 	db := testDB(t)
 	app := New()
-	app.defaultDB = db
 
 	// Registry with an app that does NOT implement HasJobs.
 	registry := burrow.NewRegistry()
 	registry.Add(New()) // jobs app itself does not implement HasJobs
-	app.registry = registry
+	appCfg := &burrow.AppConfig{DB: db, Registry: registry}
 
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			if err := app.Configure(cmd); err != nil {
+			if err := app.Configure(appCfg, cmd); err != nil {
 				return err
 			}
-			return app.PostConfigure(cmd)
+			return app.PostConfigure(appCfg, cmd)
 		},
 	}
 
@@ -484,13 +481,13 @@ func TestApp_Configure_SeparateDatabase(t *testing.T) {
 	separateDSN := filepath.Join(t.TempDir(), "jobs.db")
 
 	app := New()
-	app.defaultDB = sharedDB
+	appCfg := &burrow.AppConfig{DB: sharedDB}
 
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
+			return app.Configure(appCfg, cmd)
 		},
 	}
 
@@ -529,13 +526,13 @@ func TestApp_Configure_SharedDatabase_Default(t *testing.T) {
 	sharedDB := testDB(t)
 
 	app := New()
-	app.defaultDB = sharedDB
+	appCfg := &burrow.AppConfig{DB: sharedDB}
 
 	cmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
+			return app.Configure(appCfg, cmd)
 		},
 	}
 
@@ -565,12 +562,12 @@ func TestApp_Shutdown_ClosesSeparateDB(t *testing.T) {
 
 	sharedDB := testDB(t)
 	app := New()
-	app.defaultDB = sharedDB
+	appCfg := &burrow.AppConfig{DB: sharedDB}
 
 	cmd := &cli.Command{
 		Name:   "test",
 		Flags:  app.Flags(nil),
-		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(appCfg, cmd) },
 	}
 
 	err := cmd.Run(t.Context(), []string{"test", "--jobs-database", separateDSN})
@@ -610,12 +607,12 @@ func TestApp_Configure_SeparateDatabase_CreatesJobsAdmin(t *testing.T) {
 	separateDSN := filepath.Join(t.TempDir(), "jobs.db")
 
 	app := New()
-	app.defaultDB = sharedDB
+	appCfg := &burrow.AppConfig{DB: sharedDB}
 
 	cmd := &cli.Command{
 		Name:   "test",
 		Flags:  app.Flags(nil),
-		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(cmd) },
+		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(appCfg, cmd) },
 	}
 
 	err := cmd.Run(t.Context(), []string{"test", "--jobs-database", separateDSN})

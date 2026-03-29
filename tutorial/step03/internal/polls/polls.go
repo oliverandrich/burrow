@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/uptrace/bun"
+	"github.com/urfave/cli/v3"
 )
 
 // --------------------------------------------------------------------------
@@ -174,7 +175,7 @@ func New() *App {
 
 func (a *App) Name() string { return "polls" }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.repo = NewRepository(cfg.DB)
 	a.handlers = &Handlers{repo: a.repo}
 	return nil

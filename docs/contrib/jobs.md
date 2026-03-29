@@ -200,7 +200,7 @@ The jobs app implements `HasShutdown`. When the server shuts down:
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `Migratable` | Creates the `jobs` table |
 | `Configurable` | Worker count and poll interval flags |
 | `HasShutdown` | Stops the worker pool gracefully |

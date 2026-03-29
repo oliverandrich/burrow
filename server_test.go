@@ -2,7 +2,6 @@ package burrow
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -57,9 +56,8 @@ func TestServerBootstrap(t *testing.T) {
 		},
 	}
 	app := &migratableApp{name: "mig", fs: migFS}
-	tracker := &trackingApp{name: "tracker"}
 
-	s := NewServer(app, tracker)
+	s := NewServer(app)
 	db := TestDB(t)
 
 	err := s.bootstrap(t.Context(), db, nil)
@@ -71,34 +69,22 @@ func TestServerBootstrap(t *testing.T) {
 		Scan(t.Context(), &count)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
-
-	// App was registered via Bootstrap.
-	assert.True(t, tracker.registered)
 }
 
-func TestServerBootstrapSetsConfig(t *testing.T) {
-	var receivedCfg *AppConfig
-	app := &trackingApp{
-		name: "checker",
-		registerFn: func(cfg *AppConfig) error {
-			receivedCfg = cfg
-			return nil
-		},
-	}
-
-	s := NewServer(app)
+func TestServerBootstrapCreatesAppConfig(t *testing.T) {
+	s := NewServer(&minimalApp{})
 	db := TestDB(t)
 
 	cfg := &Config{Server: ServerConfig{Host: "testhost", Port: 9090}}
 	err := s.bootstrap(t.Context(), db, cfg)
 	require.NoError(t, err)
 
-	require.NotNil(t, receivedCfg)
-	assert.Equal(t, db, receivedCfg.DB)
-	assert.Equal(t, "testhost", receivedCfg.Config.Server.Host)
+	require.NotNil(t, s.appCfg)
+	assert.Equal(t, db, s.appCfg.DB)
+	assert.Equal(t, "testhost", s.appCfg.Config.Server.Host)
 }
 
-func TestServerBootstrapCallsSeed(t *testing.T) {
+func TestServerBootstrapDoesNotSeed(t *testing.T) {
 	app := &trackingApp{name: "seedable"}
 
 	s := NewServer(app)
@@ -107,19 +93,7 @@ func TestServerBootstrapCallsSeed(t *testing.T) {
 	err := s.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
 
-	assert.True(t, app.seeded, "bootstrap should call Seed on Seedable apps")
-}
-
-func TestServerBootstrapSeedError(t *testing.T) {
-	seedErr := errors.New("seed failed")
-	app := &failingApp{name: "bad-seed", failOn: "seed", err: seedErr}
-
-	s := NewServer(app)
-	db := TestDB(t)
-
-	err := s.bootstrap(t.Context(), db, nil)
-	require.ErrorIs(t, err, seedErr)
-	assert.Contains(t, err.Error(), "seed")
+	assert.False(t, app.seeded, "bootstrap should not call Seed (moved to after Configure)")
 }
 
 func TestSetLayout(t *testing.T) {
@@ -194,5 +168,5 @@ func TestServerRunAction(t *testing.T) {
 
 	// The server should start and stop cleanly on cancelled context.
 	require.NoError(t, err)
-	assert.True(t, app.registered)
+	assert.True(t, app.configured)
 }

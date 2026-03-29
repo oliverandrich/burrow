@@ -113,7 +113,7 @@ token := csrf.Token(r.Context())
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `Configurable` | CLI flag for auth key |
 | `HasMiddleware` | CSRF protection middleware |
 | `HasRequestFuncMap` | Provides `csrfToken` and `csrfField` functions to templates |

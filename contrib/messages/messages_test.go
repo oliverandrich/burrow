@@ -242,12 +242,6 @@ func TestName(t *testing.T) {
 	assert.Equal(t, "messages", app.Name())
 }
 
-func TestRegister(t *testing.T) {
-	app := New()
-	err := app.Register(nil)
-	assert.NoError(t, err)
-}
-
 func TestDependencies(t *testing.T) {
 	app := New()
 	deps := app.Dependencies()

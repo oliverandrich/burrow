@@ -119,7 +119,7 @@ And `internal/polls/templates/polls/results.html`:
 
 ### Update the App Struct
 
-The app needs a `handlers` field and must initialise it during `Register()`. Update the `App` struct and `Register()` method in `internal/polls/polls.go`:
+The app needs a `handlers` field and must initialise it during `Configure()`. Update the `App` struct and `Configure()` method in `internal/polls/polls.go`:
 
 ```go
 type App struct {
@@ -127,7 +127,7 @@ type App struct {
     handlers *Handlers
 }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     a.repo = NewRepository(cfg.DB)
     a.handlers = &Handlers{repo: a.repo}
     return nil
@@ -223,8 +223,7 @@ type App struct{}
 
 func New() *App { return &App{} }
 
-func (a *App) Name() string                       { return "pages" }
-func (a *App) Register(_ *burrow.AppConfig) error  { return nil }
+func (a *App) Name() string { return "pages" }
 
 func (a *App) TemplateFS() fs.FS {
     sub, _ := fs.Sub(templateFS, "templates")

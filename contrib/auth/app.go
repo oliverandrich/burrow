@@ -107,7 +107,7 @@ func (a *App) Name() string { return "auth" }
 
 func (a *App) Dependencies() []string { return []string{"session"} }
 
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	a.repo = NewRepository(cfg.DB)
 	a.globalConfig = cfg.Config
 	a.withLocale = cfg.WithLocale
@@ -217,6 +217,49 @@ func (a *App) Register(cfg *burrow.AppConfig) error {
 		EmptyMessageKey: "admin-invites-none",
 	}
 
+	// Read flag values and create config.
+	baseURL := ""
+	if a.globalConfig != nil {
+		baseURL = a.globalConfig.ResolveBaseURL()
+	}
+
+	a.config = &Config{
+		LoginRedirect:       cmd.String("auth-login-redirect"),
+		LogoutRedirect:      cmd.String("auth-logout-redirect"),
+		UseEmail:            cmd.Bool("auth-use-email"),
+		RequireVerification: cmd.Bool("auth-require-verification"),
+		InviteOnly:          cmd.Bool("auth-invite-only"),
+		BaseURL:             baseURL,
+	}
+
+	// Create WebAuthn service.
+	rpOrigin := cmd.String("auth-webauthn-rp-origin")
+	if rpOrigin == "" {
+		rpOrigin = baseURL
+	}
+	waSvc, err := NewWebAuthnService(
+		context.Background(),
+		cmd.String("auth-webauthn-rp-display-name"),
+		cmd.String("auth-webauthn-rp-id"),
+		rpOrigin,
+	)
+	if err != nil {
+		return fmt.Errorf("create webauthn service: %w", err)
+	}
+
+	// Create handlers with the stored email service (if any).
+	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config, a)
+
+	return nil
+}
+
+// Start launches the background cleanup goroutine after the full boot
+// sequence completes. This ensures the goroutine only runs when the
+// server has started successfully.
+func (a *App) Start(_ *burrow.Server) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	a.cancelCleanup = cancel
+	go a.backgroundCleanup(ctx)
 	return nil
 }
 
@@ -292,47 +335,6 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_ORIGIN", "auth.webauthn_rp_origin"),
 		},
 	}
-}
-
-func (a *App) Configure(cmd *cli.Command) error {
-	baseURL := ""
-	if a.globalConfig != nil {
-		baseURL = a.globalConfig.ResolveBaseURL()
-	}
-
-	a.config = &Config{
-		LoginRedirect:       cmd.String("auth-login-redirect"),
-		LogoutRedirect:      cmd.String("auth-logout-redirect"),
-		UseEmail:            cmd.Bool("auth-use-email"),
-		RequireVerification: cmd.Bool("auth-require-verification"),
-		InviteOnly:          cmd.Bool("auth-invite-only"),
-		BaseURL:             baseURL,
-	}
-
-	// Create WebAuthn service with a cancellable context for the cleanup goroutine.
-	rpOrigin := cmd.String("auth-webauthn-rp-origin")
-	if rpOrigin == "" {
-		rpOrigin = baseURL
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	a.cancelCleanup = cancel
-	waSvc, err := NewWebAuthnService(
-		ctx,
-		cmd.String("auth-webauthn-rp-display-name"),
-		cmd.String("auth-webauthn-rp-id"),
-		rpOrigin,
-	)
-	if err != nil {
-		return fmt.Errorf("create webauthn service: %w", err)
-	}
-
-	// Create handlers with the stored email service (if any).
-	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config, a)
-
-	// Start background cleanup of orphaned users and expired tokens.
-	go a.backgroundCleanup(ctx)
-
-	return nil
 }
 
 // backgroundCleanup periodically purges orphaned users and expired email

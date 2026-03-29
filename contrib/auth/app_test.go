@@ -39,6 +39,7 @@ var (
 	_ burrow.HasStaticFiles    = (*App)(nil)
 	_ burrow.HasTranslations   = (*App)(nil)
 	_ burrow.HasShutdown       = (*App)(nil)
+	_ burrow.Startable         = (*App)(nil)
 	_ burrow.HasRequestFuncMap = (*App)(nil)
 	_ burrow.HasTemplates      = (*App)(nil)
 	_ burrow.HasFuncMap        = (*App)(nil)
@@ -719,10 +720,30 @@ func newTestApp(t *testing.T) (*App, *Repository) {
 	t.Helper()
 	db := openTestDB(t)
 	registry := burrow.NewRegistry()
-	registry.Add(session.New())
+	sessionApp := session.New()
+	registry.Add(sessionApp)
 	app := New()
 	registry.Add(app)
-	require.NoError(t, registry.RegisterAll(db))
+	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
+
+	cmd := &cli.Command{
+		Name:  "test",
+		Flags: append(sessionApp.Flags(nil), app.Flags(nil)...),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			if err := sessionApp.Configure(appCfg, cmd); err != nil {
+				return err
+			}
+			return app.Configure(appCfg, cmd)
+		},
+	}
+	require.NoError(t, cmd.Run(t.Context(), []string{
+		"test",
+		"--auth-webauthn-rp-id", "localhost",
+		"--auth-webauthn-rp-display-name", "Test",
+		"--auth-webauthn-rp-origin", "http://localhost",
+	}))
+	t.Cleanup(func() { _ = app.Shutdown(context.Background()) })
+
 	app.config = &Config{}
 	return app, app.repo
 }
@@ -1688,14 +1709,14 @@ func TestConfigure(t *testing.T) {
 	registry.Add(session.New())
 	app := New()
 	registry.Add(app)
-	require.NoError(t, registry.RegisterAll(db))
+	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
 
 	// Build a CLI command that sets the flags and calls Configure.
 	cliCmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
+			return app.Configure(appCfg, cmd)
 		},
 	}
 
@@ -1714,6 +1735,9 @@ func TestConfigure(t *testing.T) {
 	assert.Equal(t, "/home", app.config.LoginRedirect)
 	assert.Equal(t, "/goodbye", app.config.LogoutRedirect)
 	require.NotNil(t, app.handlers)
+
+	// Start launches the background cleanup goroutine.
+	require.NoError(t, app.Start(nil))
 	require.NotNil(t, app.cancelCleanup)
 
 	// Clean up.
@@ -1726,14 +1750,13 @@ func TestConfigureWithDefaultOrigin(t *testing.T) {
 	registry.Add(session.New())
 	app := New()
 	registry.Add(app)
-	require.NoError(t, registry.RegisterAll(db))
-	app.globalConfig = &burrow.Config{}
+	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
 
 	cliCmd := &cli.Command{
 		Name:  "test",
 		Flags: app.Flags(nil),
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return app.Configure(cmd)
+			return app.Configure(appCfg, cmd)
 		},
 	}
 

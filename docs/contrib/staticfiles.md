@@ -93,7 +93,7 @@ func (a *App) StaticFS() (string, fs.FS) {
 }
 ```
 
-The `staticfiles` app automatically discovers all `HasStaticFiles` implementations during `Register()` and serves their files under the declared prefix:
+The `staticfiles` app automatically discovers all `HasStaticFiles` implementations during `Configure()` and serves their files under the declared prefix:
 
 ```
 /static/admin/admin.a1b2c3d4.css
@@ -113,7 +113,7 @@ Files from all sources get the same content-hashing and cache headers.
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `HasRoutes` | Static file serving route |
 | `HasMiddleware` | Context injection and cache header middleware |
 | `HasFuncMap` | Provides `staticURL` template function |

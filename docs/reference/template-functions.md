@@ -73,7 +73,7 @@ Provided by the framework itself. Always available.
 
 ### Icons (via RegisterIconFunc)
 
-Icon template functions are registered by apps in their `Register()` method via [`cfg.RegisterIconFunc()`](interfaces.md#registericonfunc). They are not tied to any specific contrib app. The `IconFunc` signature is `func(...string) template.HTML` — the variadic string parameter accepts optional CSS classes.
+Icon template functions are registered by apps in their `Configure()` method via [`cfg.RegisterIconFunc()`](interfaces.md#registericonfunc). They are not tied to any specific contrib app. The `IconFunc` signature is `func(...string) template.HTML` — the variadic string parameter accepts optional CSS classes.
 
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|

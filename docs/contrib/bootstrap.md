@@ -171,7 +171,7 @@ The custom CSS path is resolved via `staticURL`, so the file must be served by a
 
 ## Icon Registration
 
-The bootstrap app registers the following icons via `cfg.RegisterIconFunc()` in its `Register()` method:
+The bootstrap app registers the following icons via `cfg.RegisterIconFunc()` in its `Configure()` method:
 
 - `iconSunFill`, `iconMoonStarsFill`, `iconCircleHalf` — used by the theme switcher
 
@@ -206,7 +206,7 @@ The layout includes a theme switcher toggle that persists the user's preference 
 
 | Interface | Description |
 |-----------|-------------|
-| `burrow.App` | Required: `Name()`, `Register()` |
+| `burrow.App` | Required: `Name()` |
 | `HasStaticFiles` | Contributes embedded Bootstrap assets under `"bootstrap"` prefix |
 | `HasMiddleware` | Injects bootstrap layout when no layout is set in context |
 | `HasTemplates` | Contributes layouts, pagination, and theme templates |

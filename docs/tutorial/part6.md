@@ -80,10 +80,10 @@ type App struct {
 }
 ```
 
-Update the `Register()` method in `internal/polls/polls.go` to initialise both ModelAdmins:
+Update the `Configure()` method in `internal/polls/polls.go` to initialise both ModelAdmins:
 
 ```go
-func (a *App) Register(cfg *burrow.AppConfig) error {
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     a.repo = NewRepository(cfg.DB)
     a.handlers = &Handlers{repo: a.repo}
 

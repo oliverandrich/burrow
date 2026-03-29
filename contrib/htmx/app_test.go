@@ -21,12 +21,6 @@ func TestAppName(t *testing.T) {
 	assert.Equal(t, "htmx", app.Name())
 }
 
-func TestAppRegister(t *testing.T) {
-	app := New()
-	err := app.Register(&burrow.AppConfig{})
-	require.NoError(t, err)
-}
-
 func TestDependencies(t *testing.T) {
 	app := New()
 	assert.Equal(t, []string{"staticfiles"}, app.Dependencies())
