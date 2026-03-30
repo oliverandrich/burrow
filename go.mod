@@ -19,7 +19,7 @@ require (
 	github.com/uptrace/bun v1.2.18
 	github.com/uptrace/bun/dialect/sqlitedialect v1.2.18
 	github.com/uptrace/bun/driver/sqliteshim v1.2.18
-	github.com/urfave/cli/v3 v3.7.0
+	github.com/urfave/cli/v3 v3.8.0
 	github.com/wneessen/go-mail v0.7.2
 	golang.org/x/crypto v0.49.0
 	golang.org/x/text v0.35.0
