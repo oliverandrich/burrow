@@ -66,7 +66,7 @@ The framework logs at these points:
 Your app code can log using `slog` directly — it shares the same default logger:
 
 ```go
-func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
     // ...
     slog.Info("note created", "note_id", note.ID, "user_id", user.ID)
     // ...

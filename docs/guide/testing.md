@@ -218,7 +218,7 @@ func TestListNotes(t *testing.T) {
     db := testDB(t)
     repo := NewRepository(db)
     require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", UserID: 42}))
-    h := NewHandlers(repo)
+    app := &App{repo: NewRepository(db)}
 
     setup := func(t *testing.T) *http.Request {
         t.Helper()
@@ -234,7 +234,7 @@ func TestListNotes(t *testing.T) {
         req = req.WithContext(ctx)
 
         rec := httptest.NewRecorder()
-        err := h.List(rec, req)
+        err := app.List(rec, req)
 
         require.NoError(t, err)
         assert.Contains(t, rec.Body.String(), "<html")
@@ -247,7 +247,7 @@ func TestListNotes(t *testing.T) {
         req = req.WithContext(ctx)
 
         rec := httptest.NewRecorder()
-        err := h.List(rec, req)
+        err := app.List(rec, req)
 
         require.NoError(t, err)
         assert.NotContains(t, rec.Body.String(), "<html")
@@ -442,8 +442,7 @@ func TestCreateNoteIntegration(t *testing.T) {
     app := New()
     require.NoError(t, burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS()))
 
-    repo := NewRepository(db)
-    h := NewHandlers(repo)
+    app.repo = NewRepository(db)
 
     r := chi.NewRouter()
     r.Use(burrow.TestErrorExecMiddleware)
@@ -454,7 +453,7 @@ func TestCreateNoteIntegration(t *testing.T) {
             next.ServeHTTP(w, r.WithContext(ctx))
         })
     })
-    r.Post("/notes", burrow.Handle(h.Create))
+    r.Post("/notes", burrow.Handle(app.Create))
 
     body := strings.NewReader("title=Integration+Test&content=Works")
     req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", body)

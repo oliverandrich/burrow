@@ -29,8 +29,8 @@ Templates use `{{ define "appname/templatename" }}` blocks to namespace themselv
 Use `burrow.Render()` to render a named template with data:
 
 ```go
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
-    notes, err := h.repo.ListAll(r.Context())
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
+    notes, err := a.repo.ListAll(r.Context())
     if err != nil {
         return err
     }

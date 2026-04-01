@@ -74,7 +74,6 @@ import (
 
 type App struct {
     repo           *Repository
-    handlers       *Handlers
     questionsAdmin *modeladmin.ModelAdmin[Question]
     choicesAdmin   *modeladmin.ModelAdmin[Choice]
 }
@@ -85,7 +84,6 @@ Update the `Configure()` method in `internal/polls/polls.go` to initialise both 
 ```go
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     a.repo = NewRepository(cfg.DB)
-    a.handlers = &Handlers{repo: a.repo}
 
     a.questionsAdmin = &modeladmin.ModelAdmin[Question]{
         Slug:              "questions",

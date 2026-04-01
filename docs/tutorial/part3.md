@@ -117,34 +117,13 @@ And `internal/polls/templates/polls/results.html`:
 {{- end }}
 ```
 
-### Update the App Struct
-
-The app needs a `handlers` field and must initialise it during `Configure()`. Update the `App` struct and `Configure()` method in `internal/polls/polls.go`:
-
-```go
-type App struct {
-    repo     *Repository
-    handlers *Handlers
-}
-
-func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
-    a.repo = NewRepository(cfg.DB)
-    a.handlers = &Handlers{repo: a.repo}
-    return nil
-}
-```
-
 ### Add Handlers and Routes
 
-Still in `internal/polls/polls.go`, add the `Handlers` struct and route registration:
+Still in `internal/polls/polls.go`, add handler methods on `*App` and route registration. Handlers are methods on the app itself, so they have direct access to the repository:
 
 ```go
-type Handlers struct {
-    repo *Repository
-}
-
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
-    questions, err := h.repo.ListQuestions(r.Context())
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
+    questions, err := a.repo.ListQuestions(r.Context())
     if err != nil {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list questions")
     }
@@ -154,12 +133,12 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
     })
 }
 
-func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Detail(w http.ResponseWriter, r *http.Request) error {
     id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
     if err != nil {
         return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
     }
-    question, err := h.repo.GetQuestion(r.Context(), id)
+    question, err := a.repo.GetQuestion(r.Context(), id)
     if err != nil {
         return burrow.NewHTTPError(http.StatusNotFound, "question not found")
     }
@@ -169,12 +148,12 @@ func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
     })
 }
 
-func (h *Handlers) Results(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Results(w http.ResponseWriter, r *http.Request) error {
     id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
     if err != nil {
         return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
     }
-    question, err := h.repo.GetQuestion(r.Context(), id)
+    question, err := a.repo.GetQuestion(r.Context(), id)
     if err != nil {
         return burrow.NewHTTPError(http.StatusNotFound, "question not found")
     }
@@ -186,9 +165,9 @@ func (h *Handlers) Results(w http.ResponseWriter, r *http.Request) error {
 
 func (a *App) Routes(r chi.Router) {
     r.Route("/polls", func(r chi.Router) {
-        r.Get("/", burrow.Handle(a.handlers.List))
-        r.Get("/{id}", burrow.Handle(a.handlers.Detail))
-        r.Get("/{id}/results", burrow.Handle(a.handlers.Results))
+        r.Get("/", burrow.Handle(a.List))
+        r.Get("/{id}", burrow.Handle(a.Detail))
+        r.Get("/{id}/results", burrow.Handle(a.Results))
     })
 }
 ```

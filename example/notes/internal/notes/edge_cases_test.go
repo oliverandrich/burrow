@@ -145,7 +145,7 @@ func TestCreateNoteHandlerEmptyTitleReturnsValidationError(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	exec := testTemplateExecutor(t)
 	r := chi.NewRouter()
@@ -181,7 +181,7 @@ func TestCreateNoteHandlerEmptyContentSucceeds(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
@@ -216,7 +216,7 @@ func TestListNotesHandlerEmptyDatabase(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
@@ -232,7 +232,7 @@ func TestDeleteNoteHandlerNonExistentNote(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	exec := testTemplateExecutor(t)
 	msgMW := messages.New().Middleware()[0]

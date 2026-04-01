@@ -220,7 +220,7 @@ Your handlers and repositories work exactly as before — the only difference is
 
 ```go
 // internal/notes/handlers.go
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
     // Get the tenant DB from context (injected by middleware)
     db := tenant.DB(r.Context())
 

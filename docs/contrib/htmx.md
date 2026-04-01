@@ -44,7 +44,7 @@ Parse htmx-specific request headers with `htmx.Request()`:
 ```go
 import "github.com/oliverandrich/burrow/contrib/htmx"
 
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
     hx := htmx.Request(r)
 
     if hx.IsHTMX() {
@@ -121,7 +121,7 @@ Set htmx response headers to control client-side behaviour:
 ```go
 import "github.com/oliverandrich/burrow/contrib/htmx"
 
-func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Delete(w http.ResponseWriter, r *http.Request) error {
     // ... delete resource ...
 
     // Redirect the browser (client-side, no full page reload)

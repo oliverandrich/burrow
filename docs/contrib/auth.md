@@ -204,7 +204,7 @@ This eliminates the repetitive nil-check boilerplate:
 **Before:**
 
 ```go
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
     user := auth.CurrentUser(r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
@@ -216,7 +216,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 **After:**
 
 ```go
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
     user := auth.MustCurrentUser(r.Context())
     // use user ...
 }

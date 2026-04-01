@@ -31,10 +31,10 @@ In `internal/polls/polls.go`, add the `htmx` import and update the `Vote` handle
 ```
 
 ```go
-func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
     // ... parse IDs, validate choice ...
 
-    if err := h.repo.IncrementVotes(r.Context(), choiceID); err != nil {
+    if err := a.repo.IncrementVotes(r.Context(), choiceID); err != nil {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to record vote")
     }
 
@@ -152,9 +152,9 @@ func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageReque
 Still in `internal/polls/polls.go`, update the `List` handler to detect HTMX scroll requests:
 
 ```go
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
     pr := burrow.ParsePageRequest(r)
-    questions, page, err := h.repo.ListQuestionsPaged(r.Context(), pr)
+    questions, page, err := a.repo.ListQuestionsPaged(r.Context(), pr)
     if err != nil {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list questions")
     }

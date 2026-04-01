@@ -47,14 +47,14 @@ Then update the `Routes` method to use `auth.RequireAuth()` middleware, restrict
 ```go
 func (a *App) Routes(r chi.Router) {
     r.Route("/polls", func(r chi.Router) {
-        r.Get("/", burrow.Handle(a.handlers.List))
-        r.Get("/{id}", burrow.Handle(a.handlers.Detail))
-        r.Get("/{id}/results", burrow.Handle(a.handlers.Results))
+        r.Get("/", burrow.Handle(a.List))
+        r.Get("/{id}", burrow.Handle(a.Detail))
+        r.Get("/{id}/results", burrow.Handle(a.Results))
 
         // Voting requires authentication.
         r.Group(func(r chi.Router) {
             r.Use(auth.RequireAuth())
-            r.Post("/{id}/vote", burrow.Handle(a.handlers.Vote))
+            r.Post("/{id}/vote", burrow.Handle(a.Vote))
         })
     })
 }

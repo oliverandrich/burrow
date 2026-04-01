@@ -96,12 +96,8 @@ func (r *Repository) IncrementVotes(ctx context.Context, choiceID int64) error {
 // Handlers
 // --------------------------------------------------------------------------
 
-type Handlers struct {
-	repo *Repository
-}
-
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
-	questions, err := h.repo.ListQuestions(r.Context())
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
+	questions, err := a.repo.ListQuestions(r.Context())
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list questions")
 	}
@@ -111,12 +107,12 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Detail(w http.ResponseWriter, r *http.Request) error {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
 	}
-	question, err := h.repo.GetQuestion(r.Context(), id)
+	question, err := a.repo.GetQuestion(r.Context(), id)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
 	}
@@ -126,7 +122,7 @@ func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	questionID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -148,7 +144,7 @@ func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid choice ID")
 	}
 
-	if err := h.repo.IncrementVotes(r.Context(), choiceID); err != nil {
+	if err := a.repo.IncrementVotes(r.Context(), choiceID); err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to record vote")
 	}
 
@@ -159,12 +155,12 @@ func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (h *Handlers) Results(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Results(w http.ResponseWriter, r *http.Request) error {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
 	}
-	question, err := h.repo.GetQuestion(r.Context(), id)
+	question, err := a.repo.GetQuestion(r.Context(), id)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
 	}
@@ -185,8 +181,7 @@ var migrationFS embed.FS
 var templateFS embed.FS
 
 type App struct {
-	repo     *Repository
-	handlers *Handlers
+	repo *Repository
 }
 
 func New() *App { return &App{} }
@@ -195,7 +190,6 @@ func (a *App) Name() string { return "polls" }
 
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.repo = NewRepository(cfg.DB)
-	a.handlers = &Handlers{repo: a.repo}
 	return nil
 }
 
@@ -217,9 +211,9 @@ func (a *App) NavItems() []burrow.NavItem {
 
 func (a *App) Routes(r chi.Router) {
 	r.Route("/polls", func(r chi.Router) {
-		r.Get("/", burrow.Handle(a.handlers.List))
-		r.Get("/{id}", burrow.Handle(a.handlers.Detail))
-		r.Post("/{id}/vote", burrow.Handle(a.handlers.Vote))
-		r.Get("/{id}/results", burrow.Handle(a.handlers.Results))
+		r.Get("/", burrow.Handle(a.List))
+		r.Get("/{id}", burrow.Handle(a.Detail))
+		r.Post("/{id}/vote", burrow.Handle(a.Vote))
+		r.Get("/{id}/results", burrow.Handle(a.Results))
 	})
 }

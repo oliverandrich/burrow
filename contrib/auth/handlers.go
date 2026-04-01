@@ -31,46 +31,14 @@ type Renderer interface {
 	VerifyEmailErrorPage(w http.ResponseWriter, r *http.Request, errorCode string) error
 }
 
-// Handlers contains all auth and invite HTTP handlers.
-type Handlers struct {
-	repo     *Repository
-	webauthn WebAuthnService
-	recovery *RecoveryService
-	email    EmailService // nil if email mode is disabled
-	renderer Renderer
-	config   *Config
-	app      *App
-}
-
-// NewHandlers creates a new Handlers instance.
-// email can be nil if email mode is disabled.
-func NewHandlers(
-	repo *Repository,
-	wa WebAuthnService,
-	email EmailService,
-	renderer Renderer,
-	config *Config,
-	app *App,
-) *Handlers {
-	return &Handlers{
-		repo:     repo,
-		webauthn: wa,
-		recovery: NewRecoveryService(),
-		email:    email,
-		renderer: renderer,
-		config:   config,
-		app:      app,
-	}
-}
-
 // UseEmailMode returns true if email-based authentication is enabled.
-func (h *Handlers) UseEmailMode() bool {
-	return h.config != nil && h.config.UseEmail
+func (a *App) UseEmailMode() bool {
+	return a.config != nil && a.config.UseEmail
 }
 
 // IsInviteOnly returns true if invite-only registration is enabled.
-func (h *Handlers) IsInviteOnly() bool {
-	return h.config != nil && h.config.InviteOnly
+func (a *App) IsInviteOnly() bool {
+	return a.config != nil && a.config.InviteOnly
 }
 
 // --- Registration ---
@@ -84,22 +52,22 @@ type RegisterBeginRequest struct {
 }
 
 // RegisterPage renders the registration page.
-func (h *Handlers) RegisterPage(w http.ResponseWriter, r *http.Request) error {
+func (a *App) RegisterPage(w http.ResponseWriter, r *http.Request) error {
 	inviteToken := r.URL.Query().Get("invite")
 
-	if h.IsInviteOnly() && inviteToken != "" {
-		invite, err := h.validateInviteToken(r.Context(), inviteToken)
+	if a.IsInviteOnly() && inviteToken != "" {
+		invite, err := a.validateInviteToken(r.Context(), inviteToken)
 		if err != nil || !invite.IsValid() {
-			return h.renderer.RegisterPage(w, r, h.UseEmailMode(), true, "", "")
+			return a.renderer.RegisterPage(w, r, a.UseEmailMode(), true, "", "")
 		}
-		return h.renderer.RegisterPage(w, r, h.UseEmailMode(), true, invite.Email, inviteToken)
+		return a.renderer.RegisterPage(w, r, a.UseEmailMode(), true, invite.Email, inviteToken)
 	}
 
-	return h.renderer.RegisterPage(w, r, h.UseEmailMode(), h.IsInviteOnly(), "", "")
+	return a.renderer.RegisterPage(w, r, a.UseEmailMode(), a.IsInviteOnly(), "", "")
 }
 
 // RegisterBegin starts the WebAuthn registration process.
-func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
+func (a *App) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	var req RegisterBeginRequest
 	if err := burrow.Bind(r, &req); err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid request")
@@ -109,8 +77,8 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 
 	// Invite-only mode: validate invite token (first user bypasses).
 	var validInvite *Invite
-	if h.IsInviteOnly() {
-		isFirst, err := h.isFirstUser(ctx)
+	if a.IsInviteOnly() {
+		isFirst, err := a.isFirstUser(ctx)
 		if err != nil {
 			return errorJSONLog(w, http.StatusInternalServerError, "database error", err)
 		}
@@ -118,13 +86,13 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 			if req.Invite == "" {
 				return errorJSON(w, http.StatusForbidden, "invite token required")
 			}
-			invite, validateErr := h.validateInviteToken(ctx, req.Invite)
+			invite, validateErr := a.validateInviteToken(ctx, req.Invite)
 			if validateErr != nil || !invite.IsValid() {
 				return errorJSON(w, http.StatusForbidden, "invalid or expired invite")
 			}
 			validInvite = invite
 
-			if h.UseEmailMode() && req.Email != invite.Email {
+			if a.UseEmailMode() && req.Email != invite.Email {
 				return errorJSON(w, http.StatusForbidden, "email does not match invite")
 			}
 		}
@@ -133,16 +101,16 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	var user *User
 	var createErr error
 
-	if h.UseEmailMode() {
+	if a.UseEmailMode() {
 		if req.Email == "" {
 			return errorJSON(w, http.StatusBadRequest, "email is required")
 		}
-		user, createErr = h.repo.CreateUserWithEmail(ctx, req.Email, req.Name)
+		user, createErr = a.repo.CreateUserWithEmail(ctx, req.Email, req.Name)
 	} else {
 		if req.Username == "" {
 			return errorJSON(w, http.StatusBadRequest, "username is required")
 		}
-		user, createErr = h.repo.CreateUser(ctx, req.Username, req.Name)
+		user, createErr = a.repo.CreateUser(ctx, req.Username, req.Name)
 	}
 
 	if createErr != nil {
@@ -157,7 +125,7 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	registered := false
 	defer func() {
 		if !registered {
-			if delErr := h.repo.DeleteUser(ctx, user.ID); delErr != nil {
+			if delErr := a.repo.DeleteUser(ctx, user.ID); delErr != nil {
 				slog.Error("failed to clean up orphaned user", "user_id", user.ID, "error", delErr) //nolint:gosec // G706: user_id is int64
 			}
 		}
@@ -166,9 +134,9 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	// Promote to admin if no admin exists yet. Using CountAdminUsers
 	// instead of CountUsers avoids a race with phantom users from
 	// abandoned registration flows.
-	adminCount, countErr := h.repo.CountAdminUsers(ctx)
+	adminCount, countErr := a.repo.CountAdminUsers(ctx)
 	if countErr == nil && adminCount == 0 {
-		if roleErr := h.repo.SetUserRole(ctx, user.ID, RoleAdmin); roleErr != nil {
+		if roleErr := a.repo.SetUserRole(ctx, user.ID, RoleAdmin); roleErr != nil {
 			slog.Error("failed to promote first user to admin", "user_id", user.ID, "error", roleErr) //nolint:gosec // G706: user_id is int64
 		}
 		user.Role = RoleAdmin
@@ -178,18 +146,18 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	// Mark invite as used. If the invite was already consumed by a concurrent
 	// request, abort registration and let the cleanup defer delete the user.
 	if validInvite != nil {
-		if markErr := h.repo.MarkInviteUsed(ctx, validInvite.ID, user.ID); markErr != nil {
+		if markErr := a.repo.MarkInviteUsed(ctx, validInvite.ID, user.ID); markErr != nil {
 			slog.Error("failed to mark invite as used", "invite_id", validInvite.ID, "error", markErr) //nolint:gosec // G706: invite_id is int
 			return errorJSON(w, http.StatusConflict, "registration failed")
 		}
 	}
 
 	// Begin WebAuthn registration.
-	options, sessionData, err := h.webauthn.WebAuthn().BeginRegistration(user)
+	options, sessionData, err := a.webauthn.WebAuthn().BeginRegistration(user)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to begin registration", err)
 	}
-	h.webauthn.StoreRegistrationSession(user.ID, sessionData)
+	a.webauthn.StoreRegistrationSession(user.ID, sessionData)
 
 	registered = true
 	return burrow.JSON(w, http.StatusOK, map[string]any{
@@ -199,7 +167,7 @@ func (h *Handlers) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 }
 
 // RegisterFinish completes the WebAuthn registration process.
-func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error {
+func (a *App) RegisterFinish(w http.ResponseWriter, r *http.Request) error {
 	userID, err := strconv.ParseInt(r.URL.Query().Get("user_id"), 10, 64)
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid user_id")
@@ -207,48 +175,48 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 
 	ctx := r.Context()
 
-	sessionData, err := h.webauthn.GetRegistrationSession(userID)
+	sessionData, err := a.webauthn.GetRegistrationSession(userID)
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "registration session expired")
 	}
 
-	user, err := h.repo.GetUserByID(ctx, userID)
+	user, err := a.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to get user", err)
 	}
 
-	credential, err := h.webauthn.WebAuthn().FinishRegistration(user, *sessionData, r)
+	credential, err := a.webauthn.WebAuthn().FinishRegistration(user, *sessionData, r)
 	if err != nil {
 		slog.Error("registration failed", "error", err)
 		return errorJSON(w, http.StatusBadRequest, "registration failed")
 	}
 
 	dbCred := NewCredentialFromWebAuthn(user.ID, credential)
-	if createErr := h.repo.CreateCredential(ctx, dbCred); createErr != nil {
+	if createErr := a.repo.CreateCredential(ctx, dbCred); createErr != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to store credential", createErr)
 	}
 
-	codes, err := h.generateAndStoreRecoveryCodes(ctx, user.ID)
+	codes, err := a.generateAndStoreRecoveryCodes(ctx, user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to generate recovery codes", err)
 	}
 
 	// Email mode: send verification email and redirect to pending page.
-	if h.UseEmailMode() && user.Email != nil && h.config.RequireVerification {
+	if a.UseEmailMode() && user.Email != nil && a.config.RequireVerification {
 		plainToken, tokenHash, expiresAt, tokenErr := GenerateToken()
 		if tokenErr != nil {
 			return errorJSONLog(w, http.StatusInternalServerError, "failed to generate verification token", tokenErr)
 		}
-		if tokenErr = h.repo.CreateEmailVerificationToken(ctx, user.ID, tokenHash, expiresAt); tokenErr != nil {
+		if tokenErr = a.repo.CreateEmailVerificationToken(ctx, user.ID, tokenHash, expiresAt); tokenErr != nil {
 			return errorJSONLog(w, http.StatusInternalServerError, "failed to store verification token", tokenErr)
 		}
 
-		verifyURL := h.config.BaseURL + "/auth/verify-email?token=" + plainToken
-		if err := h.app.enqueueEmail(r.Context(), "verification", *user.Email, verifyURL); err != nil {
+		verifyURL := a.config.BaseURL + "/auth/verify-email?token=" + plainToken
+		if err := a.enqueueEmail(r.Context(), "verification", *user.Email, verifyURL); err != nil {
 			slog.Error("failed to enqueue verification email", "error", err, "email", *user.Email)
 		}
 
-		redirectAfterAck := h.redirectTarget(r)
+		redirectAfterAck := a.redirectTarget(r)
 
 		if err := session.Set(w, r, "recovery_codes", codes); err != nil {
 			return errorJSONLog(w, http.StatusInternalServerError, "failed to store recovery codes", err)
@@ -264,7 +232,7 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	// Username mode: create session immediately.
-	redirectAfterAck := h.redirectTarget(r)
+	redirectAfterAck := a.redirectTarget(r)
 	if err := session.Save(w, r, map[string]any{
 		"user_id":              user.ID,
 		"recovery_codes":       codes,
@@ -282,19 +250,19 @@ func (h *Handlers) RegisterFinish(w http.ResponseWriter, r *http.Request) error 
 // --- Login ---
 
 // LoginPage renders the login page.
-func (h *Handlers) LoginPage(w http.ResponseWriter, r *http.Request) error {
-	return h.renderer.LoginPage(w, r, h.config.LoginRedirect)
+func (a *App) LoginPage(w http.ResponseWriter, r *http.Request) error {
+	return a.renderer.LoginPage(w, r, a.config.LoginRedirect)
 }
 
 // LoginBegin starts the WebAuthn discoverable login process.
-func (h *Handlers) LoginBegin(w http.ResponseWriter, r *http.Request) error {
-	options, sessionData, err := h.webauthn.WebAuthn().BeginDiscoverableLogin()
+func (a *App) LoginBegin(w http.ResponseWriter, r *http.Request) error {
+	options, sessionData, err := a.webauthn.WebAuthn().BeginDiscoverableLogin()
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to begin login", err)
 	}
 
 	sessionID := uuid.New().String()
-	h.webauthn.StoreDiscoverableSession(sessionID, sessionData)
+	a.webauthn.StoreDiscoverableSession(sessionID, sessionData)
 
 	return burrow.JSON(w, http.StatusOK, map[string]any{
 		"publicKey":  options.Response,
@@ -303,25 +271,25 @@ func (h *Handlers) LoginBegin(w http.ResponseWriter, r *http.Request) error {
 }
 
 // LoginFinish completes the WebAuthn discoverable login.
-func (h *Handlers) LoginFinish(w http.ResponseWriter, r *http.Request) error {
+func (a *App) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 	sessionID := r.URL.Query().Get("session_id")
 	if sessionID == "" {
 		return errorJSON(w, http.StatusBadRequest, "session_id is required")
 	}
 
-	sessionData, err := h.webauthn.GetDiscoverableSession(sessionID)
+	sessionData, err := a.webauthn.GetDiscoverableSession(sessionID)
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "login session expired")
 	}
 
 	var foundUser *User
-	credential, finishErr := h.webauthn.WebAuthn().FinishDiscoverableLogin(
+	credential, finishErr := a.webauthn.WebAuthn().FinishDiscoverableLogin(
 		func(rawID, userHandle []byte) (gowebauthn.User, error) {
 			if len(userHandle) < 8 {
 				return nil, burrow.NewHTTPError(http.StatusBadRequest, "invalid user handle")
 			}
 			userID := int64(binary.BigEndian.Uint64(userHandle)) //nolint:gosec // user IDs are always positive
-			user, userErr := h.repo.GetUserByIDWithCredentials(r.Context(), userID)
+			user, userErr := a.repo.GetUserByIDWithCredentials(r.Context(), userID)
 			if userErr != nil {
 				return nil, userErr
 			}
@@ -344,7 +312,7 @@ func (h *Handlers) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	if updateErr := h.repo.UpdateCredentialSignCount(r.Context(), credential.ID, credential.Authenticator.SignCount); updateErr != nil {
+	if updateErr := a.repo.UpdateCredentialSignCount(r.Context(), credential.ID, credential.Authenticator.SignCount); updateErr != nil {
 		slog.Warn("failed to update credential sign count", "error", updateErr)
 	}
 
@@ -352,7 +320,7 @@ func (h *Handlers) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 		return errorJSON(w, http.StatusForbidden, "account deactivated")
 	}
 
-	if h.UseEmailMode() && h.config.RequireVerification && !foundUser.EmailVerified {
+	if a.UseEmailMode() && a.config.RequireVerification && !foundUser.EmailVerified {
 		return burrow.JSON(w, http.StatusForbidden, map[string]any{
 			"error":    "email_not_verified",
 			"redirect": "/auth/verify-pending",
@@ -360,7 +328,7 @@ func (h *Handlers) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Read redirect target BEFORE session.Save() which replaces all session values.
-	redirect := h.redirectTarget(r)
+	redirect := a.redirectTarget(r)
 
 	if err := session.Save(w, r, map[string]any{"user_id": foundUser.ID}); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to create session", err)
@@ -372,52 +340,52 @@ func (h *Handlers) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 // --- Logout ---
 
 // Logout clears the session cookie.
-func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Logout(w http.ResponseWriter, r *http.Request) error {
 	session.Clear(w, r)
-	http.Redirect(w, r, h.config.LogoutRedirect, http.StatusSeeOther)
+	http.Redirect(w, r, a.config.LogoutRedirect, http.StatusSeeOther)
 	return nil
 }
 
 // --- Credentials ---
 
 // CredentialsPage renders the credentials management page.
-func (h *Handlers) CredentialsPage(w http.ResponseWriter, r *http.Request) error {
+func (a *App) CredentialsPage(w http.ResponseWriter, r *http.Request) error {
 	user := MustCurrentUser(r.Context())
-	creds, err := h.repo.GetCredentialsByUserID(r.Context(), user.ID)
+	creds, err := a.repo.GetCredentialsByUserID(r.Context(), user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to get credentials", err)
 	}
-	return h.renderer.CredentialsPage(w, r, creds)
+	return a.renderer.CredentialsPage(w, r, creds)
 }
 
 // AddCredentialBegin starts the process of adding a new credential.
-func (h *Handlers) AddCredentialBegin(w http.ResponseWriter, r *http.Request) error {
+func (a *App) AddCredentialBegin(w http.ResponseWriter, r *http.Request) error {
 	user := MustCurrentUser(r.Context())
-	options, sessionData, err := h.webauthn.WebAuthn().BeginRegistration(user)
+	options, sessionData, err := a.webauthn.WebAuthn().BeginRegistration(user)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to begin registration", err)
 	}
-	h.webauthn.StoreRegistrationSession(user.ID, sessionData)
+	a.webauthn.StoreRegistrationSession(user.ID, sessionData)
 
 	return burrow.JSON(w, http.StatusOK, map[string]any{"publicKey": options.Response})
 }
 
 // AddCredentialFinish completes adding a new credential.
-func (h *Handlers) AddCredentialFinish(w http.ResponseWriter, r *http.Request) error {
+func (a *App) AddCredentialFinish(w http.ResponseWriter, r *http.Request) error {
 	user := MustCurrentUser(r.Context())
-	sessionData, err := h.webauthn.GetRegistrationSession(user.ID)
+	sessionData, err := a.webauthn.GetRegistrationSession(user.ID)
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "registration session expired")
 	}
 
-	credential, err := h.webauthn.WebAuthn().FinishRegistration(user, *sessionData, r)
+	credential, err := a.webauthn.WebAuthn().FinishRegistration(user, *sessionData, r)
 	if err != nil {
 		slog.Error("registration failed", "error", err)
 		return errorJSON(w, http.StatusBadRequest, "registration failed")
 	}
 
 	dbCred := NewCredentialFromWebAuthn(user.ID, credential)
-	if err := h.repo.CreateCredential(r.Context(), dbCred); err != nil {
+	if err := a.repo.CreateCredential(r.Context(), dbCred); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to store credential", err)
 	}
 
@@ -425,14 +393,14 @@ func (h *Handlers) AddCredentialFinish(w http.ResponseWriter, r *http.Request) e
 }
 
 // DeleteCredential removes a credential.
-func (h *Handlers) DeleteCredential(w http.ResponseWriter, r *http.Request) error {
+func (a *App) DeleteCredential(w http.ResponseWriter, r *http.Request) error {
 	user := MustCurrentUser(r.Context())
 	credID, err := burrow.URLParamInt64(r, "id")
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid credential id")
 	}
 
-	count, err := h.repo.CountUserCredentials(r.Context(), user.ID)
+	count, err := a.repo.CountUserCredentials(r.Context(), user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "database error", err)
 	}
@@ -440,7 +408,7 @@ func (h *Handlers) DeleteCredential(w http.ResponseWriter, r *http.Request) erro
 		return errorJSON(w, http.StatusBadRequest, "cannot delete last credential")
 	}
 
-	if err := h.repo.DeleteCredential(r.Context(), credID, user.ID); err != nil {
+	if err := a.repo.DeleteCredential(r.Context(), credID, user.ID); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to delete credential", err)
 	}
 
@@ -456,12 +424,12 @@ type RecoveryLoginRequest struct {
 }
 
 // RecoveryPage renders the recovery login page.
-func (h *Handlers) RecoveryPage(w http.ResponseWriter, r *http.Request) error {
-	return h.renderer.RecoveryPage(w, r, h.config.LoginRedirect)
+func (a *App) RecoveryPage(w http.ResponseWriter, r *http.Request) error {
+	return a.renderer.RecoveryPage(w, r, a.config.LoginRedirect)
 }
 
 // RecoveryLogin authenticates a user with a recovery code.
-func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
+func (a *App) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 	var req RecoveryLoginRequest
 	if err := burrow.Bind(r, &req); err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid request")
@@ -471,7 +439,7 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 		return errorJSON(w, http.StatusBadRequest, "username and code are required")
 	}
 
-	user, err := h.repo.GetUserByUsername(r.Context(), req.Username)
+	user, err := a.repo.GetUserByUsername(r.Context(), req.Username)
 	if err != nil {
 		// Run a dummy bcrypt comparison to prevent timing side-channel
 		// that would reveal whether the username exists.
@@ -487,7 +455,7 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	normalizedCode := NormalizeCode(req.Code)
-	valid, err := h.repo.ValidateAndUseRecoveryCode(r.Context(), user.ID, normalizedCode)
+	valid, err := a.repo.ValidateAndUseRecoveryCode(r.Context(), user.ID, normalizedCode)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "validation error", err)
 	}
@@ -496,13 +464,13 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Read redirect target BEFORE session.Save() which replaces all session values.
-	redirect := h.redirectTarget(r)
+	redirect := a.redirectTarget(r)
 
 	if err := session.Save(w, r, map[string]any{"user_id": user.ID}); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to create session", err)
 	}
 
-	remaining, _ := h.repo.GetUnusedRecoveryCodeCount(r.Context(), user.ID)
+	remaining, _ := a.repo.GetUnusedRecoveryCodeCount(r.Context(), user.ID)
 
 	return burrow.JSON(w, http.StatusOK, map[string]any{
 		"status":          "ok",
@@ -513,9 +481,9 @@ func (h *Handlers) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 
 // RegenerateRecoveryCodes generates new recovery codes and invalidates old ones.
 // Stores codes in session and returns a redirect to the recovery codes page.
-func (h *Handlers) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
+func (a *App) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
 	user := MustCurrentUser(r.Context())
-	codes, err := h.generateAndStoreRecoveryCodes(r.Context(), user.ID)
+	codes, err := a.generateAndStoreRecoveryCodes(r.Context(), user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to regenerate codes", err)
 	}
@@ -535,26 +503,26 @@ func (h *Handlers) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Reques
 
 // RecoveryCodesPage renders the dedicated recovery codes page.
 // Codes are read from the session; if none are present, redirects to login redirect.
-func (h *Handlers) RecoveryCodesPage(w http.ResponseWriter, r *http.Request) error {
+func (a *App) RecoveryCodesPage(w http.ResponseWriter, r *http.Request) error {
 	values := session.GetValues(r)
 	codesRaw, ok := values["recovery_codes"]
 	if !ok {
-		http.Redirect(w, r, h.config.LoginRedirect, http.StatusSeeOther)
+		http.Redirect(w, r, a.config.LoginRedirect, http.StatusSeeOther)
 		return nil
 	}
 
 	codes, ok := codesRaw.([]string)
 	if !ok || len(codes) == 0 {
-		http.Redirect(w, r, h.config.LoginRedirect, http.StatusSeeOther)
+		http.Redirect(w, r, a.config.LoginRedirect, http.StatusSeeOther)
 		return nil
 	}
 
-	return h.renderer.RecoveryCodesPage(w, r, codes)
+	return a.renderer.RecoveryCodesPage(w, r, codes)
 }
 
 // AcknowledgeRecoveryCodes clears recovery codes from the session and redirects.
-func (h *Handlers) AcknowledgeRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
-	redirect := h.redirectTarget(r)
+func (a *App) AcknowledgeRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
+	redirect := a.redirectTarget(r)
 
 	if err := session.Delete(w, r, "recovery_codes"); err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to clear recovery codes", err)
@@ -570,53 +538,53 @@ func (h *Handlers) AcknowledgeRecoveryCodes(w http.ResponseWriter, r *http.Reque
 // --- Email verification ---
 
 // VerifyPendingPage renders the "check your email" page.
-func (h *Handlers) VerifyPendingPage(w http.ResponseWriter, r *http.Request) error {
-	return h.renderer.VerifyPendingPage(w, r)
+func (a *App) VerifyPendingPage(w http.ResponseWriter, r *http.Request) error {
+	return a.renderer.VerifyPendingPage(w, r)
 }
 
 // VerifyEmail handles the email verification link.
-func (h *Handlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
+func (a *App) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		return h.renderer.VerifyEmailErrorPage(w, r, "missing_token")
+		return a.renderer.VerifyEmailErrorPage(w, r, "missing_token")
 	}
 
 	ctx := r.Context()
 	tokenHash := HashToken(token)
 
-	verificationToken, err := h.repo.GetEmailVerificationToken(ctx, tokenHash)
+	verificationToken, err := a.repo.GetEmailVerificationToken(ctx, tokenHash)
 	if err != nil {
-		return h.renderer.VerifyEmailErrorPage(w, r, "invalid_token")
+		return a.renderer.VerifyEmailErrorPage(w, r, "invalid_token")
 	}
 
 	if time.Now().After(verificationToken.ExpiresAt) {
-		if delErr := h.repo.DeleteEmailVerificationToken(ctx, verificationToken.ID); delErr != nil {
+		if delErr := a.repo.DeleteEmailVerificationToken(ctx, verificationToken.ID); delErr != nil {
 			slog.Error("failed to delete expired verification token", "token_id", verificationToken.ID, "error", delErr)
 		}
-		return h.renderer.VerifyEmailErrorPage(w, r, "token_expired")
+		return a.renderer.VerifyEmailErrorPage(w, r, "token_expired")
 	}
 
-	if markErr := h.repo.MarkEmailVerified(ctx, verificationToken.UserID); markErr != nil {
+	if markErr := a.repo.MarkEmailVerified(ctx, verificationToken.UserID); markErr != nil {
 		slog.Error("failed to mark email as verified", "error", markErr)
-		return h.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
+		return a.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
 	}
 
-	if delErr := h.repo.DeleteUserEmailVerificationTokens(ctx, verificationToken.UserID); delErr != nil {
+	if delErr := a.repo.DeleteUserEmailVerificationTokens(ctx, verificationToken.UserID); delErr != nil {
 		slog.Error("failed to delete verification tokens after verify", "user_id", verificationToken.UserID, "error", delErr)
 	}
 
-	user, err := h.repo.GetUserByID(ctx, verificationToken.UserID)
+	user, err := a.repo.GetUserByID(ctx, verificationToken.UserID)
 	if err != nil {
 		slog.Error("failed to get user after verification", "error", err)
-		return h.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
+		return a.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
 	}
 
 	if err := session.Save(w, r, map[string]any{"user_id": user.ID}); err != nil {
 		slog.Error("failed to create session after verification", "error", err)
-		return h.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
+		return a.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
 	}
 
-	return h.renderer.VerifyEmailSuccessPage(w, r)
+	return a.renderer.VerifyEmailSuccessPage(w, r)
 }
 
 // ResendVerificationRequest is the request body for resending verification email.
@@ -625,7 +593,7 @@ type ResendVerificationRequest struct {
 }
 
 // ResendVerification resends the verification email.
-func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) error {
+func (a *App) ResendVerification(w http.ResponseWriter, r *http.Request) error {
 	var req ResendVerificationRequest
 	if err := burrow.Bind(r, &req); err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid request")
@@ -636,7 +604,7 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 
 	ctx := r.Context()
 
-	user, err := h.repo.GetUserByEmail(ctx, req.Email)
+	user, err := a.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	}
@@ -648,7 +616,7 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 		return burrow.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	}
 
-	if delErr := h.repo.DeleteUserEmailVerificationTokens(ctx, user.ID); delErr != nil {
+	if delErr := a.repo.DeleteUserEmailVerificationTokens(ctx, user.ID); delErr != nil {
 		slog.Error("failed to delete old verification tokens before resend", "user_id", user.ID, "error", delErr)
 	}
 
@@ -656,12 +624,12 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 	if tokenErr != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to send verification email", tokenErr)
 	}
-	if tokenErr = h.repo.CreateEmailVerificationToken(ctx, user.ID, tokenHash, expiresAt); tokenErr != nil {
+	if tokenErr = a.repo.CreateEmailVerificationToken(ctx, user.ID, tokenHash, expiresAt); tokenErr != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to send verification email", tokenErr)
 	}
 
-	verifyURL := h.config.BaseURL + "/auth/verify-email?token=" + plainToken
-	if err := h.app.enqueueEmail(r.Context(), "verification", *user.Email, verifyURL); err != nil {
+	verifyURL := a.config.BaseURL + "/auth/verify-email?token=" + plainToken
+	if err := a.enqueueEmail(r.Context(), "verification", *user.Email, verifyURL); err != nil {
 		slog.Error("failed to enqueue verification email", "error", err, "email", *user.Email)
 	}
 
@@ -670,36 +638,36 @@ func (h *Handlers) ResendVerification(w http.ResponseWriter, r *http.Request) er
 
 // redirectTarget reads "redirect_after_login" from the session and validates it,
 // falling back to the configured login redirect.
-func (h *Handlers) redirectTarget(r *http.Request) string {
-	return SafeRedirectPath(session.GetString(r, "redirect_after_login"), h.config.LoginRedirect)
+func (a *App) redirectTarget(r *http.Request) string {
+	return SafeRedirectPath(session.GetString(r, "redirect_after_login"), a.config.LoginRedirect)
 }
 
 // --- Internal helpers ---
 
-func (h *Handlers) generateAndStoreRecoveryCodes(ctx context.Context, userID int64) ([]string, error) {
-	if err := h.repo.DeleteRecoveryCodes(ctx, userID); err != nil {
+func (a *App) generateAndStoreRecoveryCodes(ctx context.Context, userID int64) ([]string, error) {
+	if err := a.repo.DeleteRecoveryCodes(ctx, userID); err != nil {
 		return nil, err
 	}
 
-	codes, hashes, err := h.recovery.GenerateCodes(CodeCount)
+	codes, hashes, err := a.recovery.GenerateCodes(CodeCount)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := h.repo.CreateRecoveryCodes(ctx, userID, hashes); err != nil {
+	if err := a.repo.CreateRecoveryCodes(ctx, userID, hashes); err != nil {
 		return nil, err
 	}
 
 	return codes, nil
 }
 
-func (h *Handlers) validateInviteToken(ctx context.Context, token string) (*Invite, error) {
+func (a *App) validateInviteToken(ctx context.Context, token string) (*Invite, error) {
 	tokenHash := HashToken(token)
-	return h.repo.GetInviteByTokenHash(ctx, tokenHash)
+	return a.repo.GetInviteByTokenHash(ctx, tokenHash)
 }
 
-func (h *Handlers) isFirstUser(ctx context.Context) (bool, error) {
-	count, err := h.repo.CountUsers(ctx)
+func (a *App) isFirstUser(ctx context.Context) (bool, error) {
+	count, err := a.repo.CountUsers(ctx)
 	if err != nil {
 		return false, err
 	}

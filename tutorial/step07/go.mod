@@ -8,7 +8,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/oliverandrich/burrow v0.0.0
 	github.com/uptrace/bun v1.2.18
-	github.com/urfave/cli/v3 v3.7.0
+	github.com/urfave/cli/v3 v3.8.0
 )
 
 require (

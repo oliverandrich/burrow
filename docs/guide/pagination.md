@@ -73,9 +73,9 @@ func (r *Repository) ListAllPaged(ctx context.Context, pr burrow.PageRequest) ([
 ### Handler
 
 ```go
-func (h *Handlers) AdminList(w http.ResponseWriter, r *http.Request) error {
+func (a *App) AdminList(w http.ResponseWriter, r *http.Request) error {
     pr := burrow.ParsePageRequest(r)
-    notes, page, err := h.repo.ListAllPaged(r.Context(), pr)
+    notes, page, err := a.repo.ListAllPaged(r.Context(), pr)
     if err != nil {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
     }
@@ -134,7 +134,7 @@ type PageResponse[T any] struct {
 ```go
 func (h *Handler) ListAPI(w http.ResponseWriter, r *http.Request) error {
     pr := burrow.ParsePageRequest(r)
-    items, page, err := h.repo.ListPaged(r.Context(), pr)
+    items, page, err := a.repo.ListPaged(r.Context(), pr)
     if err != nil {
         return err
     }

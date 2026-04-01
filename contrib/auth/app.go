@@ -38,7 +38,8 @@ var htmlTemplateFS embed.FS
 // App implements the auth contrib app.
 type App struct {
 	repo          *Repository
-	handlers      *Handlers
+	webauthn      WebAuthnService
+	recovery      *RecoveryService
 	usersAdmin    *modeladmin.ModelAdmin[User]
 	invitesAdmin  *modeladmin.ModelAdmin[Invite]
 	renderer      Renderer
@@ -247,8 +248,8 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 		return fmt.Errorf("create webauthn service: %w", err)
 	}
 
-	// Create handlers with the stored email service (if any).
-	a.handlers = NewHandlers(a.repo, waSvc, a.emailService, a.renderer, a.config, a)
+	a.webauthn = waSvc
+	a.recovery = NewRecoveryService()
 
 	return nil
 }
@@ -436,8 +437,6 @@ func (a *App) authMiddleware(next http.Handler) http.Handler {
 
 // Routes registers auth HTTP routes.
 func (a *App) Routes(r chi.Router) {
-	h := a.handlers
-
 	r.Route("/auth", func(r chi.Router) {
 		// Public routes — use auth layout and logo if set.
 		r.Group(func(r chi.Router) {
@@ -447,37 +446,37 @@ func (a *App) Routes(r chi.Router) {
 			if a.logo != "" {
 				r.Use(authLogoMiddleware(a.logo))
 			}
-			r.Get("/register", burrow.Handle(h.RegisterPage))
-			r.Post("/register/begin", burrow.Handle(h.RegisterBegin))
-			r.Post("/register/finish", burrow.Handle(h.RegisterFinish))
-			r.Get("/login", burrow.Handle(h.LoginPage))
-			r.Post("/login/begin", burrow.Handle(h.LoginBegin))
-			r.Post("/login/finish", burrow.Handle(h.LoginFinish))
-			r.Post("/logout", burrow.Handle(h.Logout))
-			r.Get("/recovery", burrow.Handle(h.RecoveryPage))
-			r.Post("/recovery", burrow.Handle(h.RecoveryLogin))
+			r.Get("/register", burrow.Handle(a.RegisterPage))
+			r.Post("/register/begin", burrow.Handle(a.RegisterBegin))
+			r.Post("/register/finish", burrow.Handle(a.RegisterFinish))
+			r.Get("/login", burrow.Handle(a.LoginPage))
+			r.Post("/login/begin", burrow.Handle(a.LoginBegin))
+			r.Post("/login/finish", burrow.Handle(a.LoginFinish))
+			r.Post("/logout", burrow.Handle(a.Logout))
+			r.Get("/recovery", burrow.Handle(a.RecoveryPage))
+			r.Post("/recovery", burrow.Handle(a.RecoveryLogin))
 
 			// Email verification routes.
-			r.Get("/verify-pending", burrow.Handle(h.VerifyPendingPage))
-			r.Get("/verify-email", burrow.Handle(h.VerifyEmail))
-			r.Post("/resend-verification", burrow.Handle(h.ResendVerification))
+			r.Get("/verify-pending", burrow.Handle(a.VerifyPendingPage))
+			r.Get("/verify-email", burrow.Handle(a.VerifyEmail))
+			r.Post("/resend-verification", burrow.Handle(a.ResendVerification))
 		})
 
 		// Authenticated credential management — keeps global layout.
 		r.Route("/credentials", func(r chi.Router) {
 			r.Use(RequireAuth())
-			r.Get("/", burrow.Handle(h.CredentialsPage))
-			r.Post("/begin", burrow.Handle(h.AddCredentialBegin))
-			r.Post("/finish", burrow.Handle(h.AddCredentialFinish))
-			r.Delete("/{id}", burrow.Handle(h.DeleteCredential))
+			r.Get("/", burrow.Handle(a.CredentialsPage))
+			r.Post("/begin", burrow.Handle(a.AddCredentialBegin))
+			r.Post("/finish", burrow.Handle(a.AddCredentialFinish))
+			r.Delete("/{id}", burrow.Handle(a.DeleteCredential))
 		})
 
 		// Authenticated recovery code management — keeps global layout.
 		r.Route("/recovery-codes", func(r chi.Router) {
 			r.Use(RequireAuth())
-			r.Get("/", burrow.Handle(h.RecoveryCodesPage))
-			r.Post("/ack", burrow.Handle(h.AcknowledgeRecoveryCodes))
-			r.Post("/regenerate", burrow.Handle(h.RegenerateRecoveryCodes))
+			r.Get("/", burrow.Handle(a.RecoveryCodesPage))
+			r.Post("/ack", burrow.Handle(a.AcknowledgeRecoveryCodes))
+			r.Post("/regenerate", burrow.Handle(a.RegenerateRecoveryCodes))
 		})
 	})
 }
@@ -575,9 +574,6 @@ func credName(cred Credential) string {
 
 // Repo returns the auth repository for external access.
 func (a *App) Repo() *Repository { return a.repo }
-
-// Handlers returns the auth handlers for external access.
-func (a *App) Handlers() *Handlers { return a.handlers }
 
 func (a *App) setRole(ctx context.Context, cmd *cli.Command, role string) error {
 	username := cmd.Args().First()

@@ -1234,11 +1234,10 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
 	app := &App{
-		renderer: mockR,
-		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
+		renderer:   mockR,
+		config:     &Config{LoginRedirect: "/"},
+		authLayout: "bootstrap/layout",
 	}
-
-	app.authLayout = "bootstrap/layout"
 
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
@@ -1267,12 +1266,11 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
 	app := &App{
-		repo:     repo,
-		renderer: mockR,
-		handlers: NewHandlers(repo, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
+		repo:       repo,
+		renderer:   mockR,
+		config:     &Config{LoginRedirect: "/"},
+		authLayout: "bootstrap/layout",
 	}
-
-	app.authLayout = "bootstrap/layout"
 
 	// Create a user so the credentials handler can look up credentials.
 	user, err := repo.CreateUser(context.Background(), "alice", "Alice")
@@ -1305,7 +1303,7 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 
 	app := &App{
 		renderer: mockR,
-		handlers: NewHandlers(nil, nil, nil, mockR, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale}),
+		config:   &Config{LoginRedirect: "/"},
 	}
 	// No SetAuthLayout call.
 
@@ -1536,12 +1534,6 @@ func TestRepoAccessor(t *testing.T) {
 	assert.Same(t, repo, app.Repo())
 }
 
-func TestHandlersAccessor(t *testing.T) {
-	handlers := &Handlers{}
-	app := &App{handlers: handlers}
-	assert.Same(t, handlers, app.Handlers())
-}
-
 func TestAuthMiddlewareWithValidUser(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
@@ -1687,9 +1679,9 @@ func TestAdminRoutes(t *testing.T) {
 func TestRoutesWithLogoMiddleware(t *testing.T) {
 	app := &App{
 		renderer: &mockRenderer{},
+		config:   &Config{LoginRedirect: "/"},
 		logo:     template.HTML(`<img src="logo.png"/>`),
 	}
-	app.handlers = NewHandlers(nil, nil, nil, app.renderer, &Config{LoginRedirect: "/"}, &App{withLocale: testI18nBundle(t).WithLocale})
 
 	router := chi.NewRouter()
 	// Should not panic.
@@ -1734,7 +1726,8 @@ func TestConfigure(t *testing.T) {
 	require.NotNil(t, app.config)
 	assert.Equal(t, "/home", app.config.LoginRedirect)
 	assert.Equal(t, "/goodbye", app.config.LogoutRedirect)
-	require.NotNil(t, app.handlers)
+	require.NotNil(t, app.webauthn)
+	require.NotNil(t, app.recovery)
 
 	// Start launches the background cleanup goroutine.
 	require.NoError(t, app.Start(nil))

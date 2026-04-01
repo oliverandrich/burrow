@@ -137,21 +137,13 @@ import (
     "github.com/oliverandrich/burrow/contrib/auth"
 )
 
-type Handlers struct {
-    repo *Repository
-}
-
-func NewHandlers(repo *Repository) *Handlers {
-    return &Handlers{repo: repo}
-}
-
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
     user := auth.CurrentUser(r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }
 
-    notes, err := h.repo.ListByUserID(r.Context(), user.ID)
+    notes, err := a.repo.ListByUserID(r.Context(), user.ID)
     if err != nil {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
     }
@@ -161,7 +153,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
     })
 }
 
-func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
     user := auth.CurrentUser(r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
@@ -181,7 +173,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
         Content: req.Content,
     }
 
-    if err := h.repo.Create(r.Context(), note); err != nil {
+    if err := a.repo.Create(r.Context(), note); err != nil {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to create note")
     }
 
@@ -192,6 +184,9 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 1. `Bind` decodes the request body **and** validates it. Returns a `*burrow.ValidationError` when validation fails — see [Validation](validation.md).
 
+!!! tip "Handlers are methods on `*App`"
+    Handlers are defined as methods on your `*App` struct, giving them direct access to all dependencies (repositories, services, config) without extra wiring. No separate `Handlers` struct needed.
+
 !!! note "How `Handle()` processes errors"
     See the [Routing guide](routing.md#error-handling) for details on how `burrow.Handle()` converts returned errors to HTTP responses.
 
@@ -201,8 +196,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 
 ```go
 type App struct {
-    repo     *Repository
-    handlers *Handlers
+    repo *Repository
 }
 
 func New() *App {
@@ -215,7 +209,6 @@ func (a *App) Dependencies() []string { return []string{"auth"} } // (1)!
 
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     a.repo = NewRepository(cfg.DB)
-    a.handlers = NewHandlers(a.repo)
     return nil
 }
 
@@ -246,8 +239,8 @@ func (a *App) NavItems() []burrow.NavItem { // (4)!
 func (a *App) Routes(r chi.Router) { // (5)!
     r.Route("/notes", func(r chi.Router) {
         r.Use(auth.RequireAuth())
-        r.Get("/", burrow.Handle(a.handlers.List))
-        r.Post("/", burrow.Handle(a.handlers.Create))
+        r.Get("/", burrow.Handle(a.List))
+        r.Post("/", burrow.Handle(a.Create))
     })
 }
 ```

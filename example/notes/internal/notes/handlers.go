@@ -23,18 +23,8 @@ func noteFormOpts() []forms.Option[Note] {
 	}
 }
 
-// Handlers holds the notes HTTP handlers.
-type Handlers struct {
-	repo *Repository
-}
-
-// NewHandlers creates notes handlers.
-func NewHandlers(repo *Repository) *Handlers {
-	return &Handlers{repo: repo}
-}
-
 // List renders the user's notes as an HTML page with offset-based pagination.
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
 
 	pr := burrow.ParsePageRequest(r)
@@ -45,9 +35,9 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 	var err error
 
 	if searchQuery != "" {
-		notes, page, err = h.repo.SearchByUserID(r.Context(), user.ID, searchQuery, pr)
+		notes, page, err = a.repo.SearchByUserID(r.Context(), user.ID, searchQuery, pr)
 	} else {
-		notes, page, err = h.repo.ListByUserIDPaged(r.Context(), user.ID, pr)
+		notes, page, err = a.repo.ListByUserIDPaged(r.Context(), user.ID, pr)
 	}
 	if err != nil {
 		return err
@@ -76,7 +66,7 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 // New renders the empty create form.
 // HTMX: returns the form fragment for inline insertion.
 // Non-HTMX: returns the form wrapped in the layout.
-func (h *Handlers) New(w http.ResponseWriter, r *http.Request) error {
+func (a *App) New(w http.ResponseWriter, r *http.Request) error {
 	_ = auth.MustCurrentUser(r.Context())
 
 	f := forms.New[Note](noteFormOpts()...)
@@ -89,7 +79,7 @@ func (h *Handlers) New(w http.ResponseWriter, r *http.Request) error {
 }
 
 // Create adds a new note for the authenticated user.
-func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
 
 	f := forms.New[Note](noteFormOpts()...)
@@ -105,7 +95,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 	note := f.Instance()
 	note.UserID = user.ID
 
-	if err := h.repo.Create(r.Context(), note); err != nil {
+	if err := a.repo.Create(r.Context(), note); err != nil {
 		return err
 	}
 
@@ -121,11 +111,11 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
 }
 
 // Edit renders the edit form pre-filled with an existing note.
-func (h *Handlers) Edit(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Edit(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
 	id := burrow.MustURLParamInt64(r, "id")
 
-	note, err := h.repo.GetByID(r.Context(), id, user.ID)
+	note, err := a.repo.GetByID(r.Context(), id, user.ID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return burrow.NewHTTPError(http.StatusNotFound, "note not found")
@@ -143,11 +133,11 @@ func (h *Handlers) Edit(w http.ResponseWriter, r *http.Request) error {
 }
 
 // Update binds, validates, and updates an existing note.
-func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Update(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
 	id := burrow.MustURLParamInt64(r, "id")
 
-	note, err := h.repo.GetByID(r.Context(), id, user.ID)
+	note, err := a.repo.GetByID(r.Context(), id, user.ID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return burrow.NewHTTPError(http.StatusNotFound, "note not found")
@@ -171,7 +161,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 	updated.ID = note.ID
 	updated.UserID = note.UserID
 
-	if err := h.repo.Update(r.Context(), updated); err != nil {
+	if err := a.repo.Update(r.Context(), updated); err != nil {
 		return err
 	}
 
@@ -187,11 +177,11 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) error {
 }
 
 // Delete removes a note owned by the authenticated user.
-func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Delete(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
 	id := burrow.MustURLParamInt64(r, "id")
 
-	if err := h.repo.Delete(r.Context(), id, user.ID); err != nil {
+	if err := a.repo.Delete(r.Context(), id, user.ID); err != nil {
 		return err
 	}
 

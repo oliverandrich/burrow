@@ -34,8 +34,8 @@ That's it — clients connecting to `/events` will receive all events published 
 Anywhere in a request handler, grab the broker from the context and publish:
 
 ```go
-func (h *Handlers) CreateNote(w http.ResponseWriter, r *http.Request) error {
-    note, err := h.repo.Create(r.Context(), input)
+func (a *App) CreateNote(w http.ResponseWriter, r *http.Request) error {
+    note, err := a.repo.Create(r.Context(), input)
     if err != nil {
         return err
     }

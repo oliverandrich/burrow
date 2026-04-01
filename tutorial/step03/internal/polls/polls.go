@@ -103,14 +103,9 @@ func (r *Repository) IncrementVotes(ctx context.Context, choiceID int64) error {
 // Handlers
 // --------------------------------------------------------------------------
 
-// Handlers contains the HTTP handlers for the polls app.
-type Handlers struct {
-	repo *Repository
-}
-
 // List renders all questions.
-func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
-	questions, err := h.repo.ListQuestions(r.Context())
+func (a *App) List(w http.ResponseWriter, r *http.Request) error {
+	questions, err := a.repo.ListQuestions(r.Context())
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list questions")
 	}
@@ -121,12 +116,12 @@ func (h *Handlers) List(w http.ResponseWriter, r *http.Request) error {
 }
 
 // Detail renders a single question with its choices.
-func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Detail(w http.ResponseWriter, r *http.Request) error {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
 	}
-	question, err := h.repo.GetQuestion(r.Context(), id)
+	question, err := a.repo.GetQuestion(r.Context(), id)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
 	}
@@ -137,12 +132,12 @@ func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
 }
 
 // Results renders the voting results for a question.
-func (h *Handlers) Results(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Results(w http.ResponseWriter, r *http.Request) error {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
 	}
-	question, err := h.repo.GetQuestion(r.Context(), id)
+	question, err := a.repo.GetQuestion(r.Context(), id)
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
 	}
@@ -164,8 +159,7 @@ var templateFS embed.FS
 
 // App is the polls burrow application.
 type App struct {
-	repo     *Repository
-	handlers *Handlers
+	repo *Repository
 }
 
 // New creates a new polls app.
@@ -177,7 +171,6 @@ func (a *App) Name() string { return "polls" }
 
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.repo = NewRepository(cfg.DB)
-	a.handlers = &Handlers{repo: a.repo}
 	return nil
 }
 
@@ -199,8 +192,8 @@ func (a *App) NavItems() []burrow.NavItem {
 
 func (a *App) Routes(r chi.Router) {
 	r.Route("/polls", func(r chi.Router) {
-		r.Get("/", burrow.Handle(a.handlers.List))
-		r.Get("/{id}", burrow.Handle(a.handlers.Detail))
-		r.Get("/{id}/results", burrow.Handle(a.handlers.Results))
+		r.Get("/", burrow.Handle(a.List))
+		r.Get("/{id}", burrow.Handle(a.Detail))
+		r.Get("/{id}/results", burrow.Handle(a.Results))
 	})
 }

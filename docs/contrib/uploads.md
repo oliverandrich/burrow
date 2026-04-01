@@ -32,7 +32,7 @@ Use `uploads.StoreFile()` in a handler to extract and store a file from a multip
 ```go
 import "github.com/oliverandrich/burrow/contrib/uploads"
 
-func (h *Handlers) UploadAvatar(w http.ResponseWriter, r *http.Request) error {
+func (a *App) UploadAvatar(w http.ResponseWriter, r *http.Request) error {
     storage := uploads.Storage(r.Context())
 
     key, err := uploads.StoreFile(r, "avatar", storage, uploads.StoreOptions{
@@ -74,7 +74,7 @@ err := storage.Delete(ctx, key)
 Typical handler pattern combining database and storage cleanup:
 
 ```go
-func (h *Handlers) DeleteAvatar(w http.ResponseWriter, r *http.Request) error {
+func (a *App) DeleteAvatar(w http.ResponseWriter, r *http.Request) error {
     storage := uploads.Storage(r.Context())
 
     user := getUser(r)

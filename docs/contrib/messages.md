@@ -28,7 +28,7 @@ Use the convenience helpers inside any handler — typically just before a redir
 ```go
 import "github.com/oliverandrich/burrow/contrib/messages"
 
-func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
     // ... create resource ...
 
     if err := messages.AddSuccess(w, r, "Note created."); err != nil {

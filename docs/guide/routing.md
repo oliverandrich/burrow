@@ -79,11 +79,11 @@ Apps define routes by implementing the `HasRoutes` interface:
 ```go
 func (a *App) Routes(r chi.Router) {
     r.Route("/polls", func(r chi.Router) {
-        r.Get("/", burrow.Handle(a.handlers.List))
-        r.Get("/{id}", burrow.Handle(a.handlers.Detail))
-        r.Post("/", burrow.Handle(a.handlers.Create))
-        r.Put("/{id}", burrow.Handle(a.handlers.Update))
-        r.Delete("/{id}", burrow.Handle(a.handlers.Delete))
+        r.Get("/", burrow.Handle(a.List))
+        r.Get("/{id}", burrow.Handle(a.Detail))
+        r.Post("/", burrow.Handle(a.Create))
+        r.Put("/{id}", burrow.Handle(a.Update))
+        r.Delete("/{id}", burrow.Handle(a.Delete))
     })
 }
 ```
@@ -124,14 +124,14 @@ Use `r.Group()` to apply middleware to a subset of routes without adding a prefi
 ```go
 r.Route("/polls", func(r chi.Router) {
     // Public routes — no authentication required.
-    r.Get("/", burrow.Handle(a.handlers.List))
-    r.Get("/{id}", burrow.Handle(a.handlers.Detail))
+    r.Get("/", burrow.Handle(a.List))
+    r.Get("/{id}", burrow.Handle(a.Detail))
 
     // Protected routes — require authentication.
     r.Group(func(r chi.Router) {
         r.Use(auth.RequireAuth())
-        r.Post("/", burrow.Handle(a.handlers.Create))
-        r.Post("/{id}/vote", burrow.Handle(a.handlers.Vote))
+        r.Post("/", burrow.Handle(a.Create))
+        r.Post("/{id}/vote", burrow.Handle(a.Vote))
     })
 })
 ```
@@ -152,7 +152,7 @@ r.Get("/notes/{id}", burrow.Handle(func(w http.ResponseWriter, r *http.Request) 
 Add regex patterns to URL parameters to restrict matching at the router level:
 
 ```go
-r.Get("/notes/{id:[0-9]+}", burrow.Handle(a.handlers.Detail))
+r.Get("/notes/{id:[0-9]+}", burrow.Handle(a.Detail))
 ```
 
 With this pattern, `/notes/abc` returns 404 before the handler runs — only numeric IDs reach the handler.
@@ -164,7 +164,7 @@ Burrow provides two helpers for the common case of parsing numeric URL parameter
 **`URLParamInt64`** — returns an error on invalid input:
 
 ```go
-func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Detail(w http.ResponseWriter, r *http.Request) error {
     id, err := burrow.URLParamInt64(r, "id")
     if err != nil {
         return err // 400 Bad Request
@@ -177,7 +177,7 @@ func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
 
 ```go
 // Route: r.Get("/notes/{id:[0-9]+}", ...)
-func (h *Handlers) Detail(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Detail(w http.ResponseWriter, r *http.Request) error {
     id := burrow.MustURLParamInt64(r, "id") // safe — regex guarantees numeric
     // ...
 }
@@ -223,7 +223,7 @@ func (a *App) Routes(r chi.Router) {
     r.Route("/admin", func(r chi.Router) {
         r.Use(auth.RequireAuth())
         r.Use(auth.RequireAdmin())
-        r.Get("/", burrow.Handle(a.handlers.Dashboard))
+        r.Get("/", burrow.Handle(a.Dashboard))
     })
 }
 ```
@@ -276,7 +276,7 @@ http.Redirect(w, r, "/notes", http.StatusSeeOther)
 `burrow.Bind()` parses the request body into a struct and validates it:
 
 ```go
-func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
     var req struct {
         Title   string `form:"title"   validate:"required"`
         Content string `form:"content"`

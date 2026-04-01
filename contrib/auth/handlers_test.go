@@ -96,7 +96,7 @@ func testApp(t *testing.T, bundle *i18n.Bundle) *App {
 	return &App{withLocale: bundle.WithLocale}
 }
 
-func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
+func setupTestApp(t *testing.T) (*App, *Repository, *mockRenderer) {
 	t.Helper()
 	db := openTestDB(t)
 	repo := NewRepository(db)
@@ -104,16 +104,20 @@ func newTestHandlers(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	app := testApp(t, testI18nBundle(t))
-	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
+	a := testApp(t, testI18nBundle(t))
+	a.repo = repo
+	a.webauthn = waSvc
+	a.renderer = renderer
+	a.config = &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
-	}, app)
-	h.recovery.BcryptCost = bcrypt.MinCost
-	return h, repo, renderer
+	}
+	a.recovery = NewRecoveryService()
+	a.recovery.BcryptCost = bcrypt.MinCost
+	return a, repo, renderer
 }
 
-func newTestHandlersEmailMode(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
+func setupTestAppEmailMode(t *testing.T) (*App, *Repository, *mockRenderer) {
 	t.Helper()
 	db := openTestDB(t)
 	repo := NewRepository(db)
@@ -122,20 +126,24 @@ func newTestHandlersEmailMode(t *testing.T) (*Handlers, *Repository, *mockRender
 	require.NoError(t, err)
 
 	emailSvc := &mockEmailService{}
-	app := testApp(t, testI18nBundle(t))
-	app.emailService = emailSvc
-	h := NewHandlers(repo, waSvc, emailSvc, renderer, &Config{
+	a := testApp(t, testI18nBundle(t))
+	a.repo = repo
+	a.webauthn = waSvc
+	a.emailService = emailSvc
+	a.renderer = renderer
+	a.config = &Config{
 		LoginRedirect:       "/dashboard",
 		LogoutRedirect:      "/auth/login",
 		UseEmail:            true,
 		RequireVerification: true,
 		BaseURL:             "http://localhost:8080",
-	}, app)
-	h.recovery.BcryptCost = bcrypt.MinCost
-	return h, repo, renderer
+	}
+	a.recovery = NewRecoveryService()
+	a.recovery.BcryptCost = bcrypt.MinCost
+	return a, repo, renderer
 }
 
-func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRenderer) {
+func setupTestAppInviteOnly(t *testing.T) (*App, *Repository, *mockRenderer) {
 	t.Helper()
 	db := openTestDB(t)
 	repo := NewRepository(db)
@@ -143,14 +151,18 @@ func newTestHandlersInviteOnly(t *testing.T) (*Handlers, *Repository, *mockRende
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	app := testApp(t, testI18nBundle(t))
-	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
+	a := testApp(t, testI18nBundle(t))
+	a.repo = repo
+	a.webauthn = waSvc
+	a.renderer = renderer
+	a.config = &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
 		InviteOnly:     true,
-	}, app)
-	h.recovery.BcryptCost = bcrypt.MinCost
-	return h, repo, renderer
+	}
+	a.recovery = NewRecoveryService()
+	a.recovery.BcryptCost = bcrypt.MinCost
+	return a, repo, renderer
 }
 
 // requestWithSession creates a request with session state injected, optionally with a user.
@@ -179,8 +191,8 @@ func openTestDBClosable(t *testing.T) (*bun.DB, *sql.DB) {
 	return db, sqldb
 }
 
-// newTestHandlersClosable creates handlers with a DB that can be closed to trigger errors.
-func newTestHandlersClosable(t *testing.T) (*Handlers, *Repository, *sql.DB) {
+// setupTestAppClosable creates an App with a DB that can be closed to trigger errors.
+func setupTestAppClosable(t *testing.T) (*App, *Repository, *sql.DB) {
 	t.Helper()
 	db, sqldb := openTestDBClosable(t)
 	repo := NewRepository(db)
@@ -188,17 +200,21 @@ func newTestHandlersClosable(t *testing.T) (*Handlers, *Repository, *sql.DB) {
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	app := testApp(t, testI18nBundle(t))
-	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
+	a := testApp(t, testI18nBundle(t))
+	a.repo = repo
+	a.webauthn = waSvc
+	a.renderer = renderer
+	a.config = &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/auth/login",
-	}, app)
-	h.recovery.BcryptCost = bcrypt.MinCost
-	return h, repo, sqldb
+	}
+	a.recovery = NewRecoveryService()
+	a.recovery.BcryptCost = bcrypt.MinCost
+	return a, repo, sqldb
 }
 
-// newTestHandlersEmailModeClosable creates email-mode handlers with a closable DB.
-func newTestHandlersEmailModeClosable(t *testing.T) (*Handlers, *Repository, *sql.DB) {
+// setupTestAppEmailModeClosable creates an email-mode App with a closable DB.
+func setupTestAppEmailModeClosable(t *testing.T) (*App, *Repository, *sql.DB) {
 	t.Helper()
 	db, sqldb := openTestDBClosable(t)
 	repo := NewRepository(db)
@@ -207,42 +223,46 @@ func newTestHandlersEmailModeClosable(t *testing.T) (*Handlers, *Repository, *sq
 	require.NoError(t, err)
 
 	emailSvc := &mockEmailService{}
-	app := testApp(t, testI18nBundle(t))
-	app.emailService = emailSvc
-	h := NewHandlers(repo, waSvc, emailSvc, renderer, &Config{
+	a := testApp(t, testI18nBundle(t))
+	a.repo = repo
+	a.webauthn = waSvc
+	a.emailService = emailSvc
+	a.renderer = renderer
+	a.config = &Config{
 		LoginRedirect:       "/dashboard",
 		LogoutRedirect:      "/auth/login",
 		UseEmail:            true,
 		RequireVerification: true,
 		BaseURL:             "http://localhost:8080",
-	}, app)
-	h.recovery.BcryptCost = bcrypt.MinCost
-	return h, repo, sqldb
+	}
+	a.recovery = NewRecoveryService()
+	a.recovery.BcryptCost = bcrypt.MinCost
+	return a, repo, sqldb
 }
 
 // --- Handler creation tests ---
 
-func TestNewHandlers(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+func TestAppSetup(t *testing.T) {
+	h, _, _ := setupTestApp(t)
 	assert.NotNil(t, h)
 	assert.False(t, h.UseEmailMode())
 	assert.False(t, h.IsInviteOnly())
 }
 
-func TestNewHandlersEmailMode(t *testing.T) {
-	h, _, _ := newTestHandlersEmailMode(t)
+func TestAppSetupEmailMode(t *testing.T) {
+	h, _, _ := setupTestAppEmailMode(t)
 	assert.True(t, h.UseEmailMode())
 }
 
-func TestNewHandlersInviteOnly(t *testing.T) {
-	h, _, _ := newTestHandlersInviteOnly(t)
+func TestAppSetupInviteOnly(t *testing.T) {
+	h, _, _ := setupTestAppInviteOnly(t)
 	assert.True(t, h.IsInviteOnly())
 }
 
 // --- RegisterPage tests ---
 
 func TestRegisterPage(t *testing.T) {
-	h, _, r := newTestHandlers(t)
+	h, _, r := setupTestApp(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -255,7 +275,7 @@ func TestRegisterPage(t *testing.T) {
 }
 
 func TestRegisterPageInviteOnlyNoToken(t *testing.T) {
-	h, _, r := newTestHandlersInviteOnly(t)
+	h, _, r := setupTestAppInviteOnly(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -267,7 +287,7 @@ func TestRegisterPageInviteOnlyNoToken(t *testing.T) {
 }
 
 func TestRegisterPageInviteOnlyWithValidToken(t *testing.T) {
-	h, repo, r := newTestHandlersInviteOnly(t)
+	h, repo, r := setupTestAppInviteOnly(t)
 
 	tokenHash := HashToken("validtoken")
 	invite := &Invite{
@@ -290,7 +310,7 @@ func TestRegisterPageInviteOnlyWithValidToken(t *testing.T) {
 // --- RegisterBegin tests ---
 
 func TestRegisterBeginUsernameMode(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	body := strings.NewReader(`{"username":"newuser"}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -312,7 +332,7 @@ func TestRegisterBeginUsernameMode(t *testing.T) {
 }
 
 func TestRegisterBeginMissingUsername(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	body := strings.NewReader(`{"username":""}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -327,7 +347,7 @@ func TestRegisterBeginMissingUsername(t *testing.T) {
 }
 
 func TestRegisterBeginUsernameExists(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 
 	_, err := repo.CreateUser(context.Background(), "taken", "")
 	require.NoError(t, err)
@@ -347,7 +367,7 @@ func TestRegisterBeginUsernameExists(t *testing.T) {
 }
 
 func TestRegisterBeginInvalidJSON(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	body := strings.NewReader(`{invalid}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -361,7 +381,7 @@ func TestRegisterBeginInvalidJSON(t *testing.T) {
 }
 
 func TestRegisterBeginEmailMode(t *testing.T) {
-	h, _, _ := newTestHandlersEmailMode(t)
+	h, _, _ := setupTestAppEmailMode(t)
 	body := strings.NewReader(`{"email":"test@example.com"}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -376,7 +396,7 @@ func TestRegisterBeginEmailMode(t *testing.T) {
 }
 
 func TestRegisterBeginEmailModeMissingEmail(t *testing.T) {
-	h, _, _ := newTestHandlersEmailMode(t)
+	h, _, _ := setupTestAppEmailMode(t)
 	body := strings.NewReader(`{"email":""}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -391,7 +411,7 @@ func TestRegisterBeginEmailModeMissingEmail(t *testing.T) {
 }
 
 func TestRegisterBeginEmailModeEmailExists(t *testing.T) {
-	h, repo, _ := newTestHandlersEmailMode(t)
+	h, repo, _ := setupTestAppEmailMode(t)
 
 	_, err := repo.CreateUserWithEmail(context.Background(), "taken@example.com", "")
 	require.NoError(t, err)
@@ -411,7 +431,7 @@ func TestRegisterBeginEmailModeEmailExists(t *testing.T) {
 }
 
 func TestRegisterBeginInviteOnlyNoToken(t *testing.T) {
-	h, repo, _ := newTestHandlersInviteOnly(t)
+	h, repo, _ := setupTestAppInviteOnly(t)
 
 	// Create a user so first-user bypass doesn't apply.
 	_, err := repo.CreateUser(context.Background(), "existing", "")
@@ -430,7 +450,7 @@ func TestRegisterBeginInviteOnlyNoToken(t *testing.T) {
 }
 
 func TestRegisterBeginInviteOnlyFirstUserBypass(t *testing.T) {
-	h, _, _ := newTestHandlersInviteOnly(t)
+	h, _, _ := setupTestAppInviteOnly(t)
 
 	// No users exist - first user bypasses invite requirement.
 	body := strings.NewReader(`{"username":"firstuser"}`)
@@ -447,7 +467,7 @@ func TestRegisterBeginInviteOnlyFirstUserBypass(t *testing.T) {
 }
 
 func TestRegisterBeginInviteOnlyValidToken(t *testing.T) {
-	h, repo, _ := newTestHandlersInviteOnly(t)
+	h, repo, _ := setupTestAppInviteOnly(t)
 
 	// Create existing user and invite.
 	admin, err := repo.CreateUser(context.Background(), "admin", "")
@@ -474,7 +494,7 @@ func TestRegisterBeginInviteOnlyValidToken(t *testing.T) {
 }
 
 func TestRegisterBeginInviteOnlyExpiredToken(t *testing.T) {
-	h, repo, _ := newTestHandlersInviteOnly(t)
+	h, repo, _ := setupTestAppInviteOnly(t)
 
 	admin, err := repo.CreateUser(context.Background(), "admin", "")
 	require.NoError(t, err)
@@ -501,7 +521,7 @@ func TestRegisterBeginInviteOnlyExpiredToken(t *testing.T) {
 // --- RegisterFinish tests ---
 
 func TestRegisterFinishInvalidUserID(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/finish?user_id=invalid", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -514,7 +534,7 @@ func TestRegisterFinishInvalidUserID(t *testing.T) {
 }
 
 func TestRegisterFinishSessionExpired(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/finish?user_id=99999", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -528,7 +548,7 @@ func TestRegisterFinishSessionExpired(t *testing.T) {
 // --- LoginPage tests ---
 
 func TestLoginPage(t *testing.T) {
-	h, _, r := newTestHandlers(t)
+	h, _, r := setupTestApp(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -543,7 +563,7 @@ func TestLoginPage(t *testing.T) {
 // --- LoginBegin tests ---
 
 func TestLoginBegin(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/login/begin", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -559,7 +579,7 @@ func TestLoginBegin(t *testing.T) {
 // --- LoginFinish tests ---
 
 func TestLoginFinishMissingSessionID(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/login/finish", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -572,7 +592,7 @@ func TestLoginFinishMissingSessionID(t *testing.T) {
 }
 
 func TestLoginFinishSessionExpired(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/login/finish?session_id=nonexistent", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -587,7 +607,7 @@ func TestLoginFinishSessionExpired(t *testing.T) {
 // --- Logout tests ---
 
 func TestLogout(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/logout", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -610,11 +630,14 @@ func TestLogoutCustomRedirect(t *testing.T) {
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	app := testApp(t, testI18nBundle(t))
-	h := NewHandlers(repo, waSvc, nil, renderer, &Config{
+	h := testApp(t, testI18nBundle(t))
+	h.repo = repo
+	h.webauthn = waSvc
+	h.renderer = renderer
+	h.config = &Config{
 		LoginRedirect:  "/dashboard",
 		LogoutRedirect: "/goodbye",
-	}, app)
+	}
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/logout", nil)
 	req = requestWithSession(req, nil)
@@ -630,7 +653,7 @@ func TestLogoutCustomRedirect(t *testing.T) {
 // --- CredentialsPage tests ---
 
 func TestCredentialsPage(t *testing.T) {
-	h, repo, r := newTestHandlers(t)
+	h, repo, r := setupTestApp(t)
 	user, err := repo.CreateUser(context.Background(), "alice", "")
 	require.NoError(t, err)
 
@@ -648,7 +671,7 @@ func TestCredentialsPage(t *testing.T) {
 // --- DeleteCredential tests ---
 
 func TestDeleteCredentialInvalidID(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 
 	router := chi.NewRouter()
@@ -665,7 +688,7 @@ func TestDeleteCredentialInvalidID(t *testing.T) {
 }
 
 func TestDeleteCredentialLastCredential(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 	cred := &Credential{
 		UserID:       user.ID,
@@ -690,7 +713,7 @@ func TestDeleteCredentialLastCredential(t *testing.T) {
 }
 
 func TestDeleteCredentialSuccess(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 	cred1 := &Credential{UserID: user.ID, CredentialID: []byte("c1"), PublicKey: []byte("k1"), Name: "P1"}
 	cred2 := &Credential{UserID: user.ID, CredentialID: []byte("c2"), PublicKey: []byte("k2"), Name: "P2"}
@@ -713,7 +736,7 @@ func TestDeleteCredentialSuccess(t *testing.T) {
 // --- RecoveryPage tests ---
 
 func TestRecoveryPage(t *testing.T) {
-	h, _, r := newTestHandlers(t)
+	h, _, r := setupTestApp(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -727,7 +750,7 @@ func TestRecoveryPage(t *testing.T) {
 // --- RecoveryLogin tests ---
 
 func TestRecoveryLoginMissingFields(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 
 	tests := []struct {
 		name string
@@ -753,7 +776,7 @@ func TestRecoveryLoginMissingFields(t *testing.T) {
 }
 
 func TestRecoveryLoginUserNotFound(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	body := strings.NewReader(`{"username":"nonexistent","code":"abcd-efgh-ijkl"}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -768,7 +791,7 @@ func TestRecoveryLoginUserNotFound(t *testing.T) {
 }
 
 func TestRecoveryLoginInvalidCode(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 
 	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
@@ -789,7 +812,7 @@ func TestRecoveryLoginInvalidCode(t *testing.T) {
 }
 
 func TestRecoveryLoginSuccess(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 
 	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
@@ -814,7 +837,7 @@ func TestRecoveryLoginSuccess(t *testing.T) {
 // --- RegenerateRecoveryCodes tests ---
 
 func TestRegenerateRecoveryCodes(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 
 	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
@@ -837,7 +860,7 @@ func TestRegenerateRecoveryCodes(t *testing.T) {
 // --- RecoveryCodesPage tests ---
 
 func TestRecoveryCodesPageWithCodes(t *testing.T) {
-	h, _, r := newTestHandlers(t)
+	h, _, r := setupTestApp(t)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
 	req = session.Inject(req, map[string]any{
@@ -856,7 +879,7 @@ func TestRecoveryCodesPageWithCodes(t *testing.T) {
 }
 
 func TestRecoveryCodesPageWithoutCodes(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
 	req = requestWithSession(req, &User{ID: 1})
@@ -872,7 +895,7 @@ func TestRecoveryCodesPageWithoutCodes(t *testing.T) {
 // --- AcknowledgeRecoveryCodes tests ---
 
 func TestAcknowledgeRecoveryCodes(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
 	req = session.Inject(req, map[string]any{
@@ -891,7 +914,7 @@ func TestAcknowledgeRecoveryCodes(t *testing.T) {
 }
 
 func TestAcknowledgeRecoveryCodesWithRedirect(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
 	req = session.Inject(req, map[string]any{
@@ -913,7 +936,7 @@ func TestAcknowledgeRecoveryCodesWithRedirect(t *testing.T) {
 // --- Email verification tests ---
 
 func TestVerifyPendingPage(t *testing.T) {
-	h, _, r := newTestHandlersEmailMode(t)
+	h, _, r := setupTestAppEmailMode(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-pending", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -925,7 +948,7 @@ func TestVerifyPendingPage(t *testing.T) {
 }
 
 func TestVerifyEmailMissingToken(t *testing.T) {
-	h, _, r := newTestHandlersEmailMode(t)
+	h, _, r := setupTestAppEmailMode(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -937,7 +960,7 @@ func TestVerifyEmailMissingToken(t *testing.T) {
 }
 
 func TestVerifyEmailInvalidToken(t *testing.T) {
-	h, _, r := newTestHandlersEmailMode(t)
+	h, _, r := setupTestAppEmailMode(t)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email?token=invalid", nil)
 	req = requestWithSession(req, nil)
 	rec := httptest.NewRecorder()
@@ -949,7 +972,7 @@ func TestVerifyEmailInvalidToken(t *testing.T) {
 }
 
 func TestVerifyEmailExpiredToken(t *testing.T) {
-	h, repo, r := newTestHandlersEmailMode(t)
+	h, repo, r := setupTestAppEmailMode(t)
 	user, _ := repo.CreateUserWithEmail(context.Background(), "test@example.com", "")
 	tokenHash := HashToken("expiredtoken")
 	require.NoError(t, repo.CreateEmailVerificationToken(context.Background(), user.ID, tokenHash, time.Now().Add(-time.Hour)))
@@ -965,7 +988,7 @@ func TestVerifyEmailExpiredToken(t *testing.T) {
 }
 
 func TestVerifyEmailSuccess(t *testing.T) {
-	h, repo, r := newTestHandlersEmailMode(t)
+	h, repo, r := setupTestAppEmailMode(t)
 	user, _ := repo.CreateUserWithEmail(context.Background(), "test@example.com", "")
 	tokenHash := HashToken("validtoken")
 	require.NoError(t, repo.CreateEmailVerificationToken(context.Background(), user.ID, tokenHash, time.Now().Add(24*time.Hour)))
@@ -987,7 +1010,7 @@ func TestVerifyEmailSuccess(t *testing.T) {
 // --- ResendVerification tests ---
 
 func TestResendVerificationMissingEmail(t *testing.T) {
-	h, _, _ := newTestHandlersEmailMode(t)
+	h, _, _ := setupTestAppEmailMode(t)
 	body := strings.NewReader(`{"email":""}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -1001,7 +1024,7 @@ func TestResendVerificationMissingEmail(t *testing.T) {
 }
 
 func TestResendVerificationNonexistentEmail(t *testing.T) {
-	h, _, _ := newTestHandlersEmailMode(t)
+	h, _, _ := setupTestAppEmailMode(t)
 	body := strings.NewReader(`{"email":"nobody@example.com"}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -1036,7 +1059,7 @@ func TestErrorJSONLogNilError(t *testing.T) {
 // --- ResendVerification additional paths ---
 
 func TestResendVerificationAlreadyVerified(t *testing.T) {
-	h, repo, _ := newTestHandlersEmailMode(t)
+	h, repo, _ := setupTestAppEmailMode(t)
 
 	user, err := repo.CreateUserWithEmail(context.Background(), "verified@example.com", "")
 	require.NoError(t, err)
@@ -1055,7 +1078,7 @@ func TestResendVerificationAlreadyVerified(t *testing.T) {
 }
 
 func TestResendVerificationSuccess(t *testing.T) {
-	h, repo, _ := newTestHandlersEmailMode(t)
+	h, repo, _ := setupTestAppEmailMode(t)
 
 	_, err := repo.CreateUserWithEmail(context.Background(), "test@example.com", "")
 	require.NoError(t, err)
@@ -1072,7 +1095,7 @@ func TestResendVerificationSuccess(t *testing.T) {
 }
 
 func TestResendVerificationInvalidJSON(t *testing.T) {
-	h, _, _ := newTestHandlersEmailMode(t)
+	h, _, _ := setupTestAppEmailMode(t)
 
 	body := strings.NewReader(`{invalid}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
@@ -1088,7 +1111,7 @@ func TestResendVerificationInvalidJSON(t *testing.T) {
 // --- RecoveryLogin with deactivated user ---
 
 func TestRecoveryLoginDeactivatedUser(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	ctx := context.Background()
 
 	user, err := repo.CreateUser(ctx, "inactive", "")
@@ -1110,7 +1133,7 @@ func TestRecoveryLoginDeactivatedUser(t *testing.T) {
 // --- RecoveryCodesPage with non-slice codes ---
 
 func TestRecoveryCodesPageInvalidType(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
 	req = session.Inject(req, map[string]any{
@@ -1131,7 +1154,7 @@ func TestRecoveryCodesPageInvalidType(t *testing.T) {
 // --- AcknowledgeRecoveryCodes redirect from session ---
 
 func TestAcknowledgeRecoveryCodesUsesSessionRedirect(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
 	req = session.Inject(req, map[string]any{
@@ -1159,16 +1182,19 @@ func TestRegisterBeginInviteOnlyEmailModeMismatch(t *testing.T) {
 	require.NoError(t, err)
 
 	emailSvc := &mockEmailService{}
-	app := testApp(t, testI18nBundle(t))
-	app.emailService = emailSvc
-	h := NewHandlers(repo, waSvc, emailSvc, renderer, &Config{
+	h := testApp(t, testI18nBundle(t))
+	h.repo = repo
+	h.webauthn = waSvc
+	h.emailService = emailSvc
+	h.renderer = renderer
+	h.config = &Config{
 		LoginRedirect:       "/dashboard",
 		LogoutRedirect:      "/auth/login",
 		UseEmail:            true,
 		RequireVerification: true,
 		InviteOnly:          true,
 		BaseURL:             "http://localhost:8080",
-	}, app)
+	}
 
 	// Create existing user so first-user bypass doesn't apply.
 	_, err = repo.CreateUser(context.Background(), "existing", "")
@@ -1198,7 +1224,7 @@ func TestRegisterBeginInviteOnlyEmailModeMismatch(t *testing.T) {
 // --- RegisterPageInviteOnlyExpiredToken ---
 
 func TestRegisterPageInviteOnlyExpiredToken(t *testing.T) {
-	h, repo, r := newTestHandlersInviteOnly(t)
+	h, repo, r := setupTestAppInviteOnly(t)
 
 	// Create an expired invite.
 	invite := &Invite{
@@ -1220,13 +1246,13 @@ func TestRegisterPageInviteOnlyExpiredToken(t *testing.T) {
 // --- UseEmailMode / IsInviteOnly with nil config ---
 
 func TestUseEmailModeNilConfig(t *testing.T) {
-	h := &Handlers{config: nil}
-	assert.False(t, h.UseEmailMode())
+	a := &App{config: nil}
+	assert.False(t, a.UseEmailMode())
 }
 
 func TestIsInviteOnlyNilConfig(t *testing.T) {
-	h := &Handlers{config: nil}
-	assert.False(t, h.IsInviteOnly())
+	a := &App{config: nil}
+	assert.False(t, a.IsInviteOnly())
 }
 
 // --- findStoredSignCount tests ---
@@ -1261,7 +1287,7 @@ func TestFindStoredSignCountEmptySlice(t *testing.T) {
 // --- RecoveryLogin invalid JSON ---
 
 func TestRecoveryLoginInvalidJSON(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 	body := strings.NewReader(`{invalid}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -1277,7 +1303,7 @@ func TestRecoveryLoginInvalidJSON(t *testing.T) {
 // --- RecoveryCodesPage with empty codes slice ---
 
 func TestRecoveryCodesPageEmptyCodes(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
 	req = session.Inject(req, map[string]any{
@@ -1297,7 +1323,7 @@ func TestRecoveryCodesPageEmptyCodes(t *testing.T) {
 // --- VerifyEmail: DB error on MarkEmailVerified ---
 
 func TestVerifyEmailDBErrorOnMarkVerified(t *testing.T) {
-	h, repo, sqldb := newTestHandlersEmailModeClosable(t)
+	h, repo, sqldb := setupTestAppEmailModeClosable(t)
 	ctx := context.Background()
 
 	user, err := repo.CreateUserWithEmail(ctx, "test@example.com", "")
@@ -1322,7 +1348,7 @@ func TestVerifyEmailDBErrorOnMarkVerified(t *testing.T) {
 // --- VerifyEmail: DB error on GetUserByID after verification ---
 
 func TestVerifyEmailDBErrorOnGetUserAfterVerify(t *testing.T) {
-	h, repo, _ := newTestHandlersEmailModeClosable(t)
+	h, repo, _ := setupTestAppEmailModeClosable(t)
 	ctx := context.Background()
 
 	user, err := repo.CreateUserWithEmail(ctx, "test@example.com", "")
@@ -1347,7 +1373,7 @@ func TestVerifyEmailDBErrorOnGetUserAfterVerify(t *testing.T) {
 // --- ResendVerification: user with nil email ---
 
 func TestResendVerificationUserWithNilEmail(t *testing.T) {
-	h, repo, _ := newTestHandlersEmailMode(t)
+	h, repo, _ := setupTestAppEmailMode(t)
 
 	// Create a user via username mode (no email), then look up by email.
 	// Since GetUserByEmail would fail for a username-mode user, we need a user
@@ -1378,7 +1404,7 @@ func TestResendVerificationUserWithNilEmail(t *testing.T) {
 // --- DeleteCredential: DB error on CountUserCredentials ---
 
 func TestDeleteCredentialDBErrorOnCount(t *testing.T) {
-	h, repo, sqldb := newTestHandlersClosable(t)
+	h, repo, sqldb := setupTestAppClosable(t)
 	user, _ := repo.CreateUser(context.Background(), "bob", "")
 	cred1 := &Credential{UserID: user.ID, CredentialID: []byte("c1"), PublicKey: []byte("k1"), Name: "P1"}
 	cred2 := &Credential{UserID: user.ID, CredentialID: []byte("c2"), PublicKey: []byte("k2"), Name: "P2"}
@@ -1405,7 +1431,7 @@ func TestDeleteCredentialDBErrorOnCount(t *testing.T) {
 // --- CredentialsPage: DB error on GetCredentialsByUserID ---
 
 func TestCredentialsPageDBError(t *testing.T) {
-	h, repo, sqldb := newTestHandlersClosable(t)
+	h, repo, sqldb := setupTestAppClosable(t)
 	user, _ := repo.CreateUser(context.Background(), "carol", "")
 
 	// Close DB so GetCredentialsByUserID fails.
@@ -1424,7 +1450,7 @@ func TestCredentialsPageDBError(t *testing.T) {
 // --- RegenerateRecoveryCodes: DB error on generateAndStoreRecoveryCodes ---
 
 func TestRegenerateRecoveryCodesDBError(t *testing.T) {
-	h, repo, sqldb := newTestHandlersClosable(t)
+	h, repo, sqldb := setupTestAppClosable(t)
 	user, _ := repo.CreateUser(context.Background(), "eve", "")
 
 	// Close DB so generateAndStoreRecoveryCodes fails (DeleteRecoveryCodes fails).
@@ -1443,7 +1469,7 @@ func TestRegenerateRecoveryCodesDBError(t *testing.T) {
 // --- isFirstUser: DB error ---
 
 func TestIsFirstUserDBError(t *testing.T) {
-	h, _, sqldb := newTestHandlersClosable(t)
+	h, _, sqldb := setupTestAppClosable(t)
 
 	// Close DB so CountUsers fails.
 	_ = sqldb.Close()
@@ -1456,7 +1482,7 @@ func TestIsFirstUserDBError(t *testing.T) {
 // --- RecoveryLogin: DB error on ValidateAndUseRecoveryCode ---
 
 func TestRecoveryLoginDBErrorOnValidation(t *testing.T) {
-	h, repo, sqldb := newTestHandlersClosable(t)
+	h, repo, sqldb := setupTestAppClosable(t)
 	user, _ := repo.CreateUser(context.Background(), "frank", "")
 
 	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
@@ -1482,7 +1508,7 @@ func TestRecoveryLoginDBErrorOnValidation(t *testing.T) {
 // --- ResendVerification: DB error on CreateEmailVerificationToken ---
 
 func TestResendVerificationDBErrorOnTokenCreate(t *testing.T) {
-	h, repo, sqldb := newTestHandlersEmailModeClosable(t)
+	h, repo, sqldb := setupTestAppEmailModeClosable(t)
 
 	_, err := repo.CreateUserWithEmail(context.Background(), "test@example.com", "")
 	require.NoError(t, err)
@@ -1505,7 +1531,7 @@ func TestResendVerificationDBErrorOnTokenCreate(t *testing.T) {
 // --- RegenerateRecoveryCodes: first-time generation (no existing codes to delete) ---
 
 func TestRegenerateRecoveryCodesFirstTime(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	user, _ := repo.CreateUser(context.Background(), "charlie", "")
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/regenerate", nil)
@@ -1521,7 +1547,7 @@ func TestRegenerateRecoveryCodesFirstTime(t *testing.T) {
 // --- RecoveryLogin with session redirect ---
 
 func TestRecoveryLoginUsesSessionRedirect(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	user, _ := repo.CreateUser(context.Background(), "alice", "")
 
 	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
@@ -1546,7 +1572,7 @@ func TestRecoveryLoginUsesSessionRedirect(t *testing.T) {
 // --- CredentialsPage with credentials ---
 
 func TestCredentialsPageWithCredentials(t *testing.T) {
-	h, repo, r := newTestHandlers(t)
+	h, repo, r := setupTestApp(t)
 	user, err := repo.CreateUser(context.Background(), "dave", "")
 	require.NoError(t, err)
 
@@ -1566,7 +1592,7 @@ func TestCredentialsPageWithCredentials(t *testing.T) {
 // --- AcknowledgeRecoveryCodes: no session middleware ---
 
 func TestAcknowledgeRecoveryCodesNoSession(t *testing.T) {
-	h, _, _ := newTestHandlers(t)
+	h, _, _ := setupTestApp(t)
 
 	// Request WITHOUT session.Inject — session.Delete will return errNoMiddleware.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
@@ -1581,7 +1607,7 @@ func TestAcknowledgeRecoveryCodesNoSession(t *testing.T) {
 // --- RegenerateRecoveryCodes: no session middleware ---
 
 func TestRegenerateRecoveryCodesNoSession(t *testing.T) {
-	h, repo, _ := newTestHandlers(t)
+	h, repo, _ := setupTestApp(t)
 	user, _ := repo.CreateUser(context.Background(), "nosession", "")
 
 	// Request WITHOUT session.Inject — session.Set will fail.
@@ -1601,7 +1627,7 @@ func TestRegenerateRecoveryCodesNoSession(t *testing.T) {
 func TestVerifyEmailGetUserByIDFailure(t *testing.T) {
 	// Test the path where MarkEmailVerified succeeds but GetUserByID fails.
 	// Disable FK so we can create an orphan token that references a non-existent user.
-	h, repo, _ := newTestHandlersEmailModeClosable(t)
+	h, repo, _ := setupTestAppEmailModeClosable(t)
 	ctx := context.Background()
 
 	// Disable FK constraints so we can create a token for a non-existent user.
@@ -1628,7 +1654,7 @@ func TestVerifyEmailGetUserByIDFailure(t *testing.T) {
 // --- ResendVerification: full path with existing old tokens ---
 
 func TestResendVerificationDeletesOldTokens(t *testing.T) {
-	h, repo, _ := newTestHandlersEmailMode(t)
+	h, repo, _ := setupTestAppEmailMode(t)
 	ctx := context.Background()
 
 	user, err := repo.CreateUserWithEmail(ctx, "test@example.com", "")

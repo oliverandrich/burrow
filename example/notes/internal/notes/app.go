@@ -26,7 +26,6 @@ var noteTemplateFS embed.FS
 // App implements the notes contrib app.
 type App struct {
 	repo       *Repository
-	handlers   *Handlers
 	notesAdmin *modeladmin.ModelAdmin[Note]
 }
 
@@ -45,7 +44,6 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	cfg.RegisterIconFunc("iconJournalText", bsicons.JournalText)
 
 	a.repo = NewRepository(cfg.DB)
-	a.handlers = NewHandlers(a.repo)
 	a.notesAdmin = &modeladmin.ModelAdmin[Note]{
 		Slug:              "notes",
 		DisplayName:       "Note",
@@ -123,18 +121,13 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 }
 
 func (a *App) Routes(r chi.Router) {
-	if a.handlers == nil {
-		return
-	}
-	h := a.handlers
-
 	r.Route("/notes", func(r chi.Router) {
 		r.Use(auth.RequireAuth())
-		r.Get("/", burrow.Handle(h.List))
-		r.Get("/new", burrow.Handle(h.New))
-		r.Post("/", burrow.Handle(h.Create))
-		r.Get("/{id:[0-9]+}/edit", burrow.Handle(h.Edit))
-		r.Post("/{id:[0-9]+}", burrow.Handle(h.Update))
-		r.Delete("/{id:[0-9]+}", burrow.Handle(h.Delete))
+		r.Get("/", burrow.Handle(a.List))
+		r.Get("/new", burrow.Handle(a.New))
+		r.Post("/", burrow.Handle(a.Create))
+		r.Get("/{id:[0-9]+}/edit", burrow.Handle(a.Edit))
+		r.Post("/{id:[0-9]+}", burrow.Handle(a.Update))
+		r.Delete("/{id:[0-9]+}", burrow.Handle(a.Delete))
 	})
 }

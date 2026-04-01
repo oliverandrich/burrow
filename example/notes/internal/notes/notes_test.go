@@ -260,7 +260,7 @@ func TestListNotesHandler(t *testing.T) {
 
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Test", Content: "Content", UserID: 42}))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
@@ -282,7 +282,7 @@ func TestListNotesHTMXNavReturnsFragment(t *testing.T) {
 
 	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", Content: "Content", UserID: 42}))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
@@ -307,7 +307,7 @@ func TestListNotesNormalRequestUsesLayout(t *testing.T) {
 
 	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", Content: "Content", UserID: 42}))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 
@@ -337,7 +337,7 @@ func TestListNotesUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
 	rec := httptest.NewRecorder()
 
@@ -352,7 +352,7 @@ func TestNewNoteHandler(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/new", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)
@@ -376,7 +376,7 @@ func TestNewNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/new", nil)
 	rec := httptest.NewRecorder()
 
@@ -391,7 +391,7 @@ func TestCreateNoteHTMX(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	exec := testTemplateExecutor(t)
 	msgMW := messages.New().Middleware()[0]
@@ -439,7 +439,7 @@ func TestCreateNoteNonHTMX(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
@@ -472,7 +472,7 @@ func TestCreateNoteValidationErrorHTMX(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	exec := testTemplateExecutor(t)
 	r := chi.NewRouter()
@@ -515,7 +515,7 @@ func TestCreateNoteValidationErrorNonHTMX(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	exec := testTemplateExecutor(t)
 	r := chi.NewRouter()
@@ -549,7 +549,7 @@ func TestCreateNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	form := strings.NewReader("title=Test&content=Content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -569,7 +569,7 @@ func TestEditNoteHTMX(t *testing.T) {
 	note := &Note{Title: "Edit Me", Content: "Original", UserID: 42}
 	require.NoError(t, repo.Create(t.Context(), note))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	r := chi.NewRouter()
 	r.Get("/notes/{id:[0-9]+}/edit", func(w http.ResponseWriter, r *http.Request) {
@@ -599,7 +599,7 @@ func TestEditNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/1/edit", nil)
 	rec := httptest.NewRecorder()
 
@@ -612,7 +612,7 @@ func TestEditNoteNotFound(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	r := chi.NewRouter()
 	r.Get("/notes/{id:[0-9]+}/edit", func(w http.ResponseWriter, r *http.Request) {
@@ -643,7 +643,7 @@ func TestUpdateNoteHTMX(t *testing.T) {
 	note := &Note{Title: "Original", Content: "Old", UserID: 42}
 	require.NoError(t, repo.Create(t.Context(), note))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	exec := testTemplateExecutor(t)
 	msgMW := messages.New().Middleware()[0]
@@ -694,7 +694,7 @@ func TestUpdateNoteNonHTMX(t *testing.T) {
 	note := &Note{Title: "Original", Content: "Old", UserID: 42}
 	require.NoError(t, repo.Create(t.Context(), note))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
@@ -729,7 +729,7 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 	note := &Note{Title: "Original", Content: "Old", UserID: 42}
 	require.NoError(t, repo.Create(t.Context(), note))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	exec := testTemplateExecutor(t)
 	r := chi.NewRouter()
@@ -770,7 +770,7 @@ func TestUpdateNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	form := strings.NewReader("title=Test&content=Content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes/1", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -785,7 +785,7 @@ func TestUpdateNoteNotFound(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	r := chi.NewRouter()
 	r.Post("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
@@ -818,7 +818,7 @@ func TestDeleteNoteHandler(t *testing.T) {
 	note := &Note{Title: "Delete Me", Content: "Bye", UserID: 42}
 	require.NoError(t, repo.Create(ctx, note))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	// Use chi router to inject URL params; include messages middleware for store.
 	exec := testTemplateExecutor(t)
@@ -854,7 +854,7 @@ func TestDeleteNoteUnauthenticatedPanics(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/1", nil)
 	rec := httptest.NewRecorder()
 
@@ -867,7 +867,7 @@ func TestDeleteNoteInvalidIDNotMatched(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 
 	r := chi.NewRouter()
 	r.Delete("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
@@ -961,18 +961,6 @@ func TestDependencies(t *testing.T) {
 	assert.Equal(t, "auth", deps[0])
 }
 
-func TestRoutesNilHandlers(t *testing.T) {
-	// Before Configure is called, handlers is nil — Routes should be a no-op.
-	app := New()
-	r := chi.NewRouter()
-	app.Routes(r)
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
 func TestAdminRoutesNilNotesAdmin(t *testing.T) {
 	// Before Configure is called, notesAdmin is nil — AdminRoutes should be a no-op.
 	app := New()
@@ -991,7 +979,7 @@ func TestListNotesHTMXScrollReturnsFragment(t *testing.T) {
 
 	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Scroll Note", Content: "Content", UserID: 42}))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	// HTMX request with page > 1 → triggers the infinite scroll branch.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?page=2&limit=10", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
@@ -1125,7 +1113,7 @@ func TestListNotesHandlerWithSearch(t *testing.T) {
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Searchable Note", Content: "Find me", UserID: 42}))
 	require.NoError(t, repo.Create(ctx, &Note{Title: "Other Note", Content: "Not this", UserID: 42}))
 
-	h := NewHandlers(repo)
+	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?q=Searchable", nil)
 	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
 	req = injectTemplateExecutor(t, req)

@@ -183,7 +183,7 @@ See also the [ChoiceProvider interface](#dynamic-choices-via-choiceprovider-inte
 Call `Bind()` with the incoming request. It decodes form data, runs validation, and returns whether the form is valid:
 
 ```go
-func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
     f := forms.New[Note](noteFormOpts()...)
 
     if !f.Bind(r) {

@@ -91,10 +91,10 @@ func (r *Repository) IncrementVotes(ctx context.Context, choiceID int64) error {
 }
 ```
 
-Then add a `Vote` handler:
+Then add a `Vote` handler method on `*App`:
 
 ```go
-func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
+func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
     questionID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
     if err != nil {
         return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
@@ -114,7 +114,7 @@ func (h *Handlers) Vote(w http.ResponseWriter, r *http.Request) error {
         return burrow.NewHTTPError(http.StatusBadRequest, "invalid choice ID")
     }
 
-    if err := h.repo.IncrementVotes(r.Context(), choiceID); err != nil {
+    if err := a.repo.IncrementVotes(r.Context(), choiceID); err != nil {
         return burrow.NewHTTPError(http.StatusInternalServerError, "failed to record vote")
     }
 
@@ -137,10 +137,10 @@ Register the route:
 ```go
 func (a *App) Routes(r chi.Router) {
     r.Route("/polls", func(r chi.Router) {
-        r.Get("/", burrow.Handle(a.handlers.List))
-        r.Get("/{id}", burrow.Handle(a.handlers.Detail))
-        r.Post("/{id}/vote", burrow.Handle(a.handlers.Vote))  // new
-        r.Get("/{id}/results", burrow.Handle(a.handlers.Results))
+        r.Get("/", burrow.Handle(a.List))
+        r.Get("/{id}", burrow.Handle(a.Detail))
+        r.Post("/{id}/vote", burrow.Handle(a.Vote))  // new
+        r.Get("/{id}/results", burrow.Handle(a.Results))
     })
 }
 ```
