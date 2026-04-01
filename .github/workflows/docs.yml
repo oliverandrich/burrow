@@ -10,18 +10,15 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-go@v6
         with:
@@ -39,12 +36,16 @@ jobs:
           cp THIRD_PARTY_LICENSES.md docs/third-party-licenses.md
           ./scripts/generate-llms-full.sh
 
-      - name: Build docs
-        run: uv run --with zensical zensical build
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: site/
-
-      - id: deployment
-        uses: actions/deploy-pages@v5
+      - name: Deploy docs with mike
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          MINOR="${VERSION%.*}"
+          uv run --with zensical --with "mike @ git+https://github.com/squidfunk/mike.git" \
+            mike deploy --push --update-aliases "$MINOR" latest
+          uv run --with zensical --with "mike @ git+https://github.com/squidfunk/mike.git" \
+            mike set-default --push latest
