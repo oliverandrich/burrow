@@ -12,13 +12,66 @@ import (
 	"golang.org/x/text/message"
 )
 
+func toTime(v any) (time.Time, bool) {
+	switch t := v.(type) {
+	case time.Time:
+		return t, true
+	case *time.Time:
+		if t == nil {
+			return time.Time{}, false
+		}
+		return *t, true
+	default:
+		return time.Time{}, false
+	}
+}
+
+func toInt(v any) (int, bool) {
+	switch n := v.(type) {
+	case int:
+		return n, true
+	case *int:
+		if n == nil {
+			return 0, false
+		}
+		return *n, true
+	default:
+		return 0, false
+	}
+}
+
+func toInt64(v any) (int64, bool) {
+	switch n := v.(type) {
+	case int64:
+		return n, true
+	case *int64:
+		if n == nil {
+			return 0, false
+		}
+		return *n, true
+	case int:
+		return int64(n), true
+	case *int:
+		if n == nil {
+			return 0, false
+		}
+		return int64(*n), true
+	default:
+		return 0, false
+	}
+}
+
 // Default date formats per locale for naturalday fallback.
 var defaultDateFormats = map[string]string{
 	"en": "Jan 2, 2006",
 	"de": "02.01.2006",
 }
 
-func filesizeformat(ctx context.Context, bytes int64) string {
+func filesizeformat(ctx context.Context, v any) string {
+	bytes, ok := toInt64(v)
+	if !ok {
+		return ""
+	}
 	locale := i18n.Locale(ctx)
 	negative := bytes < 0
 	if negative {
@@ -60,12 +113,20 @@ func formatDecimal(locale string, value float64, decimals int) string {
 	return p.Sprintf(format, value)
 }
 
-func intcomma(ctx context.Context, n int) string {
+func intcomma(ctx context.Context, v any) string {
+	n, ok := toInt(v)
+	if !ok {
+		return ""
+	}
 	p := message.NewPrinter(language.MustParse(i18n.Locale(ctx)))
 	return p.Sprintf("%d", n)
 }
 
-func ordinal(ctx context.Context, n int) string {
+func ordinal(ctx context.Context, v any) string {
+	n, ok := toInt(v)
+	if !ok {
+		return ""
+	}
 	locale := i18n.Locale(ctx)
 	data := map[string]any{"N": n}
 
@@ -97,7 +158,11 @@ func ordinal(ctx context.Context, n int) string {
 	return i18n.TData(ctx, key, data)
 }
 
-func apnumber(ctx context.Context, n int) string {
+func apnumber(ctx context.Context, v any) string {
+	n, ok := toInt(v)
+	if !ok {
+		return ""
+	}
 	if n < 1 || n > 9 {
 		return strconv.Itoa(n)
 	}
@@ -110,7 +175,11 @@ func sameDay(a, b time.Time) bool {
 	return ya == yb && ma == mb && da == db
 }
 
-func naturalday(ctx context.Context, dateFormat string, t, now time.Time) string {
+func naturalday(ctx context.Context, dateFormat string, v any, now time.Time) string {
+	t, ok := toTime(v)
+	if !ok {
+		return ""
+	}
 	switch {
 	case sameDay(t, now):
 		return i18n.T(ctx, "humanize-today")
@@ -129,7 +198,11 @@ func naturalday(ctx context.Context, dateFormat string, t, now time.Time) string
 	return t.Format(defaultDateFormats["en"])
 }
 
-func naturaltime(ctx context.Context, t, now time.Time) string {
+func naturaltime(ctx context.Context, v any, now time.Time) string {
+	t, ok := toTime(v)
+	if !ok {
+		return ""
+	}
 	diff := now.Sub(t)
 	future := diff < 0
 	if future {

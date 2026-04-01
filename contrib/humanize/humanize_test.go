@@ -258,6 +258,95 @@ func TestAppImplementsInterfaces(t *testing.T) {
 
 // --- apnumber without translations (fallback) ---
 
+// --- any-type support (pointers, nil, wrong type) ---
+
+func TestNaturaltimePointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	now := time.Now()
+	past := now.Add(-5 * time.Minute)
+	assert.Equal(t, "5 minutes ago", naturaltime(ctx, &past, now))
+}
+
+func TestNaturaltimeNilPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, naturaltime(ctx, (*time.Time)(nil), time.Now()))
+}
+
+func TestNaturaltimeWrongType(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, naturaltime(ctx, "not a time", time.Now()))
+}
+
+func TestNaturaldayPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	now := time.Date(2026, 4, 1, 15, 0, 0, 0, time.UTC)
+	assert.Equal(t, "today", naturalday(ctx, "", &now, now))
+}
+
+func TestNaturaldayNilPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, naturalday(ctx, "", (*time.Time)(nil), time.Now()))
+}
+
+func TestNaturaldayWrongType(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, naturalday(ctx, "", 12345, time.Now()))
+}
+
+func TestIntcommaPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	n := 1000
+	assert.Equal(t, "1,000", intcomma(ctx, &n))
+}
+
+func TestIntcommaNilPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, intcomma(ctx, (*int)(nil)))
+}
+
+func TestIntcommaWrongType(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, intcomma(ctx, "not a number"))
+}
+
+func TestOrdinalPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	n := 1
+	assert.Equal(t, "1st", ordinal(ctx, &n))
+}
+
+func TestOrdinalNilPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, ordinal(ctx, (*int)(nil)))
+}
+
+func TestApnumberPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	n := 5
+	assert.Equal(t, "five", apnumber(ctx, &n))
+}
+
+func TestApnumberNilPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, apnumber(ctx, (*int)(nil)))
+}
+
+func TestFilesizeformatPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	n := int64(1024)
+	assert.Equal(t, "1.0 KB", filesizeformat(ctx, &n))
+}
+
+func TestFilesizeformatNilPointer(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, filesizeformat(ctx, (*int64)(nil)))
+}
+
+func TestFilesizeformatWrongType(t *testing.T) {
+	ctx := testCtx(t, "en")
+	assert.Empty(t, filesizeformat(ctx, "not a number"))
+}
+
 func TestApnumberFallbackWithoutLocalizer(t *testing.T) {
 	ctx := context.Background()
 	// Without a localizer, T falls back to the key — apnumber should return digits.

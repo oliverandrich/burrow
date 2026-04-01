@@ -55,11 +55,11 @@ func (a *App) TranslationFS() fs.FS { return translationFS }
 // RequestFuncMap returns request-scoped template functions for humanization.
 func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
 	return template.FuncMap{
-		"naturaltime":    func(t time.Time) string { return naturaltime(ctx, t, time.Now()) },
-		"naturalday":     func(t time.Time) string { return naturalday(ctx, a.dateFormat, t, time.Now()) },
-		"intcomma":       func(n int) string { return intcomma(ctx, n) },
-		"ordinal":        func(n int) string { return ordinal(ctx, n) },
-		"apnumber":       func(n int) string { return apnumber(ctx, n) },
-		"filesizeformat": func(bytes int64) string { return filesizeformat(ctx, bytes) },
+		"naturaltime":    func(v any) string { return naturaltime(ctx, v, time.Now()) },
+		"naturalday":     func(v any) string { return naturalday(ctx, a.dateFormat, v, time.Now()) },
+		"intcomma":       func(v any) string { return intcomma(ctx, v) },
+		"ordinal":        func(v any) string { return ordinal(ctx, v) },
+		"apnumber":       func(v any) string { return apnumber(ctx, v) },
+		"filesizeformat": func(v any) string { return filesizeformat(ctx, v) },
 	}
 }
