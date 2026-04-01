@@ -1,0 +1,82 @@
+# Natural day
+humanize-today = "today"
+humanize-yesterday = "yesterday"
+humanize-tomorrow = "tomorrow"
+
+# Just now
+humanize-just-now = "just now"
+
+# AP numbers (1-9)
+humanize-apnumber-1 = "one"
+humanize-apnumber-2 = "two"
+humanize-apnumber-3 = "three"
+humanize-apnumber-4 = "four"
+humanize-apnumber-5 = "five"
+humanize-apnumber-6 = "six"
+humanize-apnumber-7 = "seven"
+humanize-apnumber-8 = "eight"
+humanize-apnumber-9 = "nine"
+
+# Ordinals
+humanize-ordinal-st = "{{.N}}st"
+humanize-ordinal-nd = "{{.N}}nd"
+humanize-ordinal-rd = "{{.N}}rd"
+humanize-ordinal-th = "{{.N}}th"
+
+# Natural time — past (plural sections must come after all flat keys)
+[humanize-seconds-ago]
+one = "{{.Count}} second ago"
+other = "{{.Count}} seconds ago"
+
+[humanize-minutes-ago]
+one = "{{.Count}} minute ago"
+other = "{{.Count}} minutes ago"
+
+[humanize-hours-ago]
+one = "{{.Count}} hour ago"
+other = "{{.Count}} hours ago"
+
+[humanize-days-ago]
+one = "{{.Count}} day ago"
+other = "{{.Count}} days ago"
+
+[humanize-weeks-ago]
+one = "{{.Count}} week ago"
+other = "{{.Count}} weeks ago"
+
+[humanize-months-ago]
+one = "{{.Count}} month ago"
+other = "{{.Count}} months ago"
+
+[humanize-years-ago]
+one = "{{.Count}} year ago"
+other = "{{.Count}} years ago"
+
+# Natural time — future
+[humanize-seconds-from-now]
+one = "{{.Count}} second from now"
+other = "{{.Count}} seconds from now"
+
+[humanize-minutes-from-now]
+one = "{{.Count}} minute from now"
+other = "{{.Count}} minutes from now"
+
+[humanize-hours-from-now]
+one = "{{.Count}} hour from now"
+other = "{{.Count}} hours from now"
+
+[humanize-days-from-now]
+one = "{{.Count}} day from now"
+other = "{{.Count}} days from now"
+
+[humanize-weeks-from-now]
+one = "{{.Count}} week from now"
+other = "{{.Count}} weeks from now"
+
+[humanize-months-from-now]
+one = "{{.Count}} month from now"
+other = "{{.Count}} months from now"
+
+[humanize-years-from-now]
+one = "{{.Count}} year from now"
+other = "{{.Count}} years from now"

@@ -118,6 +118,8 @@ nav:
           - Alpine.js: contrib/alpine.md
           - htmx: contrib/htmx.md
           - Static Files: contrib/staticfiles.md
+      - Formatting:
+          - Humanize: contrib/humanize.md
       - Data & Background:
           - Admin: contrib/admin.md
           - Jobs: contrib/jobs.md

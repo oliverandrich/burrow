@@ -1,0 +1,79 @@
+# Natural day
+humanize-today = "heute"
+humanize-yesterday = "gestern"
+humanize-tomorrow = "morgen"
+
+# Just now
+humanize-just-now = "gerade eben"
+
+# AP numbers (1-9)
+humanize-apnumber-1 = "eins"
+humanize-apnumber-2 = "zwei"
+humanize-apnumber-3 = "drei"
+humanize-apnumber-4 = "vier"
+humanize-apnumber-5 = "fünf"
+humanize-apnumber-6 = "sechs"
+humanize-apnumber-7 = "sieben"
+humanize-apnumber-8 = "acht"
+humanize-apnumber-9 = "neun"
+
+# Ordinals (German always uses period)
+humanize-ordinal = "{{.N}}."
+
+# Natural time — past (plural sections must come after all flat keys)
+[humanize-seconds-ago]
+one = "vor {{.Count}} Sekunde"
+other = "vor {{.Count}} Sekunden"
+
+[humanize-minutes-ago]
+one = "vor {{.Count}} Minute"
+other = "vor {{.Count}} Minuten"
+
+[humanize-hours-ago]
+one = "vor {{.Count}} Stunde"
+other = "vor {{.Count}} Stunden"
+
+[humanize-days-ago]
+one = "vor {{.Count}} Tag"
+other = "vor {{.Count}} Tagen"
+
+[humanize-weeks-ago]
+one = "vor {{.Count}} Woche"
+other = "vor {{.Count}} Wochen"
+
+[humanize-months-ago]
+one = "vor {{.Count}} Monat"
+other = "vor {{.Count}} Monaten"
+
+[humanize-years-ago]
+one = "vor {{.Count}} Jahr"
+other = "vor {{.Count}} Jahren"
+
+# Natural time — future
+[humanize-seconds-from-now]
+one = "in {{.Count}} Sekunde"
+other = "in {{.Count}} Sekunden"
+
+[humanize-minutes-from-now]
+one = "in {{.Count}} Minute"
+other = "in {{.Count}} Minuten"
+
+[humanize-hours-from-now]
+one = "in {{.Count}} Stunde"
+other = "in {{.Count}} Stunden"
+
+[humanize-days-from-now]
+one = "in {{.Count}} Tag"
+other = "in {{.Count}} Tagen"
+
+[humanize-weeks-from-now]
+one = "in {{.Count}} Woche"
+other = "in {{.Count}} Wochen"
+
+[humanize-months-from-now]
+one = "in {{.Count}} Monat"
+other = "in {{.Count}} Monaten"
+
+[humanize-years-from-now]
+one = "in {{.Count}} Jahr"
+other = "in {{.Count}} Jahren"
