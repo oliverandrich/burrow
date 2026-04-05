@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/den/document"
+	"github.com/oliverandrich/den"
 )
 
 // WorkerConfig holds configuration for the worker pool.
@@ -47,7 +47,7 @@ type Worker struct { //nolint:govet // fieldalignment: readability over optimiza
 // template rendering is not needed (e.g., in tests).
 func NewWorker(repo *Repository, handlers map[string]burrow.JobHandlerFunc, config WorkerConfig, exec burrow.TemplateExecutor) *Worker {
 	return &Worker{
-		id:           document.NewID(),
+		id:           den.NewID(),
 		repo:         repo,
 		handlers:     handlers,
 		config:       config,

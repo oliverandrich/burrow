@@ -4,6 +4,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.11.0 — 2026-04-05
+
 ### Breaking Changes
 
 - **Database layer replaced: Bun → Den** — the entire database layer has been replaced with [Den](https://github.com/oliverandrich/den), an object-document mapper (ODM) for Go. Same API for SQLite and PostgreSQL via URL-based DSN.
@@ -22,7 +24,15 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Changed
 
 - **Handler pattern simplified** — handlers are now methods on `*App` instead of a separate `Handlers` struct
-- **Bun dependency removed** — replaced by `github.com/oliverandrich/den v0.3.0`
+- **Bun dependency removed** — replaced by `github.com/oliverandrich/den v0.4.0`
+- **Job queue: ownership guard** — workers stamp `worker_id` on claimed jobs; `Complete`/`Fail` verify ownership via guarded `FindOneAndUpdate`, preventing double processing under concurrent workers
+- **Job queue: `Complete`/`Fail` take `*Job`** — no longer reload from DB, eliminating redundant reads and stale attempt counts
+
+### Fixed
+
+- **Admin HTMX navigation** — boosted requests with a custom `hx-target` (e.g. `#main`) no longer wrap content in the layout, fixing the doubled sidebar
+- **`itoa` template function removed** — was a no-op after int64→string migration; templates use `.ID` directly
+- **Dead code removed** — `URLParamInt64`, `MustURLParamInt64`, stale `bun:` tags in tests
 
 ## 0.10.0 — 2026-03-29
 
