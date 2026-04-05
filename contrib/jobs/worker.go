@@ -130,10 +130,15 @@ func (w *Worker) work() {
 }
 
 func (w *Worker) processJob(job *Job) {
+	// Increment attempts in memory — persisted atomically via Complete or Fail.
+	job.Attempts++
+
 	handler, ok := w.handlers[job.Type]
 	if !ok {
 		slog.Error("jobs: unknown job type", "type", job.Type, "id", job.ID)
-		if err := w.repo.Fail(context.Background(), job.ID, "unknown job type: "+job.Type, job.MaxRetries, job.MaxRetries, w.config.RetryBaseDelay); err != nil {
+		// Force dead immediately — unknown types should never retry.
+		job.Attempts = job.MaxRetries
+		if err := w.repo.Fail(context.Background(), job, "unknown job type: "+job.Type, w.config.RetryBaseDelay); err != nil {
 			slog.Error("jobs: fail unknown job", "error", err, "id", job.ID)
 		}
 		return
@@ -149,13 +154,13 @@ func (w *Worker) processJob(job *Job) {
 	err := handler(ctx, []byte(job.Payload))
 	if err != nil {
 		slog.Error("jobs: handler failed", "type", job.Type, "id", job.ID, "error", err, "attempt", job.Attempts)
-		if failErr := w.repo.Fail(context.Background(), job.ID, err.Error(), job.Attempts, job.MaxRetries, w.config.RetryBaseDelay); failErr != nil {
+		if failErr := w.repo.Fail(context.Background(), job, err.Error(), w.config.RetryBaseDelay); failErr != nil {
 			slog.Error("jobs: record failure", "error", failErr, "id", job.ID)
 		}
 		return
 	}
 
-	if err := w.repo.Complete(context.Background(), job.ID); err != nil {
+	if err := w.repo.Complete(context.Background(), job); err != nil {
 		slog.Error("jobs: complete failed", "error", err, "id", job.ID)
 	}
 }

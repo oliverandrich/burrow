@@ -44,64 +44,52 @@ func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxR
 }
 
 // Claim atomically claims up to limit pending or failed jobs that are ready to run.
-// Uses a transaction to find eligible jobs, update their status, and increment attempts atomically.
+// Each job is claimed individually via FindOneAndUpdate for atomic safety —
+// the find and status update happen in a single transaction, preventing
+// two workers from claiming the same job.
 func (r *Repository) Claim(ctx context.Context, limit int) ([]*Job, error) {
 	var claimed []*Job
 	now := time.Now()
 	nowStr := now.Format(time.RFC3339Nano)
 
-	err := den.RunInTransaction(ctx, r.db, func(tx *den.Tx) error {
-		eligible, err := den.NewQuery[Job](ctx, r.db,
+	for range limit {
+		job, err := den.FindOneAndUpdate[Job](ctx, r.db,
+			den.SetFields{
+				"status":    string(StatusRunning),
+				"locked_at": &now,
+			},
 			where.Field("status").In(string(StatusPending), string(StatusFailed)),
 			where.Field("run_at").Lte(nowStr),
-		).Sort("run_at", den.Asc).Limit(limit).All()
+		)
 		if err != nil {
-			return fmt.Errorf("query eligible jobs: %w", err)
-		}
-
-		for _, job := range eligible {
-			job.Status = StatusRunning
-			job.LockedAt = &now
-			job.Attempts++
-			if err := den.TxUpdate(tx, job); err != nil {
-				return fmt.Errorf("claim job %s: %w", job.ID, err)
+			if errors.Is(err, den.ErrNotFound) {
+				break
 			}
-			claimed = append(claimed, job)
+			return nil, fmt.Errorf("claim jobs: %w", err)
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("claim jobs: %w", err)
+		claimed = append(claimed, job)
 	}
 	return claimed, nil
 }
 
 // Complete marks a job as completed.
-func (r *Repository) Complete(ctx context.Context, jobID string) error {
-	job, err := den.FindByID[Job](ctx, r.db, jobID)
-	if err != nil {
-		return fmt.Errorf("complete job %s: %w", jobID, err)
-	}
+func (r *Repository) Complete(ctx context.Context, job *Job) error {
 	now := time.Now()
 	job.Status = StatusCompleted
 	job.CompletedAt = &now
 	if err := den.Update(ctx, r.db, job); err != nil {
-		return fmt.Errorf("complete job %s: %w", jobID, err)
+		return fmt.Errorf("complete job %s: %w", job.ID, err)
 	}
 	return nil
 }
 
 // Fail records a job failure. If attempts < maxRetries, the job is re-queued
 // with exponential backoff (baseDelay * 2^(attempts-1)). Otherwise it is marked dead.
-func (r *Repository) Fail(ctx context.Context, jobID string, errMsg string, attempts, maxRetries int, baseDelay time.Duration) error {
-	job, err := den.FindByID[Job](ctx, r.db, jobID)
-	if err != nil {
-		return fmt.Errorf("fail job %s: %w", jobID, err)
-	}
+func (r *Repository) Fail(ctx context.Context, job *Job, errMsg string, baseDelay time.Duration) error {
 	now := time.Now()
 
-	if attempts < maxRetries {
-		backoff := baseDelay * time.Duration(math.Pow(2, float64(attempts-1)))
+	if job.Attempts < job.MaxRetries {
+		backoff := baseDelay * time.Duration(math.Pow(2, float64(job.Attempts-1)))
 		job.Status = StatusFailed
 		job.LastError = errMsg
 		job.RunAt = now.Add(backoff)
@@ -114,7 +102,7 @@ func (r *Repository) Fail(ctx context.Context, jobID string, errMsg string, atte
 	}
 
 	if err := den.Update(ctx, r.db, job); err != nil {
-		return fmt.Errorf("fail job %s: %w", jobID, err)
+		return fmt.Errorf("fail job %s: %w", job.ID, err)
 	}
 	return nil
 }

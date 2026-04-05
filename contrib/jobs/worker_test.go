@@ -244,7 +244,7 @@ func TestWorker_Maintenance(t *testing.T) {
 	// Create a completed job older than 24h.
 	job2, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
-	require.NoError(t, repo.Complete(ctx, job2.ID))
+	require.NoError(t, repo.Complete(ctx, job2))
 	completedJob, err := den.FindByID[Job](ctx, db, job2.ID)
 	require.NoError(t, err)
 	oldCompleted := time.Now().Add(-48 * time.Hour)

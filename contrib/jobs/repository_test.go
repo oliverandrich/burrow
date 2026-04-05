@@ -53,7 +53,8 @@ func TestRepository_Claim(t *testing.T) {
 	for _, j := range claimed {
 		assert.Equal(t, StatusRunning, j.Status)
 		assert.NotNil(t, j.LockedAt)
-		assert.Equal(t, 1, j.Attempts)
+		// Attempts are incremented by the worker after claim, not during claim.
+		assert.Equal(t, 0, j.Attempts)
 	}
 
 	// Claim again — should get the remaining 1.
@@ -85,7 +86,7 @@ func TestRepository_Complete(t *testing.T) {
 	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
 
-	err = repo.Complete(ctx, job.ID)
+	err = repo.Complete(ctx, job)
 	require.NoError(t, err)
 
 	// Verify status.
@@ -104,7 +105,9 @@ func TestRepository_Fail_Retry(t *testing.T) {
 	require.NoError(t, err)
 
 	// Fail with attempts=1, maxRetries=3 -> should retry.
-	err = repo.Fail(ctx, job.ID, "connection timeout", 1, 3, 30*time.Second)
+	job.Attempts = 1
+	job.MaxRetries = 3
+	err = repo.Fail(ctx, job, "connection timeout", 30*time.Second)
 	require.NoError(t, err)
 
 	updated, err := den.FindByID[Job](ctx, db, job.ID)
@@ -134,8 +137,10 @@ func TestRepository_Fail_BackoffDuration(t *testing.T) {
 		job, err := repo.Enqueue(ctx, "task", `{}`, 10, time.Now())
 		require.NoError(t, err)
 
+		job.Attempts = tt.attempt
+		job.MaxRetries = 10
 		before := time.Now()
-		err = repo.Fail(ctx, job.ID, "err", tt.attempt, 10, baseDelay)
+		err = repo.Fail(ctx, job, "err", baseDelay)
 		require.NoError(t, err)
 
 		updated, err := den.FindByID[Job](ctx, db, job.ID)
@@ -156,7 +161,9 @@ func TestRepository_Fail_Dead(t *testing.T) {
 	require.NoError(t, err)
 
 	// Fail with attempts=3, maxRetries=3 -> should be dead.
-	err = repo.Fail(ctx, job.ID, "permanent failure", 3, 3, 30*time.Second)
+	job.Attempts = 3
+	job.MaxRetries = 3
+	err = repo.Fail(ctx, job, "permanent failure", 30*time.Second)
 	require.NoError(t, err)
 
 	updated, err := den.FindByID[Job](ctx, db, job.ID)
@@ -175,7 +182,7 @@ func TestRepository_DeleteCompleted(t *testing.T) {
 	require.NoError(t, err)
 
 	// Complete and backdate.
-	err = repo.Complete(ctx, job.ID)
+	err = repo.Complete(ctx, job)
 	require.NoError(t, err)
 
 	// Backdate the completed_at time.
@@ -258,7 +265,7 @@ func TestRepository_ListPaged(t *testing.T) {
 		j, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now().Add(-time.Duration(5-i)*time.Second))
 		require.NoError(t, err)
 		if i >= 3 {
-			require.NoError(t, repo.Complete(ctx, j.ID))
+			require.NoError(t, repo.Complete(ctx, j))
 		}
 	}
 
@@ -311,7 +318,9 @@ func TestRepository_Retry(t *testing.T) {
 	t.Run("from dead", func(t *testing.T) {
 		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 		require.NoError(t, err)
-		require.NoError(t, repo.Fail(ctx, job.ID, "boom", 3, 3, 30*time.Second)) // marks dead
+		job.Attempts = 3
+		job.MaxRetries = 3
+		require.NoError(t, repo.Fail(ctx, job, "boom", 30*time.Second)) // marks dead
 
 		err = repo.Retry(ctx, job.ID)
 		require.NoError(t, err)
@@ -328,7 +337,9 @@ func TestRepository_Retry(t *testing.T) {
 	t.Run("from failed", func(t *testing.T) {
 		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 		require.NoError(t, err)
-		require.NoError(t, repo.Fail(ctx, job.ID, "oops", 1, 3, 30*time.Second)) // marks failed
+		job.Attempts = 1
+		job.MaxRetries = 3
+		require.NoError(t, repo.Fail(ctx, job, "oops", 30*time.Second)) // marks failed
 
 		err = repo.Retry(ctx, job.ID)
 		require.NoError(t, err)
@@ -389,7 +400,7 @@ func TestRepository_Cancel(t *testing.T) {
 	t.Run("invalid status — completed", func(t *testing.T) {
 		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 		require.NoError(t, err)
-		require.NoError(t, repo.Complete(ctx, job.ID))
+		require.NoError(t, repo.Complete(ctx, job))
 
 		err = repo.Cancel(ctx, job.ID)
 		require.ErrorIs(t, err, ErrInvalidStatus)
