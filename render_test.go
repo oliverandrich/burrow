@@ -114,6 +114,80 @@ func TestRenderWithoutLayout(t *testing.T) {
 	assert.Equal(t, "<p>bare</p>", rec.Body.String())
 }
 
+func TestRenderBoostedWithCustomTarget_SkipsLayout(t *testing.T) {
+	// This is the admin double-sidebar bug: hx-boost="true" with hx-target="main"
+	// should NOT apply the layout, because the layout is already on the page
+	// and only the <main> element is being swapped.
+	layoutCalled := false
+	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+		if name == "admin/layout" {
+			layoutCalled = true
+			return template.HTML("<html><sidebar/>" + string(data["Content"].(template.HTML)) + "</html>"), nil
+		}
+		return template.HTML("<p>admin content</p>"), nil
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users", nil)
+	req.Header.Set("HX-Request", "true")
+	req.Header.Set("HX-Boosted", "true")
+	req.Header.Set("HX-Target", "main")
+	ctx := WithTemplateExecutor(req.Context(), exec)
+	ctx = WithLayout(ctx, "admin/layout")
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := Render(rec, req, http.StatusOK, "users/list", nil)
+	require.NoError(t, err)
+	assert.False(t, layoutCalled, "layout must NOT be applied when boosted request targets a custom element")
+	assert.Equal(t, "<p>admin content</p>", rec.Body.String())
+}
+
+func TestRenderBoostedWithBodyTarget_AppliesLayout(t *testing.T) {
+	// Boosted requests targeting "body" (or no target) should get the full layout.
+	layoutCalled := false
+	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+		if name == "app/layout" {
+			layoutCalled = true
+			return template.HTML("<html>" + string(data["Content"].(template.HTML)) + "</html>"), nil
+		}
+		return template.HTML("<p>page</p>"), nil
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set("HX-Request", "true")
+	req.Header.Set("HX-Boosted", "true")
+	req.Header.Set("HX-Target", "body")
+	ctx := WithTemplateExecutor(req.Context(), exec)
+	ctx = WithLayout(ctx, "app/layout")
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	err := Render(rec, req, http.StatusOK, "page", nil)
+	require.NoError(t, err)
+	assert.True(t, layoutCalled, "layout should be applied for boosted requests targeting body")
+}
+
+func TestRenderContentBoostedWithCustomTarget_SkipsLayout(t *testing.T) {
+	// Same bug but via RenderContent (used by ModelAdmin).
+	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+		return template.HTML("<html><sidebar/>" + string(data["Content"].(template.HTML)) + "</html>"), nil
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/users", nil)
+	req.Header.Set("HX-Request", "true")
+	req.Header.Set("HX-Boosted", "true")
+	req.Header.Set("HX-Target", "main")
+	ctx := WithTemplateExecutor(req.Context(), exec)
+	ctx = WithLayout(ctx, "admin/layout")
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	content := template.HTML("<table>users</table>")
+	err := RenderContent(rec, req, http.StatusOK, content, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "<table>users</table>", rec.Body.String(), "should return content-only, not wrapped in layout")
+}
+
 // Benchmarks
 
 func BenchmarkRender_Fragment(b *testing.B) {

@@ -14,7 +14,7 @@
         [aria-expanded="true"] > .sidebar-chevron { transform: rotate(90deg); }
     </style>
 </head>
-<body hx-boost="true" hx-target="main" {{- csrfHxHeaders }}>
+<body hx-boost="true" hx-target="#main" {{- csrfHxHeaders }}>
     <!-- Mobile navbar with offcanvas toggle -->
     <nav class="navbar d-md-none bg-body-tertiary border-bottom">
         <div class="container-fluid">
@@ -108,7 +108,7 @@
                 </div>
             </div>
         </div>
-        <main class="flex-grow-1 p-4 d-flex flex-column overflow-hidden vh-100">
+        <main id="main" class="flex-grow-1 p-4 d-flex flex-column overflow-hidden vh-100">
             {{ .Content }}
         </main>
     </div>

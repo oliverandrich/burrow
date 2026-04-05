@@ -81,9 +81,14 @@ func RenderError(w http.ResponseWriter, r *http.Request, code int, message strin
 // (e.g., modeladmin's built-in templates) but still needs layout wrapping.
 func RenderContent(w http.ResponseWriter, r *http.Request, statusCode int, content template.HTML, data map[string]any) error {
 	// HTMX requests get the fragment only, no layout wrapping.
-	// Exception: boosted requests (hx-boost) swap the full body,
-	// so they need the layout applied like normal requests.
-	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Boosted") != "true" {
+	// Boosted requests targeting "body" (default) get the full layout.
+	// Boosted requests with a custom target (e.g. hx-target="main")
+	// get the fragment only — the layout is already on the page.
+	// Note: we read headers directly to avoid an import cycle with contrib/htmx.
+	isHTMX := r.Header.Get("HX-Request") == "true"
+	isBoosted := r.Header.Get("HX-Boosted") == "true"
+	hxTarget := r.Header.Get("HX-Target")
+	if isHTMX && (!isBoosted || (hxTarget != "" && hxTarget != "body")) {
 		return HTML(w, statusCode, string(content))
 	}
 
