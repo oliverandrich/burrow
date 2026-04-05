@@ -44,35 +44,34 @@ func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxR
 }
 
 // Claim atomically claims up to limit pending or failed jobs that are ready to run.
-// Each job is claimed individually via FindOneAndUpdate for atomic safety.
+// Uses a transaction to find eligible jobs, update their status, and increment attempts atomically.
 func (r *Repository) Claim(ctx context.Context, limit int) ([]*Job, error) {
 	var claimed []*Job
 	now := time.Now()
-	// Format as RFC3339Nano to match encoding/json's serialization of time.Time,
-	// since SQLite compares the JSON-encoded string against this parameter.
 	nowStr := now.Format(time.RFC3339Nano)
 
-	for range limit {
-		job, err := den.FindOneAndUpdate[Job](ctx, r.db,
-			den.SetFields{
-				"status":    string(StatusRunning),
-				"locked_at": &now,
-			},
+	err := den.RunInTransaction(ctx, r.db, func(tx *den.Tx) error {
+		eligible, err := den.NewQuery[Job](ctx, r.db,
 			where.Field("status").In(string(StatusPending), string(StatusFailed)),
 			where.Field("run_at").Lte(nowStr),
-		)
+		).Sort("run_at", den.Asc).Limit(limit).All()
 		if err != nil {
-			if errors.Is(err, den.ErrNotFound) {
-				break // no more eligible jobs
+			return fmt.Errorf("query eligible jobs: %w", err)
+		}
+
+		for _, job := range eligible {
+			job.Status = StatusRunning
+			job.LockedAt = &now
+			job.Attempts++
+			if err := den.TxUpdate(tx, job); err != nil {
+				return fmt.Errorf("claim job %s: %w", job.ID, err)
 			}
-			return nil, fmt.Errorf("claim jobs: %w", err)
+			claimed = append(claimed, job)
 		}
-		// Increment attempts — safe because we just claimed this job (status=running)
-		job.Attempts++
-		if err := den.Update(ctx, r.db, job); err != nil {
-			return nil, fmt.Errorf("update attempts for job %s: %w", job.ID, err)
-		}
-		claimed = append(claimed, job)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("claim jobs: %w", err)
 	}
 	return claimed, nil
 }
