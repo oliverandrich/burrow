@@ -1,9 +1,10 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches-ignore: [main]
 
 permissions:
   contents: write
@@ -11,14 +12,18 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Extract changelog for this version
-        id: changelog
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          # Extract content between this version header and the next ## header
+          VERSION="${{ github.event.workflow_run.head_branch }}"
+          VERSION="${VERSION#v}"
           awk "
             /^## ${VERSION}/ { found=1; next }
             found && /^## / { exit }
@@ -26,6 +31,6 @@ jobs:
           " CHANGELOG.md > release-notes.md
 
       - name: Create GitHub Release
-        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+        run: gh release create "${{ github.event.workflow_run.head_branch }}" --title "${{ github.event.workflow_run.head_branch }}" --notes-file release-notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
