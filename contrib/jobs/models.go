@@ -1,10 +1,15 @@
 package jobs
 
 import (
+	"errors"
 	"time"
 
 	"github.com/oliverandrich/den/document"
 )
+
+// ErrStaleJob is returned when a Complete or Fail operation fails because
+// the job is no longer owned by this worker (e.g., it was reclaimed).
+var ErrStaleJob = errors.New("job is no longer owned by this worker")
 
 // JobStatus represents the state of a job in the queue.
 type JobStatus string
@@ -31,4 +36,5 @@ type Job struct {
 	FailedAt    *time.Time `json:"failed_at,omitempty"`
 	Attempts    int        `json:"attempts"`
 	MaxRetries  int        `json:"max_retries"`
+	WorkerID    string     `json:"worker_id"`
 }

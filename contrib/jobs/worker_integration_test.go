@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -148,17 +147,9 @@ func TestJobPoolMaxRetriesExhaustedEndsDead(t *testing.T) {
 	go w.Start(ctx)
 
 	// Wait for all 5 jobs to reach dead status.
+	// RetryBaseDelay=1ms means backoff is ~1-4ms, so retries are fast.
 	require.Eventually(t, func() bool {
 		deadJobs, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 100, Page: 1}, StatusDead)
-
-		// Speed up retries by resetting run_at for failed jobs.
-		failedJobs, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 100, Page: 1}, StatusFailed)
-		now := time.Now()
-		for _, j := range failedJobs {
-			j.RunAt = now
-			_ = den.Update(context.Background(), db, j)
-		}
-
 		return len(deadJobs) == 5
 	}, 10*time.Second, 20*time.Millisecond, "all jobs should reach dead status")
 

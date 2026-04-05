@@ -228,7 +228,7 @@ func TestWorker_Maintenance(t *testing.T) {
 	// Create a stale running job (locked 30 min ago).
 	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
-	claimed, err := repo.Claim(ctx, 1)
+	claimed, err := repo.Claim(ctx, "test-worker", 1)
 	require.NoError(t, err)
 	require.Len(t, claimed, 1)
 	staleJob, err := den.FindByID[Job](ctx, db, job.ID)
@@ -238,8 +238,13 @@ func TestWorker_Maintenance(t *testing.T) {
 	require.NoError(t, den.Update(ctx, db, staleJob))
 
 	// Create a completed job older than 24h.
-	job2, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err = repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
+	claimed2, err := repo.Claim(ctx, "test-worker-2", 1)
+	require.NoError(t, err)
+	require.Len(t, claimed2, 1)
+	job2 := claimed2[0]
+	job2.Attempts = 1
 	require.NoError(t, repo.Complete(ctx, job2))
 	completedJob, err := den.FindByID[Job](ctx, db, job2.ID)
 	require.NoError(t, err)
@@ -325,7 +330,7 @@ func TestWorker_ProcessJob_Direct(t *testing.T) {
 
 			_, err := repo.Enqueue(context.Background(), tt.typeName, `{}`, tt.maxRetries, time.Now())
 			require.NoError(t, err)
-			claimed, err := repo.Claim(context.Background(), 1)
+			claimed, err := repo.Claim(context.Background(), w.id, 1)
 			require.NoError(t, err)
 			require.Len(t, claimed, 1)
 
@@ -350,7 +355,7 @@ func TestWorker_ProcessJob_Direct(t *testing.T) {
 
 		_, err := repo.Enqueue(context.Background(), "unknown", `{}`, 3, time.Now())
 		require.NoError(t, err)
-		claimed, err := repo.Claim(context.Background(), 1)
+		claimed, err := repo.Claim(context.Background(), w.id, 1)
 		require.NoError(t, err)
 		require.Len(t, claimed, 1)
 

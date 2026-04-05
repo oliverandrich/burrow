@@ -46,8 +46,9 @@ func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxR
 // Claim atomically claims up to limit pending or failed jobs that are ready to run.
 // Each job is claimed individually via FindOneAndUpdate for atomic safety —
 // the find and status update happen in a single transaction, preventing
-// two workers from claiming the same job.
-func (r *Repository) Claim(ctx context.Context, limit int) ([]*Job, error) {
+// two workers from claiming the same job. The workerID is stamped on each
+// claimed job so that Complete and Fail can verify ownership.
+func (r *Repository) Claim(ctx context.Context, workerID string, limit int) ([]*Job, error) {
 	var claimed []*Job
 	now := time.Now()
 	nowStr := now.Format(time.RFC3339Nano)
@@ -57,9 +58,11 @@ func (r *Repository) Claim(ctx context.Context, limit int) ([]*Job, error) {
 			den.SetFields{
 				"status":    string(StatusRunning),
 				"locked_at": &now,
+				"worker_id": workerID,
 			},
 			where.Field("status").In(string(StatusPending), string(StatusFailed)),
 			where.Field("run_at").Lte(nowStr),
+			where.Field("worker_id").Eq(""),
 		)
 		if err != nil {
 			if errors.Is(err, den.ErrNotFound) {
@@ -72,12 +75,26 @@ func (r *Repository) Claim(ctx context.Context, limit int) ([]*Job, error) {
 	return claimed, nil
 }
 
-// Complete marks a job as completed.
+// Complete marks a job as completed. The update is guarded by an ownership
+// check: only the worker that claimed the job (matching worker_id and
+// status=running) can complete it. Returns ErrStaleJob if ownership has changed.
 func (r *Repository) Complete(ctx context.Context, job *Job) error {
 	now := time.Now()
-	job.Status = StatusCompleted
-	job.CompletedAt = &now
-	if err := den.Update(ctx, r.db, job); err != nil {
+	_, err := den.FindOneAndUpdate[Job](ctx, r.db,
+		den.SetFields{
+			"status":       string(StatusCompleted),
+			"completed_at": &now,
+			"attempts":     job.Attempts,
+			"worker_id":    "",
+		},
+		where.Field("_id").Eq(job.ID),
+		where.Field("status").Eq(string(StatusRunning)),
+		where.Field("worker_id").Eq(job.WorkerID),
+	)
+	if errors.Is(err, den.ErrNotFound) {
+		return ErrStaleJob
+	}
+	if err != nil {
 		return fmt.Errorf("complete job %s: %w", job.ID, err)
 	}
 	return nil
@@ -85,23 +102,35 @@ func (r *Repository) Complete(ctx context.Context, job *Job) error {
 
 // Fail records a job failure. If attempts < maxRetries, the job is re-queued
 // with exponential backoff (baseDelay * 2^(attempts-1)). Otherwise it is marked dead.
+// The update is guarded by an ownership check matching worker_id and status=running.
+// Returns ErrStaleJob if ownership has changed.
 func (r *Repository) Fail(ctx context.Context, job *Job, errMsg string, baseDelay time.Duration) error {
 	now := time.Now()
+	fields := den.SetFields{
+		"last_error": errMsg,
+		"locked_at":  nil,
+		"worker_id":  "",
+		"attempts":   job.Attempts,
+	}
 
 	if job.Attempts < job.MaxRetries {
 		backoff := baseDelay * time.Duration(math.Pow(2, float64(job.Attempts-1)))
-		job.Status = StatusFailed
-		job.LastError = errMsg
-		job.RunAt = now.Add(backoff)
-		job.LockedAt = nil
+		fields["status"] = string(StatusFailed)
+		fields["run_at"] = now.Add(backoff)
 	} else {
-		job.Status = StatusDead
-		job.LastError = errMsg
-		job.FailedAt = &now
-		job.LockedAt = nil
+		fields["status"] = string(StatusDead)
+		fields["failed_at"] = &now
 	}
 
-	if err := den.Update(ctx, r.db, job); err != nil {
+	_, err := den.FindOneAndUpdate[Job](ctx, r.db, fields,
+		where.Field("_id").Eq(job.ID),
+		where.Field("status").Eq(string(StatusRunning)),
+		where.Field("worker_id").Eq(job.WorkerID),
+	)
+	if errors.Is(err, den.ErrNotFound) {
+		return ErrStaleJob
+	}
+	if err != nil {
 		return fmt.Errorf("fail job %s: %w", job.ID, err)
 	}
 	return nil
@@ -158,6 +187,7 @@ func (r *Repository) Retry(ctx context.Context, id string) error {
 			"failed_at":  nil,
 			"locked_at":  nil,
 			"run_at":     now,
+			"worker_id":  "",
 		},
 		where.Field("_id").Eq(id),
 		where.Field("status").In(string(StatusFailed), string(StatusDead)),
@@ -183,6 +213,7 @@ func (r *Repository) Cancel(ctx context.Context, id string) error {
 			"status":    string(StatusDead),
 			"failed_at": &now,
 			"locked_at": nil,
+			"worker_id": "",
 		},
 		where.Field("_id").Eq(id),
 		where.Field("status").In(string(StatusPending), string(StatusRunning), string(StatusFailed)),
@@ -216,6 +247,7 @@ func (r *Repository) RescueStale(ctx context.Context, staleDuration time.Duratio
 	for _, job := range stale {
 		job.Status = StatusPending
 		job.LockedAt = nil
+		job.WorkerID = ""
 		if err := den.Update(ctx, r.db, job); err != nil {
 			return count, fmt.Errorf("rescue stale job %s: %w", job.ID, err)
 		}

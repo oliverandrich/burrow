@@ -2,11 +2,13 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/den/document"
 )
 
 // WorkerConfig holds configuration for the worker pool.
@@ -31,6 +33,7 @@ func DefaultWorkerConfig() WorkerConfig {
 
 // Worker manages a poller goroutine and a pool of worker goroutines.
 type Worker struct { //nolint:govet // fieldalignment: readability over optimization
+	id           string
 	repo         *Repository
 	handlers     map[string]burrow.JobHandlerFunc
 	config       WorkerConfig
@@ -44,6 +47,7 @@ type Worker struct { //nolint:govet // fieldalignment: readability over optimiza
 // template rendering is not needed (e.g., in tests).
 func NewWorker(repo *Repository, handlers map[string]burrow.JobHandlerFunc, config WorkerConfig, exec burrow.TemplateExecutor) *Worker {
 	return &Worker{
+		id:           document.NewID(),
 		repo:         repo,
 		handlers:     handlers,
 		config:       config,
@@ -95,7 +99,7 @@ func (w *Worker) poll(ctx context.Context) {
 }
 
 func (w *Worker) claimAndDispatch(ctx context.Context) {
-	claimed, err := w.repo.Claim(ctx, w.config.BatchSize)
+	claimed, err := w.repo.Claim(ctx, w.id, w.config.BatchSize)
 	if err != nil {
 		slog.Error("jobs: claim failed", "error", err)
 		return
@@ -130,8 +134,9 @@ func (w *Worker) work() {
 }
 
 func (w *Worker) processJob(job *Job) {
-	// Increment attempts in memory — persisted atomically via Complete or Fail.
+	// Increment attempts and stamp ownership — persisted atomically via Complete or Fail.
 	job.Attempts++
+	job.WorkerID = w.id
 
 	handler, ok := w.handlers[job.Type]
 	if !ok {
@@ -139,6 +144,10 @@ func (w *Worker) processJob(job *Job) {
 		// Force dead immediately — unknown types should never retry.
 		job.Attempts = job.MaxRetries
 		if err := w.repo.Fail(context.Background(), job, "unknown job type: "+job.Type, w.config.RetryBaseDelay); err != nil {
+			if errors.Is(err, ErrStaleJob) {
+				slog.Warn("jobs: job was reclaimed by another worker", "id", job.ID)
+				return
+			}
 			slog.Error("jobs: fail unknown job", "error", err, "id", job.ID)
 		}
 		return
@@ -155,12 +164,20 @@ func (w *Worker) processJob(job *Job) {
 	if err != nil {
 		slog.Error("jobs: handler failed", "type", job.Type, "id", job.ID, "error", err, "attempt", job.Attempts)
 		if failErr := w.repo.Fail(context.Background(), job, err.Error(), w.config.RetryBaseDelay); failErr != nil {
+			if errors.Is(failErr, ErrStaleJob) {
+				slog.Warn("jobs: job was reclaimed by another worker", "id", job.ID)
+				return
+			}
 			slog.Error("jobs: record failure", "error", failErr, "id", job.ID)
 		}
 		return
 	}
 
 	if err := w.repo.Complete(context.Background(), job); err != nil {
+		if errors.Is(err, ErrStaleJob) {
+			slog.Warn("jobs: job was reclaimed by another worker", "id", job.ID)
+			return
+		}
 		slog.Error("jobs: complete failed", "error", err, "id", job.ID)
 	}
 }

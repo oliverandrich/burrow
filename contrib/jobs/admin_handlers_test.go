@@ -20,8 +20,12 @@ func TestRetryHandler(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
+	claimed, claimErr := repo.Claim(ctx, "test-worker", 1)
+	require.NoError(t, claimErr)
+	require.Len(t, claimed, 1)
+	job := claimed[0]
 	job.Attempts = 3
 	job.MaxRetries = 3
 	require.NoError(t, repo.Fail(ctx, job, "boom", 30*time.Second)) // dead
@@ -95,8 +99,13 @@ func TestCancelHandler_InvalidStatus(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
+	claimed, claimErr := repo.Claim(ctx, "test-worker", 1)
+	require.NoError(t, claimErr)
+	require.Len(t, claimed, 1)
+	job := claimed[0]
+	job.Attempts = 1
 	require.NoError(t, repo.Complete(ctx, job)) // completed
 
 	handler := cancelHandler(repo)
