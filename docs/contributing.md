@@ -87,4 +87,4 @@ Each contrib app follows a standard layout — see the [Creating an App](guide/c
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [European Union Public Licence v1.2 (EUPL-1.2)](license.md).
+By contributing, you agree that your contributions will be licensed under the [MIT License](license.md).

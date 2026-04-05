@@ -212,6 +212,8 @@ Full documentation is available in the [`docs/`](docs/) directory.
 
 ## License
 
-Burrow is licensed under the [European Union Public Licence v1.2 (EUPL-1.2)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12). You can build any kind of software on top of Burrow — commercial, proprietary, or open source — without having to open-source your application code. See the [licensing guide](https://burrow.someonewho.codes/license/) for details on what the EUPL means for you.
+Burrow is licensed under the [MIT License](LICENSE).
+
+The Go Gopher was originally designed by [Renee French](https://reneefrench.blogspot.com/) and is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 Third-party licenses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

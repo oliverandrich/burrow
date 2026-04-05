@@ -4,13 +4,25 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Database layer replaced: Bun → Den** — the entire database layer has been replaced with [Den](https://github.com/oliverandrich/den), an object-document mapper (ODM) for Go. Same API for SQLite and PostgreSQL via URL-based DSN.
+- **All IDs changed from `int64` to `string`** — documents now use ULID-based string IDs via `document.Base`
+- **`Migratable` interface replaced by `HasDocuments`** — apps declare document types instead of providing SQL migration files. Den creates tables and indexes automatically from struct tags.
+- **DSN requires URL scheme** — `--database-dsn sqlite:///app.db` (default) or `--database-dsn postgres://host/db`. Plain file paths no longer accepted.
+- **`--jobs-database` renamed to `--jobs-database-dsn`** — env var `JOBS_DATABASE_DSN`, TOML key `jobs.database_dsn`
+- **SQL migration files removed** — schema is managed automatically from document struct definitions
+- **License changed from EUPL-1.2 to MIT**
+
 ### Added
 
-- **New contrib app: `humanize`** — i18n-aware template functions for human-friendly display of times, numbers, and file sizes, inspired by Django's `django.contrib.humanize`. Provides `naturaltime`, `naturalday`, `intcomma`, `ordinal`, `apnumber`, and `filesizeformat` template functions with English and German translations.
+- **PostgreSQL support** — switch between SQLite and PostgreSQL with a single flag, same code, same API
+- **New contrib app: `humanize`** — i18n-aware template functions for human-friendly display of times, numbers, and file sizes, inspired by Django's `django.contrib.humanize`
 
 ### Changed
 
-- **Handler pattern simplified** — handlers are now methods on `*App` instead of a separate `Handlers` struct. Updated all documentation, tutorial, and example apps to reflect the new recommended pattern.
+- **Handler pattern simplified** — handlers are now methods on `*App` instead of a separate `Handlers` struct
+- **Bun dependency removed** — replaced by `github.com/oliverandrich/den v0.3.0`
 
 ## 0.10.0 — 2026-03-29
 
