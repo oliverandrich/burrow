@@ -211,7 +211,6 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 		"t":               func(key string) string { return key },
 		"csrfToken":       func() string { return "test-token" },
 		"staticURL":       func(name string) string { return "/static/" + name },
-		"itoa":            func(id string) string { return id },
 		"iconTrash":       func(class ...string) template.HTML { return "<svg>trash</svg>" },
 		"iconPlusLg":      func(class ...string) template.HTML { return "<svg>plus</svg>" },
 		"iconPencil":      func(class ...string) template.HTML { return "<svg>pencil</svg>" },

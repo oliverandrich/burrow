@@ -19,15 +19,6 @@ func TestBaseFuncMap(t *testing.T) {
 	assert.Contains(t, fm, "safeHTML")
 	assert.Contains(t, fm, "safeURL")
 	assert.Contains(t, fm, "safeAttr")
-	assert.Contains(t, fm, "itoa")
-}
-
-func TestBaseFuncMapItoa(t *testing.T) {
-	fm := baseFuncMap()
-	fn := fm["itoa"].(func(int64) string)
-	assert.Equal(t, "42", fn(42))
-	assert.Equal(t, "0", fn(0))
-	assert.Equal(t, "-1", fn(-1))
 }
 
 func TestBaseFuncMapSafeHTML(t *testing.T) {

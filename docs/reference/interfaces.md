@@ -217,7 +217,7 @@ func (a *App) FuncMap() template.FuncMap {
 
 !!! warning "Reserved function names"
     The following names are already registered by the framework and contrib apps:
-    `safeHTML`, `safeURL`, `safeAttr`, `itoa`, `lang`, `navItems`, `navLinks`, `staticURL`, `csrfToken`, `t`, `tData`, `tPlural`, `currentUser`, `isAuthenticated`, `add`, `sub`, `pageURL`, `pageNumbers`, plus any `icon*` names registered via `cfg.RegisterIconFunc()`.
+    `safeHTML`, `safeURL`, `safeAttr`, `lang`, `navItems`, `navLinks`, `staticURL`, `csrfToken`, `t`, `tData`, `tPlural`, `currentUser`, `isAuthenticated`, `add`, `sub`, `pageURL`, `pageNumbers`, plus any `icon*` names registered via `cfg.RegisterIconFunc()`.
     Do not use these names in your own `FuncMap` — the server will panic at startup.
 
 ### HasRequestFuncMap

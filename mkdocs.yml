@@ -1,5 +1,5 @@
 site_name: Burrow
-site_description: A modular Go web framework built on Chi, Bun/SQLite, and html/template
+site_description: A modular Go web framework built on Chi, Den, and html/template
 site_url: https://burrow.someonewho.codes/
 repo_url: https://github.com/oliverandrich/burrow
 repo_name: oliverandrich/burrow

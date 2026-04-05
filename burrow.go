@@ -111,7 +111,7 @@
 // # Pagination
 //
 // [ParsePageRequest] extracts limit and page from the query string.
-// Use [ApplyOffset] + [OffsetResult] for offset-based pagination.
+// Use QuerySet.Limit().Skip() + [OffsetResult] for offset-based pagination.
 // [PageResponse] wraps items and pagination metadata for JSON APIs.
 //
 // # Contrib Apps

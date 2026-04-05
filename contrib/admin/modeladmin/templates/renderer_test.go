@@ -18,7 +18,7 @@ import (
 )
 
 type testItem struct { //nolint:govet // fieldalignment: test struct
-	ID   int64  `bun:",pk,autoincrement"`
+	ID   string
 	Name string `form:"name"`
 }
 
@@ -61,8 +61,8 @@ func TestRenderContent_SkipsLayoutForHTMX(t *testing.T) {
 func TestDefaultRenderer_List(t *testing.T) {
 	r := DefaultRenderer[testItem]()
 	items := []testItem{
-		{ID: 1, Name: "Alpha"},
-		{ID: 2, Name: "Beta"},
+		{ID: "1", Name: "Alpha"},
+		{ID: "2", Name: "Beta"},
 	}
 	page := burrow.PageResult{Page: 1, TotalCount: 2, TotalPages: 1}
 	cfg := modeladmin.RenderConfig{
@@ -87,7 +87,7 @@ func TestDefaultRenderer_List(t *testing.T) {
 
 func TestDefaultRenderer_List_WithRowActions(t *testing.T) {
 	r := DefaultRenderer[testItem]()
-	items := []testItem{{ID: 1, Name: "Alpha"}}
+	items := []testItem{{ID: "1", Name: "Alpha"}}
 	page := burrow.PageResult{Page: 1, TotalCount: 1, TotalPages: 1}
 	cfg := modeladmin.RenderConfig{
 		Slug:              "items",
@@ -121,7 +121,7 @@ func TestDefaultRenderer_List_WithRowActions(t *testing.T) {
 
 func TestDefaultRenderer_List_WithFilters(t *testing.T) {
 	r := DefaultRenderer[testItem]()
-	items := []testItem{{ID: 1, Name: "Alpha"}}
+	items := []testItem{{ID: "1", Name: "Alpha"}}
 	page := burrow.PageResult{Page: 1, TotalCount: 1, TotalPages: 1}
 	cfg := modeladmin.RenderConfig{
 		Slug:              "items",
@@ -158,7 +158,7 @@ func TestDefaultRenderer_List_WithFilters(t *testing.T) {
 
 func TestDefaultRenderer_List_WithMessages(t *testing.T) {
 	r := DefaultRenderer[testItem]()
-	items := []testItem{{ID: 1, Name: "Alpha"}}
+	items := []testItem{{ID: "1", Name: "Alpha"}}
 	page := burrow.PageResult{Page: 1, TotalCount: 1, TotalPages: 1}
 	cfg := modeladmin.RenderConfig{
 		Slug:              "items",
@@ -188,7 +188,7 @@ func TestDefaultRenderer_List_WithMessages(t *testing.T) {
 
 func TestDefaultRenderer_Detail(t *testing.T) {
 	r := DefaultRenderer[testItem]()
-	item := &testItem{ID: 1, Name: "Alpha"}
+	item := &testItem{ID: "1", Name: "Alpha"}
 	cfg := modeladmin.RenderConfig{
 		Slug:        "items",
 		DisplayName: "Item", DisplayPluralName: "Items",
@@ -231,7 +231,7 @@ func TestDefaultRenderer_Form_Create(t *testing.T) {
 
 func TestDefaultRenderer_Form_Edit(t *testing.T) {
 	r := DefaultRenderer[testItem]()
-	item := &testItem{ID: 42, Name: "Existing"}
+	item := &testItem{ID: "42", Name: "Existing"}
 	fields := forms.FromModel(item, forms.WithExclude[testItem]("ID")).Fields()
 	cfg := modeladmin.RenderConfig{
 		Slug:              "items",

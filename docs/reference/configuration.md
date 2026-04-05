@@ -19,7 +19,7 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 
 | Flag | Env Var | TOML Key | Default | Description |
 |------|---------|----------|---------|-------------|
-| `--database-dsn` | `DATABASE_DSN` | `database.dsn` | `app.db` | Database DSN |
+| `--database-dsn` | `DATABASE_DSN` | `database.dsn` | `sqlite:///app.db` | Database DSN |
 
 ### TLS
 
@@ -127,7 +127,7 @@ max_body_size = 2
 pid_file = "/run/myapp/server.pid"
 
 [database]
-dsn = "./data/production.db"
+dsn = "sqlite:///data/production.db"
 
 [tls]
 mode = "acme"

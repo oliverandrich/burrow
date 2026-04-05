@@ -87,13 +87,13 @@ Override defaults with CLI flags, environment variables, or a TOML config file:
 === "CLI Flags"
 
     ```bash
-    go run main.go --port 3000 --database-dsn ./myapp.db
+    go run main.go --port 3000 --database-dsn sqlite:///myapp.db
     ```
 
 === "Environment Variables"
 
     ```bash
-    PORT=3000 DATABASE_DSN=./myapp.db go run main.go
+    PORT=3000 DATABASE_DSN=sqlite:///myapp.db go run main.go
     ```
 
 See [Configuration](../guide/configuration.md) for the full reference.

@@ -32,7 +32,6 @@ func rendererTestExecutor() burrow.TemplateExecutor {
 		"currentUser":     func() *User { return nil },
 		"isAuthenticated": func() bool { return false },
 		"lang":            func() string { return "en" },
-		"itoa":            func(id int64) string { return template.HTMLEscapeString(fmt.Sprintf("%d", id)) },
 		"credName":        credName,
 		"deref": func(s *string) string {
 			if s != nil {
@@ -261,7 +260,6 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 		"currentUser":     func() *User { return nil },
 		"isAuthenticated": func() bool { return false },
 		"lang":            func() string { return "en" },
-		"itoa":            func(id int64) string { return fmt.Sprintf("%d", id) },
 		"credName":        credName,
 		"deref": func(s *string) string {
 			if s != nil {
@@ -368,7 +366,6 @@ func rendererTestExecutorWithLogo(logoHTML template.HTML) burrow.TemplateExecuto
 		"currentUser":     func() *User { return nil },
 		"isAuthenticated": func() bool { return false },
 		"lang":            func() string { return "en" },
-		"itoa":            func(id int64) string { return fmt.Sprintf("%d", id) },
 		"credName":        credName,
 		"deref": func(s *string) string {
 			if s != nil {

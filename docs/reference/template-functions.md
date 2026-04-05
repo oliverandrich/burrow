@@ -16,7 +16,6 @@ Provided by the framework itself. Always available.
 | `safeHTML` | `{{ safeHTML .RawHTML }}` | Mark a string as safe HTML (no escaping) |
 | `safeURL` | `{{ safeURL .Link }}` | Mark a string as safe URL |
 | `safeAttr` | `{{ safeAttr .Attr }}` | Mark a string as safe HTML attribute |
-| `itoa` | `{{ itoa .ID }}` | Convert `int64` to string |
 | `add` | `{{ add .Page 1 }}` | Integer addition |
 | `sub` | `{{ sub .Total 1 }}` | Integer subtraction |
 | `pageURL` | `{{ pageURL .BasePath .RawQuery 3 }}` | Builds a pagination URL preserving existing query parameters |

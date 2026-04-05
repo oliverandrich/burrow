@@ -8,7 +8,6 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -21,7 +20,6 @@ func baseFuncMap() template.FuncMap {
 		"safeHTML": func(s string) template.HTML { return template.HTML(s) },         //nolint:gosec // intentional
 		"safeURL":  func(s string) template.URL { return template.URL(s) },           //nolint:gosec // intentional
 		"safeAttr": func(s string) template.HTMLAttr { return template.HTMLAttr(s) }, //nolint:gosec // intentional
-		"itoa":     func(id int64) string { return strconv.FormatInt(id, 10) },
 		"lang":     func() string { return "en" },
 		"dict": func(pairs ...any) map[string]any {
 			m := make(map[string]any, len(pairs)/2)

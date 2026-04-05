@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // HandlerFunc is an HTTP handler that returns an error.
@@ -111,28 +108,6 @@ func HTML(w http.ResponseWriter, code int, s string) error {
 	w.WriteHeader(code)
 	_, err := w.Write([]byte(s))
 	return err
-}
-
-// URLParamInt64 parses a chi URL parameter as int64.
-// Returns a 400 HTTPError if the parameter is missing or not a valid integer.
-func URLParamInt64(r *http.Request, name string) (int64, error) {
-	raw := chi.URLParam(r, name)
-	id, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		return 0, NewHTTPError(http.StatusBadRequest, fmt.Sprintf("invalid %s: %q", name, raw))
-	}
-	return id, nil
-}
-
-// MustURLParamInt64 parses a chi URL parameter as int64.
-// It panics if the parameter is missing or not a valid integer —
-// only use with regex-constrained routes like "/{id:[0-9]+}".
-func MustURLParamInt64(r *http.Request, name string) int64 {
-	id, err := URLParamInt64(r, name)
-	if err != nil {
-		panic(fmt.Sprintf("burrow: MustURLParamInt64(%q) failed: %v — is the route using a numeric regex constraint?", name, err))
-	}
-	return id
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB

@@ -10,13 +10,13 @@ The framework uses a three-tier configuration system. Values are resolved in thi
 ## Using CLI Flags
 
 ```bash
-go run main.go --port 3000 --database-dsn ./myapp.db
+go run main.go --port 3000 --database-dsn sqlite:///myapp.db
 ```
 
 ## Using Environment Variables
 
 ```bash
-PORT=3000 DATABASE_DSN=./myapp.db go run main.go
+PORT=3000 DATABASE_DSN=sqlite:///myapp.db go run main.go
 ```
 
 ## Using a TOML Config File
@@ -52,7 +52,7 @@ base_url = "https://myapp.example.com"
 max_body_size = 2
 
 [database]
-dsn = "./data/production.db"
+dsn = "sqlite:///data/production.db"
 
 [tls]
 mode = "acme"

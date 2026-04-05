@@ -60,7 +60,7 @@ files=(
 {
     echo "# Burrow — Full Documentation"
     echo ""
-    echo "> Complete documentation for Burrow, a modular Go web framework. Built on Chi, Bun/SQLite, and html/template."
+    echo "> Complete documentation for Burrow, a modular Go web framework. Built on Chi, Den, and html/template."
     echo ""
 
     for file in "${files[@]}"; do
