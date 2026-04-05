@@ -9,6 +9,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: licenses
+        name: Regenerate THIRD_PARTY_LICENSES.md
+        entry: ./scripts/generate-licenses.sh
+        language: system
+        files: 'go\.(mod|sum)$'
+        pass_filenames: false
+
       - id: sass-theme
         name: Compile Bootstrap Sass theme
         entry: just sass
