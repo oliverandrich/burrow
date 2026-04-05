@@ -4,36 +4,36 @@ import (
 	"context"
 	"testing"
 
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
 
 	"github.com/oliverandrich/burrow"
 )
 
 type testItem struct { //nolint:govet // fieldalignment: test struct
-	bun.BaseModel `bun:"table:items"`
-	ID            int64  `bun:",pk,autoincrement"`
-	Name          string `bun:",notnull" form:"name"`
-	Status        string `bun:",notnull,default:'active'" form:"status"`
+	document.Base
+	Name   string `json:"name" form:"name"`
+	Status string `json:"status" form:"status"`
 }
 
-func setupTestDB(t *testing.T) *bun.DB {
+func setupTestDB(t *testing.T) *den.DB {
 	t.Helper()
 	db := burrow.TestDB(t)
 
-	_, err := db.NewCreateTable().Model((*testItem)(nil)).Exec(context.Background())
+	err := den.Register(context.Background(), db, &testItem{})
 	require.NoError(t, err)
 
 	return db
 }
 
-func seedItems(t *testing.T, db *bun.DB, n int) {
+func seedItems(t *testing.T, db *den.DB, n int) {
 	t.Helper()
 	ctx := context.Background()
 	for i := 1; i <= n; i++ {
 		item := &testItem{Name: "Item " + string(rune('A'-1+i)), Status: "active"}
-		_, err := db.NewInsert().Model(item).Exec(ctx)
+		err := den.Insert(ctx, db, item)
 		require.NoError(t, err)
 	}
 }
@@ -45,11 +45,10 @@ func TestCreateItem(t *testing.T) {
 	item := &testItem{Name: "Test", Status: "active"}
 	err := createItem(ctx, db, item)
 	require.NoError(t, err)
-	assert.NotZero(t, item.ID)
+	assert.NotEmpty(t, item.ID)
 
 	// Verify it was inserted.
-	var loaded testItem
-	err = db.NewSelect().Model(&loaded).Where("id = ?", item.ID).Scan(ctx)
+	loaded, err := den.FindByID[testItem](ctx, db, item.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "Test", loaded.Name)
 }
@@ -59,10 +58,10 @@ func TestGetItem(t *testing.T) {
 	ctx := context.Background()
 
 	item := &testItem{Name: "Fetch Me", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(ctx)
+	err := den.Insert(ctx, db, item)
 	require.NoError(t, err)
 
-	loaded, err := getItem[testItem](ctx, db, "1", nil)
+	loaded, err := getItem[testItem](ctx, db, item.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "Fetch Me", loaded.Name)
 }
@@ -71,7 +70,7 @@ func TestGetItem_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := context.Background()
 
-	_, err := getItem[testItem](ctx, db, "999", nil)
+	_, err := getItem[testItem](ctx, db, "nonexistent")
 	require.Error(t, err)
 }
 
@@ -80,15 +79,14 @@ func TestUpdateItem(t *testing.T) {
 	ctx := context.Background()
 
 	item := &testItem{Name: "Original", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(ctx)
+	err := den.Insert(ctx, db, item)
 	require.NoError(t, err)
 
 	item.Name = "Updated"
 	err = updateItem(ctx, db, item)
 	require.NoError(t, err)
 
-	var loaded testItem
-	err = db.NewSelect().Model(&loaded).Where("id = ?", item.ID).Scan(ctx)
+	loaded, err := den.FindByID[testItem](ctx, db, item.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "Updated", loaded.Name)
 }
@@ -98,16 +96,16 @@ func TestDeleteItem(t *testing.T) {
 	ctx := context.Background()
 
 	item := &testItem{Name: "Delete Me", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(ctx)
+	err := den.Insert(ctx, db, item)
 	require.NoError(t, err)
 
-	err = deleteItem[testItem](ctx, db, "1")
+	err = deleteItem[testItem](ctx, db, item.ID)
 	require.NoError(t, err)
 
 	// Verify it was deleted.
-	count, err := db.NewSelect().Model((*testItem)(nil)).Count(ctx)
+	count, err := den.NewQuery[testItem](ctx, db).Count()
 	require.NoError(t, err)
-	assert.Equal(t, 0, count)
+	assert.Equal(t, int64(0), count)
 }
 
 func TestListItems_Pagination(t *testing.T) {

@@ -2,29 +2,29 @@ package jobs
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"math"
 	"time"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/uptrace/bun"
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/where"
 )
 
 // Sentinel errors for admin operations.
 var (
-	ErrNotFound      = sql.ErrNoRows
+	ErrNotFound      = den.ErrNotFound
 	ErrInvalidStatus = errors.New("invalid job status for this operation")
 )
 
 // Repository provides data access for the jobs queue.
 type Repository struct {
-	db *bun.DB
+	db *den.DB
 }
 
 // NewRepository creates a new jobs Repository.
-func NewRepository(db *bun.DB) *Repository {
+func NewRepository(db *den.DB) *Repository {
 	return &Repository{db: db}
 }
 
@@ -37,196 +37,177 @@ func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxR
 		MaxRetries: maxRetries,
 		RunAt:      runAt,
 	}
-	if _, err := r.db.NewInsert().Model(job).Exec(ctx); err != nil {
+	if err := den.Insert(ctx, r.db, job); err != nil {
 		return nil, fmt.Errorf("enqueue job %q: %w", typeName, err)
 	}
 	return job, nil
 }
 
 // Claim atomically claims up to limit pending or failed jobs that are ready to run.
-// It sets their status to running and locked_at to the current time.
-func (r *Repository) Claim(ctx context.Context, limit int) ([]Job, error) {
+// Each job is claimed individually via FindOneAndUpdate for atomic safety.
+func (r *Repository) Claim(ctx context.Context, limit int) ([]*Job, error) {
+	var claimed []*Job
 	now := time.Now()
-	var jobs []Job
-	if err := r.db.NewRaw(
-		"UPDATE _jobs SET status = ?, locked_at = ?, attempts = attempts + 1, updated_at = ? "+
-			"WHERE id IN (SELECT id FROM _jobs WHERE status IN (?, ?) AND run_at <= ? ORDER BY run_at ASC LIMIT ?) "+
-			"RETURNING *",
-		StatusRunning, now, now,
-		StatusPending, StatusFailed, now, limit,
-	).Scan(ctx, &jobs); err != nil {
-		return nil, fmt.Errorf("claim jobs: %w", err)
+	// Format as RFC3339Nano to match encoding/json's serialization of time.Time,
+	// since SQLite compares the JSON-encoded string against this parameter.
+	nowStr := now.Format(time.RFC3339Nano)
+
+	for range limit {
+		job, err := den.FindOneAndUpdate[Job](ctx, r.db,
+			den.SetFields{
+				"status":    string(StatusRunning),
+				"locked_at": &now,
+			},
+			where.Field("status").In(string(StatusPending), string(StatusFailed)),
+			where.Field("run_at").Lte(nowStr),
+		)
+		if err != nil {
+			if errors.Is(err, den.ErrNotFound) {
+				break // no more eligible jobs
+			}
+			return nil, fmt.Errorf("claim jobs: %w", err)
+		}
+		// Increment attempts — safe because we just claimed this job (status=running)
+		job.Attempts++
+		if err := den.Update(ctx, r.db, job); err != nil {
+			return nil, fmt.Errorf("update attempts for job %s: %w", job.ID, err)
+		}
+		claimed = append(claimed, job)
 	}
-	return jobs, nil
+	return claimed, nil
 }
 
 // Complete marks a job as completed.
-func (r *Repository) Complete(ctx context.Context, jobID int64) error {
+func (r *Repository) Complete(ctx context.Context, jobID string) error {
+	job, err := den.FindByID[Job](ctx, r.db, jobID)
+	if err != nil {
+		return fmt.Errorf("complete job %s: %w", jobID, err)
+	}
 	now := time.Now()
-	if _, err := r.db.NewUpdate().Model((*Job)(nil)).
-		Set("status = ?", StatusCompleted).
-		Set("completed_at = ?", now).
-		Set("updated_at = ?", now).
-		Where("id = ?", jobID).
-		Exec(ctx); err != nil {
-		return fmt.Errorf("complete job %d: %w", jobID, err)
+	job.Status = StatusCompleted
+	job.CompletedAt = &now
+	if err := den.Update(ctx, r.db, job); err != nil {
+		return fmt.Errorf("complete job %s: %w", jobID, err)
 	}
 	return nil
 }
 
 // Fail records a job failure. If attempts < maxRetries, the job is re-queued
 // with exponential backoff (baseDelay * 2^(attempts-1)). Otherwise it is marked dead.
-func (r *Repository) Fail(ctx context.Context, jobID int64, errMsg string, attempts, maxRetries int, baseDelay time.Duration) error {
+func (r *Repository) Fail(ctx context.Context, jobID string, errMsg string, attempts, maxRetries int, baseDelay time.Duration) error {
+	job, err := den.FindByID[Job](ctx, r.db, jobID)
+	if err != nil {
+		return fmt.Errorf("fail job %s: %w", jobID, err)
+	}
 	now := time.Now()
+
 	if attempts < maxRetries {
 		backoff := baseDelay * time.Duration(math.Pow(2, float64(attempts-1)))
-		runAt := now.Add(backoff)
-		if _, err := r.db.NewUpdate().Model((*Job)(nil)).
-			Set("status = ?", StatusFailed).
-			Set("last_error = ?", errMsg).
-			Set("run_at = ?", runAt).
-			Set("locked_at = NULL").
-			Set("updated_at = ?", now).
-			Where("id = ?", jobID).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("fail job %d (retry): %w", jobID, err)
-		}
-		return nil
+		job.Status = StatusFailed
+		job.LastError = errMsg
+		job.RunAt = now.Add(backoff)
+		job.LockedAt = nil
+	} else {
+		job.Status = StatusDead
+		job.LastError = errMsg
+		job.FailedAt = &now
+		job.LockedAt = nil
 	}
 
-	if _, err := r.db.NewUpdate().Model((*Job)(nil)).
-		Set("status = ?", StatusDead).
-		Set("last_error = ?", errMsg).
-		Set("failed_at = ?", now).
-		Set("locked_at = NULL").
-		Set("updated_at = ?", now).
-		Where("id = ?", jobID).
-		Exec(ctx); err != nil {
-		return fmt.Errorf("fail job %d (dead): %w", jobID, err)
+	if err := den.Update(ctx, r.db, job); err != nil {
+		return fmt.Errorf("fail job %s: %w", jobID, err)
 	}
 	return nil
 }
 
 // DeleteCompleted removes completed jobs older than the given duration.
 func (r *Repository) DeleteCompleted(ctx context.Context, olderThan time.Duration) (int64, error) {
-	cutoff := time.Now().Add(-olderThan)
-	res, err := r.db.NewDelete().Model((*Job)(nil)).
-		Where("status = ? AND completed_at < ?", StatusCompleted, cutoff).
-		Exec(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("delete completed jobs: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	return n, nil
+	cutoffStr := time.Now().Add(-olderThan).Format(time.RFC3339Nano)
+	return den.DeleteMany[Job](ctx, r.db, []where.Condition{
+		where.Field("status").Eq(string(StatusCompleted)),
+		where.Field("completed_at").Lt(cutoffStr),
+	})
 }
 
 // GetByID returns a single job by ID.
-func (r *Repository) GetByID(ctx context.Context, id int64) (*Job, error) {
-	job := new(Job)
-	if err := r.db.NewSelect().Model(job).Where("id = ?", id).Scan(ctx); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, fmt.Errorf("get job %d: %w", id, err)
-	}
-	return job, nil
+func (r *Repository) GetByID(ctx context.Context, id string) (*Job, error) {
+	return den.FindByID[Job](ctx, r.db, id)
 }
 
 // ListPaged returns a paginated list of jobs, optionally filtered by status.
-// Results are ordered by created_at DESC, id DESC.
-func (r *Repository) ListPaged(ctx context.Context, pr burrow.PageRequest, status JobStatus) ([]Job, burrow.PageResult, error) {
-	q := r.db.NewSelect().Model((*Job)(nil))
+// Results are ordered by created_at DESC.
+func (r *Repository) ListPaged(ctx context.Context, pr burrow.PageRequest, status JobStatus) ([]*Job, burrow.PageResult, error) {
+	qs := den.NewQuery[Job](ctx, r.db)
 	if status != "" {
-		q = q.Where("status = ?", status)
+		qs = qs.Where(where.Field("status").Eq(string(status)))
 	}
+	qs = qs.Sort("_created_at", den.Desc).Limit(pr.Limit).Skip(pr.Offset())
 
-	totalCount, err := q.Count(ctx)
+	jobs, count, err := qs.AllWithCount()
 	if err != nil {
-		return nil, burrow.PageResult{}, fmt.Errorf("count jobs: %w", err)
-	}
-
-	var jobs []Job
-	q = r.db.NewSelect().Model(&jobs).
-		OrderExpr("created_at DESC, id DESC")
-	if status != "" {
-		q = q.Where("status = ?", status)
-	}
-	q = burrow.ApplyOffset(q, pr)
-
-	if err := q.Scan(ctx); err != nil {
 		return nil, burrow.PageResult{}, fmt.Errorf("list jobs: %w", err)
 	}
 
-	return jobs, burrow.OffsetResult(pr, totalCount), nil
+	return jobs, burrow.OffsetResult(pr, int(count)), nil
 }
 
 // Delete deletes a job by ID (any status).
-func (r *Repository) Delete(ctx context.Context, id int64) error {
-	res, err := r.db.NewDelete().Model((*Job)(nil)).
-		Where("id = ?", id).
-		Exec(ctx)
+func (r *Repository) Delete(ctx context.Context, id string) error {
+	job, err := den.FindByID[Job](ctx, r.db, id)
 	if err != nil {
-		return fmt.Errorf("delete job %d: %w", id, err)
+		return err
 	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return den.Delete(ctx, r.db, job)
 }
 
 // Retry resets a dead or failed job back to pending for re-processing.
-// The status check is part of the UPDATE WHERE clause to prevent a TOCTOU
-// race where a concurrent worker could claim the job between read and write.
-func (r *Repository) Retry(ctx context.Context, id int64) error {
+func (r *Repository) Retry(ctx context.Context, id string) error {
 	now := time.Now()
-	res, err := r.db.NewUpdate().Model((*Job)(nil)).
-		Set("status = ?", StatusPending).
-		Set("attempts = 0").
-		Set("last_error = ''").
-		Set("failed_at = NULL").
-		Set("locked_at = NULL").
-		Set("run_at = ?", now).
-		Set("updated_at = ?", now).
-		Where("id = ?", id).
-		Where("status IN (?, ?)", StatusFailed, StatusDead).
-		Exec(ctx)
+	_, err := den.FindOneAndUpdate[Job](ctx, r.db,
+		den.SetFields{
+			"status":     string(StatusPending),
+			"attempts":   0,
+			"last_error": "",
+			"failed_at":  nil,
+			"locked_at":  nil,
+			"run_at":     now,
+		},
+		where.Field("_id").Eq(id),
+		where.Field("status").In(string(StatusFailed), string(StatusDead)),
+	)
 	if err != nil {
-		return fmt.Errorf("retry job %d: %w", id, err)
-	}
-	rows, _ := res.RowsAffected()
-	if rows == 0 {
-		// Either the job doesn't exist or is not in a retryable status.
-		if _, err := r.GetByID(ctx, id); err != nil {
-			return err
+		if errors.Is(err, den.ErrNotFound) {
+			// Either doesn't exist or wrong status
+			if _, getErr := r.GetByID(ctx, id); getErr != nil {
+				return getErr
+			}
+			return ErrInvalidStatus
 		}
-		return ErrInvalidStatus
+		return fmt.Errorf("retry job %s: %w", id, err)
 	}
 	return nil
 }
 
 // Cancel marks a pending, running, or failed job as dead.
-// The status check is part of the UPDATE WHERE clause to prevent a TOCTOU
-// race where a concurrent worker could change the job status between read and write.
-func (r *Repository) Cancel(ctx context.Context, id int64) error {
+func (r *Repository) Cancel(ctx context.Context, id string) error {
 	now := time.Now()
-	res, err := r.db.NewUpdate().Model((*Job)(nil)).
-		Set("status = ?", StatusDead).
-		Set("failed_at = ?", now).
-		Set("locked_at = NULL").
-		Set("updated_at = ?", now).
-		Where("id = ?", id).
-		Where("status IN (?, ?, ?)", StatusPending, StatusRunning, StatusFailed).
-		Exec(ctx)
+	_, err := den.FindOneAndUpdate[Job](ctx, r.db,
+		den.SetFields{
+			"status":    string(StatusDead),
+			"failed_at": &now,
+			"locked_at": nil,
+		},
+		where.Field("_id").Eq(id),
+		where.Field("status").In(string(StatusPending), string(StatusRunning), string(StatusFailed)),
+	)
 	if err != nil {
-		return fmt.Errorf("cancel job %d: %w", id, err)
-	}
-	rows, _ := res.RowsAffected()
-	if rows == 0 {
-		if _, err := r.GetByID(ctx, id); err != nil {
-			return err
+		if errors.Is(err, den.ErrNotFound) {
+			if _, getErr := r.GetByID(ctx, id); getErr != nil {
+				return getErr
+			}
+			return ErrInvalidStatus
 		}
-		return ErrInvalidStatus
+		return fmt.Errorf("cancel job %s: %w", id, err)
 	}
 	return nil
 }
@@ -234,17 +215,24 @@ func (r *Repository) Cancel(ctx context.Context, id int64) error {
 // RescueStale resets running jobs that have been locked longer than the
 // given duration back to pending status.
 func (r *Repository) RescueStale(ctx context.Context, staleDuration time.Duration) (int64, error) {
-	cutoff := time.Now().Add(-staleDuration)
-	now := time.Now()
-	res, err := r.db.NewUpdate().Model((*Job)(nil)).
-		Set("status = ?", StatusPending).
-		Set("locked_at = NULL").
-		Set("updated_at = ?", now).
-		Where("status = ? AND locked_at < ?", StatusRunning, cutoff).
-		Exec(ctx)
+	cutoffStr := time.Now().Add(-staleDuration).Format(time.RFC3339Nano)
+
+	stale, err := den.NewQuery[Job](ctx, r.db,
+		where.Field("status").Eq(string(StatusRunning)),
+		where.Field("locked_at").Lt(cutoffStr),
+	).All()
 	if err != nil {
 		return 0, fmt.Errorf("rescue stale jobs: %w", err)
 	}
-	n, _ := res.RowsAffected()
-	return n, nil
+
+	var count int64
+	for _, job := range stale {
+		job.Status = StatusPending
+		job.LockedAt = nil
+		if err := den.Update(ctx, r.db, job); err != nil {
+			return count, fmt.Errorf("rescue stale job %s: %w", job.ID, err)
+		}
+		count++
+	}
+	return count, nil
 }

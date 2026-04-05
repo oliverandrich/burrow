@@ -2,7 +2,6 @@ package modeladmin
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,11 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
 func TestBulkAction_ToRenderBulkAction(t *testing.T) {
@@ -42,55 +39,55 @@ func TestBulkAction_ToRenderBulkAction_ConfirmPage(t *testing.T) {
 }
 
 func TestDeleteBulkAction_Handler(t *testing.T) {
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { db.Close() })
-
+	db, _, _ := setupHandlerTest(t)
 	ctx := context.Background()
-	_, err = db.NewCreateTable().Model((*testItem)(nil)).Exec(ctx)
-	require.NoError(t, err)
 
 	// Seed 3 items.
+	var itemIDs []string
 	for i := 1; i <= 3; i++ {
 		item := &testItem{Name: fmt.Sprintf("Item %d", i), Status: "active"}
-		_, err = db.NewInsert().Model(item).Exec(ctx)
+		err := den.Insert(ctx, db, item)
 		require.NoError(t, err)
+		itemIDs = append(itemIDs, item.ID)
 	}
 
 	action := DeleteBulkAction[testItem]()
-	err = action.Handler(ctx, db, []string{"1", "2"})
+	err := action.Handler(ctx, db, []string{itemIDs[0], itemIDs[1]})
 	require.NoError(t, err)
 
 	// Only item 3 should remain.
-	count, err := db.NewSelect().Model((*testItem)(nil)).Count(ctx)
+	count, err := den.NewQuery[testItem](ctx, db).Count()
 	require.NoError(t, err)
-	assert.Equal(t, 1, count)
+	assert.Equal(t, int64(1), count)
 
-	var remaining testItem
-	err = db.NewSelect().Model(&remaining).Scan(ctx)
+	remaining, err := den.FindByID[testItem](ctx, db, itemIDs[2])
 	require.NoError(t, err)
 	assert.Equal(t, "Item 3", remaining.Name)
 }
 
 func TestDeleteBulkAction_ConfirmPageViaGET(t *testing.T) {
 	db, renderer, ma := setupHandlerTest(t)
-	// CanDelete=true → DeleteBulkAction (with ConfirmPage) auto-added by Init().
+	// CanDelete=true -> DeleteBulkAction (with ConfirmPage) auto-added by Init().
 	seedItems(t, db, 3)
+
+	// Get the first two item IDs.
+	items, err := den.NewQuery[testItem](context.Background(), db).All()
+	require.NoError(t, err)
 
 	r := newRouter(ma)
 
 	// ConfirmPage actions navigate to the GET confirm page (client-side JS).
 	// Verify the GET route renders the confirm page correctly.
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/bulk/delete?_selected=1&_selected=2", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		fmt.Sprintf("/items/bulk/delete?_selected=%s&_selected=%s", items[0].ID, items[1].ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, renderer.confirmDeleteCalled)
 	require.Len(t, renderer.lastDeleteItems, 2)
-	assert.Equal(t, "1", renderer.lastDeleteItems[0].ID)
-	assert.Equal(t, "2", renderer.lastDeleteItems[1].ID)
+	assert.Equal(t, items[0].ID, renderer.lastDeleteItems[0].ID)
+	assert.Equal(t, items[1].ID, renderer.lastDeleteItems[1].ID)
 }
 
 func TestHandleBulkAction_PreservesPage(t *testing.T) {
@@ -102,7 +99,7 @@ func TestHandleBulkAction_PreservesPage(t *testing.T) {
 	r := newRouter(ma)
 
 	form := url.Values{
-		"_selected": {"1", "2"},
+		"_selected": {"someID1", "someID2"},
 		"_page":     {"3"},
 	}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/archive", strings.NewReader(form.Encode()))
@@ -124,7 +121,7 @@ func TestHandleBulkAction_PreservesPage_HXCurrentURLFallback(t *testing.T) {
 
 	// No _page form param, falls back to HX-Current-URL.
 	form := url.Values{
-		"_selected": {"1", "2"},
+		"_selected": {"someID1", "someID2"},
 	}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/archive", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -146,7 +143,7 @@ func TestHandleBulkAction_PreservesPage_RefererFallback(t *testing.T) {
 
 	// No _page, no HX-Current-URL, falls back to Referer.
 	form := url.Values{
-		"_selected": {"1", "2"},
+		"_selected": {"someID1", "someID2"},
 	}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/archive", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -162,13 +159,19 @@ func TestHandleBulkAction_ClampsToLastPage(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
 	ma.PageSize = 3
 	ma.BulkActions = []BulkAction{bulkDeleteNowAction()}
-	seedItems(t, db(t, ma), 10) // pages: 1,2,3,4 (last page has 1 item)
+	maDB := db(t, ma)
+	seedItems(t, maDB, 10) // pages: 1,2,3,4 (last page has 1 item)
+
+	// Get the last item to delete.
+	items, err := den.NewQuery[testItem](context.Background(), maDB).All()
+	require.NoError(t, err)
+	lastItemID := items[len(items)-1].ID
 
 	r := newRouter(ma)
 
-	// Delete the single item on page 4 (item ID 10).
+	// Delete the single item on page 4 (last item).
 	form := url.Values{
-		"_selected": {"10"},
+		"_selected": {lastItemID},
 		"_page":     {"4"},
 	}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete-now", strings.NewReader(form.Encode()))
@@ -185,7 +188,7 @@ func bulkArchiveAction() BulkAction {
 	return BulkAction{
 		Slug:  "archive",
 		Label: "Archive",
-		Handler: func(_ context.Context, _ *bun.DB, _ []string) error {
+		Handler: func(_ context.Context, _ *den.DB, _ []string) error {
 			return nil
 		},
 	}
@@ -196,21 +199,29 @@ func bulkDeleteNowAction() BulkAction {
 	return BulkAction{
 		Slug:  "delete-now",
 		Label: "Delete Now",
-		Handler: func(ctx context.Context, db *bun.DB, ids []string) error {
-			_, err := db.NewDelete().Model((*testItem)(nil)).Where("id IN (?)", bun.List(ids)).Exec(ctx)
-			return err
+		Handler: func(ctx context.Context, db *den.DB, ids []string) error {
+			for _, id := range ids {
+				item, err := den.FindByID[testItem](ctx, db, id)
+				if err != nil {
+					continue
+				}
+				if err := den.Delete(ctx, db, item); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	}
 }
 
 func TestHandleBulkAction_UnknownAction(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
-	// CanDelete=true → DeleteBulkAction auto-added by Init().
+	// CanDelete=true -> DeleteBulkAction auto-added by Init().
 
 	r := newRouter(ma)
 
 	form := url.Values{
-		"_selected": {"1"},
+		"_selected": {"someID"},
 	}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/nonexistent", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -222,7 +233,7 @@ func TestHandleBulkAction_UnknownAction(t *testing.T) {
 
 func TestHandleBulkAction_NoItemsSelected(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
-	// CanDelete=true → DeleteBulkAction auto-added by Init().
+	// CanDelete=true -> DeleteBulkAction auto-added by Init().
 
 	r := newRouter(ma)
 
@@ -243,14 +254,14 @@ func TestHandleBulkAction_NoBulkActions(t *testing.T) {
 	r := newRouter(ma)
 
 	form := url.Values{
-		"_selected": {"1"},
+		"_selected": {"someID"},
 	}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	// No /bulk/{action} route registered → chi returns 404.
+	// No /bulk/{action} route registered -> chi returns 404.
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
@@ -326,7 +337,7 @@ func TestInit_NoAutoDeleteWhenCustomDeleteExists(t *testing.T) {
 
 // db is a helper that returns the DB from the ModelAdmin (used in tests that
 // already have a seeded DB via setupHandlerTest but need it for assertions).
-func db(t *testing.T, ma *ModelAdmin[testItem]) *bun.DB {
+func db(t *testing.T, ma *ModelAdmin[testItem]) *den.DB {
 	t.Helper()
 	return ma.DB
 }

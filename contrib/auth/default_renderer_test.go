@@ -103,9 +103,9 @@ func TestDefaultRendererRegisterPageEmailMode(t *testing.T) {
 
 func TestDefaultRendererCredentialsPage(t *testing.T) {
 	r := DefaultRenderer()
-	creds := []Credential{
-		{ID: 1, Name: "My Passkey"},
-	}
+	cred := Credential{Name: "My Passkey"}
+	cred.ID = "cred-1"
+	creds := []Credential{cred}
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/credentials", nil))
 	rec := httptest.NewRecorder()
 

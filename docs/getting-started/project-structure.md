@@ -27,11 +27,9 @@ myapp/
 │   │   ├── handlers.go       # HTTP handlers
 │   │   ├── models.go         # Domain models
 │   │   ├── repository.go     # Data access layer
-│   │   ├── templates/        # HTML template files
-│   │   │   ├── list.html     # {{ define "notes/list" }}
-│   │   │   └── detail.html   # {{ define "notes/detail" }}
-│   │   └── migrations/
-│   │       └── 001_create_notes.up.sql
+│   │   └── templates/        # HTML template files
+│   │       ├── list.html     # {{ define "notes/list" }}
+│   │       └── detail.html   # {{ define "notes/detail" }}
 │   └── pages/                # Small app (single file is fine)
 │       └── app.go
 ├── templates/                # Shared layout templates
@@ -46,13 +44,13 @@ myapp/
 
 ## Key Conventions
 
-**Apps live in `internal/`** — each app is a self-contained package with its own model, repository, handlers, and migrations.
+**Apps live in `internal/`** — each app is a self-contained package with its own documents, repository, handlers, and templates.
 
 **One file per app is fine** — for small apps, put everything in `app.go`. Larger apps split files by purpose: `context.go`, `handlers.go`, `models.go`, `repository.go`, etc. (see the [notes example](../guide/creating-an-app.md)).
 
 **Templates are `.html` files** — each app embeds its own templates via `//go:embed templates/*.html` and implements `HasTemplates`. Templates use `{{ define "appname/templatename" }}` to namespace them within the global template set.
 
-**Migrations are embedded** — each app embeds its own SQL files with `//go:embed migrations`. The framework runs them automatically at startup.
+**Schema is automatic** — apps declare their document types via `HasDocuments`. Den creates tables and indexes on startup. No SQL migration files needed.
 
 **Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Set them via `srv.SetLayout()` in `main.go`, or use the [`bootstrap` contrib app](../contrib/bootstrap.md) which provides a ready-made layout.
 

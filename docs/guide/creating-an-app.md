@@ -23,54 +23,49 @@ package notes
 
 import (
     "time"
-    "github.com/uptrace/bun"
+    "github.com/oliverandrich/den/document"
 )
 
 type Note struct {
-    bun.BaseModel `bun:"table:notes,alias:n"`
-
-    ID        int64     `bun:",pk,autoincrement" json:"id"`
-    UserID    int64     `bun:",notnull" json:"user_id"`
-    Title     string    `bun:",notnull" json:"title"`
-    Content   string    `bun:",notnull,default:''" json:"content"`
-    CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
+    document.Base
+    UserID    string    `json:"user_id"`
+    Title     string    `json:"title" den:"index"`
+    Content   string    `json:"content"`
+    CreatedAt time.Time `json:"created_at"`
 }
 ```
 
 Key points:
 
-- `bun.BaseModel` with table name and alias
-- JSON tags control API serialisation
+- `document.Base` provides ULID-based ID, revision, and timestamps
+- `json` tags control serialization, `den` tags add indexes
 
-## Step 2: Write the Migration
+## Step 2: Register Documents
 
-`migrations/001_create_notes.up.sql`:
+Apps declare their document types by implementing `HasDocuments`. Den creates tables and indexes automatically on startup — no SQL migration files needed.
 
-```sql
-CREATE TABLE IF NOT EXISTS notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL DEFAULT '',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes (user_id);
-```
-
-Embed all static assets in `app.go` (we'll use these later):
+In `app.go`:
 
 ```go
-import "embed"
-
-//go:embed migrations
-var migrationFS embed.FS
-
 //go:embed templates/*.html
 var templateFS embed.FS
 
 //go:embed translations
 var translationFS embed.FS
+
+type App struct {
+    repo *Repository
+}
+
+func New() *App { return &App{} }
+
+func (a *App) Name() string { return "notes" }
+
+// Documents tells Burrow which document types this app uses.
+// Tables and indexes are created automatically on startup.
+func (a *App) Documents() []any {
+    return []any{&Note{}}
+}
 ```
 
 ## Step 3: Create the Repository
@@ -79,32 +74,32 @@ var translationFS embed.FS
 
 ```go
 type Repository struct {
-    db *bun.DB
+    db *den.DB
 }
 
-func NewRepository(db *bun.DB) *Repository {
+func NewRepository(db *den.DB) *Repository {
     return &Repository{db: db}
 }
 
 func (r *Repository) Create(ctx context.Context, note *Note) error {
-    _, err := r.db.NewInsert().Model(note).Exec(ctx)
-    return err
+    return den.Insert(ctx, r.db, note)
 }
 
-func (r *Repository) ListByUserID(ctx context.Context, userID int64) ([]Note, error) {
-    var notes []Note
-    err := r.db.NewSelect().Model(&notes).
-        Where("user_id = ?", userID).
-        Order("created_at DESC").
-        Scan(ctx)
-    return notes, err
+func (r *Repository) ListByUserID(ctx context.Context, userID string) ([]Note, error) {
+    return den.NewQuery[Note](ctx, r.db,
+        where.Field("user_id").Eq(userID),
+    ).Sort("created_at", den.Desc).All()
 }
 
-func (r *Repository) Delete(ctx context.Context, noteID, userID int64) error {
-    _, err := r.db.NewDelete().Model((*Note)(nil)).
-        Where("id = ? AND user_id = ?", noteID, userID).
-        Exec(ctx)
-    return err
+func (r *Repository) Delete(ctx context.Context, noteID, userID string) error {
+    note, err := den.NewQuery[Note](ctx, r.db,
+        where.Field("id").Eq(noteID),
+        where.Field("user_id").Eq(userID),
+    ).First()
+    if err != nil {
+        return err
+    }
+    return den.Delete(ctx, r.db, note)
 }
 ```
 
@@ -212,9 +207,8 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     return nil
 }
 
-func (a *App) MigrationFS() fs.FS { // (2)!
-    sub, _ := fs.Sub(migrationFS, "migrations")
-    return sub
+func (a *App) Documents() []any { // (2)!
+    return []any{&Note{}}
 }
 
 func (a *App) TemplateFS() fs.FS { // (3)!
@@ -246,7 +240,7 @@ func (a *App) Routes(r chi.Router) { // (5)!
 ```
 
 1. `HasDependencies` — ensures `auth` is registered before this app
-2. `Migratable` — the framework runs SQL migrations at startup. Uses `fs.Sub()` to strip the `migrations/` prefix from the embedded filesystem.
+2. `HasDocuments` — the framework registers document types and creates collections at startup
 3. `HasTemplates` — contributes `.html` template files to the global template set. Uses `fs.Sub()` to strip the `templates/` prefix.
 4. `HasNavItems` — contributes navigation entries to layouts. Entries with `AuthOnly: true` are only shown to authenticated users — this filtering is handled automatically by the layout.
 5. `HasRoutes` — registers HTTP handlers on the Chi router
@@ -290,7 +284,7 @@ Your app can implement any combination of these interfaces:
 
 | Interface | Method | Purpose |
 |-----------|--------|---------|
-| `Migratable` | `MigrationFS() fs.FS` | Provide SQL migrations |
+| `HasDocuments` | `Documents() []any` | Register document types |
 | `HasRoutes` | `Routes(r chi.Router)` | Register HTTP handlers |
 | `HasMiddleware` | `Middleware() []func(http.Handler) http.Handler` | Add global middleware |
 | `HasNavItems` | `NavItems() []burrow.NavItem` | Contribute navigation entries |

@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"testing/fstest"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -49,13 +50,14 @@ func TestServerFlags(t *testing.T) {
 	assert.True(t, names["flaggy-key"])
 }
 
+// testThing is a document type used in server bootstrap tests.
+type testThing struct {
+	document.Base
+	Label string `json:"label"`
+}
+
 func TestServerBootstrap(t *testing.T) {
-	migFS := fstest.MapFS{
-		"001_create_things.up.sql": &fstest.MapFile{
-			Data: []byte("CREATE TABLE things (id INTEGER PRIMARY KEY);"),
-		},
-	}
-	app := &migratableApp{name: "mig", fs: migFS}
+	app := &docApp{name: "things", docs: []any{&testThing{}}}
 
 	s := NewServer(app)
 	db := TestDB(t)
@@ -63,12 +65,11 @@ func TestServerBootstrap(t *testing.T) {
 	err := s.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
 
-	// Migration was applied.
-	var count int
-	err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ?", "mig").
-		Scan(t.Context(), &count)
+	// Document type was registered — verify by inserting.
+	thing := &testThing{Label: "test"}
+	err = den.Insert(t.Context(), db, thing)
 	require.NoError(t, err)
-	assert.Equal(t, 1, count)
+	assert.NotEmpty(t, thing.ID)
 }
 
 func TestServerBootstrapCreatesAppConfig(t *testing.T) {
@@ -164,7 +165,7 @@ func TestServerRunAction(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(t.Context(), []string{"test", "--database-dsn", ":memory:", "--port", "0"})
+	err := cmd.Run(t.Context(), []string{"test", "--database-dsn", "sqlite://:memory:", "--port", "0"})
 
 	// The server should start and stop cleanly on cancelled context.
 	require.NoError(t, err)

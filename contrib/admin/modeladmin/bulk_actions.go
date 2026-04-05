@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/uptrace/bun"
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/where"
 )
 
 // BulkAction defines a bulk operation on multiple selected items.
@@ -13,7 +14,7 @@ type BulkAction struct { //nolint:govet // fieldalignment: readability over opti
 	Label       string // button text (i18n key)
 	Confirm     string // JS confirm() text (i18n key); empty = no confirm
 	ConfirmPage bool   // if true, redirect to confirm page instead of JS confirm()
-	Handler     func(ctx context.Context, db *bun.DB, ids []string) error
+	Handler     func(ctx context.Context, db *den.DB, ids []string) error
 }
 
 // RenderBulkAction holds bulk-action metadata for template rendering (no handler).
@@ -35,15 +36,21 @@ func (a BulkAction) toRenderBulkAction() RenderBulkAction {
 }
 
 // DeleteBulkAction returns a BulkAction that deletes selected items by ID.
-// It uses ConfirmPage to redirect to the unified confirm-delete page with
-// cascade impact information instead of a JS confirm() dialog.
+// It uses ConfirmPage to redirect to the unified confirm-delete page
+// instead of a JS confirm() dialog.
 func DeleteBulkAction[T any]() BulkAction {
 	return BulkAction{
 		Slug:        "delete",
 		Label:       "modeladmin-bulk-delete",
 		ConfirmPage: true,
-		Handler: func(ctx context.Context, db *bun.DB, ids []string) error {
-			_, err := db.NewDelete().Model((*T)(nil)).Where("id IN (?)", bun.List(ids)).Exec(ctx)
+		Handler: func(ctx context.Context, db *den.DB, ids []string) error {
+			anyIDs := make([]any, len(ids))
+			for i, id := range ids {
+				anyIDs[i] = id
+			}
+			_, err := den.DeleteMany[T](ctx, db, []where.Condition{
+				where.Field("_id").In(anyIDs...),
+			})
 			if err != nil {
 				return fmt.Errorf("bulk delete: %w", err)
 			}

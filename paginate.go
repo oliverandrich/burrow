@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-
-	"github.com/uptrace/bun"
 )
 
 const (
@@ -59,11 +57,6 @@ func ParsePageRequest(r *http.Request) PageRequest {
 		Limit: limit,
 		Page:  page,
 	}
-}
-
-// ApplyOffset applies offset-based pagination to a Bun SelectQuery.
-func ApplyOffset(q *bun.SelectQuery, pr PageRequest) *bun.SelectQuery {
-	return q.Limit(pr.Limit).Offset(pr.Offset())
 }
 
 // OffsetResult builds a PageResult for offset-based pagination.

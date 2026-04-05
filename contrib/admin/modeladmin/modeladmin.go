@@ -1,15 +1,14 @@
 // Package modeladmin provides a generic, Django-style ModelAdmin for
-// auto-generating CRUD admin views from Bun models.
+// auto-generating CRUD admin views from Den documents.
 package modeladmin
 
 import (
 	"context"
 	"html/template"
 	"net/http"
-	"reflect"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/uptrace/bun"
+	"github.com/oliverandrich/den"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/forms"
@@ -21,7 +20,7 @@ type ChoicesFunc func(ctx context.Context) ([]forms.Choice, error)
 
 const defaultPageSize = 20
 
-// ModelAdmin provides generic CRUD admin views for a Bun model.
+// ModelAdmin provides generic CRUD admin views for a Den document.
 // It is not a burrow.App itself — it's a helper that apps embed
 // to delegate admin route handling.
 type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability over optimization
@@ -31,8 +30,8 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	DisplayName string
 	// DisplayPluralName is the plural human-readable name, also used as i18n key, e.g. "Articles".
 	DisplayPluralName string
-	// DB is the Bun database connection.
-	DB *bun.DB
+	// DB is the Den database connection.
+	DB *den.DB
 	// Renderer renders list, detail, and form views.
 	Renderer Renderer[T]
 	// IDFunc extracts the primary key from the request URL.
@@ -46,17 +45,15 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	CanDelete bool
 	// ListFields lists struct field names to show in the list view.
 	ListFields []string
-	// OrderBy is the default ORDER BY clause, e.g. "created_at DESC".
+	// OrderBy is the default sort, e.g. "created_at DESC".
 	OrderBy string
-	// Relations lists Bun .Relation() names to eager-load.
-	Relations []string
-	// PageSize is the number of items per page. Default: 25.
+	// PageSize is the number of items per page. Default: 20.
 	PageSize int
-	// SearchFields lists database column names to full-text search across.
+	// SearchFields lists JSON field names to search across (RegExp-based).
 	SearchFields []string
 	// Filters defines the sidebar filters for the list view.
 	Filters []FilterDef
-	// SortFields lists database column names that support column sorting.
+	// SortFields lists JSON field names that support column sorting.
 	SortFields []string
 	// RowActions defines custom per-row actions for the list/detail views.
 	RowActions []RowAction
@@ -86,14 +83,6 @@ type ModelAdmin[T any] struct { //nolint:govet // fieldalignment: readability ov
 	// Keys are column names (which can also appear in ListFields).
 	// The function receives an item and returns pre-rendered HTML.
 	ListDisplay map[string]func(T) template.HTML
-
-	// ftsTable is the detected FTS5 table name (e.g. "notes_fts").
-	// Set automatically in Routes() if a {tablename}_fts table exists.
-	ftsTable string
-
-	// cascades holds detected ON DELETE CASCADE foreign keys referencing this model's table.
-	// Set automatically in Routes() via detectCascades.
-	cascades []cascadeRef
 }
 
 // idFromRequest returns the ID from the URL, using IDFunc if set.
@@ -242,15 +231,13 @@ func (ma *ModelAdmin[T]) translateRenderConfig(cfg *RenderConfig, r *http.Reques
 	}
 }
 
-// formOptions builds forms.Option[T] from bun tag analysis and FieldChoices.
+// formOptions builds forms.Option[T] from FieldChoices and ReadOnlyFields.
 // Choices are eagerly resolved from FieldChoices using the given context.
 func (ma *ModelAdmin[T]) formOptions(ctx context.Context) ([]forms.Option[T], error) {
 	var opts []forms.Option[T]
 
-	// Exclude autoincrement PKs.
-	if excluded := bunAutoIncrementPKs[T](); len(excluded) > 0 {
-		opts = append(opts, forms.WithExclude[T](excluded...))
-	}
+	// Den uses ULID-based IDs set automatically — exclude ID fields from forms.
+	opts = append(opts, forms.WithExclude[T]("ID"))
 
 	// Mark read-only fields.
 	if len(ma.ReadOnlyFields) > 0 {
@@ -270,25 +257,6 @@ func (ma *ModelAdmin[T]) formOptions(ctx context.Context) ([]forms.Option[T], er
 	opts = append(opts, ma.FormOptions...)
 
 	return opts, nil
-}
-
-// bunAutoIncrementPKs returns field names tagged with bun:",pk,autoincrement".
-func bunAutoIncrementPKs[T any]() []string {
-	t := reflect.TypeFor[T]()
-	if t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	var result []string
-	for sf := range t.Fields() {
-		if !sf.IsExported() || sf.Anonymous {
-			continue
-		}
-		bunTag := sf.Tag.Get("bun")
-		if containsOption(bunTag, "pk") && containsOption(bunTag, "autoincrement") {
-			result = append(result, sf.Name)
-		}
-	}
-	return result
 }
 
 // ColumnValue extracts a display value for a list column from an item.

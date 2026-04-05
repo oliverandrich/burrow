@@ -34,12 +34,14 @@ type PageResult struct {
 
 Best for admin panels, tables, and infinite scroll where users need to jump to specific pages or load the next page.
 
-### Query Helper
+### QuerySet Pagination
 
-`ApplyOffset` adds `LIMIT` and `OFFSET` to a Bun query:
+Use Den's QuerySet API with `Limit` and `Skip` for pagination:
 
 ```go
-func ApplyOffset(q *bun.SelectQuery, pr PageRequest) *bun.SelectQuery
+qs := den.NewQuerySet[Note](db, conditions...).
+    Limit(pr.Limit).
+    Skip(pr.Offset())
 ```
 
 ### Building Results
@@ -54,15 +56,17 @@ pageResult := burrow.OffsetResult(pr, totalCount)
 
 ```go
 func (r *Repository) ListAllPaged(ctx context.Context, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
-    count, err := r.db.NewSelect().Model((*Note)(nil)).Count(ctx)
+    count, err := den.NewQuery[Note](ctx, r.db).Count()
     if err != nil {
         return nil, burrow.PageResult{}, err
     }
 
-    var notes []Note
-    q := r.db.NewSelect().Model(&notes).Order("created_at DESC", "id DESC")
-    q = burrow.ApplyOffset(q, pr)
-    if err := q.Scan(ctx); err != nil {
+    notes, err := den.NewQuery[Note](ctx, r.db).
+        Sort("created_at", den.Desc).
+        Limit(pr.Limit).
+        Skip(pr.Offset()).
+        All()
+    if err != nil {
         return nil, burrow.PageResult{}, err
     }
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,8 +81,12 @@ func TestWorker_RetryOnFailure(t *testing.T) {
 	// Backoff: 2^1=2s, 2^2=4s — too slow for tests. We'll manually reset run_at.
 	require.Eventually(t, func() bool {
 		// Speed up retries by resetting run_at to now for failed jobs awaiting retry.
-		_, _ = db.ExecContext(context.Background(),
-			"UPDATE _jobs SET run_at = datetime('now') WHERE status = 'failed'")
+		failedJobs, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 100, Page: 1}, StatusFailed)
+		now := time.Now()
+		for _, j := range failedJobs {
+			j.RunAt = now
+			_ = den.Update(context.Background(), db, j)
+		}
 		return attempts.Load() >= 3
 	}, 5*time.Second, 20*time.Millisecond)
 
@@ -89,10 +94,10 @@ func TestWorker_RetryOnFailure(t *testing.T) {
 	<-w.Done()
 
 	// Verify the job completed.
-	var job Job
-	err = db.NewSelect().Model(&job).Limit(1).Scan(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, StatusCompleted, job.Status)
+	allJobs, _, listErr := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 1, Page: 1}, "")
+	require.NoError(t, listErr)
+	require.Len(t, allJobs, 1)
+	assert.Equal(t, StatusCompleted, allJobs[0].Status)
 }
 
 func TestWorker_DeadAfterMaxRetries(t *testing.T) {
@@ -116,11 +121,8 @@ func TestWorker_DeadAfterMaxRetries(t *testing.T) {
 	go w.Start(ctx)
 
 	require.Eventually(t, func() bool {
-		var job Job
-		if err := db.NewSelect().Model(&job).Limit(1).Scan(context.Background()); err != nil {
-			return false
-		}
-		return job.Status == StatusDead
+		deadJobs, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 1, Page: 1}, StatusDead)
+		return len(deadJobs) > 0
 	}, 2*time.Second, 10*time.Millisecond)
 
 	cancel()
@@ -143,11 +145,8 @@ func TestWorker_UnknownType(t *testing.T) {
 	go w.Start(ctx)
 
 	require.Eventually(t, func() bool {
-		var job Job
-		if err := db.NewSelect().Model(&job).Limit(1).Scan(context.Background()); err != nil {
-			return false
-		}
-		return job.Status == StatusDead
+		deadJobs, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 1, Page: 1}, StatusDead)
+		return len(deadJobs) > 0
 	}, 2*time.Second, 10*time.Millisecond)
 
 	cancel()
@@ -194,10 +193,10 @@ func TestWorker_GracefulShutdown(t *testing.T) {
 	}
 
 	// Verify the job completed.
-	var job Job
-	err = db.NewSelect().Model(&job).Limit(1).Scan(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, StatusCompleted, job.Status)
+	allJobs, _, listErr := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 1, Page: 1}, "")
+	require.NoError(t, listErr)
+	require.Len(t, allJobs, 1)
+	assert.Equal(t, StatusCompleted, allJobs[0].Status)
 }
 
 func TestDefaultWorkerConfig(t *testing.T) {
@@ -236,19 +235,21 @@ func TestWorker_Maintenance(t *testing.T) {
 	claimed, err := repo.Claim(ctx, 1)
 	require.NoError(t, err)
 	require.Len(t, claimed, 1)
-	_, err = db.NewUpdate().Model((*Job)(nil)).
-		Set("locked_at = ?", time.Now().Add(-30*time.Minute)).
-		Where("id = ?", job.ID).Exec(ctx)
+	staleJob, err := den.FindByID[Job](ctx, db, job.ID)
 	require.NoError(t, err)
+	backdated := time.Now().Add(-30 * time.Minute)
+	staleJob.LockedAt = &backdated
+	require.NoError(t, den.Update(ctx, db, staleJob))
 
 	// Create a completed job older than 24h.
 	job2, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
 	require.NoError(t, repo.Complete(ctx, job2.ID))
-	_, err = db.NewUpdate().Model((*Job)(nil)).
-		Set("completed_at = ?", time.Now().Add(-48*time.Hour)).
-		Where("id = ?", job2.ID).Exec(ctx)
+	completedJob, err := den.FindByID[Job](ctx, db, job2.ID)
 	require.NoError(t, err)
+	oldCompleted := time.Now().Add(-48 * time.Hour)
+	completedJob.CompletedAt = &oldCompleted
+	require.NoError(t, den.Update(ctx, db, completedJob))
 
 	// Run maintenance directly.
 	w.maintenance(ctx)

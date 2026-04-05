@@ -1,22 +1,26 @@
 # Database
 
-Burrow uses SQLite as its embedded database — no external database server required. The database file is created automatically on first startup.
+Burrow uses [Den](https://github.com/oliverandrich/den), an object-document mapper (ODM) for Go. Den supports two storage backends — choose the one that fits your deployment:
 
-## Why SQLite?
+## SQLite (Default)
 
-SQLite fits the "download, start, use" philosophy. There is no database server to install, configure, or maintain. Your entire application — code, templates, and data — lives in a single binary plus one database file. This makes deployment trivial, whether you're self-hosting on a VPS, running in Docker, or distributing an internal tool.
+SQLite fits the "download, start, use" philosophy. No database server to install or maintain. Your application compiles to a single binary, and the data lives in one file next to it. Ideal for self-hosted apps, internal tools, and prototyping.
 
-SQLite is an excellent choice for read-heavy workloads at any scale. But it also performs remarkably well for write-heavy applications with a limited number of concurrent users — which covers the majority of self-hosted apps, internal tools, and small-to-medium web applications. With WAL mode and the connection pool defaults that Burrow configures out of the box, you get solid concurrent read/write performance without any tuning.
+- **No CGO required** — pure Go via [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), cross-compiles anywhere
+- **Zero dependencies** — no `libsqlite3-dev`, no shared libraries
+- **Production-ready** — WAL mode, connection pooling, and tuned PRAGMAs out of the box
 
-Burrow uses [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), a pure Go SQLite implementation. This means:
+## PostgreSQL
 
-- **No CGO required** — builds with `CGO_ENABLED=0`, cross-compiles to any platform Go supports
-- **No system dependencies** — no `libsqlite3-dev`, no shared libraries
-- **Single binary** — everything is statically linked
+When you need replication, concurrent writers, or a managed database service, switch to PostgreSQL — no code changes required. Same Den API, same document types, different backend.
+
+- **Full JSONB support** — GIN indexes for fast queries
+- **Multi-writer concurrency** — no single-writer bottleneck
+- **Managed hosting** — works with any PostgreSQL provider
 
 ## How It Works
 
-At startup, Burrow opens the SQLite database using the DSN (Data Source Name — the file path or connection string, e.g., `app.db` or `./data/production.db`) and configures it with production-ready defaults inspired by [dj-lite](https://github.com/adamghill/dj-lite/). Per-connection PRAGMAs are set via `_pragma` DSN parameters so they apply to every connection in the pool:
+At startup, Burrow opens the database using the DSN (Data Source Name — a URL-style connection string, e.g., `sqlite:///app.db` or `postgres://user:pass@host/db`) and configures it with production-ready defaults inspired by [dj-lite](https://github.com/adamghill/dj-lite/). For SQLite, per-connection PRAGMAs are set via `_pragma` DSN parameters so they apply to every connection in the pool:
 
 | PRAGMA | Value | Purpose |
 |---|---|---|
@@ -46,46 +50,45 @@ The database path is configured via the `--database-dsn` flag:
 === "CLI Flag"
 
     ```bash
-    ./myapp --database-dsn ./data/myapp.db
+    ./myapp --database-dsn sqlite:///data/myapp.db
     ```
 
 === "Environment Variable"
 
     ```bash
-    DATABASE_DSN=./data/myapp.db ./myapp
+    DATABASE_DSN=sqlite:///data/myapp.db ./myapp
     ```
 
 === "TOML Config"
 
     ```toml
     [database]
-    dsn = "./data/myapp.db"
+    dsn = "sqlite:///data/myapp.db"
     ```
 
-The default is `app.db` in the working directory. The parent directory must exist — Burrow creates the file but not the directory.
+The default is `sqlite:///app.db` in the working directory. The parent directory must exist — Burrow creates the file but not the directory. For PostgreSQL, use a URL like `postgres://user:pass@localhost/mydb`.
 
-For testing, you can use an in-memory database:
+For testing, you can use an in-memory SQLite database:
 
 ```bash
-./myapp --database-dsn ":memory:"
+./myapp --database-dsn sqlite:///:memory:
 ```
 
-## Working with Bun
+## Working with Den
 
-Burrow uses [Bun](https://bun.uptrace.dev/) as its ORM. Apps receive a `*bun.DB` instance via `AppConfig` during registration.
+Burrow uses [Den](https://github.com/oliverandrich/den), an object-document mapper (ODM) for Go. Apps receive a `*den.DB` instance via `AppConfig` during registration. Den stores documents as JSON internally and uses ULID-based IDs via `document.Base`.
 
-### Defining Models
+### Defining Documents
 
-Models are Go structs with `bun` struct tags:
+Documents are Go structs that embed `document.Base` for ID and timestamp management:
 
 ```go
 type Note struct {
-    bun.BaseModel `bun:"table:notes,alias:n"`
-    ID            int64     `bun:",pk,autoincrement"`
-    UserID        int64     `bun:",notnull"`
-    Title         string    `bun:",notnull"`
-    Content       string    `bun:",notnull,default:''"`
-    CreatedAt     time.Time `bun:",nullzero,notnull,default:current_timestamp"`
+    document.Base
+    UserID    string    `json:"user_id"`
+    Title     string    `json:"title" den:"index"`
+    Content   string    `json:"content"`
+    CreatedAt time.Time `json:"created_at"`
 }
 ```
 
@@ -93,92 +96,62 @@ Common struct tags:
 
 | Tag | Purpose |
 |---|---|
-| `bun:"table:name,alias:x"` | Table name and query alias |
-| `bun:",pk,autoincrement"` | Primary key with auto-increment |
-| `bun:",notnull"` | NOT NULL constraint |
-| `bun:",unique"` | Unique constraint |
-| `bun:",nullzero"` | Treat Go zero values as SQL NULL |
-| `bun:",default:value"` | SQL default value |
-| `bun:"rel:has-many,join:id=user_id"` | One-to-many relationship |
+| `json:"name"` | JSON field name for serialization |
+| `den:"index"` | Add a secondary index on this field |
+| `den:"unique"` | Unique constraint on this field |
+| `den:"fts"` | Full-text search index on this field |
+| `den:"omitempty"` | Omit from JSON when empty |
 
 ### Queries
 
-Bun provides a fluent query builder:
+Den provides a chainable QuerySet API for queries and a functional API for mutations:
 
 ```go
-// Select one
-var note Note
-err := db.NewSelect().Model(&note).Where("n.id = ?", id).Scan(ctx)
+// Find by ID
+note, err := den.FindByID[Note](ctx, db, id)
 
-// Select many
-var notes []Note
-err := db.NewSelect().Model(&notes).
-    Where("user_id = ?", userID).
-    Order("created_at DESC").
-    Scan(ctx)
+// Find one with conditions
+note, err := den.NewQuery[Note](ctx, db, where.Field("user_id").Eq(userID)).First()
+
+// Find many with sorting
+notes, err := den.NewQuery[Note](ctx, db,
+    where.Field("user_id").Eq(userID),
+).Sort("created_at", den.Desc).All()
 
 // Insert
-note := &Note{UserID: 1, Title: "Hello"}
-_, err := db.NewInsert().Model(note).Exec(ctx)
+note := &Note{UserID: "01J...", Title: "Hello"}
+err := den.Insert(ctx, db, note)
 
-// Update
-_, err := db.NewUpdate().Model(note).WherePK().Exec(ctx)
+// Update (replace entire document)
+err := den.Replace(ctx, db, note)
 
-// Partial update
-_, err := db.NewUpdate().Model((*Note)(nil)).
-    Set("title = ?", "New Title").
-    Where("id = ?", id).
-    Exec(ctx)
+// Save (insert or update based on ID)
+err := den.Save(ctx, db, note)
 
 // Delete
-_, err := db.NewDelete().Model((*Note)(nil)).Where("id = ?", id).Exec(ctx)
+err := den.Delete(ctx, db, note)
 
 // Count
-count, err := db.NewSelect().Model((*Note)(nil)).Where("user_id = ?", userID).Count(ctx)
+count, err := den.NewQuery[Note](ctx, db, where.Field("user_id").Eq(userID)).Count()
 
 // Exists check
-exists, err := db.NewSelect().Model((*Note)(nil)).Where("id = ?", id).Exists(ctx)
-```
-
-### Relations
-
-Load related records with `.Relation()`:
-
-```go
-type User struct {
-    bun.BaseModel `bun:"table:users,alias:u"`
-    ID            int64        `bun:",pk,autoincrement"`
-    Username      string       `bun:",unique,notnull"`
-    Credentials   []Credential `bun:"rel:has-many,join:id=user_id"`
-}
-
-// Eager-load credentials with the user
-var user User
-err := db.NewSelect().Model(&user).
-    Relation("Credentials").
-    Where("u.id = ?", id).
-    Scan(ctx)
+exists, err := den.NewQuery[Note](ctx, db, where.Field("id").Eq(id)).Exists()
 ```
 
 ### Transactions
 
-Use `db.BeginTx()` for atomic operations:
+Use `den.RunInTransaction()` for atomic operations:
 
 ```go
-tx, err := db.BeginTx(ctx, nil)
-if err != nil {
-    return err
-}
-defer tx.Rollback()
-
-if _, err := tx.NewInsert().Model(note).Exec(ctx); err != nil {
-    return err
-}
-if _, err := tx.NewInsert().Model(tag).Exec(ctx); err != nil {
-    return err
-}
-
-return tx.Commit()
+err := den.RunInTransaction(ctx, db, func(tx *den.Tx) error {
+    if err := den.Insert(ctx, tx, note); err != nil {
+        return err
+    }
+    if err := den.Insert(ctx, tx, tag); err != nil {
+        return err
+    }
+    return nil
+})
 ```
 
 ## Repository Pattern
@@ -188,23 +161,23 @@ Burrow's contrib apps use a repository pattern to encapsulate database access. T
 ```go
 // Repository wraps database access for an app.
 type Repository struct {
-    db *bun.DB
+    db *den.DB
 }
 
-func NewRepository(db *bun.DB) *Repository {
+func NewRepository(db *den.DB) *Repository {
     return &Repository{db: db}
 }
 
-func (r *Repository) GetNoteByID(ctx context.Context, id int64) (*Note, error) {
-    var note Note
-    if err := r.db.NewSelect().Model(&note).Where("n.id = ?", id).Scan(ctx); err != nil {
-        return nil, fmt.Errorf("get note %d: %w", id, err)
+func (r *Repository) GetNoteByID(ctx context.Context, id string) (*Note, error) {
+    note, err := den.FindByID[Note](ctx, r.db, id)
+    if err != nil {
+        return nil, fmt.Errorf("get note %s: %w", id, err)
     }
-    return &note, nil
+    return note, nil
 }
 
 func (r *Repository) CreateNote(ctx context.Context, note *Note) error {
-    if _, err := r.db.NewInsert().Model(note).Exec(ctx); err != nil {
+    if err := den.Insert(ctx, r.db, note); err != nil {
         return fmt.Errorf("create note: %w", err)
     }
     return nil
@@ -224,7 +197,7 @@ Handlers then use the repository through the app:
 
 ```go
 func (a *App) handleGetNote(w http.ResponseWriter, r *http.Request) error {
-    id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+    id := chi.URLParam(r, "id")
     note, err := a.repo.GetNoteByID(r.Context(), id)
     if err != nil {
         return burrow.NewHTTPError(http.StatusNotFound, "Note not found")
@@ -233,13 +206,15 @@ func (a *App) handleGetNote(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
-## Migrations
+## Document Schema
 
-Each app manages its own SQL migrations. See the [Migrations](migrations.md) guide for full details on creating and managing migrations.
+Den automatically manages collections (tables) based on your document structs. When you register documents with your app, Den creates and updates the underlying schema — no manual SQL migrations needed for document structure.
+
+See the [Migrations](migrations.md) guide for details on how schema management works with Den.
 
 ## Further Reading
 
-- [Full-Text Search](fts5.md) — add FTS5 full-text search to your app
-- [Bun documentation](https://bun.uptrace.dev/) — full ORM reference
+- [Full-Text Search](fts5.md) — add full-text search to your app
+- [Den documentation](https://github.com/oliverandrich/den) — full ODM reference
 - [SQLite documentation](https://www.sqlite.org/docs.html) — SQL syntax and features
 - [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) — the pure Go SQLite driver

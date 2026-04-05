@@ -15,9 +15,9 @@
 
 A web framework for Go developers who want something like Django, Rails, or Flask — but with the deployment simplicity of a single static binary.
 
-Most Go web development follows the "API backend + SPA frontend" pattern. Burrow takes a different approach: server-rendered HTML with templates, modular apps with their own routes, migrations, and middleware, and an embedded SQLite database. The result is an application you can deploy as a single file — `./myapp` and you're done.
+Most Go web development follows the "API backend + SPA frontend" pattern. Burrow takes a different approach: server-rendered HTML with templates, modular apps with their own routes and middleware, and a document database that just works. Deploy with embedded SQLite as a single binary, or connect to PostgreSQL for scale — same code, same API.
 
-Built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and Go's standard `html/template`. Ideal for self-hosted applications, internal tools, or any project where "download, start, use" is the goal.
+Built on [Chi](https://go-chi.io/), [Den](https://github.com/oliverandrich/den) (ODM with SQLite and PostgreSQL backends), and Go's standard `html/template`. Ideal for self-hosted applications, internal tools, or any project where "download, start, use" is the goal.
 
 > [!TIP]
 > **Why *Burrow*?** A burrow is a network of interconnected chambers — each with its own purpose, yet part of a larger whole. That's exactly how the framework works: pluggable apps are the rooms, and your gophers live in them.
@@ -28,8 +28,8 @@ Built on [Chi](https://go-chi.io/), [Bun](https://bun.uptrace.dev/)/SQLite, and 
 ## Features
 
 - **App-based architecture** — build your application from composable, self-contained apps
-- **Pure Go SQLite** — no CGO required (`CGO_ENABLED=0`), cross-compiles anywhere
-- **Per-app migrations** — each app manages its own SQL migrations
+- **SQLite or PostgreSQL** — embedded SQLite (pure Go, no CGO) for single-binary deploys, or PostgreSQL for scale — switch with one flag
+- **Automatic schema** — document types declared in code, tables and indexes created on startup
 - **Standard templates** — Go's `html/template` with a global template set, per-app FuncMaps, and automatic layout wrapping
 - **CSS-agnostic** — bring your own CSS framework (Bootstrap, Tailwind, etc.)
 - **Layout system** — app layout via server, admin layout via admin package
@@ -133,7 +133,7 @@ Apps can optionally implement additional interfaces:
 
 | Interface | Purpose |
 |---|---|
-| `Migratable` | Provide embedded SQL migrations |
+| `HasDocuments` | Register Den document types |
 | `HasRoutes` | Register HTTP routes |
 | `HasMiddleware` | Contribute middleware |
 | `HasNavItems` | Contribute navigation items |
@@ -179,21 +179,17 @@ Configuration is resolved in order: CLI flags > environment variables > TOML fil
 
 Core flags include `--host`, `--port`, `--database-dsn`, `--log-level`, `--log-format`, `--tls-mode`, and more. Apps can contribute their own flags via the `Configurable` interface.
 
-### Migrations
+### Document Registration
 
-Apps embed their SQL migrations and implement `Migratable`:
+Apps declare their document types by implementing `HasDocuments`:
 
 ```go
-//go:embed migrations
-var migrationFS embed.FS
-
-func (a *App) MigrationFS() fs.FS {
-    sub, _ := fs.Sub(migrationFS, "migrations")
-    return sub
+func (a *App) Documents() []any {
+    return []any{&Poll{}, &Choice{}}
 }
 ```
 
-Migrations are tracked per-app in the `_migrations` table and run automatically on startup.
+Tables and indexes are created automatically on startup via Den's `Register()`. No SQL migration files needed.
 
 ## Development
 

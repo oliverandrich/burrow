@@ -23,7 +23,6 @@ Add the following imports to `internal/polls/polls.go` (alongside the existing o
 ```go
 "fmt"
 "net/http"
-"strconv"
 
 "github.com/go-chi/chi/v5"
 ```
@@ -134,10 +133,7 @@ func (a *App) List(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *App) Detail(w http.ResponseWriter, r *http.Request) error {
-    id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-    if err != nil {
-        return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
-    }
+    id := chi.URLParam(r, "id")
     question, err := a.repo.GetQuestion(r.Context(), id)
     if err != nil {
         return burrow.NewHTTPError(http.StatusNotFound, "question not found")
@@ -149,10 +145,7 @@ func (a *App) Detail(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *App) Results(w http.ResponseWriter, r *http.Request) error {
-    id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-    if err != nil {
-        return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
-    }
+    id := chi.URLParam(r, "id")
     question, err := a.repo.GetQuestion(r.Context(), id)
     if err != nil {
         return burrow.NewHTTPError(http.StatusNotFound, "question not found")
@@ -376,12 +369,7 @@ go run .
 Open `http://localhost:8080` — you'll see the Bootstrap-styled homepage. Click "View Polls" to see the (empty) polls list. There are no questions yet because we haven't added a way to create them.
 
 !!! tip "Seeding test data"
-    You can use the SQLite CLI to insert test data:
-    ```bash
-    sqlite3 app.db "INSERT INTO questions (text) VALUES ('What is your favourite colour?')"
-    sqlite3 app.db "INSERT INTO choices (question_id, text) VALUES (1, 'Red'), (1, 'Blue'), (1, 'Green')"
-    ```
-    Refresh the page to see them appear.
+    You can add a `Seed()` method to your app (implementing the `Seedable` interface) to insert test data automatically at startup. See [Part 2](part2.md) for the app setup pattern — you'd add questions and choices using `den.Insert()` in your `Seed()` method.
 
 ## What You've Learnt
 

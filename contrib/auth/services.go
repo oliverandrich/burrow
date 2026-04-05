@@ -26,8 +26,8 @@ type EmailService interface {
 // WebAuthnService defines WebAuthn operations.
 type WebAuthnService interface {
 	WebAuthn() *gowebauthn.WebAuthn
-	StoreRegistrationSession(userID int64, data *gowebauthn.SessionData)
-	GetRegistrationSession(userID int64) (*gowebauthn.SessionData, error)
+	StoreRegistrationSession(userID string, data *gowebauthn.SessionData)
+	GetRegistrationSession(userID string) (*gowebauthn.SessionData, error)
 	StoreDiscoverableSession(sessionID string, data *gowebauthn.SessionData)
 	GetDiscoverableSession(sessionID string) (*gowebauthn.SessionData, error)
 }
@@ -206,12 +206,12 @@ func NewWebAuthnService(ctx context.Context, rpDisplayName, rpID, rpOrigin strin
 
 func (s *webauthnService) WebAuthn() *gowebauthn.WebAuthn { return s.wa }
 
-func (s *webauthnService) StoreRegistrationSession(userID int64, data *gowebauthn.SessionData) {
-	s.put(fmt.Sprintf("registration:%d", userID), data)
+func (s *webauthnService) StoreRegistrationSession(userID string, data *gowebauthn.SessionData) {
+	s.put("registration:"+userID, data)
 }
 
-func (s *webauthnService) GetRegistrationSession(userID int64) (*gowebauthn.SessionData, error) {
-	return s.pop(fmt.Sprintf("registration:%d", userID))
+func (s *webauthnService) GetRegistrationSession(userID string) (*gowebauthn.SessionData, error) {
+	return s.pop("registration:" + userID)
 }
 
 func (s *webauthnService) StoreDiscoverableSession(sessionID string, data *gowebauthn.SessionData) {

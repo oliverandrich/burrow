@@ -6,9 +6,9 @@
 
 A web framework for Go developers who want something like Django, Rails, or Flask — but with the deployment simplicity of a single static binary.
 
-Most Go web development follows the "API backend + SPA frontend" pattern. Burrow takes a different approach: server-rendered HTML with templates, modular apps with their own routes, migrations, and middleware, and an embedded SQLite database. The result is an application you can deploy as a single file — `./myapp` and you're done.
+Most Go web development follows the "API backend + SPA frontend" pattern. Burrow takes a different approach: server-rendered HTML with templates, modular apps with their own routes and middleware, and a document database that just works. Deploy with embedded SQLite as a single binary, or connect to PostgreSQL for scale — same code, same API.
 
-Built on [Chi](https://go-chi.io/), [Bun/SQLite](https://bun.uptrace.dev/), and Go's standard [`html/template`](https://pkg.go.dev/html/template). Ideal for self-hosted applications, internal tools, or any project where "download, start, use" is the goal.
+Built on [Chi](https://go-chi.io/), [Den](https://github.com/oliverandrich/den) (object-document mapper with SQLite and PostgreSQL backends), and Go's standard [`html/template`](https://pkg.go.dev/html/template). Ideal for self-hosted applications, internal tools, or any project where "download, start, use" is the goal.
 
 !!! tip "Why *Burrow*?"
     A burrow is a network of interconnected chambers — each with its own purpose, yet part of a larger whole. That's exactly how the framework works: pluggable apps are the rooms, and your gophers live in them.
@@ -18,8 +18,8 @@ Built on [Chi](https://go-chi.io/), [Bun/SQLite](https://bun.uptrace.dev/), and 
 
 ## Features
 
-- **Modular app system** — register self-contained apps with routes, middleware, migrations, and config
-- **Pure Go, no CGO** — uses `modernc.org/sqlite` for zero-dependency builds (`CGO_ENABLED=0`)
+- **Modular app system** — register self-contained apps with routes, middleware, document types, and config
+- **SQLite or PostgreSQL** — embedded SQLite (pure Go, no CGO) for single-binary deploys, or PostgreSQL for scale — switch with `--database-dsn`
 - **Standard templates** — Go's `html/template` with per-app template files, FuncMaps, and automatic layout wrapping
 - **WebAuthn authentication** — passkey-based login with recovery codes and email verification
 - **Cookie-based sessions** — encrypted, signed cookies via `gorilla/securecookie`

@@ -17,6 +17,13 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// testAuthUser creates a test auth.User with the given role.
+func testAuthUser(role string) *auth.User {
+	u := &auth.User{Username: "testuser", Role: role, IsActive: true}
+	u.ID = "test-user-1"
+	return u
+}
+
 // Compile-time interface assertions.
 var (
 	_ burrow.App               = (*App)(nil)
@@ -132,7 +139,7 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 	// Inject admin user for RequireAuth + RequireAdmin.
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleAdmin})
+			ctx := auth.WithUser(r.Context(), testAuthUser(auth.RoleAdmin))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
@@ -184,7 +191,7 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 	// Inject non-admin user and TemplateExecutor.
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleUser})
+			ctx := auth.WithUser(r.Context(), testAuthUser(auth.RoleUser))
 			ctx = burrow.TestErrorExecContext(ctx)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -292,7 +299,7 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 	// Inject admin user for RequireAuth + RequireAdmin.
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleAdmin})
+			ctx := auth.WithUser(r.Context(), testAuthUser(auth.RoleAdmin))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
@@ -358,7 +365,7 @@ func TestRoutesInjectNavGroups(t *testing.T) {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: auth.RoleAdmin})
+			ctx := auth.WithUser(r.Context(), testAuthUser(auth.RoleAdmin))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})

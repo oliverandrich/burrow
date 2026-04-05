@@ -81,13 +81,13 @@ All the following changes go into `internal/polls/polls.go`. First, add the `mes
 Add the `IncrementVotes` method to the repository:
 
 ```go
-func (r *Repository) IncrementVotes(ctx context.Context, choiceID int64) error {
-    _, err := r.db.NewUpdate().
-        Model((*Choice)(nil)).
-        Set("votes = votes + 1").
-        Where("id = ?", choiceID).
-        Exec(ctx)
-    return err
+func (r *Repository) IncrementVotes(ctx context.Context, choiceID string) error {
+    choice, err := den.FindByID[Choice](ctx, r.db, choiceID)
+    if err != nil {
+        return err
+    }
+    choice.Votes++
+    return den.Replace(ctx, r.db, choice)
 }
 ```
 
@@ -95,23 +95,18 @@ Then add a `Vote` handler method on `*App`:
 
 ```go
 func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
-    questionID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-    if err != nil {
+    questionID := chi.URLParam(r, "id")
+    if questionID == "" {
         return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
     }
 
-    choiceIDStr := r.FormValue("choice")
-    if choiceIDStr == "" {
+    choiceID := r.FormValue("choice")
+    if choiceID == "" {
         if addErr := messages.AddError(w, r, "You didn't select a choice."); addErr != nil {
             return addErr
         }
-        http.Redirect(w, r, fmt.Sprintf("/polls/%d", questionID), http.StatusSeeOther)
+        http.Redirect(w, r, fmt.Sprintf("/polls/%s", questionID), http.StatusSeeOther)
         return nil
-    }
-
-    choiceID, err := strconv.ParseInt(choiceIDStr, 10, 64)
-    if err != nil {
-        return burrow.NewHTTPError(http.StatusBadRequest, "invalid choice ID")
     }
 
     if err := a.repo.IncrementVotes(r.Context(), choiceID); err != nil {
@@ -121,7 +116,7 @@ func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
     if err := messages.AddSuccess(w, r, "Your vote has been recorded!"); err != nil {
         return err
     }
-    http.Redirect(w, r, fmt.Sprintf("/polls/%d/results", questionID), http.StatusSeeOther)
+    http.Redirect(w, r, fmt.Sprintf("/polls/%s/results", questionID), http.StatusSeeOther)
     return nil
 }
 ```

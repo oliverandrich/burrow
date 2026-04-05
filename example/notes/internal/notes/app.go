@@ -14,9 +14,6 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-//go:embed migrations
-var migrationFS embed.FS
-
 //go:embed translations
 var translationFS embed.FS
 
@@ -44,42 +41,24 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	cfg.RegisterIconFunc("iconJournalText", bsicons.JournalText)
 
 	a.repo = NewRepository(cfg.DB)
+
 	a.notesAdmin = &modeladmin.ModelAdmin[Note]{
 		Slug:              "notes",
 		DisplayName:       "Note",
 		DisplayPluralName: "Notes",
-		EmptyMessageKey:   "admin-notes-empty",
 		DB:                cfg.DB,
 		Renderer:          matpl.DefaultRenderer[Note](),
-		CanCreate:         true,
-		CanEdit:           true,
+		ListFields:        []string{"Title", "Content", "UserID"},
 		CanDelete:         true,
-		CanExport:         true,
-		ListFields:        []string{"ID", "Title", "Content", "User", "CreatedAt"},
-		Relations:         []string{"User"},
-		ReadOnlyFields:    []string{"User", "CreatedAt"},
-		SearchFields:      []string{"title", "content"},
-		OrderBy:           "n.created_at DESC, n.id DESC",
-	}
-	a.notesAdmin.RowActions = []modeladmin.RowAction{
-		{
-			Slug:    "delete",
-			Label:   "modeladmin-delete",
-			Icon:    bsicons.Trash(),
-			Method:  "DELETE",
-			Class:   "btn-outline-danger",
-			Confirm: "modeladmin-delete-confirm",
-			Handler: a.notesAdmin.HandleDelete,
-		},
 	}
 	return nil
 }
 
 func (a *App) TranslationFS() fs.FS { return translationFS }
 
-func (a *App) MigrationFS() fs.FS {
-	sub, _ := fs.Sub(migrationFS, "migrations")
-	return sub
+// Documents returns the Den document types registered by this app.
+func (a *App) Documents() []any {
+	return []any{&Note{}}
 }
 
 // TemplateFS returns the embedded HTML template files.
@@ -100,6 +79,7 @@ func (a *App) NavItems() []burrow.NavItem {
 	}
 }
 
+// AdminRoutes registers admin routes for notes management.
 func (a *App) AdminRoutes(r chi.Router) {
 	if a.notesAdmin == nil {
 		return
@@ -126,8 +106,8 @@ func (a *App) Routes(r chi.Router) {
 		r.Get("/", burrow.Handle(a.List))
 		r.Get("/new", burrow.Handle(a.New))
 		r.Post("/", burrow.Handle(a.Create))
-		r.Get("/{id:[0-9]+}/edit", burrow.Handle(a.Edit))
-		r.Post("/{id:[0-9]+}", burrow.Handle(a.Update))
-		r.Delete("/{id:[0-9]+}", burrow.Handle(a.Delete))
+		r.Get("/{id}", burrow.Handle(a.Edit))
+		r.Post("/{id}", burrow.Handle(a.Update))
+		r.Delete("/{id}", burrow.Handle(a.Delete))
 	})
 }

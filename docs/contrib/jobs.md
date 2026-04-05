@@ -174,17 +174,21 @@ The worker pool runs two automatic maintenance tasks every 5 minutes:
 | `--jobs-workers` | `JOBS_WORKERS` | `2` | Number of concurrent worker goroutines |
 | `--jobs-poll-interval` | `JOBS_POLL_INTERVAL` | `1s` | Interval between queue polls |
 | `--jobs-retry-base-delay` | `JOBS_RETRY_BASE_DELAY` | `30s` | Base delay for exponential retry backoff |
-| `--jobs-database` | `JOBS_DATABASE` | (empty) | Path to a separate SQLite database for the job queue |
+| `--jobs-database-dsn` | `JOBS_DATABASE_DSN` | (empty) | Database URL for a separate jobs database |
 
 ### Separate Database
 
-By default, jobs are stored in the main application database. For applications with high write throughput, you can move the job queue to a dedicated SQLite file:
+By default, jobs are stored in the main application database. For applications with high write throughput, you can move the job queue to a dedicated database:
 
 ```bash
-./myapp --jobs-database data/jobs.db
+# Separate SQLite file
+./myapp --jobs-database-dsn sqlite:///data/jobs.db
+
+# Or a separate PostgreSQL database
+./myapp --jobs-database-dsn postgres://localhost/myapp_jobs
 ```
 
-This eliminates write contention between the job queue (which produces 3-4 writes per job) and your application's business data. The separate database gets the same PRAGMA configuration (WAL mode, foreign keys, busy timeout, etc.) as the main database.
+This eliminates write contention between the job queue (which produces 3-4 writes per job) and your application's business data.
 
 When no value is set, the jobs app uses the shared database — no configuration change is needed.
 
@@ -201,7 +205,7 @@ The jobs app implements `HasShutdown`. When the server shuts down:
 | Interface | Description |
 |-----------|-------------|
 | `burrow.App` | Required: `Name()` |
-| `Migratable` | Creates the `jobs` table |
+| `HasDocuments` | Registers the `jobs` document type |
 | `Configurable` | Worker count and poll interval flags |
 | `HasShutdown` | Stops the worker pool gracefully |
 | `HasAdmin` | Admin UI for job management |

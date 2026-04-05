@@ -2,10 +2,8 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -14,13 +12,18 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/burrow/i18n"
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// testUserWithID returns a User with a fixed test ID.
+func testUserWithID() *User {
+	u := &User{Username: "testuser", IsActive: true}
+	u.ID = "test-user-1"
+	return u
+}
 
 // --- Mocks ---
 
@@ -175,26 +178,18 @@ func requestWithSession(req *http.Request, user *User) *http.Request {
 	return req
 }
 
-// openTestDBClosable opens a test DB and returns both the bun.DB and the underlying
-// sql.DB so tests can close the sql.DB to trigger database errors in handlers.
-func openTestDBClosable(t *testing.T) (*bun.DB, *sql.DB) {
+// openTestDBClosable opens a test DB that can be closed to trigger database errors in handlers.
+// It returns the *den.DB (closable via db.Close()).
+func openTestDBClosable(t *testing.T) *den.DB {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-
-	app := New()
-	err = burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
-	require.NoError(t, err)
-
-	return db, sqldb
+	db := openTestDB(t)
+	return db
 }
 
 // setupTestAppClosable creates an App with a DB that can be closed to trigger errors.
-func setupTestAppClosable(t *testing.T) (*App, *Repository, *sql.DB) {
+func setupTestAppClosable(t *testing.T) (*App, *Repository, *den.DB) {
 	t.Helper()
-	db, sqldb := openTestDBClosable(t)
+	db := openTestDBClosable(t)
 	repo := NewRepository(db)
 	renderer := &mockRenderer{}
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
@@ -210,13 +205,13 @@ func setupTestAppClosable(t *testing.T) (*App, *Repository, *sql.DB) {
 	}
 	a.recovery = NewRecoveryService()
 	a.recovery.BcryptCost = bcrypt.MinCost
-	return a, repo, sqldb
+	return a, repo, db
 }
 
 // setupTestAppEmailModeClosable creates an email-mode App with a closable DB.
-func setupTestAppEmailModeClosable(t *testing.T) (*App, *Repository, *sql.DB) {
+func setupTestAppEmailModeClosable(t *testing.T) (*App, *Repository, *den.DB) {
 	t.Helper()
-	db, sqldb := openTestDBClosable(t)
+	db := openTestDBClosable(t)
 	repo := NewRepository(db)
 	renderer := &mockRenderer{}
 	waSvc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
@@ -237,7 +232,7 @@ func setupTestAppEmailModeClosable(t *testing.T) (*App, *Repository, *sql.DB) {
 	}
 	a.recovery = NewRecoveryService()
 	a.recovery.BcryptCost = bcrypt.MinCost
-	return a, repo, sqldb
+	return a, repo, db
 }
 
 // --- Handler creation tests ---
@@ -530,7 +525,8 @@ func TestRegisterFinishInvalidUserID(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
-	assert.Contains(t, rec.Body.String(), "invalid user_id")
+	// With string IDs, "invalid" is a valid ID format but has no registration session.
+	assert.Contains(t, rec.Body.String(), "registration session expired")
 }
 
 func TestRegisterFinishSessionExpired(t *testing.T) {
@@ -704,7 +700,7 @@ func TestDeleteCredentialLastCredential(t *testing.T) {
 		_ = h.DeleteCredential(w, r)
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/auth/credentials/"+strconv.FormatInt(cred.ID, 10), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/auth/credentials/"+cred.ID, nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -726,7 +722,7 @@ func TestDeleteCredentialSuccess(t *testing.T) {
 		_ = h.DeleteCredential(w, r)
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/auth/credentials/"+strconv.FormatInt(cred1.ID, 10), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/auth/credentials/"+cred1.ID, nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -864,10 +860,10 @@ func TestRecoveryCodesPageWithCodes(t *testing.T) {
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
 	req = session.Inject(req, map[string]any{
-		"user_id":        int64(1),
+		"user_id":        "test-user-1",
 		"recovery_codes": []string{"code1", "code2"},
 	})
-	ctx := WithUser(req.Context(), &User{ID: 1})
+	ctx := WithUser(req.Context(), testUserWithID())
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -882,7 +878,7 @@ func TestRecoveryCodesPageWithoutCodes(t *testing.T) {
 	h, _, _ := setupTestApp(t)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
-	req = requestWithSession(req, &User{ID: 1})
+	req = requestWithSession(req, testUserWithID())
 	rec := httptest.NewRecorder()
 
 	err := h.RecoveryCodesPage(rec, req)
@@ -899,10 +895,10 @@ func TestAcknowledgeRecoveryCodes(t *testing.T) {
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
 	req = session.Inject(req, map[string]any{
-		"user_id":        int64(1),
+		"user_id":        "test-user-1",
 		"recovery_codes": []string{"code1"},
 	})
-	ctx := WithUser(req.Context(), &User{ID: 1})
+	ctx := WithUser(req.Context(), testUserWithID())
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -918,11 +914,11 @@ func TestAcknowledgeRecoveryCodesWithRedirect(t *testing.T) {
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
 	req = session.Inject(req, map[string]any{
-		"user_id":              int64(1),
+		"user_id":              "test-user-1",
 		"recovery_codes":       []string{"code1"},
 		"redirect_after_login": "/admin/",
 	})
-	ctx := WithUser(req.Context(), &User{ID: 1})
+	ctx := WithUser(req.Context(), testUserWithID())
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -1137,10 +1133,10 @@ func TestRecoveryCodesPageInvalidType(t *testing.T) {
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
 	req = session.Inject(req, map[string]any{
-		"user_id":        int64(1),
+		"user_id":        "test-user-1",
 		"recovery_codes": "not-a-slice",
 	})
-	ctx := WithUser(req.Context(), &User{ID: 1})
+	ctx := WithUser(req.Context(), testUserWithID())
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -1158,11 +1154,11 @@ func TestAcknowledgeRecoveryCodesUsesSessionRedirect(t *testing.T) {
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/ack", nil)
 	req = session.Inject(req, map[string]any{
-		"user_id":              int64(1),
+		"user_id":              "test-user-1",
 		"recovery_codes":       []string{"code1"},
 		"redirect_after_login": "/custom-redirect",
 	})
-	ctx := WithUser(req.Context(), &User{ID: 1})
+	ctx := WithUser(req.Context(), testUserWithID())
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -1307,10 +1303,10 @@ func TestRecoveryCodesPageEmptyCodes(t *testing.T) {
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil)
 	req = session.Inject(req, map[string]any{
-		"user_id":        int64(1),
+		"user_id":        "test-user-1",
 		"recovery_codes": []string{},
 	})
-	ctx := WithUser(req.Context(), &User{ID: 1})
+	ctx := WithUser(req.Context(), testUserWithID())
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -1323,7 +1319,7 @@ func TestRecoveryCodesPageEmptyCodes(t *testing.T) {
 // --- VerifyEmail: DB error on MarkEmailVerified ---
 
 func TestVerifyEmailDBErrorOnMarkVerified(t *testing.T) {
-	h, repo, sqldb := setupTestAppEmailModeClosable(t)
+	h, repo, closableDB := setupTestAppEmailModeClosable(t)
 	ctx := context.Background()
 
 	user, err := repo.CreateUserWithEmail(ctx, "test@example.com", "")
@@ -1333,7 +1329,7 @@ func TestVerifyEmailDBErrorOnMarkVerified(t *testing.T) {
 	require.NoError(t, repo.CreateEmailVerificationToken(ctx, user.ID, tokenHash, time.Now().Add(24*time.Hour)))
 
 	// Close the DB so MarkEmailVerified fails.
-	_ = sqldb.Close()
+	_ = closableDB.Close()
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email?token=goodtoken", nil)
 	req = requestWithSession(req, nil)
@@ -1382,12 +1378,11 @@ func TestResendVerificationUserWithNilEmail(t *testing.T) {
 	user, err := repo.CreateUserWithEmail(context.Background(), "nullemail@example.com", "")
 	require.NoError(t, err)
 
-	// Nullify the email in the DB directly.
-	_, err = repo.db.NewUpdate().Model((*User)(nil)).
-		Set("email = NULL").
-		Where("id = ?", user.ID).
-		Exec(context.Background())
+	// Nullify the email via Den update.
+	reloaded, err := repo.GetUserByID(context.Background(), user.ID)
 	require.NoError(t, err)
+	reloaded.Email = nil
+	require.NoError(t, den.Update(context.Background(), repo.db, reloaded))
 
 	body := strings.NewReader(`{"email":"nullemail@example.com"}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
@@ -1404,7 +1399,7 @@ func TestResendVerificationUserWithNilEmail(t *testing.T) {
 // --- DeleteCredential: DB error on CountUserCredentials ---
 
 func TestDeleteCredentialDBErrorOnCount(t *testing.T) {
-	h, repo, sqldb := setupTestAppClosable(t)
+	h, repo, closableDB := setupTestAppClosable(t)
 	user, _ := repo.CreateUser(context.Background(), "bob", "")
 	cred1 := &Credential{UserID: user.ID, CredentialID: []byte("c1"), PublicKey: []byte("k1"), Name: "P1"}
 	cred2 := &Credential{UserID: user.ID, CredentialID: []byte("c2"), PublicKey: []byte("k2"), Name: "P2"}
@@ -1412,7 +1407,7 @@ func TestDeleteCredentialDBErrorOnCount(t *testing.T) {
 	require.NoError(t, repo.CreateCredential(context.Background(), cred2))
 
 	// Close DB so CountUserCredentials fails.
-	_ = sqldb.Close()
+	_ = closableDB.Close()
 
 	router := chi.NewRouter()
 	router.Delete("/auth/credentials/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -1420,7 +1415,7 @@ func TestDeleteCredentialDBErrorOnCount(t *testing.T) {
 		_ = h.DeleteCredential(w, r)
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/auth/credentials/"+strconv.FormatInt(cred1.ID, 10), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/auth/credentials/"+cred1.ID, nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1431,11 +1426,11 @@ func TestDeleteCredentialDBErrorOnCount(t *testing.T) {
 // --- CredentialsPage: DB error on GetCredentialsByUserID ---
 
 func TestCredentialsPageDBError(t *testing.T) {
-	h, repo, sqldb := setupTestAppClosable(t)
+	h, repo, closableDB := setupTestAppClosable(t)
 	user, _ := repo.CreateUser(context.Background(), "carol", "")
 
 	// Close DB so GetCredentialsByUserID fails.
-	_ = sqldb.Close()
+	_ = closableDB.Close()
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/credentials", nil)
 	req = requestWithSession(req, user)
@@ -1450,11 +1445,11 @@ func TestCredentialsPageDBError(t *testing.T) {
 // --- RegenerateRecoveryCodes: DB error on generateAndStoreRecoveryCodes ---
 
 func TestRegenerateRecoveryCodesDBError(t *testing.T) {
-	h, repo, sqldb := setupTestAppClosable(t)
+	h, repo, closableDB := setupTestAppClosable(t)
 	user, _ := repo.CreateUser(context.Background(), "eve", "")
 
 	// Close DB so generateAndStoreRecoveryCodes fails (DeleteRecoveryCodes fails).
-	_ = sqldb.Close()
+	_ = closableDB.Close()
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery-codes/regenerate", nil)
 	req = requestWithSession(req, user)
@@ -1469,10 +1464,10 @@ func TestRegenerateRecoveryCodesDBError(t *testing.T) {
 // --- isFirstUser: DB error ---
 
 func TestIsFirstUserDBError(t *testing.T) {
-	h, _, sqldb := setupTestAppClosable(t)
+	h, _, closableDB := setupTestAppClosable(t)
 
 	// Close DB so CountUsers fails.
-	_ = sqldb.Close()
+	_ = closableDB.Close()
 
 	isFirst, err := h.isFirstUser(context.Background())
 	require.Error(t, err)
@@ -1482,7 +1477,7 @@ func TestIsFirstUserDBError(t *testing.T) {
 // --- RecoveryLogin: DB error on ValidateAndUseRecoveryCode ---
 
 func TestRecoveryLoginDBErrorOnValidation(t *testing.T) {
-	h, repo, sqldb := setupTestAppClosable(t)
+	h, repo, closableDB := setupTestAppClosable(t)
 	user, _ := repo.CreateUser(context.Background(), "frank", "")
 
 	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
@@ -1491,7 +1486,7 @@ func TestRecoveryLoginDBErrorOnValidation(t *testing.T) {
 	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes))
 
 	// Close DB so ValidateAndUseRecoveryCode fails.
-	_ = sqldb.Close()
+	_ = closableDB.Close()
 
 	body := strings.NewReader(`{"username":"frank","code":"` + codes[0] + `"}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
@@ -1508,13 +1503,13 @@ func TestRecoveryLoginDBErrorOnValidation(t *testing.T) {
 // --- ResendVerification: DB error on CreateEmailVerificationToken ---
 
 func TestResendVerificationDBErrorOnTokenCreate(t *testing.T) {
-	h, repo, sqldb := setupTestAppEmailModeClosable(t)
+	h, repo, closableDB := setupTestAppEmailModeClosable(t)
 
 	_, err := repo.CreateUserWithEmail(context.Background(), "test@example.com", "")
 	require.NoError(t, err)
 
 	// Close DB so CreateEmailVerificationToken fails.
-	_ = sqldb.Close()
+	_ = closableDB.Close()
 
 	body := strings.NewReader(`{"email":"test@example.com"}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)
@@ -1626,20 +1621,18 @@ func TestRegenerateRecoveryCodesNoSession(t *testing.T) {
 
 func TestVerifyEmailGetUserByIDFailure(t *testing.T) {
 	// Test the path where MarkEmailVerified succeeds but GetUserByID fails.
-	// Disable FK so we can create an orphan token that references a non-existent user.
+	// Create a user, create a token, then delete the user to orphan the token.
 	h, repo, _ := setupTestAppEmailModeClosable(t)
 	ctx := context.Background()
 
-	// Disable FK constraints so we can create a token for a non-existent user.
-	_, err := repo.db.Exec("PRAGMA foreign_keys=OFF")
+	user, err := repo.CreateUserWithEmail(ctx, "orphan@example.com", "")
 	require.NoError(t, err)
 
 	tokenHash := HashToken("orphantoken")
-	// userID 99999 does not exist.
-	require.NoError(t, repo.CreateEmailVerificationToken(ctx, 99999, tokenHash, time.Now().Add(24*time.Hour)))
+	require.NoError(t, repo.CreateEmailVerificationToken(ctx, user.ID, tokenHash, time.Now().Add(24*time.Hour)))
 
-	_, err = repo.db.Exec("PRAGMA foreign_keys=ON")
-	require.NoError(t, err)
+	// Delete the user to orphan the token.
+	require.NoError(t, repo.DeleteUser(ctx, user.ID))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email?token=orphantoken", nil)
 	req = requestWithSession(req, nil)

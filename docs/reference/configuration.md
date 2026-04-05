@@ -72,6 +72,7 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
+| `--jobs-database-dsn` | `JOBS_DATABASE_DSN` | (empty) | Database URL for a separate jobs database (e.g. `sqlite:///jobs.db`) |
 | `--jobs-workers` | `JOBS_WORKERS` | `2` | Number of concurrent worker goroutines |
 | `--jobs-poll-interval` | `JOBS_POLL_INTERVAL` | `1s` | Interval between queue polls |
 | `--jobs-retry-base-delay` | `JOBS_RETRY_BASE_DELAY` | `30s` | Base delay for exponential retry backoff |

@@ -1,15 +1,15 @@
 # Part 2: Database & Models
 
-In this part you'll define the data models for your polls app, write a SQL migration, and create a repository for database access.
+In this part you'll define the data models for your polls app, register them as Den documents, and create a repository for database access.
 
 **Source code:** [`tutorial/step02/`](https://github.com/oliverandrich/burrow/tree/main/tutorial/step02)
 
 ## The Polls App
 
-The polls app lives in its own package. Create the directories first:
+The polls app lives in its own package. Create the directory first:
 
 ```bash
-mkdir -p internal/polls/migrations
+mkdir -p internal/polls
 ```
 
 All the code in this section — models, repository, and app setup — goes into `internal/polls/polls.go`. We'll split it into separate files as it grows.
@@ -23,67 +23,40 @@ package polls
 
 import (
     "context"
-    "embed"
-    "io/fs"
     "time"
 
     "github.com/oliverandrich/burrow"
-    "github.com/uptrace/bun"
+    "github.com/oliverandrich/den"
+    "github.com/oliverandrich/den/document"
+    "github.com/oliverandrich/den/where"
 )
 
 type Question struct {
-    bun.BaseModel `bun:"table:questions,alias:q"`
-
-    ID          int64     `bun:",pk,autoincrement"`
-    Text        string    `bun:",notnull"`
-    PublishedAt time.Time `bun:",notnull,default:current_timestamp"`
-
-    Choices []Choice `bun:"rel:has-many,join:id=question_id"`
+    document.Base
+    Text        string    `json:"text" den:"index"`
+    PublishedAt time.Time `json:"published_at"`
 }
 
 type Choice struct {
-    bun.BaseModel `bun:"table:choices,alias:c"`
-
-    ID         int64  `bun:",pk,autoincrement"`
-    QuestionID int64  `bun:",notnull"`
-    Text       string `bun:",notnull"`
-    Votes      int    `bun:",notnull,default:0"`
-
-    Question *Question `bun:"rel:belongs-to,join:question_id=id"`
+    document.Base
+    QuestionID string `json:"question_id" den:"index"`
+    Text       string `json:"text"`
+    Votes      int    `json:"votes"`
 }
 ```
 
 Key points:
 
-- **`bun.BaseModel`** with the `bun:"table:..."` tag maps the struct to a database table
-- **`alias:q`** gives the table a short alias for use in queries (`q.id` instead of `questions.id`)
-- **Relations** are declared with `rel:has-many` and `rel:belongs-to` — Bun uses these for eager loading
+- **`document.Base`** provides ULID-based ID, revision tracking, and timestamps
+- **`den:"index"`** tags add secondary indexes for efficient queries
+- **Relations** between questions and choices are managed via the `QuestionID` field — Den uses document references rather than ORM-style relation declarations
 
-### Migration
+### Document Registration
 
-Create `internal/polls/migrations/001_create_polls.up.sql`:
+Den handles schema creation automatically. Instead of writing SQL migration files, you register your document types in the app setup (see below). Den creates collections and indexes on startup.
 
-```sql
-CREATE TABLE IF NOT EXISTS questions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    text TEXT NOT NULL,
-    published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS choices (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-    text TEXT NOT NULL,
-    votes INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX IF NOT EXISTS idx_choices_question_id ON choices (question_id);
-```
-
-Burrow runs migrations automatically at startup for apps that implement `Migratable`. Migrations are tracked per-app in the `_migrations` table — each file runs exactly once.
-
-!!! note "Rolling back migrations"
-    Burrow does not support down migrations. If you need to undo a migration, write a new migration that reverses the changes (e.g., `003_drop_column.up.sql`). In development, you can delete the database file and restart to re-run all migrations from scratch.
+!!! note "No down migrations"
+    Den manages schema automatically. If you need to remove a field, simply remove it from your struct — existing documents retain their data but the field won't be read.
 
 ### Repository
 
@@ -91,46 +64,35 @@ Still in `internal/polls/polls.go`, add the repository below the models:
 
 ```go
 type Repository struct {
-    db *bun.DB
+    db *den.DB
 }
 
-func NewRepository(db *bun.DB) *Repository {
+func NewRepository(db *den.DB) *Repository {
     return &Repository{db: db}
 }
 
 func (r *Repository) ListQuestions(ctx context.Context) ([]Question, error) {
-    var questions []Question
-    err := r.db.NewSelect().
-        Model(&questions).
-        Order("published_at DESC", "id DESC").
-        Scan(ctx)
-    return questions, err
+    return den.NewQuery[Question](ctx, r.db).
+        Sort("published_at", den.Desc).
+        All()
 }
 
-func (r *Repository) GetQuestion(ctx context.Context, id int64) (*Question, error) {
-    question := new(Question)
-    err := r.db.NewSelect().
-        Model(question).
-        Relation("Choices").
-        Where("q.id = ?", id).
-        Scan(ctx)
-    if err != nil {
-        return nil, err
-    }
-    return question, nil
+func (r *Repository) GetQuestion(ctx context.Context, id string) (*Question, error) {
+    return den.FindByID[Question](ctx, r.db, id)
+}
+
+func (r *Repository) GetChoicesForQuestion(ctx context.Context, questionID string) ([]Choice, error) {
+    return den.NewQuery[Choice](ctx, r.db,
+        where.Field("question_id").Eq(questionID),
+    ).All()
 }
 ```
 
-Note how `Relation("Choices")` eagerly loads all choices for a question in a single query.
-
 ### App Setup
 
-Still in `internal/polls/polls.go`, add the app struct and the embedded migration filesystem:
+Still in `internal/polls/polls.go`, add the app struct:
 
 ```go
-//go:embed migrations
-var migrationFS embed.FS
-
 type App struct {
     repo *Repository
 }
@@ -144,9 +106,8 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     return nil
 }
 
-func (a *App) MigrationFS() fs.FS {
-    sub, _ := fs.Sub(migrationFS, "migrations")
-    return sub
+func (a *App) Documents() []any {
+    return []any{&Question{}, &Choice{}}
 }
 ```
 
@@ -156,7 +117,7 @@ The app implements three interfaces:
 |-----------|--------|---------|
 | `burrow.App` | `Name()` | Required for all apps |
 | `burrow.Configurable` | `Configure()` | App initialisation with database access |
-| `burrow.Migratable` | `MigrationFS()` | Automatic database migrations |
+| `burrow.HasDocuments` | `Documents()` | Automatic document collection setup |
 
 ### Update main.go
 
@@ -180,7 +141,7 @@ go mod tidy
 go run .
 ```
 
-When the server starts, you'll see a log line confirming the migration ran. The `questions` and `choices` tables now exist in your SQLite database.
+When the server starts, Den automatically creates the `question` and `choice` collections in your SQLite database.
 
 There are no routes yet for the polls app — we'll add those with templates in the next part.
 

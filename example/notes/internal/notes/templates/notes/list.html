@@ -51,7 +51,7 @@
 {{- end }}
 
 {{ define "notes/note_card" -}}
-<div class="col-md-6 col-lg-4" id="note-{{ itoa .ID }}">
+<div class="col-md-6 col-lg-4" id="note-{{ .ID }}">
     {{ template "notes/note_card_inner" . }}
 </div>
 {{- end }}
@@ -65,15 +65,15 @@
         {{- end }}
     </div>
     <div class="card-footer bg-transparent border-top-0 text-end">
-        <a href="/notes/{{ itoa .ID }}/edit" class="btn btn-sm btn-outline-secondary me-1"
-           hx-get="/notes/{{ itoa .ID }}/edit"
+        <a href="/notes/{{ .ID }}" class="btn btn-sm btn-outline-secondary me-1"
+           hx-get="/notes/{{ .ID }}"
            hx-target="#note-form"
            hx-swap="innerHTML">
             <span class="me-1">{{ iconPencil }}</span>{{ t "notes-edit-button" }}
         </a>
         <button class="btn btn-sm btn-outline-danger"
-                hx-delete="/notes/{{ itoa .ID }}"
-                hx-target="#note-{{ itoa .ID }}"
+                hx-delete="/notes/{{ .ID }}"
+                hx-target="#note-{{ .ID }}"
                 hx-swap="outerHTML swap:0.3s"
                 hx-confirm="{{ t "notes-delete-confirm" }}">
             <span class="me-1">{{ iconTrash }}</span>{{ t "notes-delete-button" }}
@@ -106,7 +106,7 @@
 
 {{ define "notes/update_response" -}}
 <div id="note-form" hx-swap-oob="innerHTML"></div>
-<div class="col-md-6 col-lg-4" id="note-{{ itoa .Note.ID }}" hx-swap-oob="outerHTML">
+<div class="col-md-6 col-lg-4" id="note-{{ .Note.ID }}" hx-swap-oob="outerHTML">
     {{ template "notes/note_card_inner" .Note }}
 </div>
 {{ template "app/alerts_oob" . }}

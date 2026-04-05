@@ -6,7 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/uptrace/bun"
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/where"
 
 	"github.com/oliverandrich/burrow/forms"
 	"github.com/oliverandrich/burrow/i18n"
@@ -14,15 +15,16 @@ import (
 
 // FilterDef describes a filter available in the admin list view.
 type FilterDef struct { //nolint:govet // fieldalignment: readability over optimization
-	Field    string         // database column name
+	Field    string         // JSON field name used in Den queries
 	Label    string         // human-readable label
 	LabelKey string         // i18n key for the label; translated via i18n.T at request time
 	Type     string         // "select", "bool", "date_range"
 	Choices  []forms.Choice // for select filters
 }
 
-// applyFilters applies filter query parameters to the Bun query.
-func applyFilters(q *bun.SelectQuery, r *http.Request, filters []FilterDef) *bun.SelectQuery {
+// buildFilterConditions builds where.Condition values from request query parameters.
+func buildFilterConditions(r *http.Request, filters []FilterDef) []where.Condition {
+	var conditions []where.Condition
 	for _, f := range filters {
 		val := r.URL.Query().Get(f.Field)
 		if val == "" {
@@ -31,31 +33,29 @@ func applyFilters(q *bun.SelectQuery, r *http.Request, filters []FilterDef) *bun
 
 		switch f.Type {
 		case "select":
-			// Validate that the value is an allowed choice.
 			if isValidChoice(val, f.Choices) {
-				q = q.Where("? = ?", bun.Ident(f.Field), val)
+				conditions = append(conditions, where.Field(f.Field).Eq(val))
 			}
 		case "bool":
 			switch val {
 			case "true", "1":
-				q = q.Where("? = ?", bun.Ident(f.Field), true)
+				conditions = append(conditions, where.Field(f.Field).Eq(true))
 			case "false", "0":
-				q = q.Where("? = ?", bun.Ident(f.Field), false)
+				conditions = append(conditions, where.Field(f.Field).Eq(false))
 			}
 		}
 	}
-
-	return q
+	return conditions
 }
 
-// applySort applies column sorting from query parameters.
+// parseSortParam extracts column sort from query parameters.
 // Only fields in the allowed list are accepted. The query param format is
 // "sort=field" for ascending or "sort=-field" for descending.
-// Returns true if a sort was applied.
-func applySort(q *bun.SelectQuery, r *http.Request, allowed []string) (*bun.SelectQuery, bool) {
+// Returns the field name, direction, and whether a sort was parsed.
+func parseSortParam(r *http.Request, allowed []string) (string, den.SortDirection, bool) {
 	sortParam := r.URL.Query().Get("sort")
 	if sortParam == "" {
-		return q, false
+		return "", den.Asc, false
 	}
 
 	desc := false
@@ -66,16 +66,13 @@ func applySort(q *bun.SelectQuery, r *http.Request, allowed []string) (*bun.Sele
 	}
 
 	if !slices.Contains(allowed, field) {
-		return q, false
+		return "", den.Asc, false
 	}
 
 	if desc {
-		q = q.OrderExpr("? DESC", bun.Ident(field))
-	} else {
-		q = q.OrderExpr("? ASC", bun.Ident(field))
+		return field, den.Desc, true
 	}
-
-	return q, true
+	return field, den.Asc, true
 }
 
 // isValidChoice checks if a value is in the list of allowed choices.

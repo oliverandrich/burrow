@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/uptrace/bun"
+	"github.com/oliverandrich/den"
 	"github.com/urfave/cli/v3"
 )
 
@@ -20,7 +20,7 @@ func New() *App { return &App{} }
 // App implements the burrow.App and burrow.HasRoutes interfaces.
 // It registers liveness and readiness endpoints.
 type App struct {
-	db       *bun.DB
+	db       *den.DB
 	registry *burrow.Registry
 }
 
@@ -49,7 +49,7 @@ func (a *App) readiness(w http.ResponseWriter, r *http.Request) error {
 	allOK := true
 
 	dbStatus := "ok"
-	if err := a.db.PingContext(ctx); err != nil {
+	if err := a.db.Ping(ctx); err != nil {
 		dbStatus = err.Error()
 		allOK = false
 	}

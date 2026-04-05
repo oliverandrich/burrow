@@ -3,28 +3,35 @@
 package authtest
 
 import (
+	"context"
 	"fmt"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 
-	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
+	"github.com/oliverandrich/den"
+	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme for OpenURL
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
 )
 
 var userCounter atomic.Int64
 
-// NewDB returns an in-memory SQLite *bun.DB with all auth migrations applied.
+// NewDB returns a Den *den.DB with all auth document types registered.
 // The database is closed automatically when the test finishes.
-func NewDB(t *testing.T) *bun.DB {
+func NewDB(t *testing.T) *den.DB {
 	t.Helper()
 
-	db := burrow.TestDB(t)
+	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "auth_test.db")
+	db, err := den.OpenURL(dsn)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
 
 	authApp := auth.New()
-	err := burrow.RunAppMigrations(t.Context(), db, authApp.Name(), authApp.MigrationFS())
-	require.NoError(t, err)
+	for _, doc := range authApp.Documents() {
+		err := den.Register(context.Background(), db, doc)
+		require.NoError(t, err)
+	}
 
 	return db
 }
@@ -33,7 +40,7 @@ func NewDB(t *testing.T) *bun.DB {
 type UserOption func(*auth.User)
 
 // WithID sets the user ID.
-func WithID(id int64) UserOption {
+func WithID(id string) UserOption {
 	return func(u *auth.User) { u.ID = id }
 }
 
@@ -65,7 +72,7 @@ func WithActive(active bool) UserOption {
 // CreateUser inserts a user into the database and returns it.
 // Default values: Username "testuser{N}", Role "user", IsActive true.
 // Each call auto-increments a counter for unique default usernames.
-func CreateUser(t *testing.T, db *bun.DB, opts ...UserOption) *auth.User {
+func CreateUser(t *testing.T, db *den.DB, opts ...UserOption) *auth.User {
 	t.Helper()
 
 	n := userCounter.Add(1)
@@ -79,19 +86,8 @@ func CreateUser(t *testing.T, db *bun.DB, opts ...UserOption) *auth.User {
 		opt(user)
 	}
 
-	if user.ID != 0 {
-		_, err := db.ExecContext(t.Context(),
-			"INSERT INTO users (id, username, role, is_active, name, email) VALUES (?, ?, ?, ?, ?, ?)",
-			user.ID, user.Username, user.Role, user.IsActive, user.Name, user.Email)
-		require.NoError(t, err)
-	} else {
-		var id int64
-		err := db.QueryRowContext(t.Context(),
-			"INSERT INTO users (username, role, is_active, name, email) VALUES (?, ?, ?, ?, ?) RETURNING id",
-			user.Username, user.Role, user.IsActive, user.Name, user.Email).Scan(&id)
-		require.NoError(t, err)
-		user.ID = id
-	}
+	err := den.Insert(context.Background(), db, user)
+	require.NoError(t, err)
 
 	return user
 }

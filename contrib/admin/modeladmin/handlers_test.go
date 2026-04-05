@@ -2,7 +2,6 @@ package modeladmin
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,12 +10,10 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-
-	"github.com/uptrace/bun/driver/sqliteshim"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/forms"
@@ -36,7 +33,7 @@ type mockRenderer struct { //nolint:govet // fieldalignment: test struct
 	lastDeleteItems     []DeleteItem
 }
 
-func (m *mockRenderer) List(w http.ResponseWriter, r *http.Request, items []testItem, page burrow.PageResult, cfg RenderConfig) error {
+func (m *mockRenderer) List(w http.ResponseWriter, _ *http.Request, items []testItem, page burrow.PageResult, cfg RenderConfig) error {
 	m.listCalled = true
 	m.lastItems = items
 	m.lastPage = page
@@ -45,7 +42,7 @@ func (m *mockRenderer) List(w http.ResponseWriter, r *http.Request, items []test
 	return nil
 }
 
-func (m *mockRenderer) Detail(w http.ResponseWriter, r *http.Request, item *testItem, cfg RenderConfig) error {
+func (m *mockRenderer) Detail(w http.ResponseWriter, _ *http.Request, item *testItem, cfg RenderConfig) error {
 	m.detailCalled = true
 	m.lastItem = item
 	m.lastConfig = cfg
@@ -53,7 +50,7 @@ func (m *mockRenderer) Detail(w http.ResponseWriter, r *http.Request, item *test
 	return nil
 }
 
-func (m *mockRenderer) Form(w http.ResponseWriter, r *http.Request, item *testItem, fields []forms.BoundField, cfg RenderConfig) error {
+func (m *mockRenderer) Form(w http.ResponseWriter, _ *http.Request, item *testItem, fields []forms.BoundField, cfg RenderConfig) error {
 	m.formCalled = true
 	m.lastItem = item
 	m.lastFields = fields
@@ -62,7 +59,7 @@ func (m *mockRenderer) Form(w http.ResponseWriter, r *http.Request, item *testIt
 	return nil
 }
 
-func (m *mockRenderer) ConfirmDelete(w http.ResponseWriter, r *http.Request, items []DeleteItem, cfg RenderConfig) error {
+func (m *mockRenderer) ConfirmDelete(w http.ResponseWriter, _ *http.Request, items []DeleteItem, cfg RenderConfig) error {
 	m.confirmDeleteCalled = true
 	m.lastDeleteItems = items
 	m.lastConfig = cfg
@@ -70,15 +67,12 @@ func (m *mockRenderer) ConfirmDelete(w http.ResponseWriter, r *http.Request, ite
 	return nil
 }
 
-func setupHandlerTest(t *testing.T) (*bun.DB, *mockRenderer, *ModelAdmin[testItem]) {
+func setupHandlerTest(t *testing.T) (*den.DB, *mockRenderer, *ModelAdmin[testItem]) {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { db.Close() })
+	db := burrow.TestDB(t)
 
 	ctx := context.Background()
-	_, err = db.NewCreateTable().Model((*testItem)(nil)).Exec(ctx)
+	err := den.Register(ctx, db, &testItem{})
 	require.NoError(t, err)
 
 	renderer := &mockRenderer{}
@@ -146,11 +140,11 @@ func TestHandleDetail_ReadOnly(t *testing.T) {
 	ma.CanEdit = false
 
 	item := &testItem{Name: "Detail Test", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%s", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -162,11 +156,11 @@ func TestHandleDetail_EditMode(t *testing.T) {
 	db, renderer, ma := setupHandlerTest(t)
 
 	item := &testItem{Name: "Edit Test", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%s", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -179,7 +173,7 @@ func TestHandleDetail_NotFound(t *testing.T) {
 	_, _, ma := setupHandlerTest(t)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/999", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/nonexistent", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -230,8 +224,7 @@ func TestHandleCreate(t *testing.T) {
 	assert.Equal(t, "/admin/items", w.Header().Get("Location"))
 
 	// Verify item was created in DB.
-	var items []testItem
-	err := db.NewSelect().Model(&items).Scan(context.Background())
+	items, err := den.NewQuery[testItem](context.Background(), db).All()
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, "Created Item", items[0].Name)
@@ -241,7 +234,7 @@ func TestHandleUpdate(t *testing.T) {
 	db, _, ma := setupHandlerTest(t)
 
 	item := &testItem{Name: "Original", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	r := newRouter(ma)
@@ -249,7 +242,7 @@ func TestHandleUpdate(t *testing.T) {
 		"name":   {"Updated"},
 		"status": {"inactive"},
 	}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%d", item.ID), strings.NewReader(form.Encode()))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%s", item.ID), strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -258,8 +251,7 @@ func TestHandleUpdate(t *testing.T) {
 	assert.Equal(t, "/admin/items", w.Header().Get("Location"))
 
 	// Verify update.
-	var loaded testItem
-	err = db.NewSelect().Model(&loaded).Where("id = ?", item.ID).Scan(context.Background())
+	loaded, err := den.FindByID[testItem](context.Background(), db, item.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "Updated", loaded.Name)
 	assert.Equal(t, "inactive", loaded.Status)
@@ -269,7 +261,7 @@ func TestHandleUpdate_Continue(t *testing.T) {
 	db, _, ma := setupHandlerTest(t)
 
 	item := &testItem{Name: "Original", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	r := newRouter(ma)
@@ -278,13 +270,13 @@ func TestHandleUpdate_Continue(t *testing.T) {
 		"status":    {"active"},
 		"_continue": {"1"},
 	}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%d", item.ID), strings.NewReader(form.Encode()))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%s", item.ID), strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusSeeOther, w.Code)
-	assert.Equal(t, fmt.Sprintf("/admin/items/%d", item.ID), w.Header().Get("Location"))
+	assert.Equal(t, fmt.Sprintf("/admin/items/%s", item.ID), w.Header().Get("Location"))
 }
 
 func TestHandleUpdate_Forbidden(t *testing.T) {
@@ -292,13 +284,13 @@ func TestHandleUpdate_Forbidden(t *testing.T) {
 	ma.CanEdit = false
 
 	item := &testItem{Name: "Test", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	// When CanEdit is false, the POST route is not registered.
 	r := newRouter(ma)
 	form := url.Values{"name": {"Updated"}}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%d", item.ID), strings.NewReader(form.Encode()))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%s", item.ID), strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -310,11 +302,11 @@ func TestHandleDelete(t *testing.T) {
 	db, _, ma := setupHandlerTest(t)
 
 	item := &testItem{Name: "Delete Me", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	form := url.Values{"_selected": {fmt.Sprintf("%d", item.ID)}}
+	form := url.Values{"_selected": {item.ID}}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
@@ -324,44 +316,42 @@ func TestHandleDelete(t *testing.T) {
 	assert.Equal(t, "/admin/items", w.Header().Get("Location"))
 
 	// Verify deletion.
-	count, err := db.NewSelect().Model((*testItem)(nil)).Count(context.Background())
+	count, err := den.NewQuery[testItem](context.Background(), db).Count()
 	require.NoError(t, err)
-	assert.Equal(t, 0, count)
+	assert.Equal(t, int64(0), count)
 }
 
 func TestHandleDelete_PreservesPage(t *testing.T) {
-	db, _, ma := setupHandlerTest(t)
-	ma.PageSize = 2
-	seedItems(t, db, 20) // 10 pages of 2 items
+	tests := []struct {
+		name   string
+		header string // header name carrying the current URL
+	}{
+		{"HX-Current-URL", "HX-Current-URL"},
+		{"Referer fallback", "Referer"},
+	}
 
-	r := newRouter(ma)
-	form := url.Values{"_selected": {"1"}}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("HX-Current-URL", "http://localhost:8080/admin/items?page=5")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, _, ma := setupHandlerTest(t)
+			ma.PageSize = 2
+			seedItems(t, db, 20) // 10 pages of 2 items
 
-	assert.Equal(t, http.StatusSeeOther, w.Code)
-	assert.Equal(t, "/admin/items?page=5", w.Header().Get("Location"))
-}
+			items, err := den.NewQuery[testItem](context.Background(), db).All()
+			require.NoError(t, err)
+			firstID := items[0].ID
 
-func TestHandleDelete_PreservesPage_RefererFallback(t *testing.T) {
-	db, _, ma := setupHandlerTest(t)
-	ma.PageSize = 2
-	seedItems(t, db, 20) // 10 pages of 2 items
+			r := newRouter(ma)
+			form := url.Values{"_selected": {firstID}}
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set(tt.header, "http://localhost:8080/admin/items?page=5")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
 
-	r := newRouter(ma)
-	form := url.Values{"_selected": {"1"}}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	// No HX-Current-URL, only Referer.
-	req.Header.Set("Referer", "http://localhost:8080/admin/items?page=5")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusSeeOther, w.Code)
-	assert.Equal(t, "/admin/items?page=5", w.Header().Get("Location"))
+			assert.Equal(t, http.StatusSeeOther, w.Code)
+			assert.Equal(t, "/admin/items?page=5", w.Header().Get("Location"))
+		})
+	}
 }
 
 func TestHandleDelete_ClampsToLastPage(t *testing.T) {
@@ -369,9 +359,16 @@ func TestHandleDelete_ClampsToLastPage(t *testing.T) {
 	ma.PageSize = 3
 	seedItems(t, db, 10) // pages: 1,2,3,4 (last page has 1 item)
 
+	// Get the last item (page 4).
+	items, err := den.NewQuery[testItem](context.Background(), db).Sort("_created_at", den.Desc).All()
+	require.NoError(t, err)
+	// The last item in sort order (most recent) is the one on page 4 in ascending order.
+	// Actually we just need any single item - when we delete it and there's only 9 left,
+	// page 4 becomes last page (ceil(9/3)=3), so page 4 should clamp to 3.
+	lastItemID := items[0].ID
+
 	r := newRouter(ma)
-	// Delete the single item on page 4.
-	form := url.Values{"_selected": {"10"}}
+	form := url.Values{"_selected": {lastItemID}}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Current-URL", "http://localhost:8080/admin/items?page=4")
@@ -401,13 +398,13 @@ func TestHandleDelete_Forbidden(t *testing.T) {
 
 	// When CanDelete is false, no delete routes are registered.
 	r := newRouter(ma)
-	form := url.Values{"_selected": {"1"}}
+	form := url.Values{"_selected": {"someID"}}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/bulk/delete", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	// POST /bulk/delete not registered, but POST /bulk/{action} catches it → 404 (no "delete" action).
+	// POST /bulk/delete not registered, but POST /bulk/{action} catches it -> 404 (no "delete" action).
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
@@ -434,11 +431,11 @@ func TestIdFromRequest_CustomIDFunc(t *testing.T) {
 	}
 
 	item := &testItem{Name: "Custom ID", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%s", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -468,9 +465,8 @@ func TestPageSize_Negative(t *testing.T) {
 
 // validatedItem has a validate tag to trigger validation errors.
 type validatedItem struct { //nolint:govet // fieldalignment: test struct
-	bun.BaseModel `bun:"table:validated_items"`
-	ID            int64  `bun:",pk,autoincrement"`
-	Name          string `bun:",notnull" form:"name" validate:"required"`
+	document.Base
+	Name string `json:"name" form:"name" validate:"required"`
 }
 
 // mockValidatedRenderer records calls for validatedItem tests.
@@ -515,15 +511,12 @@ func (m *mockValidatedRenderer) ConfirmDelete(w http.ResponseWriter, _ *http.Req
 	return nil
 }
 
-func setupValidatedHandlerTest(t *testing.T) (*bun.DB, *mockValidatedRenderer, *ModelAdmin[validatedItem]) {
+func setupValidatedHandlerTest(t *testing.T) (*den.DB, *mockValidatedRenderer, *ModelAdmin[validatedItem]) {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { db.Close() })
+	db := burrow.TestDB(t)
 
 	ctx := context.Background()
-	_, err = db.NewCreateTable().Model((*validatedItem)(nil)).Exec(ctx)
+	err := den.Register(ctx, db, &validatedItem{})
 	require.NoError(t, err)
 
 	renderer := &mockValidatedRenderer{}
@@ -575,7 +568,7 @@ func TestHandleUpdate_ValidationError(t *testing.T) {
 	db, renderer, ma := setupValidatedHandlerTest(t)
 
 	item := &validatedItem{Name: "Original"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	router := chi.NewRouter()
@@ -585,7 +578,7 @@ func TestHandleUpdate_ValidationError(t *testing.T) {
 	form := url.Values{
 		"name": {""},
 	}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/validated/%d", item.ID), strings.NewReader(form.Encode()))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/validated/%s", item.ID), strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -610,7 +603,7 @@ func TestHandleUpdate_NotFound(t *testing.T) {
 
 	r := newRouter(ma)
 	form := url.Values{"name": {"Updated"}}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/999", strings.NewReader(form.Encode()))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/items/nonexistent", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -662,11 +655,11 @@ func TestHandleDetail_FieldChoices(t *testing.T) {
 	}
 
 	item := &testItem{Name: "Test", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%s", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

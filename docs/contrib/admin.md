@@ -36,7 +36,7 @@ The layout reads admin nav items from context and renders them in the sidebar. S
 
 ## ModelAdmin
 
-The `admin/modeladmin` sub-package provides a generic, Django-style CRUD admin for any Bun model:
+The `admin/modeladmin` sub-package provides a generic, Django-style CRUD admin for any Den document type:
 
 ```go
 import "github.com/oliverandrich/burrow/contrib/admin/modeladmin"
@@ -61,10 +61,10 @@ ModelAdmin uses the `verbose` struct tag to determine column headers and form la
 
 ```go
 type Note struct {
-    ID        int64     `bun:",pk,autoincrement" verbose:"ID"`
-    Title     string    `verbose:"Title"`
-    Body      string    `verbose:"Body"`
-    CreatedAt time.Time `verbose:"Created"`
+    document.Base           `verbose:"ID"`
+    Title     string        `json:"title" den:"index" verbose:"Title"`
+    Body      string        `json:"body" verbose:"Body"`
+    CreatedAt time.Time     `json:"created_at" verbose:"Created"`
 }
 ```
 
@@ -76,10 +76,10 @@ The `form` struct tag controls how fields appear in create/edit forms:
 
 ```go
 type Article struct {
-    ID     int64  `bun:",pk,autoincrement" verbose:"ID"`
-    Title  string `verbose:"Title" form:"required"`
-    Body   string `verbose:"Body" form:"widget=textarea"`
-    Status string `verbose:"Status" form:"choices=draft|published|archived"`
+    document.Base         `verbose:"ID"`
+    Title  string         `json:"title" verbose:"Title" form:"required"`
+    Body   string         `json:"body" verbose:"Body" form:"widget=textarea"`
+    Status string         `json:"status" verbose:"Status" form:"choices=draft|published|archived"`
 }
 ```
 
@@ -113,16 +113,16 @@ ma := &modeladmin.ModelAdmin[Choice]{
     // ...
     FieldChoices: map[string]modeladmin.ChoicesFunc{
         "QuestionID": func(ctx context.Context) ([]modeladmin.Choice, error) {
-            var questions []Question
-            err := db.NewSelect().Model(&questions).
-                Order("title ASC").Scan(ctx)
+            questions, err := den.NewQuery[Question](ctx, db).
+                Sort("title", den.Asc).
+                All()
             if err != nil {
                 return nil, err
             }
             choices := make([]modeladmin.Choice, len(questions))
             for i, q := range questions {
                 choices[i] = modeladmin.Choice{
-                    Value: strconv.FormatInt(q.ID, 10),
+                    Value: q.ID,
                     Label: q.Title,
                 }
             }
@@ -166,27 +166,15 @@ func (u User) String() string {
     return u.Username
 }
 
-// 2. Add a belongs-to relation on the model:
-type Note struct {
-    bun.BaseModel `bun:"table:notes,alias:n"`
-    UserID int64      `bun:",notnull"`
-    User   *auth.User `bun:"rel:belongs-to,join:user_id=id" form:"-" verbose:"User"`
-    // ...
-}
-
-// 3. Configure ModelAdmin to show the relation and eager-load it:
+// 2. Configure ModelAdmin to show the user:
 ma := &modeladmin.ModelAdmin[Note]{
-    ListFields: []string{"ID", "Title", "User", "CreatedAt"},
-    Relations:  []string{"User"},
-    OrderBy:    "n.created_at DESC", // qualify with table alias when using relations
+    ListFields: []string{"ID", "Title", "UserID", "CreatedAt"},
+    OrderBy:    "created_at DESC",
     // ...
 }
 ```
 
-The list view now shows the user's name instead of a numeric ID. The `User` field must be in `Relations` so Bun eager-loads it.
-
-!!! note
-    When using `Relations`, qualify ambiguous column names in `OrderBy` with the table alias (e.g. `n.created_at` instead of `created_at`), since joined tables may share column names like `id` or `created_at`.
+When a list field's value implements `fmt.Stringer`, the `String()` result is displayed instead of the raw value.
 
 ### Computed List Columns (`ListDisplay`)
 
@@ -194,11 +182,14 @@ For columns that aren't direct struct fields — like derived values, counts, or
 
 ```go
 ma := &modeladmin.ModelAdmin[Question]{
-    ListFields: []string{"ID", "Text", "ChoiceCount", "PublishedAt"},
-    Relations:  []string{"Choices"},
+    ListFields: []string{"ID", "Text", "Status", "PublishedAt"},
     ListDisplay: map[string]func(Question) template.HTML{
-        "ChoiceCount": func(q Question) template.HTML {
-            return template.HTML(fmt.Sprintf("<span>%d choices</span>", len(q.Choices)))
+        "Status": func(q Question) template.HTML {
+            class := "secondary"
+            if q.PublishedAt.Before(time.Now()) {
+                class = "success"
+            }
+            return template.HTML(fmt.Sprintf(`<span class="badge bg-%s">%s</span>`, class, "Published"))
         },
     },
     // ...
@@ -228,11 +219,7 @@ Files are downloaded as `{slug}-{date}.csv` or `{slug}-{date}.json`. Column head
 
 When `CanDelete` is true, clicking the delete button navigates to a dedicated confirmation page (`GET /{slug}/{id}/delete`) instead of showing an inline browser confirm dialog. This gives users a clear chance to review what they're about to delete.
 
-**Cascade impact detection** is automatic: at boot time, ModelAdmin introspects SQLite foreign keys to find tables with `ON DELETE CASCADE` referencing the model's table. When cascades exist, the confirmation page shows how many related rows will also be deleted (e.g., "5 × comments", "2 × attachments").
-
-- No configuration needed — cascade detection works out of the box
-- Only `ON DELETE CASCADE` foreign keys are detected; `SET NULL`, `RESTRICT`, etc. are ignored
-- If no cascades exist, the confirmation page shows a simple "Are you sure?" message
+The confirmation page shows a simple "Are you sure?" message with the document details.
 - The actual deletion still uses `DELETE /{slug}/{id}` (unchanged)
 
 ### Features
@@ -261,11 +248,11 @@ By default, search uses `LIKE` with `%term%` patterns, applied with OR logic acr
 
 #### FTS5 Auto-Detection
 
-If you create an FTS5 virtual table following the `{tablename}_fts` naming convention (e.g., `notes_fts` for a `notes` table), ModelAdmin automatically detects it at boot time and uses FTS5 `MATCH` queries instead of `LIKE`. This gives you word-based matching, FTS5 query syntax (AND, OR, NOT, prefix), and better performance on large datasets — with zero configuration.
+If your document type has fields with the `den:"fts"` tag option, ModelAdmin automatically detects them at boot time and uses full-text search queries instead of `LIKE`. This gives you word-based matching, query syntax (AND, OR, NOT, prefix), and better performance on large datasets — with zero configuration.
 
-If the FTS5 query has syntax errors (e.g., unmatched quotes from user input), ModelAdmin falls back to LIKE automatically.
+If the search query has syntax errors (e.g., unmatched quotes from user input), ModelAdmin falls back to LIKE automatically.
 
-See the [Full-Text Search guide](../guide/fts5.md) for instructions on creating FTS5 tables and triggers.
+See the [Full-Text Search guide](../guide/fts5.md) for instructions on adding FTS to your documents.
 
 ### Filters
 
@@ -344,12 +331,18 @@ ma := &modeladmin.ModelAdmin[Note]{
         {
             Slug:  "archive",
             Label: "admin-notes-bulk-archive", // i18n key
-            Handler: func(ctx context.Context, db *bun.DB, ids []string) error {
-                _, err := db.NewUpdate().Model((*Note)(nil)).
-                    Set("status = ?", "archived").
-                    Where("id IN (?)", bun.List(ids)).
-                    Exec(ctx)
-                return err
+            Handler: func(ctx context.Context, db *den.DB, ids []string) error {
+                for _, id := range ids {
+                    note, err := den.FindByID[Note](ctx, db, id)
+                    if err != nil {
+                        return err
+                    }
+                    note.Status = "archived"
+                    if err := den.Replace(ctx, db, note); err != nil {
+                        return err
+                    }
+                }
+                return nil
             },
         },
     },
@@ -366,7 +359,7 @@ The list view renders:
 
 **Auto-registered delete:** When `CanDelete` is true and no bulk action with slug `"delete"` exists, `DeleteBulkAction[T]()` is added automatically during `Init()`. To customise the delete action, define your own `BulkAction` with `Slug: "delete"` — it won't be overwritten.
 
-**Handler signature:** `func(ctx context.Context, db *bun.DB, ids []string) error` — ModelAdmin owns the HTTP plumbing (parsing IDs, flash messages, redirect). Your handler only needs to perform the database operation.
+**Handler signature:** `func(ctx context.Context, db *den.DB, ids []string) error` — ModelAdmin owns the HTTP plumbing (parsing IDs, flash messages, redirect). Your handler only needs to perform the database operation.
 
 **Flash messages:** After a successful action, a localised success message is shown via `messages.AddSuccess` (e.g., "Aktion auf 3 Einträge angewendet.").
 

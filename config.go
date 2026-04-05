@@ -212,8 +212,8 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name:    "database-dsn",
-			Value:   "app.db",
-			Usage:   "Database DSN",
+			Value:   "sqlite:///app.db",
+			Usage:   "Database URL (sqlite:///path or postgres://host/db)", //nolint:gosec // example URL, not a credential
 			Sources: FlagSources(configSource, "DATABASE_DSN", "database.dsn"),
 		},
 		&cli.StringFlag{

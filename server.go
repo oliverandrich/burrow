@@ -13,7 +13,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v3"
 	"github.com/oliverandrich/burrow/i18n"
-	"github.com/uptrace/bun"
+	"github.com/oliverandrich/den"
 	"github.com/urfave/cli/v3"
 )
 
@@ -269,10 +269,10 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	return startServer(ctx, r, cfg, s.registry)
 }
 
-// bootstrap runs migrations and prepares the shared AppConfig.
-func (s *Server) bootstrap(ctx context.Context, db *bun.DB, cfg *Config) error {
-	if err := s.registry.RunMigrations(ctx, db); err != nil {
-		return fmt.Errorf("run migrations: %w", err)
+// bootstrap registers document types and prepares the shared AppConfig.
+func (s *Server) bootstrap(ctx context.Context, db *den.DB, cfg *Config) error {
+	if err := s.registry.RegisterDocuments(ctx, db); err != nil {
+		return fmt.Errorf("register documents: %w", err)
 	}
 
 	s.appCfg = &AppConfig{

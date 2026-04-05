@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/fs"
 	"path/filepath"
-	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -20,7 +19,7 @@ import (
 var (
 	_ burrow.App              = (*App)(nil)
 	_ burrow.Queue            = (*App)(nil)
-	_ burrow.Migratable       = (*App)(nil)
+	_ burrow.HasDocuments     = (*App)(nil)
 	_ burrow.Configurable     = (*App)(nil)
 	_ burrow.PostConfigurable = (*App)(nil)
 	_ burrow.HasShutdown      = (*App)(nil)
@@ -50,8 +49,7 @@ func TestApp_HandleAndEnqueue(t *testing.T) {
 	assert.NotEmpty(t, jobID)
 
 	// Verify the job was stored correctly.
-	id, _ := strconv.ParseInt(jobID, 10, 64)
-	job, err := app.repo.GetByID(context.Background(), id)
+	job, err := app.repo.GetByID(context.Background(), jobID)
 	require.NoError(t, err)
 	assert.Equal(t, "test_job", job.Type)
 	assert.JSONEq(t, `{"key":"value"}`, job.Payload)
@@ -71,8 +69,7 @@ func TestApp_EnqueueAt(t *testing.T) {
 	jobID, err := app.EnqueueAt(context.Background(), "delayed", "payload", future)
 	require.NoError(t, err)
 
-	id, _ := strconv.ParseInt(jobID, 10, 64)
-	job, err := app.repo.GetByID(context.Background(), id)
+	job, err := app.repo.GetByID(context.Background(), jobID)
 	require.NoError(t, err)
 	assert.WithinDuration(t, future, job.RunAt, time.Second)
 }
@@ -132,16 +129,11 @@ func TestApp_FullLifecycle(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestApp_MigrationFS(t *testing.T) {
+func TestApp_Documents(t *testing.T) {
 	app := New()
-	fsys := app.MigrationFS()
-	require.NotNil(t, fsys)
-
-	// Should contain our migration file.
-	entries, err := fs.ReadDir(fsys, ".")
-	require.NoError(t, err)
-	require.Len(t, entries, 1)
-	assert.Equal(t, "001_initial_schema.up.sql", entries[0].Name())
+	docs := app.Documents()
+	require.NotEmpty(t, docs)
+	assert.Len(t, docs, 1, "should have Job document type")
 }
 
 func TestApp_Flags(t *testing.T) {
@@ -164,13 +156,14 @@ func TestApp_Dequeue(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestApp_Dequeue_InvalidID(t *testing.T) {
+func TestApp_Dequeue_NonExistentID(t *testing.T) {
+	db := testDB(t)
 	app := New()
-	app.repo = NewRepository(nil) // repo won't be reached
+	app.repo = NewRepository(db)
 
-	err := app.Dequeue(context.Background(), "not-a-number")
+	// Dequeuing a non-existent ID should return an error (not found maps to invalid status check).
+	err := app.Dequeue(context.Background(), "nonexistent-id")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid job ID")
 }
 
 func TestApp_AdminRoutes_NilJobsAdmin(t *testing.T) {
@@ -186,9 +179,8 @@ func TestApp_AdminRoutes_WithJobsAdmin(t *testing.T) {
 	app := New()
 	app.defaultDB = db
 
-	// Simulate Configure to create the jobsAdmin.
+	// Simulate Configure to create the repo.
 	app.repo = NewRepository(db)
-	app.jobsAdmin = newJobsAdmin(db, app.repo)
 
 	r := chi.NewRouter()
 	// Should not panic; registers routes on the router.
@@ -198,10 +190,8 @@ func TestApp_AdminRoutes_WithJobsAdmin(t *testing.T) {
 func TestApp_AdminNavItems(t *testing.T) {
 	app := New()
 	items := app.AdminNavItems()
-	require.Len(t, items, 1)
-	assert.Equal(t, "Jobs", items[0].Label)
-	assert.Equal(t, "/admin/jobs", items[0].URL)
-	assert.True(t, items[0].AdminOnly)
+	// ModelAdmin integration is disabled during Den migration.
+	assert.Nil(t, items)
 }
 
 func TestApp_TemplateFS(t *testing.T) {
@@ -350,9 +340,8 @@ func TestApp_Configure(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Verify repo and admin were created in Configure.
+	// Verify repo was created in Configure.
 	require.NotNil(t, app.repo)
-	require.NotNil(t, app.jobsAdmin)
 
 	// Worker should NOT be started yet — that happens in PostConfigure.
 	assert.Nil(t, app.worker)
@@ -478,7 +467,7 @@ func TestApp_PostConfigure_RegistryWithoutHasJobs(t *testing.T) {
 
 func TestApp_Configure_SeparateDatabase(t *testing.T) {
 	sharedDB := testDB(t)
-	separateDSN := filepath.Join(t.TempDir(), "jobs.db")
+	separateDSN := "sqlite:///" + filepath.Join(t.TempDir(), "jobs.db")
 
 	app := New()
 	appCfg := &burrow.AppConfig{DB: sharedDB}
@@ -491,7 +480,7 @@ func TestApp_Configure_SeparateDatabase(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(t.Context(), []string{"test", "--jobs-database", separateDSN})
+	err := cmd.Run(t.Context(), []string{"test", "--jobs-database-dsn", separateDSN})
 	require.NoError(t, err)
 
 	// Verify the separate DB was opened and migrations ran.
@@ -504,18 +493,10 @@ func TestApp_Configure_SeparateDatabase(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, jobID)
 
-	// Verify the job is in the separate DB.
-	var count int
-	err = app.ownDB.NewRaw("SELECT COUNT(*) FROM _jobs").Scan(context.Background(), &count)
-	require.NoError(t, err)
-	assert.Equal(t, 1, count)
-
-	// Verify the shared DB's _jobs table is empty (migration ran on it via MigrationFS,
-	// but no jobs were enqueued there).
-	var sharedCount int
-	err = sharedDB.NewRaw("SELECT COUNT(*) FROM _jobs").Scan(context.Background(), &sharedCount)
-	require.NoError(t, err)
-	assert.Equal(t, 0, sharedCount)
+	// Verify the job is in the separate DB via repo lookup.
+	got, getErr := app.repo.GetByID(context.Background(), jobID)
+	require.NoError(t, getErr)
+	assert.Equal(t, "test_job", got.Type)
 
 	// Shutdown should close the separate DB.
 	err = app.Shutdown(context.Background())
@@ -536,7 +517,7 @@ func TestApp_Configure_SharedDatabase_Default(t *testing.T) {
 		},
 	}
 
-	// No --jobs-database flag: should use the shared DB.
+	// No --jobs-database-dsn flag — should use the shared DB.
 	err := cmd.Run(t.Context(), []string{"test"})
 	require.NoError(t, err)
 
@@ -551,14 +532,14 @@ func TestApp_Configure_SharedDatabase_Default(t *testing.T) {
 	_, err = app.Enqueue(context.Background(), "test_job", "payload")
 	require.NoError(t, err)
 
-	var count int
-	err = sharedDB.NewRaw("SELECT COUNT(*) FROM _jobs").Scan(context.Background(), &count)
-	require.NoError(t, err)
-	assert.Equal(t, 1, count)
+	// Verify job is accessible through the repo.
+	jobs, _, listErr := app.repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 10, Page: 1}, "")
+	require.NoError(t, listErr)
+	assert.Len(t, jobs, 1)
 }
 
 func TestApp_Shutdown_ClosesSeparateDB(t *testing.T) {
-	separateDSN := filepath.Join(t.TempDir(), "jobs.db")
+	separateDSN := "sqlite:///" + filepath.Join(t.TempDir(), "jobs.db")
 
 	sharedDB := testDB(t)
 	app := New()
@@ -570,16 +551,15 @@ func TestApp_Shutdown_ClosesSeparateDB(t *testing.T) {
 		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(appCfg, cmd) },
 	}
 
-	err := cmd.Run(t.Context(), []string{"test", "--jobs-database", separateDSN})
+	err := cmd.Run(t.Context(), []string{"test", "--jobs-database-dsn", separateDSN})
 	require.NoError(t, err)
 	require.NotNil(t, app.ownDB)
 
 	err = app.Shutdown(context.Background())
 	require.NoError(t, err)
 
-	// After shutdown, the separate DB should be closed — queries should fail.
-	var count int
-	err = app.ownDB.NewRaw("SELECT 1").Scan(context.Background(), &count)
+	// After shutdown, the separate DB should be closed — Ping should fail.
+	err = app.ownDB.Ping(context.Background())
 	require.Error(t, err)
 }
 
@@ -604,7 +584,7 @@ func TestApp_Start_CreatesWorkerWithExecutor(t *testing.T) {
 
 func TestApp_Configure_SeparateDatabase_CreatesJobsAdmin(t *testing.T) {
 	sharedDB := testDB(t)
-	separateDSN := filepath.Join(t.TempDir(), "jobs.db")
+	separateDSN := "sqlite:///" + filepath.Join(t.TempDir(), "jobs.db")
 
 	app := New()
 	appCfg := &burrow.AppConfig{DB: sharedDB}
@@ -615,12 +595,11 @@ func TestApp_Configure_SeparateDatabase_CreatesJobsAdmin(t *testing.T) {
 		Action: func(_ context.Context, cmd *cli.Command) error { return app.Configure(appCfg, cmd) },
 	}
 
-	err := cmd.Run(t.Context(), []string{"test", "--jobs-database", separateDSN})
+	err := cmd.Run(t.Context(), []string{"test", "--jobs-database-dsn", separateDSN})
 	require.NoError(t, err)
 
-	// jobsAdmin should be created and use the separate DB.
-	require.NotNil(t, app.jobsAdmin)
-	assert.Equal(t, app.ownDB, app.jobsAdmin.DB)
+	// repo should be created and use the separate DB.
+	require.NotNil(t, app.repo)
 
 	err = app.Shutdown(context.Background())
 	require.NoError(t, err)

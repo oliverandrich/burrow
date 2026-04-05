@@ -35,7 +35,7 @@ type Worker struct { //nolint:govet // fieldalignment: readability over optimiza
 	handlers     map[string]burrow.JobHandlerFunc
 	config       WorkerConfig
 	templateExec burrow.TemplateExecutor
-	jobs         chan Job
+	jobs         chan *Job
 	wg           sync.WaitGroup
 	done         chan struct{}
 }
@@ -48,7 +48,7 @@ func NewWorker(repo *Repository, handlers map[string]burrow.JobHandlerFunc, conf
 		handlers:     handlers,
 		config:       config,
 		templateExec: exec,
-		jobs:         make(chan Job, config.BatchSize),
+		jobs:         make(chan *Job, config.BatchSize),
 		done:         make(chan struct{}),
 	}
 }
@@ -129,7 +129,7 @@ func (w *Worker) work() {
 	}
 }
 
-func (w *Worker) processJob(job Job) {
+func (w *Worker) processJob(job *Job) {
 	handler, ok := w.handlers[job.Type]
 	if !ok {
 		slog.Error("jobs: unknown job type", "type", job.Type, "id", job.ID)

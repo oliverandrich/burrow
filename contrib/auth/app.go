@@ -23,9 +23,6 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-//go:embed migrations
-var migrationFS embed.FS
-
 //go:embed translations
 var translationFS embed.FS
 
@@ -128,7 +125,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 		CanEdit:           true,
 		CanDelete:         true,
 		ListFields:        []string{"ID", "Username", "Name", "Email", "Role", "IsActive", "CreatedAt"},
-		OrderBy:           "id DESC",
+		OrderBy:           "_created_at DESC",
 		ReadOnlyFields:    []string{"Username", "IsActive", "CreatedAt"},
 		FieldChoices: map[string]modeladmin.ChoicesFunc{
 			"Role": func(_ context.Context) ([]forms.Choice, error) {
@@ -140,7 +137,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 		},
 		FormOptions: []forms.Option[User]{
 			forms.WithCleanFunc(func(ctx context.Context, u *User) error {
-				if u.Role == RoleAdmin || u.ID == 0 {
+				if u.Role == RoleAdmin || u.ID == "" {
 					return nil
 				}
 				// Check if this user is currently an admin being demoted.
@@ -202,7 +199,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 		CanEdit:           false,
 		CanDelete:         false,
 		ListFields:        []string{"ID", "Label", "Email", "ExpiresAt", "CreatedAt"},
-		OrderBy:           "created_at DESC",
+		OrderBy:           "_created_at DESC",
 		RowActions: []modeladmin.RowAction{
 			{
 				Slug:     "revoke",
@@ -278,9 +275,9 @@ func (a *App) StaticFS() (string, fs.FS) {
 	return "auth", sub
 }
 
-func (a *App) MigrationFS() fs.FS {
-	sub, _ := fs.Sub(migrationFS, "migrations")
-	return sub
+// Documents returns the Den document types registered by this app.
+func (a *App) Documents() []any {
+	return []any{&User{}, &Credential{}, &RecoveryCode{}, &EmailVerificationToken{}, &Invite{}}
 }
 
 // TranslationFS returns the embedded translation files for auto-discovery by the i18n app.
@@ -414,8 +411,8 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 // can filter AuthOnly/AdminOnly items without importing this package.
 func (a *App) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID := session.GetInt64(r, "user_id")
-		if userID == 0 {
+		userID := session.GetString(r, "user_id")
+		if userID == "" {
 			next.ServeHTTP(w, r)
 			return
 		}

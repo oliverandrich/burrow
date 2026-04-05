@@ -30,7 +30,7 @@ Passed to every app's `Configure` method:
 
 ```go
 type AppConfig struct {
-    DB         *bun.DB
+    DB         *den.DB
     Registry   *Registry
     Config     *Config
     WithLocale func(ctx context.Context, lang string) context.Context
@@ -39,7 +39,7 @@ type AppConfig struct {
 
 | Field | Description |
 |-------|-------------|
-| `DB` | Bun database connection (SQLite with WAL mode) |
+| `DB` | Den database connection (SQLite with WAL mode, or PostgreSQL) |
 | `Registry` | App registry for looking up other apps |
 | `Config` | Parsed framework configuration |
 | `WithLocale` | Function that returns a new context with the given locale set (provided by the i18n `Bundle`) |
@@ -69,27 +69,23 @@ The registered icon functions become available in templates as `{{ iconTrash }}`
 
 Apps can implement any combination of these interfaces. The framework detects them via type assertion and calls the appropriate methods during the boot sequence.
 
-### Migratable
+### HasDocuments
 
 ```go
-type Migratable interface {
-    MigrationFS() fs.FS
+type HasDocuments interface {
+    Documents() []any
 }
 ```
 
-Provides an `fs.FS` containing `.up.sql` migration files at the root level. Called during startup before `Configure()`. When using `//go:embed migrations`, you must strip the directory prefix:
+Returns a slice of document type instances that Den should register. Called during startup before `Configure()`. Den inspects each type's struct tags and creates or updates the underlying collections and indexes automatically:
 
 ```go
-//go:embed migrations
-var migrationFS embed.FS
-
-func (a *App) MigrationFS() fs.FS {
-    sub, _ := fs.Sub(migrationFS, "migrations")
-    return sub
+func (a *App) Documents() []any {
+    return []any{&Note{}, &Tag{}}
 }
 ```
 
-See the [Migrations guide](../guide/migrations.md) for details on file naming and tracking.
+See the [Migrations guide](../guide/migrations.md) for details on schema management.
 
 ### HasRoutes
 

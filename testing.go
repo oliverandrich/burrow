@@ -2,7 +2,6 @@ package burrow
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -10,28 +9,22 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
+	"github.com/oliverandrich/den"
+	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 )
 
-// TestDB returns a file-backed SQLite database wrapped in a [bun.DB] for
+// TestDB returns a file-backed SQLite database wrapped in a [den.DB] for
 // testing. The database is created in [testing.T.TempDir] and closed
 // automatically when the test finishes.
-//
-// A file-backed database avoids the data-loss hazard of :memory: databases
-// whose content disappears when the connection pool closes and reopens a
-// connection.
-func TestDB(t *testing.T) *bun.DB {
+func TestDB(t *testing.T) *den.DB {
 	t.Helper()
-	dsn := filepath.Join(t.TempDir(), "test.db") + "?_pragma=foreign_keys(1)"
-	sqldb, err := sql.Open(sqliteshim.ShimName, dsn)
+	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
+	db, err := den.OpenURL(dsn)
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}
-	sqldb.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = sqldb.Close() })
-	return bun.NewDB(sqldb, sqlitedialect.New())
+	t.Cleanup(func() { _ = db.Close() })
+	return db
 }
 
 // TestErrorExecContext returns a context with a minimal [TemplateExecutor] that

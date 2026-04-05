@@ -8,15 +8,15 @@ Burrow shares Django's "batteries-included" philosophy but takes a Go-idiomatic 
 |--------|--------|
 | `INSTALLED_APPS` | `burrow.NewServer(app1, app2, ...)` |
 | `django.contrib.*` | `contrib/` packages |
-| `models.Model` | Bun model with `bun.BaseModel` embed |
-| `Manager` / `QuerySet` | Repository pattern + Bun query builder |
-| `ForeignKey` / `ManyToManyField` | Bun struct fields + `.Relation()` eager loading |
+| `models.Model` | Den document with `document.Base` embed |
+| `Manager` / `QuerySet` | Repository pattern + Den QuerySet API |
+| `ForeignKey` / `ManyToManyField` | Document references via ID fields |
 | `forms.Form` | Struct with `form` + `validate` tags, `burrow.Bind()` |
 | `django.template` | `html/template` with `{{ define }}` blocks |
 | `{% extends %}` / `{% block %}` | Layout templates with `.Content` wrapping |
 | `templatetags` | `HasFuncMap` / `HasRequestFuncMap` |
 | `manage.py` commands | `urfave/cli` commands via `HasCLICommands` |
-| `migrations` | Embedded `.up.sql` files via `Migratable` |
+| `migrations` | Automatic schema from document structs via `HasDocuments` |
 | `STATIC_URL` / `collectstatic` | `go:embed` + `staticfiles` contrib |
 | `settings.py` | CLI flags + ENV vars + TOML via `Configurable` |
 | `middleware` | `func(http.Handler) http.Handler` via `HasMiddleware` |
@@ -44,7 +44,7 @@ Every app implements the `App` interface (`Name()`). Optional interfaces like `H
 
 ## Models & Database
 
-Django uses `models.Model` with ORM magic — managers, querysets, `makemigrations`. Burrow uses [Bun](https://bun.uptrace.dev/) models with struct tags and explicit SQL:
+Django uses `models.Model` with ORM magic — managers, querysets, `makemigrations`. Burrow uses [Den](https://github.com/oliverandrich/den) documents with struct tags and a functional query API:
 
 === "Django"
 
@@ -62,64 +62,60 @@ Django uses `models.Model` with ORM magic — managers, querysets, `makemigratio
 
     ```go
     type Note struct {
-        bun.BaseModel `bun:"table:notes"`
-        ID        int64     `bun:",pk,autoincrement"`
-        Title     string    `bun:",notnull"`
-        Content   string    `bun:",notnull"`
-        CreatedAt time.Time `bun:",nullzero,default:current_timestamp"`
+        document.Base
+        Title     string    `json:"title" den:"index"`
+        Content   string    `json:"content"`
+        CreatedAt time.Time `json:"created_at"`
     }
 
     // Query
-    var notes []Note
-    err := db.NewSelect().Model(&notes).
-        Where("title LIKE ?", "%go%").
-        OrderExpr("created_at DESC").
-        Scan(ctx)
+    notes, err := den.NewQuery[Note](ctx, db,
+        where.Field("title").StringContains("go"),
+    ).Sort("created_at", den.Desc).All()
     ```
 
-Django relationships (`ForeignKey`, `ManyToManyField`) create automatic reverse accessors and lazy loading. In Burrow, relationships are struct fields with Bun relation tags — loading is always explicit:
+Django relationships (`ForeignKey`, `ManyToManyField`) create automatic reverse accessors and lazy loading. Den provides typed references via `Link[T]` and reverse queries via `BackLinks`:
 
 ```go
 type Note struct {
-    bun.BaseModel `bun:"table:notes"`
-    ID       int64  `bun:",pk,autoincrement"`
-    AuthorID int64  `bun:",notnull"`
-    Author   *User  `bun:"rel:belongs-to,join:author_id=id"`
+    document.Base
+    Title  string         `json:"title"`
+    Author den.Link[User] `json:"author"`
 }
 
-// Eager-load the Author relation
-var note Note
-err := db.NewSelect().Model(&note).
-    Relation("Author").
-    Where("note.id = ?", id).
-    Scan(ctx)
+// Create with a linked author
+note := &Note{Title: "Hello", Author: den.NewLink(&user)}
+den.Insert(ctx, db, note)
+
+// Fetch with links resolved (like Django's select_related)
+note, _ := den.NewQuery[Note](ctx, db).WithFetchLinks().First()
+fmt.Println(note.Author.Value.Name) // loaded automatically
+
+// Reverse query (like Django's note_set.all())
+notes, _ := den.BackLinks[Note](ctx, db, "author", userID)
 ```
 
-There are no automatic reverse relations, no lazy loading, and no `note.author_set.all()` equivalent. You write the query you need.
+`Link[T]` stores only the ID in JSON — the linked document is fetched on demand via `WithFetchLinks()` or `FetchLink()`. `BackLinks` finds all documents that reference a given target, similar to Django's reverse accessors.
 
-Unlike Django's lazy `QuerySet`, Bun queries execute immediately when you call `.Scan()`. There's no deferred evaluation — you build the query, run it, and get the result. This also means there's no `.aggregate()` or `.annotate()` shorthand; write SQL aggregates directly:
+Den provides a chainable QuerySet API — `den.NewQuery`, `den.FindByID`, etc. Queries execute when a terminal method (`.All()`, `.First()`, `.Count()`, `.Exists()`) is called:
 
 ```go
-var count int
-err := db.NewSelect().Model((*Note)(nil)).
-    ColumnExpr("COUNT(*)").
-    Scan(ctx, &count)
+count, err := den.NewQuery[Note](ctx, db, where.Field("author_id").Eq(userID)).Count()
 ```
 
 Django's `get_object_or_404()` maps to a fetch + error check pattern:
 
 ```go
-var note Note
-err := db.NewSelect().Model(&note).Where("id = ?", id).Scan(ctx)
+note, err := den.FindByID[Note](ctx, db, id)
 if err != nil {
-    if errors.Is(err, sql.ErrNoRows) {
+    if errors.Is(err, den.ErrNotFound) {
         return burrow.NewHTTPError(http.StatusNotFound, "note not found")
     }
     return err
 }
 ```
 
-Migrations are hand-written SQL files embedded in each app, not auto-generated. See [Migrations](../guide/migrations.md).
+Schema is managed automatically from document structs — no hand-written SQL migration files. See [Migrations](../guide/migrations.md).
 
 ## Forms & Validation
 
@@ -352,11 +348,11 @@ No virtualenv, no pip, no process manager, no `collectstatic`.
 
 Key philosophical differences from Django:
 
-- **Explicit over implicit** — no ORM magic, no auto-discovery, no metaclasses. Queries are SQL, config is flags, wiring is function calls.
+- **Explicit over implicit** — no ORM magic, no auto-discovery, no metaclasses. Queries are explicit function calls, config is flags, wiring is function calls.
 - **Compile-time safety** — type errors are caught at build time, not at runtime when a user hits a page.
 - **Single binary deployment** — no virtualenv, no pip, no process manager, no external database server.
-- **SQLite by default** — no PostgreSQL/MySQL abstraction layer. One database engine, optimized for it.
-- **No admin auto-generation** — Django introspects your models and auto-generates CRUD forms, list views, and search. Burrow's `ModelAdmin` requires you to manually specify which fields are displayed, editable, and searchable — more work, but fully explicit. Django's `__str__` maps to Go's `fmt.Stringer` interface — implement `String()` on your models and `ModelAdmin` uses it to display FK labels in list views.
+- **SQLite or PostgreSQL** — two backends, same API. SQLite for single-binary deploys, PostgreSQL for scale. Switch with `--database-dsn`.
+- **No admin auto-generation** — Django introspects your models and auto-generates CRUD forms, list views, and search. Burrow's `ModelAdmin` requires you to manually specify which fields are displayed, editable, and searchable — more work, but fully explicit. Django's `__str__` maps to Go's `fmt.Stringer` interface — implement `String()` on your document types and `ModelAdmin` uses it to display labels in list views.
 - **Context instead of thread-locals** — `context.Context` replaces Django's `request.user` magic and thread-local storage. Values flow explicitly through the call chain.
 - **No signals** — Django dispatches `post_save`, `pre_delete`, etc. automatically via the ORM. Burrow has no automatic lifecycle hooks — you call functions explicitly in your handlers or services. Use `Registry.Get()` for cross-app communication.
 - **No built-in permission system** — Django has model-level permissions and `@permission_required`. Burrow provides authentication middleware (`auth.RequireAuth()`) but authorization logic is your responsibility — write middleware or handler checks.

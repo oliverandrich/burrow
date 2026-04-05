@@ -1,4 +1,4 @@
-// Package burrow is a Go web framework built on chi, Bun/SQLite, and html/template.
+// Package burrow is a Go web framework built on chi, Den/SQLite, and html/template.
 // It provides a modular architecture where features are packaged as "apps" that
 // plug into a shared server.
 //
@@ -81,7 +81,7 @@
 // Every app implements [App] (Name only). Apps gain additional capabilities
 // by implementing optional interfaces:
 //
-//   - [Migratable] — embedded SQL migration files
+//   - [HasDocuments] — document type registration
 //   - [HasRoutes] — HTTP route registration on a chi.Router
 //   - [HasMiddleware] — global middleware
 //   - [HasNavItems] — main navigation entries
@@ -144,7 +144,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/uptrace/bun"
+	"github.com/oliverandrich/den"
 	"github.com/urfave/cli/v3"
 )
 
@@ -162,7 +162,7 @@ type IconFunc = func(...string) template.HTML
 // AppConfig is passed to each app's Configure method, providing
 // access to shared framework resources.
 type AppConfig struct {
-	DB         *bun.DB
+	DB         *den.DB
 	Registry   *Registry
 	Config     *Config
 	WithLocale func(ctx context.Context, lang string) context.Context
@@ -207,9 +207,11 @@ type NavLink struct {
 	IsActive bool
 }
 
-// Migratable is implemented by apps that provide database migrations.
-type Migratable interface {
-	MigrationFS() fs.FS
+// HasDocuments is implemented by apps that register Den document types.
+// The returned slice should contain zero-value pointers, e.g. &User{}, &Job{}.
+// Den's Register() creates tables and indexes automatically from the struct tags.
+type HasDocuments interface {
+	Documents() []any
 }
 
 // HasMiddleware is implemented by apps that contribute HTTP middleware.

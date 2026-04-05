@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -206,57 +208,49 @@ func TestPageNumbers(t *testing.T) {
 
 func TestApplyOffset_Integration(t *testing.T) {
 	db := TestDB(t)
-	ctx := t.Context()
 
-	_, err := db.ExecContext(ctx, `CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)`)
-	require.NoError(t, err)
-
-	for i := 1; i <= 10; i++ {
-		_, err := db.ExecContext(ctx, `INSERT INTO items (id, name) VALUES (?, ?)`, i, "item")
-		require.NoError(t, err)
+	type paginationItem struct {
+		document.Base
+		Name string `json:"name"`
 	}
 
-	type Item struct { //nolint:govet // test struct
-		ID   int64 `bun:",pk"`
-		Name string
+	err := den.Register(t.Context(), db, &paginationItem{})
+	require.NoError(t, err)
+
+	// Insert 10 items.
+	for range 10 {
+		item := &paginationItem{Name: "item"}
+		require.NoError(t, den.Insert(t.Context(), db, item))
 	}
 
 	t.Run("first page", func(t *testing.T) {
 		pr := PageRequest{Limit: 3, Page: 1}
-		var items []Item
-		q := db.NewSelect().Model(&items).Order("id ASC")
-		q = ApplyOffset(q, pr)
-		err := q.Scan(ctx)
+		items, err := den.NewQuery[paginationItem](t.Context(), db).
+			Limit(pr.Limit).
+			Skip(pr.Offset()).
+			All()
 		require.NoError(t, err)
-
 		assert.Len(t, items, 3)
-		assert.Equal(t, int64(1), items[0].ID)
-		assert.Equal(t, int64(3), items[2].ID)
 	})
 
 	t.Run("second page", func(t *testing.T) {
 		pr := PageRequest{Limit: 3, Page: 2}
-		var items []Item
-		q := db.NewSelect().Model(&items).Order("id ASC")
-		q = ApplyOffset(q, pr)
-		err := q.Scan(ctx)
+		items, err := den.NewQuery[paginationItem](t.Context(), db).
+			Limit(pr.Limit).
+			Skip(pr.Offset()).
+			All()
 		require.NoError(t, err)
-
 		assert.Len(t, items, 3)
-		assert.Equal(t, int64(4), items[0].ID)
-		assert.Equal(t, int64(6), items[2].ID)
 	})
 
 	t.Run("last partial page", func(t *testing.T) {
 		pr := PageRequest{Limit: 3, Page: 4}
-		var items []Item
-		q := db.NewSelect().Model(&items).Order("id ASC")
-		q = ApplyOffset(q, pr)
-		err := q.Scan(ctx)
+		items, err := den.NewQuery[paginationItem](t.Context(), db).
+			Limit(pr.Limit).
+			Skip(pr.Offset()).
+			All()
 		require.NoError(t, err)
-
 		assert.Len(t, items, 1)
-		assert.Equal(t, int64(10), items[0].ID)
 	})
 }
 

@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -30,7 +29,7 @@ func TestRetryHandler(t *testing.T) {
 	r := chi.NewRouter()
 	r.Post("/admin/jobs/{id}/retry", burrow.Handle(handler))
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/jobs/%d/retry", job.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/"+job.ID+"/retry", nil)
 	req.Header.Set("HX-Request", "true")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -48,7 +47,7 @@ func TestRetryHandler_InvalidStatus(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now()) // pending
+	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now()) // pending
 	require.NoError(t, err)
 
 	handler := retryHandler(repo)
@@ -57,7 +56,7 @@ func TestRetryHandler_InvalidStatus(t *testing.T) {
 	r.Use(burrow.TestErrorExecMiddleware)
 	r.Post("/admin/jobs/{id}/retry", burrow.Handle(handler))
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/1/retry", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/"+job.ID+"/retry", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -77,7 +76,7 @@ func TestCancelHandler(t *testing.T) {
 	r := chi.NewRouter()
 	r.Post("/admin/jobs/{id}/cancel", burrow.Handle(handler))
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/jobs/%d/cancel", job.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/"+job.ID+"/cancel", nil)
 	req.Header.Set("HX-Request", "true")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -104,7 +103,7 @@ func TestCancelHandler_InvalidStatus(t *testing.T) {
 	r.Use(burrow.TestErrorExecMiddleware)
 	r.Post("/admin/jobs/{id}/cancel", burrow.Handle(handler))
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/1/cancel", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/"+job.ID+"/cancel", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -155,7 +154,7 @@ func TestStatusChoices(t *testing.T) {
 	assert.Equal(t, "pending", choices[0].Value)
 }
 
-func TestParseJobID_InvalidFormat(t *testing.T) {
+func TestParseJobID_EmptyID(t *testing.T) {
 	r := chi.NewRouter()
 	var capturedErr error
 
@@ -168,20 +167,21 @@ func TestParseJobID_InvalidFormat(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	// With chi, {id} always matches at least one character, so an empty ID
+	// would not match the route at all. Test that parseJobID returns an error
+	// for a missing URL param (which only happens if called from a mismatched route).
+	// Instead, verify that a non-empty string is accepted as a valid ID.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs/abc", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	require.Error(t, capturedErr)
-	var httpErr *burrow.HTTPError
-	require.ErrorAs(t, capturedErr, &httpErr)
-	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
-	assert.Contains(t, httpErr.Message, "invalid job id")
+	require.NoError(t, capturedErr)
+	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestParseJobID_Valid(t *testing.T) {
 	r := chi.NewRouter()
-	var capturedID int64
+	var capturedID string
 	var capturedErr error
 
 	r.Get("/admin/jobs/{id}", func(w http.ResponseWriter, req *http.Request) {
@@ -194,7 +194,7 @@ func TestParseJobID_Valid(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	require.NoError(t, capturedErr)
-	assert.Equal(t, int64(42), capturedID)
+	assert.Equal(t, "42", capturedID)
 }
 
 func TestMapRepoError(t *testing.T) {
@@ -223,7 +223,7 @@ func TestMapRepoError(t *testing.T) {
 	})
 
 	t.Run("wrapped ErrNotFound", func(t *testing.T) {
-		err := mapRepoError(fmt.Errorf("wrap: %w", sql.ErrNoRows))
+		err := mapRepoError(fmt.Errorf("wrap: %w", ErrNotFound))
 		var httpErr *burrow.HTTPError
 		require.ErrorAs(t, err, &httpErr)
 		assert.Equal(t, http.StatusNotFound, httpErr.Code)
@@ -287,7 +287,8 @@ func TestRetryHandler_InvalidID(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// "abc" is a valid string ID but doesn't exist — retry returns ErrNotFound.
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestCancelHandler_InvalidID(t *testing.T) {
@@ -303,5 +304,6 @@ func TestCancelHandler_InvalidID(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// "abc" is a valid string ID but doesn't exist — cancel returns ErrNotFound.
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }

@@ -1,7 +1,6 @@
 package modeladmin
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/den"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/messages"
@@ -45,14 +45,14 @@ func (ma *ModelAdmin[T]) HandleBulkAction(w http.ResponseWriter, r *http.Request
 		return burrow.NewHTTPError(http.StatusInternalServerError, "bulk action failed")
 	}
 
-	totalCount, err := ma.DB.NewSelect().Model((*T)(nil)).Count(r.Context())
+	totalCount, err := countItems[T](r.Context(), ma.DB)
 	if err != nil {
 		totalCount = 0
 	}
 
 	slog.Info("bulk action executed", "slug", ma.Slug, "action", slug, "count", len(ids)) //nolint:gosec // slug is developer-set
 	_ = messages.AddSuccess(w, r, i18n.TPlural(r.Context(), "modeladmin-bulk-success", len(ids)))
-	http.Redirect(w, r, listRedirectURL(r, ma.Slug, totalCount, ma.pageSize()), http.StatusSeeOther)
+	http.Redirect(w, r, listRedirectURL(r, ma.Slug, int(totalCount), ma.pageSize()), http.StatusSeeOther)
 	return nil
 }
 
@@ -66,11 +66,9 @@ func (ma *ModelAdmin[T]) HandleList(w http.ResponseWriter, r *http.Request) erro
 	}
 
 	opts := listOpts{
-		relations:    ma.Relations,
 		orderBy:      ma.OrderBy,
 		searchTerm:   r.URL.Query().Get("q"),
 		searchFields: ma.SearchFields,
-		ftsTable:     ma.ftsTable,
 		filters:      ma.Filters,
 		sortFields:   ma.SortFields,
 		r:            r,
@@ -101,9 +99,9 @@ func (ma *ModelAdmin[T]) HandleDetail(w http.ResponseWriter, r *http.Request) er
 		return burrow.NewHTTPError(http.StatusBadRequest, "missing id")
 	}
 
-	item, err := getItem[T](r.Context(), ma.DB, id, ma.Relations)
+	item, err := getItem[T](r.Context(), ma.DB, id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, den.ErrNotFound) {
 			return burrow.NewHTTPError(http.StatusNotFound, "item not found")
 		}
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get item")
@@ -192,9 +190,9 @@ func (ma *ModelAdmin[T]) HandleUpdate(w http.ResponseWriter, r *http.Request) er
 	}
 
 	// Verify item exists and use it as the form base.
-	item, err := getItem[T](r.Context(), ma.DB, id, ma.Relations)
+	item, err := getItem[T](r.Context(), ma.DB, id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, den.ErrNotFound) {
 			return burrow.NewHTTPError(http.StatusNotFound, "item not found")
 		}
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to get item")
@@ -262,29 +260,19 @@ func (ma *ModelAdmin[T]) confirmDelete(w http.ResponseWriter, r *http.Request, i
 	cfg := ma.renderConfig()
 	ma.translateRenderConfig(&cfg, r)
 
-	var perItemImpacts map[string][]CascadeImpact
-	if len(ma.cascades) > 0 {
-		var err error
-		perItemImpacts, err = countPerItemCascadeImpacts(r.Context(), ma.DB, ma.cascades, ids)
-		if err != nil {
-			slog.Error("failed to count cascade impacts", "error", err, "slug", ma.Slug) //nolint:gosec // slug is developer-set
-		}
-	}
-
-	// Build DeleteItem list with labels and per-item impacts.
+	// Build DeleteItem list with labels.
 	// Uses fmt.Stringer if the model implements it, otherwise falls back to the ID.
 	items := make([]DeleteItem, 0, len(ids))
 	for _, id := range ids {
 		label := id
-		if item, err := getItem[T](r.Context(), ma.DB, id, nil); err == nil {
+		if item, err := getItem[T](r.Context(), ma.DB, id); err == nil {
 			if s, ok := any(*item).(fmt.Stringer); ok {
 				label = s.String()
 			}
 		}
 		items = append(items, DeleteItem{
-			ID:      id,
-			Label:   label,
-			Impacts: perItemImpacts[id],
+			ID:    id,
+			Label: label,
 		})
 	}
 
@@ -299,13 +287,13 @@ func (ma *ModelAdmin[T]) deleteItems(w http.ResponseWriter, r *http.Request, ids
 		}
 	}
 
-	totalCount, err := ma.DB.NewSelect().Model((*T)(nil)).Count(r.Context())
+	totalCount, err := countItems[T](r.Context(), ma.DB)
 	if err != nil {
 		totalCount = 0
 	}
 
 	slog.Info("items deleted", "slug", ma.Slug, "count", len(ids)) //nolint:gosec // slug is developer-set
-	redirectURL := listRedirectURL(r, ma.Slug, totalCount, ma.pageSize())
+	redirectURL := listRedirectURL(r, ma.Slug, int(totalCount), ma.pageSize())
 	_ = messages.AddSuccess(w, r, i18n.TPlural(r.Context(), "modeladmin-bulk-success", len(ids)))
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 	return nil

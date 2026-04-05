@@ -128,15 +128,17 @@ In `internal/polls/polls.go`, replace the simple `ListQuestions` with a paginate
 
 ```go
 func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageRequest) ([]Question, burrow.PageResult, error) {
-    count, err := r.db.NewSelect().Model((*Question)(nil)).Count(ctx)
+    count, err := den.NewQuery[Question](ctx, r.db).Count()
     if err != nil {
         return nil, burrow.PageResult{}, err
     }
 
-    var questions []Question
-    q := r.db.NewSelect().Model(&questions).Order("id DESC")
-    q = burrow.ApplyOffset(q, pr)
-    if err := q.Scan(ctx); err != nil {
+    questions, err := den.NewQuery[Question](ctx, r.db).
+        Sort("id", den.Desc).
+        Limit(pr.Limit).
+        Skip(pr.Offset()).
+        All()
+    if err != nil {
         return nil, burrow.PageResult{}, err
     }
 
@@ -144,7 +146,7 @@ func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageReque
 }
 ```
 
-- **`burrow.ApplyOffset()`** — adds `LIMIT` and `OFFSET` clauses
+- **`.Limit()` / `.Skip()`** — chainable methods for pagination
 - **`burrow.OffsetResult()`** — builds the `PageResult` with page numbers and `HasMore` flag
 
 ## Infinite Scroll
@@ -264,7 +266,7 @@ The application now has:
 - **`htmx.Redirect()`** — client-side redirect via response header
 - **`hx-boost`** — automatic AJAX navigation with history management
 - **Chart.js** — CDN-loaded charting library with server-rendered data via Go templates
-- **Offset-based pagination** — `ApplyOffset()`, `OffsetResult()`
+- **Offset-based pagination** — `.Limit()`, `.Skip()`, `OffsetResult()`
 - **Infinite scroll** — `hx-trigger="revealed"` loads more items when scrolled into view
 
 ## What's Next

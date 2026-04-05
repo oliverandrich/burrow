@@ -1,13 +1,12 @@
 package auth
 
 import (
-	"encoding/binary"
 	"strings"
 	"time"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/uptrace/bun"
+	"github.com/oliverandrich/den/document"
 )
 
 // Role constants.
@@ -18,19 +17,16 @@ const (
 
 // User represents an authenticated user with WebAuthn credentials.
 type User struct {
-	bun.BaseModel   `bun:"table:users,alias:u"`
-	UpdatedAt       time.Time    `bun:",nullzero" json:"updated_at" form:"-"`
-	CreatedAt       time.Time    `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" verbose:"Created at"`
+	document.Base
 	EmailVerifiedAt *time.Time   `json:"email_verified_at,omitempty" form:"-"`
-	Email           *string      `bun:",unique" json:"email,omitempty" form:"email" verbose:"Email"`
-	Name            string       `bun:",nullzero" json:"name,omitempty" form:"name" verbose:"Name"`
-	Bio             string       `bun:",nullzero" json:"bio,omitempty" form:"bio" verbose:"Bio"`
-	Role            string       `bun:",notnull,default:'user'" json:"role" form:"role" verbose:"Role"`
-	Username        string       `bun:",unique,notnull" json:"username" form:"username" verbose:"Username"`
-	Credentials     []Credential `bun:"rel:has-many,join:id=user_id" json:"credentials,omitempty" form:"-"`
-	ID              int64        `bun:",pk,autoincrement" json:"id" verbose:"ID"`
-	EmailVerified   bool         `bun:",notnull,default:false" json:"email_verified" form:"-"`
-	IsActive        bool         `bun:",notnull,default:true" json:"is_active" form:"is_active" verbose:"Active"`
+	Email           *string      `json:"email,omitempty" den:"unique" form:"email" verbose:"Email"`
+	Name            string       `json:"name,omitempty" form:"name" verbose:"Name"`
+	Bio             string       `json:"bio,omitempty" form:"bio" verbose:"Bio"`
+	Role            string       `json:"role" den:"index" form:"role" verbose:"Role"`
+	Username        string       `json:"username" den:"unique" form:"username" verbose:"Username"`
+	Credentials     []Credential `json:"credentials,omitempty" form:"-"` // populated by separate query, not embedded
+	EmailVerified   bool         `json:"email_verified" form:"-"`
+	IsActive        bool         `json:"is_active" form:"is_active" verbose:"Active"`
 }
 
 // String returns the user's display name (Name if set, otherwise Username).
@@ -45,10 +41,9 @@ func (u User) String() string {
 func (u *User) IsAdmin() bool { return u.Role == RoleAdmin }
 
 // WebAuthnID returns the user ID as bytes for the WebAuthn protocol.
+// The ULID string is unique and stable, so we use it directly.
 func (u *User) WebAuthnID() []byte {
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(u.ID)) //nolint:gosec // ID is always positive
-	return b
+	return []byte(u.ID)
 }
 
 // WebAuthnName returns the username.
@@ -76,19 +71,17 @@ func (u *User) WebAuthnIcon() string { return "" }
 
 // Credential stores a WebAuthn credential for a user.
 type Credential struct {
-	bun.BaseModel   `bun:"table:credentials,alias:c"`
-	CreatedAt       time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	AttestationType string    `json:"-"`
-	Transports      string    `json:"-"`
-	Name            string    `bun:",notnull" json:"name"`
-	CredentialID    []byte    `bun:",unique,notnull" json:"-"`
-	PublicKey       []byte    `bun:",notnull" json:"-"`
-	AAGUID          []byte    `json:"-"`
-	ID              int64     `bun:",pk,autoincrement" json:"id"`
-	UserID          int64     `bun:",notnull" json:"user_id"`
-	SignCount       uint32    `bun:",default:0" json:"-"`
-	BackupState     bool      `bun:",default:false" json:"-"`
-	BackupEligible  bool      `bun:",default:false" json:"-"`
+	document.Base
+	CredentialID    []byte `json:"credential_id" den:"unique"`
+	PublicKey       []byte `json:"public_key"`
+	AAGUID          []byte `json:"aaguid"`
+	AttestationType string `json:"attestation_type"`
+	Transports      string `json:"transports"`
+	Name            string `json:"name"`
+	UserID          string `json:"user_id" den:"index"`
+	SignCount       uint32 `json:"sign_count"`
+	BackupState     bool   `json:"backup_state"`
+	BackupEligible  bool   `json:"backup_eligible"`
 }
 
 // ToWebAuthn converts the stored credential to the WebAuthn library type.
@@ -117,7 +110,7 @@ func (c *Credential) ToWebAuthn() webauthn.Credential {
 }
 
 // NewCredentialFromWebAuthn creates a Credential from a WebAuthn registration result.
-func NewCredentialFromWebAuthn(userID int64, cred *webauthn.Credential) *Credential {
+func NewCredentialFromWebAuthn(userID string, cred *webauthn.Credential) *Credential {
 	return &Credential{
 		UserID:          userID,
 		CredentialID:    cred.ID,
@@ -143,37 +136,31 @@ func TransportsFromWebAuthn(transports []protocol.AuthenticatorTransport) string
 
 // RecoveryCode stores a hashed recovery code for account recovery.
 type RecoveryCode struct {
-	bun.BaseModel `bun:"table:recovery_codes,alias:rc"`
-	CreatedAt     time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	UsedAt        *time.Time `json:"used_at,omitempty"`
-	CodeHash      string     `bun:",notnull" json:"-"`
-	ID            int64      `bun:",pk,autoincrement" json:"id"`
-	UserID        int64      `bun:",notnull" json:"user_id"`
-	Used          bool       `bun:",notnull,default:false" json:"used"`
+	document.Base
+	UsedAt   *time.Time `json:"used_at,omitempty"`
+	CodeHash string     `json:"code_hash"`
+	UserID   string     `json:"user_id" den:"index"`
+	Used     bool       `json:"used"`
 }
 
 // EmailVerificationToken stores a hashed token for email verification.
 type EmailVerificationToken struct {
-	bun.BaseModel `bun:"table:email_verification_tokens,alias:evt"`
-	ExpiresAt     time.Time `bun:",notnull" json:"expires_at"`
-	CreatedAt     time.Time `bun:",nullzero,notnull,default:current_timestamp" json:"created_at"`
-	TokenHash     string    `bun:",unique,notnull" json:"-"`
-	ID            int64     `bun:",pk,autoincrement" json:"id"`
-	UserID        int64     `bun:",notnull" json:"user_id"`
+	document.Base
+	ExpiresAt time.Time `json:"expires_at"`
+	TokenHash string    `json:"token_hash" den:"unique"`
+	UserID    string    `json:"user_id" den:"index"`
 }
 
 // Invite represents an invitation to register.
 type Invite struct {
-	bun.BaseModel `bun:"table:invites,alias:inv"`
-	ExpiresAt     time.Time  `bun:",notnull" json:"expires_at" form:"-" verbose:"Expires at"`
-	CreatedAt     time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" form:"-" verbose:"Created at"`
-	UsedAt        *time.Time `json:"used_at,omitempty" form:"-"`
-	UsedBy        *int64     `json:"used_by,omitempty" form:"-"`
-	CreatedBy     *int64     `json:"created_by,omitempty" form:"-"`
-	Email         string     `bun:",notnull" json:"email" verbose:"Email"`
-	Label         string     `bun:",notnull,default:''" json:"label" verbose:"Label"`
-	TokenHash     string     `bun:",unique,notnull" json:"-" form:"-"`
-	ID            int64      `bun:",pk,autoincrement" json:"id" verbose:"ID"`
+	document.Base
+	ExpiresAt time.Time  `json:"expires_at" form:"-" verbose:"Expires at"`
+	UsedAt    *time.Time `json:"used_at,omitempty" form:"-"`
+	UsedBy    *string    `json:"used_by,omitempty" form:"-"`
+	CreatedBy *string    `json:"created_by,omitempty" form:"-"`
+	Email     string     `json:"email" verbose:"Email"`
+	Label     string     `json:"label" verbose:"Label"`
+	TokenHash string     `json:"token_hash" den:"unique" form:"-"`
 }
 
 // IsUsed returns true if the invite has been used.

@@ -4,72 +4,57 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"testing/fstest"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestFreshDB_MigrationOnEmptyDatabase(t *testing.T) {
+// testItem is a simple document type used in fresh DB tests.
+type testItem struct {
+	document.Base
+	Name string `json:"name"`
+}
+
+func TestFreshDB_RegisterDocumentsOnEmptyDatabase(t *testing.T) {
 	db := TestDB(t)
-	migrations := fstest.MapFS{
-		"001_create_users.up.sql": &fstest.MapFile{
-			Data: []byte("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);"),
-		},
-		"002_add_email.up.sql": &fstest.MapFile{
-			Data: []byte("ALTER TABLE users ADD COLUMN email TEXT;"),
-		},
-	}
 
-	err := RunAppMigrations(t.Context(), db, "fresh_test", migrations)
+	err := den.Register(t.Context(), db, &testItem{})
 	require.NoError(t, err)
 
-	// Verify both migrations were applied.
-	var count int
-	err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ?", "fresh_test").
-		Scan(t.Context(), &count)
+	// Verify the table accepts inserts.
+	item := &testItem{Name: "test"}
+	err = den.Insert(t.Context(), db, item)
 	require.NoError(t, err)
-	assert.Equal(t, 2, count)
-
-	// Verify the table exists and accepts inserts with all columns.
-	_, err = db.NewRaw("INSERT INTO users (name, email) VALUES (?, ?)", "test", "test@example.com").
-		Exec(t.Context())
-	require.NoError(t, err)
+	assert.NotEmpty(t, item.ID)
 }
 
 func TestFreshDB_EmptyTableReturnsEmptyResults(t *testing.T) {
 	db := TestDB(t)
-	migrations := fstest.MapFS{
-		"001_create_items.up.sql": &fstest.MapFile{
-			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT NOT NULL);"),
-		},
-	}
 
-	err := RunAppMigrations(t.Context(), db, "items_app", migrations)
+	err := den.Register(t.Context(), db, &testItem{})
 	require.NoError(t, err)
 
-	// Query the empty table — should return zero rows, not an error.
-	var names []string
-	err = db.NewRaw("SELECT name FROM items").Scan(t.Context(), &names)
+	// Query the empty table — should return zero items, not an error.
+	items, err := den.NewQuery[testItem](t.Context(), db).All()
 	require.NoError(t, err)
-	assert.Empty(t, names)
+	assert.Empty(t, items)
 }
 
-func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
-	migA := fstest.MapFS{
-		"001_create_a.up.sql": &fstest.MapFile{
-			Data: []byte("CREATE TABLE table_a (id INTEGER PRIMARY KEY, val TEXT);"),
-		},
-	}
-	migB := fstest.MapFS{
-		"001_create_b.up.sql": &fstest.MapFile{
-			Data: []byte("CREATE TABLE table_b (id INTEGER PRIMARY KEY, ref_a INTEGER REFERENCES table_a(id));"),
-		},
-	}
+// docApp is a test helper implementing App + HasDocuments.
+type docApp struct {
+	name string
+	docs []any
+}
 
-	appA := &migratableApp{name: "app_a", fs: migA}
-	appB := &depApp{name: "app_b", fs: migB, deps: []string{"app_a"}}
+func (a *docApp) Name() string     { return a.name }
+func (a *docApp) Documents() []any { return a.docs }
+
+func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
+	appA := &docApp{name: "app_a", docs: []any{&testItem{}}}
+	appB := &minimalApp{} // no documents
 
 	srv := NewServer(appA, appB)
 	db := TestDB(t)
@@ -77,14 +62,17 @@ func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
 	err := srv.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
 
-	// Both tables should exist and accept inserts respecting the foreign key.
-	_, err = db.NewRaw("INSERT INTO table_a (id, val) VALUES (1, 'hello')").Exec(t.Context())
+	// Verify that app_a's document type was registered (table exists).
+	item := &testItem{Name: "hello"}
+	err = den.Insert(t.Context(), db, item)
 	require.NoError(t, err)
-	_, err = db.NewRaw("INSERT INTO table_b (id, ref_a) VALUES (1, 1)").Exec(t.Context())
-	require.NoError(t, err)
+
+	// Verify both apps were registered.
+	apps := srv.Registry().Apps()
+	require.Len(t, apps, 2)
 }
 
-func TestFreshDB_ServerBootstrapWithNoMigrations(t *testing.T) {
+func TestFreshDB_ServerBootstrapWithNoDocuments(t *testing.T) {
 	app := &minimalApp{}
 	srv := NewServer(app)
 	db := TestDB(t)
@@ -99,24 +87,18 @@ func TestFreshDB_ServerBootstrapWithNoMigrations(t *testing.T) {
 }
 
 func TestFreshDB_EmptyListEndpointReturnsOK(t *testing.T) {
-	migFS := fstest.MapFS{
-		"001_create_items.up.sql": &fstest.MapFile{
-			Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);"),
-		},
-	}
-
 	db := TestDB(t)
-	err := RunAppMigrations(t.Context(), db, "list_app", migFS)
+	err := den.Register(t.Context(), db, &testItem{})
 	require.NoError(t, err)
 
 	// Build a handler that counts items from the empty table.
 	r := chi.NewRouter()
 	r.Get("/items", Handle(func(w http.ResponseWriter, r *http.Request) error {
-		var count int
-		if err := db.NewRaw("SELECT COUNT(*) FROM items").Scan(r.Context(), &count); err != nil {
+		count, err := den.NewQuery[testItem](r.Context(), db).Count()
+		if err != nil {
 			return NewHTTPError(http.StatusInternalServerError, "query failed")
 		}
-		return JSON(w, http.StatusOK, map[string]int{"count": count})
+		return JSON(w, http.StatusOK, map[string]int64{"count": count})
 	}))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items", nil)
@@ -127,41 +109,25 @@ func TestFreshDB_EmptyListEndpointReturnsOK(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `"count":0`)
 }
 
-func TestFreshDB_MigrationSystemHandlesRepeatedBootstrap(t *testing.T) {
-	migFS := fstest.MapFS{
-		"001_create_widgets.up.sql": &fstest.MapFile{
-			Data: []byte("CREATE TABLE widgets (id INTEGER PRIMARY KEY);"),
-		},
-	}
-
-	app := &migratableApp{name: "widgets", fs: migFS}
-	srv := NewServer(app)
+func TestFreshDB_RegisterDocumentsIdempotent(t *testing.T) {
 	db := TestDB(t)
 
-	// Bootstrap twice — second run should be idempotent.
-	err := srv.bootstrap(t.Context(), db, nil)
+	// Register twice — second call should be idempotent.
+	err := den.Register(t.Context(), db, &testItem{})
 	require.NoError(t, err)
 
-	err = srv.bootstrap(t.Context(), db, nil)
+	err = den.Register(t.Context(), db, &testItem{})
 	require.NoError(t, err)
 
-	// Verify migration recorded exactly once.
-	var count int
-	err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ?", "widgets").
-		Scan(t.Context(), &count)
+	// Verify the table still works.
+	item := &testItem{Name: "test"}
+	err = den.Insert(t.Context(), db, item)
 	require.NoError(t, err)
-	assert.Equal(t, 1, count)
 }
 
 func TestFreshDB_BootstrapAndHandleRequestsCleanly(t *testing.T) {
-	migFS := fstest.MapFS{
-		"001_create_things.up.sql": &fstest.MapFile{
-			Data: []byte("CREATE TABLE things (id INTEGER PRIMARY KEY, label TEXT NOT NULL);"),
-		},
-	}
-
-	app := &migratableApp{name: "things", fs: migFS}
-	srv := NewServer(app)
+	appA := &docApp{name: "things", docs: []any{&testItem{}}}
+	srv := NewServer(appA)
 	db := TestDB(t)
 
 	err := srv.bootstrap(t.Context(), db, nil)
@@ -170,11 +136,11 @@ func TestFreshDB_BootstrapAndHandleRequestsCleanly(t *testing.T) {
 	// Simulate a request to a fresh (empty) table.
 	r := chi.NewRouter()
 	r.Get("/things", Handle(func(w http.ResponseWriter, r *http.Request) error {
-		var count int
-		if err := db.NewRaw("SELECT COUNT(*) FROM things").Scan(r.Context(), &count); err != nil {
+		count, err := den.NewQuery[testItem](r.Context(), db).Count()
+		if err != nil {
 			return NewHTTPError(http.StatusInternalServerError, "query failed")
 		}
-		return JSON(w, http.StatusOK, map[string]int{"count": count})
+		return JSON(w, http.StatusOK, map[string]int64{"count": count})
 	}))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/things", nil)

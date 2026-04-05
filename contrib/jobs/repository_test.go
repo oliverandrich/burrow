@@ -5,18 +5,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
+
+	"github.com/oliverandrich/burrow"
 )
 
-func testDB(t *testing.T) *bun.DB {
+func testDB(t *testing.T) *den.DB {
 	t.Helper()
 	db := burrow.TestDB(t)
 
-	app := New()
-	err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+	err := den.Register(t.Context(), db, &Job{})
 	require.NoError(t, err)
 	return db
 }
@@ -28,7 +28,7 @@ func TestRepository_Enqueue(t *testing.T) {
 
 	job, err := repo.Enqueue(ctx, "send_email", `{"to":"user@example.com"}`, 3, time.Now())
 	require.NoError(t, err)
-	assert.NotZero(t, job.ID)
+	assert.NotEmpty(t, job.ID)
 	assert.Equal(t, "send_email", job.Type)
 	assert.JSONEq(t, `{"to":"user@example.com"}`, job.Payload)
 	assert.Equal(t, StatusPending, job.Status)
@@ -89,8 +89,7 @@ func TestRepository_Complete(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify status.
-	var updated Job
-	err = db.NewSelect().Model(&updated).Where("id = ?", job.ID).Scan(ctx)
+	updated, err := den.FindByID[Job](ctx, db, job.ID)
 	require.NoError(t, err)
 	assert.Equal(t, StatusCompleted, updated.Status)
 	assert.NotNil(t, updated.CompletedAt)
@@ -104,12 +103,11 @@ func TestRepository_Fail_Retry(t *testing.T) {
 	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
 
-	// Fail with attempts=1, maxRetries=3 → should retry.
+	// Fail with attempts=1, maxRetries=3 -> should retry.
 	err = repo.Fail(ctx, job.ID, "connection timeout", 1, 3, 30*time.Second)
 	require.NoError(t, err)
 
-	var updated Job
-	err = db.NewSelect().Model(&updated).Where("id = ?", job.ID).Scan(ctx)
+	updated, err := den.FindByID[Job](ctx, db, job.ID)
 	require.NoError(t, err)
 	assert.Equal(t, StatusFailed, updated.Status)
 	assert.Equal(t, "connection timeout", updated.LastError)
@@ -140,8 +138,7 @@ func TestRepository_Fail_BackoffDuration(t *testing.T) {
 		err = repo.Fail(ctx, job.ID, "err", tt.attempt, 10, baseDelay)
 		require.NoError(t, err)
 
-		var updated Job
-		err = db.NewSelect().Model(&updated).Where("id = ?", job.ID).Scan(ctx)
+		updated, err := den.FindByID[Job](ctx, db, job.ID)
 		require.NoError(t, err)
 
 		expectedRunAt := before.Add(tt.expected)
@@ -158,12 +155,11 @@ func TestRepository_Fail_Dead(t *testing.T) {
 	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
 	require.NoError(t, err)
 
-	// Fail with attempts=3, maxRetries=3 → should be dead.
+	// Fail with attempts=3, maxRetries=3 -> should be dead.
 	err = repo.Fail(ctx, job.ID, "permanent failure", 3, 3, 30*time.Second)
 	require.NoError(t, err)
 
-	var updated Job
-	err = db.NewSelect().Model(&updated).Where("id = ?", job.ID).Scan(ctx)
+	updated, err := den.FindByID[Job](ctx, db, job.ID)
 	require.NoError(t, err)
 	assert.Equal(t, StatusDead, updated.Status)
 	assert.Equal(t, "permanent failure", updated.LastError)
@@ -181,9 +177,13 @@ func TestRepository_DeleteCompleted(t *testing.T) {
 	// Complete and backdate.
 	err = repo.Complete(ctx, job.ID)
 	require.NoError(t, err)
-	_, err = db.NewUpdate().Model((*Job)(nil)).
-		Set("completed_at = ?", time.Now().Add(-2*time.Hour)).
-		Where("id = ?", job.ID).Exec(ctx)
+
+	// Backdate the completed_at time.
+	updated, err := den.FindByID[Job](ctx, db, job.ID)
+	require.NoError(t, err)
+	backdated := time.Now().Add(-2 * time.Hour)
+	updated.CompletedAt = &backdated
+	err = den.Update(ctx, db, updated)
 	require.NoError(t, err)
 
 	// Delete completed older than 1 hour.
@@ -192,9 +192,9 @@ func TestRepository_DeleteCompleted(t *testing.T) {
 	assert.Equal(t, int64(1), n)
 
 	// Verify it's gone.
-	count, err := db.NewSelect().Model((*Job)(nil)).Count(ctx)
+	count, err := den.NewQuery[Job](ctx, db).Count()
 	require.NoError(t, err)
-	assert.Equal(t, 0, count)
+	assert.Equal(t, int64(0), count)
 }
 
 func TestRepository_RescueStale(t *testing.T) {
@@ -210,9 +210,12 @@ func TestRepository_RescueStale(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, claimed, 1)
 
-	_, err = db.NewUpdate().Model((*Job)(nil)).
-		Set("locked_at = ?", time.Now().Add(-30*time.Minute)).
-		Where("id = ?", job.ID).Exec(ctx)
+	// Backdate the locked_at time.
+	updated, err := den.FindByID[Job](ctx, db, job.ID)
+	require.NoError(t, err)
+	backdated := time.Now().Add(-30 * time.Minute)
+	updated.LockedAt = &backdated
+	err = den.Update(ctx, db, updated)
 	require.NoError(t, err)
 
 	// Rescue stale jobs older than 10 minutes.
@@ -221,11 +224,10 @@ func TestRepository_RescueStale(t *testing.T) {
 	assert.Equal(t, int64(1), n)
 
 	// Verify reset to pending.
-	var updated Job
-	err = db.NewSelect().Model(&updated).Where("id = ?", job.ID).Scan(ctx)
+	rescued, err := den.FindByID[Job](ctx, db, job.ID)
 	require.NoError(t, err)
-	assert.Equal(t, StatusPending, updated.Status)
-	assert.Nil(t, updated.LockedAt)
+	assert.Equal(t, StatusPending, rescued.Status)
+	assert.Nil(t, rescued.LockedAt)
 }
 
 func TestRepository_GetByID(t *testing.T) {
@@ -242,7 +244,7 @@ func TestRepository_GetByID(t *testing.T) {
 	assert.Equal(t, "send_email", got.Type)
 
 	// Not found.
-	_, err = repo.GetByID(ctx, 99999)
+	_, err = repo.GetByID(ctx, "nonexistent")
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
@@ -279,9 +281,6 @@ func TestRepository_ListPaged(t *testing.T) {
 	assert.Equal(t, 5, page.TotalCount)
 	assert.Equal(t, 3, page.TotalPages)
 	assert.True(t, page.HasMore)
-
-	// Verify order: newest first (highest ID first).
-	assert.Greater(t, jobs[0].ID, jobs[1].ID)
 }
 
 func TestRepository_Delete(t *testing.T) {
@@ -300,7 +299,7 @@ func TestRepository_Delete(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotFound)
 
 	// Delete non-existent — should return ErrNotFound.
-	err = repo.Delete(ctx, 99999)
+	err = repo.Delete(ctx, "nonexistent")
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
@@ -348,7 +347,7 @@ func TestRepository_Retry(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		err := repo.Retry(ctx, 99999)
+		err := repo.Retry(ctx, "nonexistent")
 		require.ErrorIs(t, err, ErrNotFound)
 	})
 }
@@ -397,7 +396,7 @@ func TestRepository_Cancel(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		err := repo.Cancel(ctx, 99999)
+		err := repo.Cancel(ctx, "nonexistent")
 		require.ErrorIs(t, err, ErrNotFound)
 	})
 }

@@ -349,7 +349,7 @@ Without the i18n app, templates fall back to displaying translation keys (which 
 | Interface | Description |
 |-----------|-------------|
 | `burrow.App` | Required: `Name()` |
-| `Migratable` | User, credential, recovery code, invite tables |
+| `HasDocuments` | User, credential, recovery code, invite document types |
 | `HasRoutes` | Auth routes |
 | `HasMiddleware` | User loading from session |
 | `HasAdmin` | Admin user/invite management routes and nav items |

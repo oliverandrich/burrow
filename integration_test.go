@@ -71,7 +71,7 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	srv.SetLayout("integration/layout")
 
 	// Open an in-memory database, matching the real boot sequence.
-	db, err := OpenDB(":memory:")
+	db, err := OpenDB("sqlite://:memory:")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
@@ -83,7 +83,7 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	// Bootstrap: migrations.
 	cfg := &Config{
 		Server:   ServerConfig{Host: "localhost", Port: 8080, BaseURL: "http://localhost:8080"},
-		Database: DatabaseConfig{DSN: ":memory:"},
+		Database: DatabaseConfig{DSN: "sqlite://:memory:"},
 		I18n:     I18nConfig{DefaultLanguage: "en", SupportedLanguages: "en"},
 	}
 	ctx := context.Background()

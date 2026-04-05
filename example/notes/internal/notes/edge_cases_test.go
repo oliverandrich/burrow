@@ -26,12 +26,12 @@ func TestCreateNoteEmptyTitle(t *testing.T) {
 
 	// The DB schema has title as NOT NULL but does not enforce non-empty at the DB level.
 	// An empty string satisfies NOT NULL, so insertion succeeds.
-	note := &Note{Title: "", Content: "Has content", UserID: 1}
+	note := &Note{Title: "", Content: "Has content", UserID: "user-default"}
 	err := repo.Create(ctx, note)
 	require.NoError(t, err)
-	assert.NotZero(t, note.ID)
+	assert.NotEmpty(t, note.ID)
 
-	found, err := repo.GetByID(ctx, note.ID, 1)
+	found, err := repo.GetByID(ctx, note.ID, "user-default")
 	require.NoError(t, err)
 	assert.Empty(t, found.Title)
 	assert.Equal(t, "Has content", found.Content)
@@ -42,12 +42,12 @@ func TestCreateNoteEmptyContent(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "Title Only", Content: "", UserID: 1}
+	note := &Note{Title: "Title Only", Content: "", UserID: "user-default"}
 	err := repo.Create(ctx, note)
 	require.NoError(t, err)
-	assert.NotZero(t, note.ID)
+	assert.NotEmpty(t, note.ID)
 
-	found, err := repo.GetByID(ctx, note.ID, 1)
+	found, err := repo.GetByID(ctx, note.ID, "user-default")
 	require.NoError(t, err)
 	assert.Equal(t, "Title Only", found.Title)
 	assert.Empty(t, found.Content)
@@ -58,10 +58,10 @@ func TestCreateNoteEmptyTitleAndContent(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "", Content: "", UserID: 1}
+	note := &Note{Title: "", Content: "", UserID: "user-default"}
 	err := repo.Create(ctx, note)
 	require.NoError(t, err)
-	assert.NotZero(t, note.ID)
+	assert.NotEmpty(t, note.ID)
 }
 
 func TestListNotesEmptyDatabase(t *testing.T) {
@@ -70,7 +70,7 @@ func TestListNotesEmptyDatabase(t *testing.T) {
 	ctx := context.Background()
 
 	// No notes created for user 1 — should return empty slice, not nil or error.
-	notes, err := repo.ListByUserID(ctx, 1)
+	notes, err := repo.ListByUserID(ctx, "user-default")
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 }
@@ -80,7 +80,7 @@ func TestListByUserIDPagedEmptyDatabase(t *testing.T) {
 	repo := NewRepository(db)
 
 	pr := burrow.PageRequest{Limit: 10, Page: 1}
-	notes, page, err := repo.ListByUserIDPaged(t.Context(), 1, pr)
+	notes, page, err := repo.ListByUserIDPaged(t.Context(), "user-default", pr)
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 	assert.False(t, page.HasMore)
@@ -94,7 +94,7 @@ func TestDeleteNonExistentNote(t *testing.T) {
 	ctx := context.Background()
 
 	// Deleting a note that does not exist should not error.
-	err := repo.Delete(ctx, 999999, 1)
+	err := repo.Delete(ctx, "nonexistent-id", "user-default")
 	require.NoError(t, err)
 }
 
@@ -103,15 +103,15 @@ func TestDeleteAlreadyDeletedNote(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "Ephemeral", Content: "Gone soon", UserID: 1}
+	note := &Note{Title: "Ephemeral", Content: "Gone soon", UserID: "user-default"}
 	require.NoError(t, repo.Create(ctx, note))
 
 	// Delete once.
-	err := repo.Delete(ctx, note.ID, 1)
+	err := repo.Delete(ctx, note.ID, "user-default")
 	require.NoError(t, err)
 
 	// Delete again — should not error.
-	err = repo.Delete(ctx, note.ID, 1)
+	err = repo.Delete(ctx, note.ID, "user-default")
 	require.NoError(t, err)
 }
 
@@ -120,7 +120,7 @@ func TestGetByIDNonExistent(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 999999, 1)
+	_, err := repo.GetByID(ctx, "nonexistent-id", "user-default")
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
@@ -129,14 +129,17 @@ func TestUpdateNonExistentNote(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	// Updating a note that does not exist should not error (UPDATE affects 0 rows).
-	note := &Note{ID: 999999, Title: "Ghost", Content: "Does not exist", UserID: 1}
+	// Den's Update uses Put (upsert), so updating a non-existent document
+	// creates it rather than silently doing nothing.
+	note := &Note{Title: "Ghost", Content: "Does not exist", UserID: "user-default"}
+	note.ID = "nonexistent-id"
 	err := repo.Update(ctx, note)
 	require.NoError(t, err)
 
-	// Verify it was not actually created.
-	_, err = repo.GetByID(ctx, 999999, 1)
-	require.ErrorIs(t, err, ErrNotFound)
+	// Verify the document was created (upsert behavior).
+	found, err := repo.GetByID(ctx, "nonexistent-id", "user-default")
+	require.NoError(t, err)
+	assert.Equal(t, "Ghost", found.Title)
 }
 
 // --- Handler edge cases ---
@@ -165,14 +168,14 @@ func TestCreateNoteHandlerEmptyTitleReturnsValidationError(t *testing.T) {
 	form := strings.NewReader("title=&content=Some+content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 
 	// No note should have been created.
-	notes, err := repo.ListByUserID(context.Background(), 42)
+	notes, err := repo.ListByUserID(context.Background(), "user-42")
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 }
@@ -197,7 +200,7 @@ func TestCreateNoteHandlerEmptyContentSucceeds(t *testing.T) {
 	form := strings.NewReader("title=No+Content+Note&content=")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -205,7 +208,7 @@ func TestCreateNoteHandlerEmptyContentSucceeds(t *testing.T) {
 	// Non-HTMX: should redirect.
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 
-	notes, err := repo.ListByUserID(context.Background(), 42)
+	notes, err := repo.ListByUserID(context.Background(), "user-42")
 	require.NoError(t, err)
 	require.Len(t, notes, 1)
 	assert.Equal(t, "No Content Note", notes[0].Title)
@@ -218,7 +221,7 @@ func TestListNotesHandlerEmptyDatabase(t *testing.T) {
 
 	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 
@@ -244,7 +247,7 @@ func TestDeleteNoteHandlerNonExistentNote(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	r.Delete("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Delete(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -253,7 +256,7 @@ func TestDeleteNoteHandlerNonExistentNote(t *testing.T) {
 
 	// Delete a non-existent note — no-op delete, redirects to /notes.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/999999", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -266,7 +269,7 @@ func TestSearchByUserIDEmptyDatabase(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	notes, page, err := repo.SearchByUserID(t.Context(), 1, "anything", burrow.PageRequest{Limit: 10})
+	notes, page, err := repo.SearchByUserID(t.Context(), "user-default", "anything", burrow.PageRequest{Limit: 10})
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 	assert.Equal(t, 0, page.TotalCount)
@@ -282,13 +285,13 @@ func TestListByUserIDPagedBeyondLastPage(t *testing.T) {
 		require.NoError(t, repo.Create(ctx, &Note{
 			Title:   fmt.Sprintf("Note %d", i),
 			Content: "Content",
-			UserID:  1,
+			UserID:  "user-default",
 		}))
 	}
 
 	// Request page 100 with limit 10 — beyond available data.
 	pr := burrow.PageRequest{Limit: 10, Page: 100}
-	notes, page, err := repo.ListByUserIDPaged(ctx, 1, pr)
+	notes, page, err := repo.ListByUserIDPaged(ctx, "user-default", pr)
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 	assert.False(t, page.HasMore)

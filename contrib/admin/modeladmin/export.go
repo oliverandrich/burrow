@@ -69,11 +69,9 @@ func (ma *ModelAdmin[T]) HandleExportJSON(w http.ResponseWriter, r *http.Request
 // exportItems builds listOpts from the request and fetches all matching items.
 func (ma *ModelAdmin[T]) exportItems(r *http.Request) ([]T, error) {
 	opts := listOpts{
-		relations:    ma.Relations,
 		orderBy:      ma.OrderBy,
 		searchTerm:   r.URL.Query().Get("q"),
 		searchFields: ma.SearchFields,
-		ftsTable:     ma.ftsTable,
 		filters:      ma.Filters,
 		sortFields:   ma.SortFields,
 		r:            r,

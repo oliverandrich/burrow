@@ -64,8 +64,8 @@ Boots and starts the server. This is a `cli.ActionFunc` — pass it directly to 
 When `Run()` is called, the following happens in order:
 
 1. **Parse config** — reads CLI flags, env vars, and TOML into a `Config` struct
-2. **Open database** — connects to SQLite with WAL mode, foreign keys, and connection pool
-3. **Run migrations** — calls `RunAppMigrations` for every `Migratable` app
+2. **Open database** — connects to Den (SQLite with WAL mode, or PostgreSQL)
+3. **Register documents** — calls `Documents()` on every `HasDocuments` app and registers types with Den
 4. **Configure apps** — calls `Configure()` on each `Configurable` app with the shared `AppConfig`
 5. **Seed database** — calls `Seed()` on each `Seedable` app
 6. **Post-configure apps** — calls `PostConfigure()` on each `PostConfigurable` app
@@ -116,13 +116,13 @@ func (r *Registry) Apps() []App
 
 Returns all registered apps in registration order.
 
-#### RunMigrations
+#### RegisterDocuments
 
 ```go
-func (r *Registry) RunMigrations(ctx context.Context, db *bun.DB) error
+func (r *Registry) RegisterDocuments(ctx context.Context, db *den.DB) error
 ```
 
-Runs migrations for all `Migratable` apps.
+Registers document types from all `HasDocuments` apps with Den. Called automatically during the boot sequence — you don't need to call this yourself.
 
 #### AllNavItems
 

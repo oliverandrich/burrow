@@ -49,8 +49,8 @@ func (r *Registry) Add(app App) {
 	r.index[name] = app
 
 	var caps []string
-	if _, ok := app.(Migratable); ok {
-		caps = append(caps, "migrations")
+	if _, ok := app.(HasDocuments); ok {
+		caps = append(caps, "documents")
 	}
 	if _, ok := app.(HasRoutes); ok {
 		caps = append(caps, "routes")

@@ -8,22 +8,22 @@ Use `forms` when you have a model-backed HTML form. For JSON APIs or standalone 
 
 The forms package works with any Go struct. There are two common patterns:
 
-**Using the model directly** — works well when the form fields closely match the model. Exclude non-editable fields with `form:"-"` or `WithExclude`:
+**Using the model directly** — works well when the form fields closely match the document. Exclude non-editable fields with `form:"-"` or `WithExclude`:
 
 ```go
-// Note is a Bun model. Form tags control how it behaves in forms.
+// Note is a Den document. Form tags control how it behaves in forms.
 type Note struct {
-    ID        int64     `bun:",pk,autoincrement" form:"-"`
-    Title     string    `bun:",notnull" form:"title" validate:"required" verbose:"Title"`
-    Content   string    `bun:",notnull" form:"content" widget:"textarea" verbose:"Content"`
-    CreatedAt time.Time `bun:",nullzero" form:"-"`
+    document.Base                      `form:"-"`
+    Title     string    `json:"title" den:"index" form:"title" validate:"required" verbose:"Title"`
+    Content   string    `json:"content" form:"content" widget:"textarea" verbose:"Content"`
+    CreatedAt time.Time `json:"created_at" form:"-"`
 }
 ```
 
-**Using a dedicated form struct** — better when the form diverges from the model (different fields, extra validation, computed values):
+**Using a dedicated form struct** — better when the form diverges from the document (different fields, extra validation, computed values):
 
 ```go
-// NoteForm is a dedicated form struct, separate from the Bun model.
+// NoteForm is a dedicated form struct, separate from the Den document.
 type NoteForm struct {
     Title    string `form:"title" validate:"required,max=200" verbose:"Title"`
     Content  string `form:"content" widget:"textarea" verbose:"Content"`
@@ -31,7 +31,7 @@ type NoteForm struct {
 }
 ```
 
-With a dedicated form struct, you map between form and model in your handler after validation.
+With a dedicated form struct, you map between form and document in your handler after validation.
 
 ### Struct Tags
 
@@ -63,21 +63,21 @@ Fields with `choices` tag or dynamic choices automatically become `select`. You 
 
 ### Using a model directly
 
-When the form struct is your Bun model, use `New` for create pages and `FromModel` for edit pages. Non-editable fields like `ID` or `CreatedAt` are excluded via options:
+When the form struct is your Den document, use `New` for create pages and `FromModel` for edit pages. Non-editable fields like `ID` or `CreatedAt` are excluded via options:
 
 ```go
 // Create page — empty form
-f := forms.New[Note](forms.WithExclude[Note]("ID", "CreatedAt"))
+f := forms.New[Note](forms.WithExclude[Note]("Base", "CreatedAt"))
 
 // Edit page — pre-populated from existing record
 note, _ := repo.Get(ctx, id)
-f := forms.FromModel(note, forms.WithExclude[Note]("ID", "CreatedAt"))
+f := forms.FromModel(note, forms.WithExclude[Note]("Base", "CreatedAt"))
 ```
 
 !!! tip "Reuse options across handlers"
     If you use the same options in multiple handlers, extract them into a helper function to avoid repetition. See the [notes example app](https://codeberg.org/oliverandrich/burrow/src/branch/main/example/notes) for this pattern.
 
-After validation, `f.Instance()` returns the model directly — ready to pass to your repository.
+After validation, `f.Instance()` returns the document directly — ready to pass to your repository.
 
 ### Using a dedicated form struct
 
@@ -98,7 +98,7 @@ f := forms.New[NoteForm](
 )
 ```
 
-After validation, `f.Instance()` returns a `*NoteForm` — map it back to your model in the handler:
+After validation, `f.Instance()` returns a `*NoteForm` — map it back to your document in the handler:
 
 ```go
 form := f.Instance()
@@ -119,7 +119,7 @@ Hides fields from the form. Excluded fields won't appear in `Fields()` and won't
 forms.WithExclude[Note]("ID", "UserID", "CreatedAt")
 ```
 
-This is the typical way to keep database-managed fields out of user-facing forms when using a model directly.
+This is the typical way to keep database-managed fields out of user-facing forms when using a document directly.
 
 ### WithInitial
 
@@ -353,14 +353,14 @@ func (f *ArticleForm) FieldChoices(ctx context.Context, field string) ([]forms.C
 }
 ```
 
-When using a model directly, the same interface works — just implement it on the model:
+When using a document directly, the same interface works — just implement it on the document:
 
 ```go
-// Article is a Bun model that also provides its own choices.
+// Article is a Den document that also provides its own choices.
 type Article struct {
-    ID         int64  `bun:",pk,autoincrement" form:"-"`
-    Title      string `bun:",notnull" form:"title" validate:"required" verbose:"Title"`
-    CategoryID int    `bun:",notnull" form:"category_id" widget:"select" verbose:"Category"`
+    document.Base                  `form:"-"`
+    Title      string `json:"title" form:"title" validate:"required" verbose:"Title"`
+    CategoryID string `json:"category_id" den:"index" form:"category_id" widget:"select" verbose:"Category"`
 }
 
 func (a *Article) FieldChoices(ctx context.Context, field string) ([]forms.Choice, error) {

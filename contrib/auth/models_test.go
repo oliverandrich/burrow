@@ -11,7 +11,6 @@ import (
 
 func TestWebAuthnCredentials(t *testing.T) {
 	user := &User{
-		ID:       1,
 		Username: "alice",
 		Credentials: []Credential{
 			{
@@ -45,7 +44,7 @@ func TestWebAuthnCredentials(t *testing.T) {
 }
 
 func TestWebAuthnCredentialsEmpty(t *testing.T) {
-	user := &User{ID: 1}
+	user := &User{}
 	creds := user.WebAuthnCredentials()
 	assert.Empty(t, creds)
 }
@@ -101,8 +100,8 @@ func TestNewCredentialFromWebAuthn(t *testing.T) {
 		},
 	}
 
-	cred := NewCredentialFromWebAuthn(99, waCred)
-	assert.Equal(t, int64(99), cred.UserID)
+	cred := NewCredentialFromWebAuthn("user-99", waCred)
+	assert.Equal(t, "user-99", cred.UserID)
 	assert.Equal(t, []byte("cred-id"), cred.CredentialID)
 	assert.Equal(t, []byte("pub-key"), cred.PublicKey)
 	assert.Equal(t, "none", cred.AttestationType)

@@ -8,7 +8,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
 	"time"
+
+	"github.com/oliverandrich/den"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,7 +60,7 @@ func TestColumnText(t *testing.T) {
 		type article struct {
 			Category *testCategory
 		}
-		item := article{Category: &testCategory{ID: 1, Name: "Science"}}
+		item := article{Category: &testCategory{ID: "1", Name: "Science"}}
 		got := columnText(item, "Category")
 		assert.Equal(t, "Science", got)
 	})
@@ -128,7 +131,7 @@ func TestHandleExportCSV_WithSearch(t *testing.T) {
 	// Seed diverse items.
 	for _, name := range []string{"Alpha", "Beta", "AlphaTwo"} {
 		item := &testItem{Name: name, Status: "active"}
-		_, err := db.NewInsert().Model(item).Exec(t.Context())
+		err := den.Insert(t.Context(), db, item)
 		require.NoError(t, err)
 	}
 
@@ -199,7 +202,7 @@ func TestHandleExportJSON_WithFilter(t *testing.T) {
 	// Seed items with different statuses.
 	for _, s := range []string{"active", "active", "inactive"} {
 		item := &testItem{Name: fmt.Sprintf("Item-%s", s), Status: s}
-		_, err := db.NewInsert().Model(item).Exec(t.Context())
+		err := den.Insert(t.Context(), db, item)
 		require.NoError(t, err)
 	}
 

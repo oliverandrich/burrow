@@ -33,7 +33,9 @@ func TestJobsRenderer_Detail_NoTemplateExecutor(t *testing.T) {
 	r := newJobsRenderer()
 	w := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs/1", nil)
-	err := r.Detail(w, req, &Job{ID: 1, Type: "test"}, modeladmin.RenderConfig{})
+	job := &Job{Type: "test"}
+	job.ID = "job-1"
+	err := r.Detail(w, req, job, modeladmin.RenderConfig{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no template executor")
 }

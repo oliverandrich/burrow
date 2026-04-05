@@ -112,14 +112,14 @@ func TestWebAuthnServiceRegistrationSession(t *testing.T) {
 	require.NoError(t, err)
 
 	data := &gowebauthn.SessionData{Challenge: "test-challenge"}
-	svc.StoreRegistrationSession(42, data)
+	svc.StoreRegistrationSession("user-42", data)
 
-	got, err := svc.GetRegistrationSession(42)
+	got, err := svc.GetRegistrationSession("user-42")
 	require.NoError(t, err)
 	assert.Equal(t, "test-challenge", got.Challenge)
 
 	// Second get should fail (one-time use).
-	_, err = svc.GetRegistrationSession(42)
+	_, err = svc.GetRegistrationSession("user-42")
 	require.Error(t, err)
 }
 
@@ -142,7 +142,7 @@ func TestWebAuthnServiceNotFound(t *testing.T) {
 	svc, err := NewWebAuthnService(t.Context(), "Test App", "localhost", "http://localhost:8080")
 	require.NoError(t, err)
 
-	_, err = svc.GetRegistrationSession(999)
+	_, err = svc.GetRegistrationSession("nonexistent")
 	require.Error(t, err)
 
 	_, err = svc.GetDiscoverableSession("nonexistent")

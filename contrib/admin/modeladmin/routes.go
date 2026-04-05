@@ -5,31 +5,15 @@ import (
 	"github.com/oliverandrich/burrow"
 )
 
-// Init runs boot-time detection (FTS5, cascade foreign keys) for this ModelAdmin.
+// Init runs boot-time setup for this ModelAdmin.
 // Called automatically by Routes(). Call manually when registering routes without Routes().
 func (ma *ModelAdmin[T]) Init() {
-	tbl := tableName[T]()
-
-	// Register table → display name for cascade impact labels.
-	RegisterTableDisplayName(tbl, ma.DisplayPluralName)
+	// Register collection → display name for cascade impact labels.
+	RegisterTableDisplayName(ma.Slug, ma.DisplayPluralName)
 
 	// Auto-add DeleteBulkAction when CanDelete is true and no "delete" bulk action exists.
 	if ma.CanDelete && !ma.hasBulkAction("delete") {
 		ma.BulkActions = append(ma.BulkActions, DeleteBulkAction[T]())
-	}
-
-	if ma.DB == nil {
-		return
-	}
-
-	// Auto-detect FTS5 table at boot time.
-	if tbl != "" && len(ma.SearchFields) > 0 {
-		ma.ftsTable = detectFTS(ma.DB, tbl)
-	}
-
-	// Auto-detect ON DELETE CASCADE foreign keys at boot time.
-	if tbl != "" && ma.CanDelete {
-		ma.cascades = detectCascades(ma.DB, tbl)
 	}
 }
 

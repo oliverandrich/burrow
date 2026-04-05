@@ -24,6 +24,9 @@ linters:
       check-blank: false # Allow explicit _ = Close() for cleanup-on-error
     govet:
       enable-all: true
+      disable:
+        - shadow
+        - fieldalignment
     revive:
       rules:
         - name: blank-imports

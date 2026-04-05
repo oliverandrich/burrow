@@ -3,7 +3,6 @@ package auth
 import (
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
@@ -13,8 +12,8 @@ import (
 // deactivateUserHandler returns a handler that deactivates a user.
 func deactivateUserHandler(repo *Repository) burrow.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
+		id := chi.URLParam(r, "id")
+		if id == "" {
 			return burrow.NewHTTPError(http.StatusBadRequest, "invalid user id")
 		}
 
@@ -23,7 +22,7 @@ func deactivateUserHandler(repo *Repository) burrow.HandlerFunc {
 		}
 
 		currentUser := CurrentUser(r.Context())
-		slog.Info("user deactivated", "user_id", id, "deactivated_by", currentUser.ID) //nolint:gosec // G706: IDs are int64
+		slog.Info("user deactivated", "user_id", id, "deactivated_by", currentUser.ID) //nolint:gosec // user IDs are ULIDs, not user input
 		htmx.SmartRedirect(w, r, "/admin/users")
 		return nil
 	}
@@ -32,8 +31,8 @@ func deactivateUserHandler(repo *Repository) burrow.HandlerFunc {
 // activateUserHandler returns a handler that activates a user.
 func activateUserHandler(repo *Repository) burrow.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
+		id := chi.URLParam(r, "id")
+		if id == "" {
 			return burrow.NewHTTPError(http.StatusBadRequest, "invalid user id")
 		}
 
@@ -42,7 +41,7 @@ func activateUserHandler(repo *Repository) burrow.HandlerFunc {
 		}
 
 		currentUser := CurrentUser(r.Context())
-		slog.Info("user activated", "user_id", id, "activated_by", currentUser.ID) //nolint:gosec // G706: IDs are int64
+		slog.Info("user activated", "user_id", id, "activated_by", currentUser.ID) //nolint:gosec // user IDs are ULIDs, not user input
 		htmx.SmartRedirect(w, r, "/admin/users")
 		return nil
 	}

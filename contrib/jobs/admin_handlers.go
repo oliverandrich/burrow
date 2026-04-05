@@ -3,7 +3,6 @@ package jobs
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
@@ -33,7 +32,7 @@ func retryHandler(repo *Repository) burrow.HandlerFunc {
 		if err := repo.Retry(r.Context(), id); err != nil {
 			return mapRepoError(err)
 		}
-		htmx.SmartRedirect(w, r, "/admin/jobs/"+strconv.FormatInt(id, 10))
+		htmx.SmartRedirect(w, r, "/admin/jobs/"+id)
 		return nil
 	}
 }
@@ -48,7 +47,7 @@ func cancelHandler(repo *Repository) burrow.HandlerFunc {
 		if err := repo.Cancel(r.Context(), id); err != nil {
 			return mapRepoError(err)
 		}
-		htmx.SmartRedirect(w, r, "/admin/jobs/"+strconv.FormatInt(id, 10))
+		htmx.SmartRedirect(w, r, "/admin/jobs/"+id)
 		return nil
 	}
 }
@@ -70,10 +69,10 @@ func isCancellable(item any) bool {
 }
 
 // parseJobID extracts the job ID from the URL parameter.
-func parseJobID(r *http.Request) (int64, error) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		return 0, burrow.NewHTTPError(http.StatusBadRequest, "invalid job id")
+func parseJobID(r *http.Request) (string, error) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		return "", burrow.NewHTTPError(http.StatusBadRequest, "missing job id")
 	}
 	return id, nil
 }

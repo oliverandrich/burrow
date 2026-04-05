@@ -30,44 +30,35 @@ The admin app:
 
 ## Prepare the Models
 
-In `internal/polls/polls.go`, add `verbose` struct tags to both models so ModelAdmin knows how to label columns. Also add `form:"-"` to the `Choices` relation on `Question` and the `Question` relation on `Choice` — ModelAdmin cannot handle nested relations in forms, so we exclude them:
+In `internal/polls/polls.go`, add `verbose` struct tags to both models so ModelAdmin knows how to label columns:
 
 ```go
 type Question struct {
-    bun.BaseModel `bun:"table:questions,alias:q"`
-
-    ID          int64     `bun:",pk,autoincrement" verbose:"ID"`
-    Text        string    `bun:",notnull" verbose:"Question"`
-    PublishedAt time.Time `bun:",notnull,default:current_timestamp" verbose:"Published"`
-
-    Choices []Choice `bun:"rel:has-many,join:id=question_id" form:"-"`
+    document.Base                              `verbose:"ID"`
+    Text        string    `json:"text" den:"index" verbose:"Question"`
+    PublishedAt time.Time `json:"published_at" verbose:"Published"`
 }
 
 // String returns the question text for display in admin list views (e.g. as FK label).
 func (q Question) String() string { return q.Text }
 
 type Choice struct {
-    bun.BaseModel `bun:"table:choices,alias:c"`
-
-    ID         int64  `bun:",pk,autoincrement" verbose:"ID"`
-    QuestionID int64  `bun:",notnull" verbose:"Question"`
-    Text       string `bun:",notnull" verbose:"Choice"`
-    Votes      int    `bun:",notnull,default:0" verbose:"Votes"`
-
-    Question *Question `bun:"rel:belongs-to,join:question_id=id" form:"-" verbose:"Question"`
+    document.Base                              `verbose:"ID"`
+    QuestionID string `json:"question_id" den:"index" verbose:"Question"`
+    Text       string `json:"text" verbose:"Choice"`
+    Votes      int    `json:"votes" verbose:"Votes"`
 }
 ```
 
-The `String()` method on `Question` tells ModelAdmin how to display a question when it appears as a foreign key in list views. Any type that implements `fmt.Stringer` is rendered using its `String()` result instead of the raw struct.
+The `String()` method on `Question` tells ModelAdmin how to display a question when it appears as a foreign key reference in list views. Any type that implements `fmt.Stringer` is rendered using its `String()` result instead of the raw struct.
 
 ## Set Up ModelAdmin
 
-`ModelAdmin` provides generic CRUD views for any Bun model. In `internal/polls/polls.go`, add the imports and update the `App` struct:
+`ModelAdmin` provides generic CRUD views for any Den document type. In `internal/polls/polls.go`, add the imports and update the `App` struct:
 
 ```go
 import (
-    "strconv"
-
+    "github.com/oliverandrich/den"
     "github.com/oliverandrich/burrow/contrib/admin/modeladmin"
     matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 )
@@ -107,21 +98,20 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
         CanCreate:         true,
         CanEdit:           true,
         CanDelete:         true,
-        ListFields:        []string{"ID", "Question", "Text", "Votes"},
-        Relations:         []string{"Question"},
-        OrderBy:           "c.question_id, c.id",
+        ListFields:        []string{"ID", "QuestionID", "Text", "Votes"},
+        OrderBy:           "question_id, id",
         FieldChoices: map[string]modeladmin.ChoicesFunc{
             "QuestionID": func(ctx context.Context) ([]modeladmin.Choice, error) {
-                var questions []Question
-                err := cfg.DB.NewSelect().Model(&questions).
-                    Order("published_at DESC").Scan(ctx)
+                questions, err := den.NewQuery[Question](ctx, cfg.DB).
+                    Sort("published_at", den.Desc).
+                    All()
                 if err != nil {
                     return nil, err
                 }
                 choices := make([]modeladmin.Choice, len(questions))
                 for i, q := range questions {
                     choices[i] = modeladmin.Choice{
-                        Value: strconv.FormatInt(q.ID, 10),
+                        Value: q.ID,
                         Label: q.Text,
                     }
                 }
@@ -177,10 +167,10 @@ go mod tidy
 go run .
 ```
 
-Register a user, then promote them to admin via the database:
+Register a user, then promote them to admin using the auth CLI command:
 
 ```bash
-sqlite3 app.db "UPDATE users SET role = 'admin' WHERE id = 1"
+./polls promote --username your-username
 ```
 
 Visit `/admin/` to see the dashboard. Click "Questions" in the sidebar to create a question, then click "Choices" to add choices for it — the question dropdown shows all available questions.
@@ -188,9 +178,9 @@ Visit `/admin/` to see the dashboard. Click "Questions" in the sidebar to create
 ## What You've Learnt
 
 - **`admin.New()`** — coordinates the admin panel with built-in default layout and dashboard
-- **`ModelAdmin`** — generic CRUD views for any Bun model, configured declaratively
-- **`fmt.Stringer` for FK labels** — implement `String()` on related models to display human-readable labels instead of raw IDs in list views
-- **`Relations`** — eager-load Bun relations so list views can display related model data
+- **`ModelAdmin`** — generic CRUD views for any Den document type, configured declaratively
+- **`fmt.Stringer` for FK labels** — implement `String()` on related document types to display human-readable labels instead of raw IDs in list views
+- **`FieldChoices`** — dynamic select dropdowns for foreign key fields in forms, loaded from the database at request time
 - **`FieldChoices`** — dynamic select dropdowns for foreign key fields in forms, loaded from the database at request time
 - **`HasAdmin`** — interface for apps to contribute admin routes and navigation
 - **`verbose` struct tags** — provide human-readable column labels for the admin UI

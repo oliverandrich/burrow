@@ -2,14 +2,10 @@ package auth
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"html/template"
-	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,10 +14,10 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/den"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
 	"github.com/urfave/cli/v3"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -29,7 +25,7 @@ import (
 // Compile-time interface assertions.
 var (
 	_ burrow.App               = (*App)(nil)
-	_ burrow.Migratable        = (*App)(nil)
+	_ burrow.HasDocuments      = (*App)(nil)
 	_ burrow.Configurable      = (*App)(nil)
 	_ burrow.HasMiddleware     = (*App)(nil)
 	_ burrow.HasRoutes         = (*App)(nil)
@@ -69,29 +65,21 @@ func TestAppFlags(t *testing.T) {
 	assert.True(t, names["auth-webauthn-rp-origin"])
 }
 
-func TestMigrationFS(t *testing.T) {
+func TestDocuments(t *testing.T) {
 	app := &App{}
-	fsys := app.MigrationFS()
-	require.NotNil(t, fsys)
-
-	// Verify the migration files exist and are readable (MigrationFS returns the sub-FS).
-	data, err := fs.ReadFile(fsys, "001_initial_schema.up.sql")
-	require.NoError(t, err)
-	assert.Contains(t, string(data), "CREATE TABLE IF NOT EXISTS users")
-
-	data, err = fs.ReadFile(fsys, "002_invite_label.up.sql")
-	require.NoError(t, err)
-	assert.Contains(t, string(data), "ALTER TABLE invites ADD COLUMN label")
+	docs := app.Documents()
+	require.NotEmpty(t, docs)
+	assert.GreaterOrEqual(t, len(docs), 3, "should have at least User, Credential, and RecoveryCode")
 }
 
 // --- Test helpers ---
 
-func openTestDB(t *testing.T) *bun.DB {
+func openTestDB(t *testing.T) *den.DB {
 	t.Helper()
 	db := burrow.TestDB(t)
 
 	app := New()
-	err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+	err := den.Register(t.Context(), db, app.Documents()...)
 	require.NoError(t, err)
 
 	return db
@@ -106,7 +94,7 @@ func TestCreateAndGetUser(t *testing.T) {
 
 	user, err := repo.CreateUser(ctx, "alice", "Alice")
 	require.NoError(t, err)
-	require.NotZero(t, user.ID)
+	require.NotEmpty(t, user.ID)
 	assert.Equal(t, "alice", user.Username)
 	assert.Equal(t, "Alice", user.Name)
 
@@ -148,9 +136,9 @@ func TestGetUserNotFound(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetUserByID(ctx, 999)
+	_, err := repo.GetUserByID(ctx, "nonexistent")
 	require.Error(t, err)
-	assert.ErrorIs(t, err, sql.ErrNoRows)
+	assert.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestUserExistsAndCount(t *testing.T) {
@@ -465,7 +453,7 @@ func TestInviteCRUD(t *testing.T) {
 	}
 	err := repo.CreateInvite(ctx, invite)
 	require.NoError(t, err)
-	require.NotZero(t, invite.ID)
+	require.NotEmpty(t, invite.ID)
 
 	got, err := repo.GetInviteByTokenHash(ctx, "invite-hash-1")
 	require.NoError(t, err)
@@ -770,7 +758,7 @@ func TestAdminUpdateUser(t *testing.T) {
 	router := adminUserRouter(app)
 
 	body := strings.NewReader("name=Alice+Wonder&bio=Hello+World&email=alice%40example.com&role=admin")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/users/%d", user.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/"+user.ID, body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -797,13 +785,13 @@ func TestAdminUpdateUserContinueEditing(t *testing.T) {
 	router := adminUserRouter(app)
 
 	body := strings.NewReader("name=Alice&role=user&_continue=1")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/users/%d", user.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/"+user.ID, body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, fmt.Sprintf("/admin/users/%d", user.ID), rec.Header().Get("Location"))
+	assert.Equal(t, "/admin/users/"+user.ID, rec.Header().Get("Location"))
 }
 
 func TestAdminUpdateUserNotFound(t *testing.T) {
@@ -830,7 +818,7 @@ func TestAdminUpdateUserLastAdminDemotion(t *testing.T) {
 	router := adminUserRouter(app)
 
 	body := strings.NewReader("name=Admin&role=user")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/users/%d", admin.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/"+admin.ID, body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -858,7 +846,7 @@ func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
 	router := adminUserRouter(app)
 
 	body := strings.NewReader("name=Admin2&role=user")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/users/%d", admin2.ID), body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/"+admin2.ID, body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -928,23 +916,20 @@ func TestAdminCreateInviteNoAuth(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
-func TestRevokeInviteInvalidID(t *testing.T) {
+func TestRevokeInviteNonExistentID(t *testing.T) {
 	_, repo := newTestApp(t)
 
 	router := chi.NewRouter()
-	router.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := burrow.TestErrorExecContext(r.Context())
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
 	router.Delete("/admin/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(repo)))
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/invalid/revoke", nil)
+	// With string IDs, any non-empty string is a valid ID format.
+	// Revoking a non-existent invite is a no-op that redirects.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/nonexistent/revoke", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	// Non-HTMX: SmartRedirect returns 303 SeeOther.
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
 }
 
 func TestRevokeInviteSuccess(t *testing.T) {
@@ -961,7 +946,7 @@ func TestRevokeInviteSuccess(t *testing.T) {
 	router := chi.NewRouter()
 	router.Delete("/admin/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(repo)))
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/"+strconv.FormatInt(invite.ID, 10)+"/revoke", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/invites/"+invite.ID+"/revoke", nil)
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -1025,7 +1010,7 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 
 	router := adminUserRouter(app)
 
-	form := url.Values{"_selected": {fmt.Sprintf("%d", target.ID)}}
+	form := url.Values{"_selected": {target.ID}}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/bulk/delete", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -1067,20 +1052,18 @@ func TestPurgeOrphanedUsersDeletesUsersWithoutCredentials(t *testing.T) {
 	require.NoError(t, err)
 
 	// Backdate the user's created_at so it qualifies for cleanup.
-	_, err = db.NewUpdate().Model((*User)(nil)).
-		Set("created_at = datetime('now', '-10 minutes')").
-		Where("id = ?", orphan.ID).
-		Exec(ctx)
+	orphanReloaded, err := repo.GetUserByID(ctx, orphan.ID)
 	require.NoError(t, err)
+	orphanReloaded.CreatedAt = time.Now().Add(-10 * time.Minute)
+	require.NoError(t, den.Update(ctx, db, orphanReloaded))
 
 	// Create a user WITH credentials (should be kept).
 	legit, err := repo.CreateUser(ctx, "legit", "")
 	require.NoError(t, err)
-	_, err = db.NewUpdate().Model((*User)(nil)).
-		Set("created_at = datetime('now', '-10 minutes')").
-		Where("id = ?", legit.ID).
-		Exec(ctx)
+	legitReloaded, err := repo.GetUserByID(ctx, legit.ID)
 	require.NoError(t, err)
+	legitReloaded.CreatedAt = time.Now().Add(-10 * time.Minute)
+	require.NoError(t, den.Update(ctx, db, legitReloaded))
 	require.NoError(t, repo.CreateCredential(ctx, &Credential{
 		UserID:       legit.ID,
 		CredentialID: []byte("cred1"),
@@ -1181,7 +1164,7 @@ func TestDeactivateUserSuccess(t *testing.T) {
 
 	router := userActionRouter(deactivateUserHandler(repo), adminUser)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/deactivate", target.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/"+target.ID+"/deactivate", nil)
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -1208,7 +1191,7 @@ func TestActivateUserSuccess(t *testing.T) {
 
 	router := userActionRouter(activateUserHandler(repo), adminUser)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/activate", target.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/"+target.ID+"/activate", nil)
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -1395,19 +1378,20 @@ func TestStaticFS(t *testing.T) {
 
 func TestUserWebAuthnMethods(t *testing.T) {
 	user := &User{
-		ID:       42,
 		Username: "alice",
 		Name:     "Alice Smith",
 	}
+	user.ID = "01ABCDEFGH123456789012"
 
 	assert.Equal(t, "alice", user.WebAuthnName())
 	assert.Equal(t, "Alice Smith", user.WebAuthnDisplayName())
-	assert.Len(t, user.WebAuthnID(), 8)
+	assert.NotEmpty(t, user.WebAuthnID())
 	assert.Empty(t, user.WebAuthnIcon())
 }
 
 func TestUserWebAuthnDisplayNameFallback(t *testing.T) {
-	user := &User{ID: 1, Username: "bob"}
+	user := &User{Username: "bob"}
+	user.ID = "01ABCDEFGH123456789013"
 	assert.Equal(t, "bob", user.WebAuthnDisplayName())
 }
 
@@ -1425,7 +1409,8 @@ func TestInviteIsValid(t *testing.T) {
 
 func TestRequestFuncMap(t *testing.T) {
 	app := &App{}
-	user := &User{ID: 1, Username: "alice"}
+	user := &User{Username: "alice"}
+	user.ID = "01ABCDEFGH123456789014"
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	ctx := WithUser(req.Context(), user)
@@ -1892,7 +1877,9 @@ func TestAdminCreateInviteEmailModeMissingEmail(t *testing.T) {
 	body := strings.NewReader(`label=Test`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = requestWithSession(req, &User{ID: 1})
+	u := &User{Username: "test"}
+	u.ID = "test-user-1"
+	req = requestWithSession(req, u)
 	rec := httptest.NewRecorder()
 
 	err := app.handleCreateInvite(rec, req)
@@ -1912,11 +1899,10 @@ func TestBackgroundCleanupPurgesOrphanedUsers(t *testing.T) {
 	require.NoError(t, err)
 
 	// Backdate the user's created_at to make it eligible for purge.
-	_, err = db.NewUpdate().Model((*User)(nil)).
-		Set("created_at = ?", time.Now().Add(-10*time.Minute)).
-		Where("id = ?", user.ID).
-		Exec(ctx)
+	userReloaded, err := repo.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
+	userReloaded.CreatedAt = time.Now().Add(-10 * time.Minute)
+	require.NoError(t, den.Update(ctx, db, userReloaded))
 
 	// Also create an expired email verification token.
 	err = repo.CreateEmailVerificationToken(ctx, user.ID, "expired-hash", time.Now().Add(-time.Hour))
@@ -2036,11 +2022,12 @@ func TestAuthMiddlewareWithAdminUser(t *testing.T) {
 
 func TestDeactivateUserInvalidID(t *testing.T) {
 	_, repo := newTestApp(t)
-	adminUser := &User{ID: 1, Username: "admin", Role: RoleAdmin, IsActive: true}
+	adminUser := &User{Username: "admin", Role: RoleAdmin, IsActive: true}
+	adminUser.ID = "admin-id-1"
 
 	router := userActionRouter(deactivateUserHandler(repo), adminUser)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/notanumber/deactivate", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/nonexistent/deactivate", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -2052,11 +2039,12 @@ func TestDeactivateUserInvalidID(t *testing.T) {
 
 func TestActivateUserInvalidID(t *testing.T) {
 	_, repo := newTestApp(t)
-	adminUser := &User{ID: 1, Username: "admin", Role: RoleAdmin, IsActive: true}
+	adminUser := &User{Username: "admin", Role: RoleAdmin, IsActive: true}
+	adminUser.ID = "admin-id-2"
 
 	router := userActionRouter(activateUserHandler(repo), adminUser)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/notanumber/activate", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/nonexistent/activate", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -2082,7 +2070,7 @@ func TestDeactivateUserDBError(t *testing.T) {
 
 	router := userActionRouter(deactivateUserHandler(repo), adminUser)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/deactivate", target.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/"+target.ID+"/deactivate", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -2109,7 +2097,7 @@ func TestActivateUserDBError(t *testing.T) {
 
 	router := userActionRouter(activateUserHandler(repo), adminUser)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/admin/users/%d/activate", target.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/users/"+target.ID+"/activate", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 

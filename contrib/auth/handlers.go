@@ -3,14 +3,13 @@ package auth
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/oliverandrich/burrow"
@@ -126,7 +125,7 @@ func (a *App) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	defer func() {
 		if !registered {
 			if delErr := a.repo.DeleteUser(ctx, user.ID); delErr != nil {
-				slog.Error("failed to clean up orphaned user", "user_id", user.ID, "error", delErr) //nolint:gosec // G706: user_id is int64
+				slog.Error("failed to clean up orphaned user", "user_id", user.ID, "error", delErr)
 			}
 		}
 	}()
@@ -137,17 +136,17 @@ func (a *App) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	adminCount, countErr := a.repo.CountAdminUsers(ctx)
 	if countErr == nil && adminCount == 0 {
 		if roleErr := a.repo.SetUserRole(ctx, user.ID, RoleAdmin); roleErr != nil {
-			slog.Error("failed to promote first user to admin", "user_id", user.ID, "error", roleErr) //nolint:gosec // G706: user_id is int64
+			slog.Error("failed to promote first user to admin", "user_id", user.ID, "error", roleErr)
 		}
 		user.Role = RoleAdmin
-		slog.Info("first user registered as admin", "user_id", user.ID) //nolint:gosec // G706: user_id is safe
+		slog.Info("first user registered as admin", "user_id", user.ID)
 	}
 
 	// Mark invite as used. If the invite was already consumed by a concurrent
 	// request, abort registration and let the cleanup defer delete the user.
 	if validInvite != nil {
 		if markErr := a.repo.MarkInviteUsed(ctx, validInvite.ID, user.ID); markErr != nil {
-			slog.Error("failed to mark invite as used", "invite_id", validInvite.ID, "error", markErr) //nolint:gosec // G706: invite_id is int
+			slog.Error("failed to mark invite as used", "invite_id", validInvite.ID, "error", markErr)
 			return errorJSON(w, http.StatusConflict, "registration failed")
 		}
 	}
@@ -168,8 +167,8 @@ func (a *App) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 
 // RegisterFinish completes the WebAuthn registration process.
 func (a *App) RegisterFinish(w http.ResponseWriter, r *http.Request) error {
-	userID, err := strconv.ParseInt(r.URL.Query().Get("user_id"), 10, 64)
-	if err != nil {
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
 		return errorJSON(w, http.StatusBadRequest, "invalid user_id")
 	}
 
@@ -285,10 +284,10 @@ func (a *App) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 	var foundUser *User
 	credential, finishErr := a.webauthn.WebAuthn().FinishDiscoverableLogin(
 		func(rawID, userHandle []byte) (gowebauthn.User, error) {
-			if len(userHandle) < 8 {
+			userID := string(userHandle)
+			if userID == "" {
 				return nil, burrow.NewHTTPError(http.StatusBadRequest, "invalid user handle")
 			}
-			userID := int64(binary.BigEndian.Uint64(userHandle)) //nolint:gosec // user IDs are always positive
 			user, userErr := a.repo.GetUserByIDWithCredentials(r.Context(), userID)
 			if userErr != nil {
 				return nil, userErr
@@ -307,7 +306,7 @@ func (a *App) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 	// Verify sign count to detect cloned credentials before updating.
 	if storedCount, ok := findStoredSignCount(foundUser.Credentials, credential.ID); ok {
 		if err := verifySignCount(storedCount, credential.Authenticator.SignCount); err != nil {
-			slog.Warn("possible cloned credential detected", "user_id", foundUser.ID, "error", err) //nolint:gosec // user_id is int64
+			slog.Warn("possible cloned credential detected", "user_id", foundUser.ID, "error", err)
 			return errorJSON(w, http.StatusForbidden, "credential verification failed")
 		}
 	}
@@ -395,8 +394,8 @@ func (a *App) AddCredentialFinish(w http.ResponseWriter, r *http.Request) error 
 // DeleteCredential removes a credential.
 func (a *App) DeleteCredential(w http.ResponseWriter, r *http.Request) error {
 	user := MustCurrentUser(r.Context())
-	credID, err := burrow.URLParamInt64(r, "id")
-	if err != nil {
+	credID := chi.URLParam(r, "id")
+	if credID == "" {
 		return errorJSON(w, http.StatusBadRequest, "invalid credential id")
 	}
 
@@ -644,7 +643,7 @@ func (a *App) redirectTarget(r *http.Request) string {
 
 // --- Internal helpers ---
 
-func (a *App) generateAndStoreRecoveryCodes(ctx context.Context, userID int64) ([]string, error) {
+func (a *App) generateAndStoreRecoveryCodes(ctx context.Context, userID string) ([]string, error) {
 	if err := a.repo.DeleteRecoveryCodes(ctx, userID); err != nil {
 		return nil, err
 	}

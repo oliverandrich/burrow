@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,11 +47,9 @@ func TestJobPoolProcesses100Jobs(t *testing.T) {
 	<-w.Done()
 
 	// Verify all jobs are marked completed in the database.
-	var dbCompleted int
-	err := db.NewRaw("SELECT COUNT(*) FROM _jobs WHERE status = ?", StatusCompleted).
-		Scan(context.Background(), &dbCompleted)
+	completedJobs, _, err := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 200, Page: 1}, StatusCompleted)
 	require.NoError(t, err)
-	assert.Equal(t, 100, dbCompleted)
+	assert.Len(t, completedJobs, 100)
 }
 
 func TestJobPoolHandlerFailuresDoNotCrashPool(t *testing.T) {
@@ -103,17 +102,20 @@ func TestJobPoolHandlerFailuresDoNotCrashPool(t *testing.T) {
 	<-w.Done()
 
 	// Verify good jobs are completed.
-	var completedCount int
-	err := db.NewRaw("SELECT COUNT(*) FROM _jobs WHERE status = ? AND type = ?",
-		StatusCompleted, "good").Scan(context.Background(), &completedCount)
+	completedJobs, _, err := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 100, Page: 1}, StatusCompleted)
 	require.NoError(t, err)
+	completedCount := 0
+	for _, j := range completedJobs {
+		if j.Type == "good" {
+			completedCount++
+		}
+	}
 	assert.Equal(t, 20, completedCount)
 
 	// Verify bad jobs are dead (maxRetries=1, so after 1 attempt they go dead).
-	var deadCount int
-	err = db.NewRaw("SELECT COUNT(*) FROM _jobs WHERE status = ? AND type = ?",
-		StatusDead, "bad").Scan(context.Background(), &deadCount)
+	deadJobs, _, err := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 100, Page: 1}, StatusDead)
 	require.NoError(t, err)
+	deadCount := len(deadJobs)
 	assert.Equal(t, 10, deadCount)
 }
 
@@ -136,7 +138,7 @@ func TestJobPoolMaxRetriesExhaustedEndsDead(t *testing.T) {
 	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue 5 jobs with maxRetries=3 (3 attempts allowed before dead).
-	jobIDs := make([]int64, 0, 5)
+	jobIDs := make([]string, 0, 5)
 	for range 5 {
 		job, err := repo.Enqueue(context.Background(), "doomed", `{}`, 3, time.Now())
 		require.NoError(t, err)
@@ -147,15 +149,17 @@ func TestJobPoolMaxRetriesExhaustedEndsDead(t *testing.T) {
 
 	// Wait for all 5 jobs to reach dead status.
 	require.Eventually(t, func() bool {
-		var deadCount int
-		_ = db.NewRaw("SELECT COUNT(*) FROM _jobs WHERE status = ?", StatusDead).
-			Scan(context.Background(), &deadCount)
+		deadJobs, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 100, Page: 1}, StatusDead)
 
 		// Speed up retries by resetting run_at for failed jobs.
-		_, _ = db.ExecContext(context.Background(),
-			"UPDATE _jobs SET run_at = datetime('now') WHERE status = 'failed'")
+		failedJobs, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 100, Page: 1}, StatusFailed)
+		now := time.Now()
+		for _, j := range failedJobs {
+			j.RunAt = now
+			_ = den.Update(context.Background(), db, j)
+		}
 
-		return deadCount == 5
+		return len(deadJobs) == 5
 	}, 10*time.Second, 20*time.Millisecond, "all jobs should reach dead status")
 
 	cancel()

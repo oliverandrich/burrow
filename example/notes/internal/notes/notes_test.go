@@ -17,15 +17,15 @@ import (
 	"github.com/oliverandrich/burrow/contrib/auth/authtest"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
 )
 
 // Compile-time interface assertions.
 var (
 	_ burrow.App             = (*App)(nil)
-	_ burrow.Migratable      = (*App)(nil)
+	_ burrow.HasDocuments    = (*App)(nil)
 	_ burrow.HasRoutes       = (*App)(nil)
 	_ burrow.HasNavItems     = (*App)(nil)
 	_ burrow.HasDependencies = (*App)(nil)
@@ -33,6 +33,13 @@ var (
 	_ burrow.HasTranslations = (*App)(nil)
 	_ burrow.HasTemplates    = (*App)(nil)
 )
+
+// testUser returns an auth.User with a fixed test ID for use in test contexts.
+func testUser() *auth.User {
+	u := &auth.User{Username: "testuser"}
+	u.ID = "user-42"
+	return u
+}
 
 func TestAppName(t *testing.T) {
 	app := New()
@@ -58,27 +65,28 @@ func TestTranslationFS(t *testing.T) {
 	assert.GreaterOrEqual(t, len(matches), 2, "expected at least en and de translation files")
 }
 
-func TestMigrationFS(t *testing.T) {
+func TestDocuments(t *testing.T) {
 	app := New()
-	fsys := app.MigrationFS()
-	require.NotNil(t, fsys)
+	docs := app.Documents()
+	require.NotEmpty(t, docs)
+	assert.Len(t, docs, 1, "should have Note document type")
 }
 
 // --- Repository tests ---
 
-func openTestDB(t *testing.T) *bun.DB {
+func openTestDB(t *testing.T) *den.DB {
 	t.Helper()
 
 	db := authtest.NewDB(t)
 
-	// Run notes migrations on top of auth.
+	// Register notes documents on top of auth.
 	app := New()
-	err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
+	err := den.Register(t.Context(), db, app.Documents()...)
 	require.NoError(t, err)
 
-	// Create default test users (tests use UserID 1 and 42 throughout).
-	authtest.CreateUser(t, db, authtest.WithID(1), authtest.WithUsername("defaultuser"))
-	authtest.CreateUser(t, db, authtest.WithID(42), authtest.WithUsername("testuser"))
+	// Create default test users (tests use UserID strings throughout).
+	authtest.CreateUser(t, db, authtest.WithID("user-default"), authtest.WithUsername("defaultuser"))
+	authtest.CreateUser(t, db, authtest.WithID("user-42"), authtest.WithUsername("testuser"))
 
 	return db
 }
@@ -88,13 +96,13 @@ func TestCreateAndListNotes(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	err := repo.Create(ctx, &Note{Title: "First Note", Content: "Hello", UserID: 1})
+	err := repo.Create(ctx, &Note{Title: "First Note", Content: "Hello", UserID: "user-default"})
 	require.NoError(t, err)
 
-	err = repo.Create(ctx, &Note{Title: "Second Note", Content: "World", UserID: 1})
+	err = repo.Create(ctx, &Note{Title: "Second Note", Content: "World", UserID: "user-default"})
 	require.NoError(t, err)
 
-	notes, err := repo.ListByUserID(ctx, 1)
+	notes, err := repo.ListByUserID(ctx, "user-default")
 	require.NoError(t, err)
 	require.Len(t, notes, 2)
 	assert.Equal(t, "Second Note", notes[0].Title) // Most recent first.
@@ -106,7 +114,7 @@ func TestListNotesEmpty(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	notes, err := repo.ListByUserID(ctx, 999)
+	notes, err := repo.ListByUserID(ctx, "nonexistent")
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 }
@@ -116,14 +124,14 @@ func TestDeleteNote(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "To Delete", Content: "Bye", UserID: 1}
+	note := &Note{Title: "To Delete", Content: "Bye", UserID: "user-default"}
 	err := repo.Create(ctx, note)
 	require.NoError(t, err)
 
-	err = repo.Delete(ctx, note.ID, 1)
+	err = repo.Delete(ctx, note.ID, "user-default")
 	require.NoError(t, err)
 
-	notes, err := repo.ListByUserID(ctx, 1)
+	notes, err := repo.ListByUserID(ctx, "user-default")
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 }
@@ -133,15 +141,15 @@ func TestDeleteNoteWrongUser(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "Not Yours", Content: "Nope", UserID: 1}
+	note := &Note{Title: "Not Yours", Content: "Nope", UserID: "user-default"}
 	err := repo.Create(ctx, note)
 	require.NoError(t, err)
 
 	// User 2 can't delete user 1's note.
-	err = repo.Delete(ctx, note.ID, 2)
+	err = repo.Delete(ctx, note.ID, "user-other")
 	require.NoError(t, err) // No error but nothing happens.
 
-	notes, err := repo.ListByUserID(ctx, 1)
+	notes, err := repo.ListByUserID(ctx, "user-default")
 	require.NoError(t, err)
 	assert.Len(t, notes, 1) // Still there.
 }
@@ -151,10 +159,10 @@ func TestGetByID(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "Find Me", Content: "Here", UserID: 1}
+	note := &Note{Title: "Find Me", Content: "Here", UserID: "user-default"}
 	require.NoError(t, repo.Create(ctx, note))
 
-	found, err := repo.GetByID(ctx, note.ID, 1)
+	found, err := repo.GetByID(ctx, note.ID, "user-default")
 	require.NoError(t, err)
 	assert.Equal(t, "Find Me", found.Title)
 	assert.Equal(t, "Here", found.Content)
@@ -165,10 +173,10 @@ func TestGetByIDWrongUser(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "Not Yours", Content: "Nope", UserID: 1}
+	note := &Note{Title: "Not Yours", Content: "Nope", UserID: "user-default"}
 	require.NoError(t, repo.Create(ctx, note))
 
-	_, err := repo.GetByID(ctx, note.ID, 2)
+	_, err := repo.GetByID(ctx, note.ID, "user-other")
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
@@ -177,14 +185,14 @@ func TestUpdateNote(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "Original", Content: "Old", UserID: 1}
+	note := &Note{Title: "Original", Content: "Old", UserID: "user-default"}
 	require.NoError(t, repo.Create(ctx, note))
 
 	note.Title = "Updated"
 	note.Content = "New"
 	require.NoError(t, repo.Update(ctx, note))
 
-	found, err := repo.GetByID(ctx, note.ID, 1)
+	found, err := repo.GetByID(ctx, note.ID, "user-default")
 	require.NoError(t, err)
 	assert.Equal(t, "Updated", found.Title)
 	assert.Equal(t, "New", found.Content)
@@ -203,7 +211,7 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 		"t":               func(key string) string { return key },
 		"csrfToken":       func() string { return "test-token" },
 		"staticURL":       func(name string) string { return "/static/" + name },
-		"itoa":            func(id int64) string { return fmt.Sprintf("%d", id) },
+		"itoa":            func(id string) string { return id },
 		"iconTrash":       func(class ...string) template.HTML { return "<svg>trash</svg>" },
 		"iconPlusLg":      func(class ...string) template.HTML { return "<svg>plus</svg>" },
 		"iconPencil":      func(class ...string) template.HTML { return "<svg>pencil</svg>" },
@@ -258,11 +266,11 @@ func TestListNotesHandler(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.Create(ctx, &Note{Title: "Test", Content: "Content", UserID: 42}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Test", Content: "Content", UserID: "user-42"}))
 
 	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 
@@ -280,11 +288,11 @@ func TestListNotesHTMXNavReturnsFragment(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", Content: "Content", UserID: 42}))
+	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", Content: "Content", UserID: "user-42"}))
 
 	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = injectTemplateExecutor(t, req)
 	// HTMX nav request (no page param) → should use Render → fragment only.
 	req.Header.Set("HX-Request", "true")
@@ -305,11 +313,11 @@ func TestListNotesNormalRequestUsesLayout(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", Content: "Content", UserID: 42}))
+	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", Content: "Content", UserID: "user-42"}))
 
 	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 
 	layoutCalled := false
 	exec := burrow.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
@@ -354,7 +362,7 @@ func TestNewNoteHandler(t *testing.T) {
 
 	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/new", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = injectTemplateExecutor(t, req)
 	// HTMX request: returns form fragment for inline insertion.
 	req.Header.Set("HX-Request", "true")
@@ -414,7 +422,7 @@ func TestCreateNoteHTMX(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -429,7 +437,7 @@ func TestCreateNoteHTMX(t *testing.T) {
 	// OOB: flash message.
 	assert.Contains(t, body, "notes-created")
 
-	notes, err := repo.ListByUserID(context.Background(), 42)
+	notes, err := repo.ListByUserID(context.Background(), "user-42")
 	require.NoError(t, err)
 	require.Len(t, notes, 1)
 	assert.Equal(t, "My Note", notes[0].Title)
@@ -454,7 +462,7 @@ func TestCreateNoteNonHTMX(t *testing.T) {
 	form := strings.NewReader("title=My+Note&content=Some+content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -462,7 +470,7 @@ func TestCreateNoteNonHTMX(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "/notes", rec.Header().Get("Location"))
 
-	notes, err := repo.ListByUserID(context.Background(), 42)
+	notes, err := repo.ListByUserID(context.Background(), "user-42")
 	require.NoError(t, err)
 	require.Len(t, notes, 1)
 	assert.Equal(t, "My Note", notes[0].Title)
@@ -494,7 +502,7 @@ func TestCreateNoteValidationErrorHTMX(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -506,7 +514,7 @@ func TestCreateNoteValidationErrorHTMX(t *testing.T) {
 	assert.Contains(t, body, "is-invalid")
 
 	// No note should have been created.
-	notes, err := repo.ListByUserID(context.Background(), 42)
+	notes, err := repo.ListByUserID(context.Background(), "user-42")
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 }
@@ -535,7 +543,7 @@ func TestCreateNoteValidationErrorNonHTMX(t *testing.T) {
 	form := strings.NewReader("title=&content=Some+content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -566,22 +574,22 @@ func TestEditNoteHTMX(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	note := &Note{Title: "Edit Me", Content: "Original", UserID: 42}
+	note := &Note{Title: "Edit Me", Content: "Original", UserID: "user-42"}
 	require.NoError(t, repo.Create(t.Context(), note))
 
 	h := &App{repo: repo}
 
 	r := chi.NewRouter()
-	r.Get("/notes/{id:[0-9]+}/edit", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/notes/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Edit(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/notes/%d/edit", note.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/"+note.ID+"/edit", nil)
 	req.Header.Set("HX-Request", "true")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -591,8 +599,8 @@ func TestEditNoteHTMX(t *testing.T) {
 	assert.Contains(t, body, "notes-edit-title")
 	assert.Contains(t, body, "Edit Me")
 	assert.Contains(t, body, "Original")
-	assert.Contains(t, body, fmt.Sprintf(`action="/notes/%d"`, note.ID))
-	assert.Contains(t, body, fmt.Sprintf(`hx-post="/notes/%d"`, note.ID))
+	assert.Contains(t, body, `action="/notes/`+note.ID+`"`)
+	assert.Contains(t, body, `hx-post="/notes/`+note.ID+`"`)
 }
 
 func TestEditNoteUnauthenticatedPanics(t *testing.T) {
@@ -615,7 +623,7 @@ func TestEditNoteNotFound(t *testing.T) {
 	h := &App{repo: repo}
 
 	r := chi.NewRouter()
-	r.Get("/notes/{id:[0-9]+}/edit", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/notes/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Edit(w, r)
 		if err != nil {
 			var httpErr *burrow.HTTPError
@@ -626,7 +634,7 @@ func TestEditNoteNotFound(t *testing.T) {
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes/999/edit", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -640,7 +648,7 @@ func TestUpdateNoteHTMX(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	note := &Note{Title: "Original", Content: "Old", UserID: 42}
+	note := &Note{Title: "Original", Content: "Old", UserID: "user-42"}
 	require.NoError(t, repo.Create(t.Context(), note))
 
 	h := &App{repo: repo}
@@ -655,7 +663,7 @@ func TestUpdateNoteHTMX(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	r.Post("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Update(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -663,10 +671,10 @@ func TestUpdateNoteHTMX(t *testing.T) {
 	})
 
 	form := strings.NewReader("title=Updated&content=New+content")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/notes/%d", note.ID), form)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes/"+note.ID, form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -681,7 +689,7 @@ func TestUpdateNoteHTMX(t *testing.T) {
 	// OOB: flash message.
 	assert.Contains(t, body, "notes-updated")
 
-	found, err := repo.GetByID(context.Background(), note.ID, 42)
+	found, err := repo.GetByID(context.Background(), note.ID, "user-42")
 	require.NoError(t, err)
 	assert.Equal(t, "Updated", found.Title)
 	assert.Equal(t, "New content", found.Content)
@@ -691,7 +699,7 @@ func TestUpdateNoteNonHTMX(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	note := &Note{Title: "Original", Content: "Old", UserID: 42}
+	note := &Note{Title: "Original", Content: "Old", UserID: "user-42"}
 	require.NoError(t, repo.Create(t.Context(), note))
 
 	h := &App{repo: repo}
@@ -699,7 +707,7 @@ func TestUpdateNoteNonHTMX(t *testing.T) {
 	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
 	r.Use(msgMW)
-	r.Post("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Update(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -707,9 +715,9 @@ func TestUpdateNoteNonHTMX(t *testing.T) {
 	})
 
 	form := strings.NewReader("title=Updated&content=New+content")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/notes/%d", note.ID), form)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes/"+note.ID, form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -717,7 +725,7 @@ func TestUpdateNoteNonHTMX(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "/notes", rec.Header().Get("Location"))
 
-	found, err := repo.GetByID(context.Background(), note.ID, 42)
+	found, err := repo.GetByID(context.Background(), note.ID, "user-42")
 	require.NoError(t, err)
 	assert.Equal(t, "Updated", found.Title)
 }
@@ -726,7 +734,7 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	note := &Note{Title: "Original", Content: "Old", UserID: 42}
+	note := &Note{Title: "Original", Content: "Old", UserID: "user-42"}
 	require.NoError(t, repo.Create(t.Context(), note))
 
 	h := &App{repo: repo}
@@ -739,7 +747,7 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	r.Post("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Update(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -747,10 +755,10 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 	})
 
 	form := strings.NewReader("title=&content=New+content")
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/notes/%d", note.ID), form)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes/"+note.ID, form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -761,7 +769,7 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 	assert.Contains(t, body, "is-invalid")
 
 	// Note should be unchanged.
-	found, err := repo.GetByID(context.Background(), note.ID, 42)
+	found, err := repo.GetByID(context.Background(), note.ID, "user-42")
 	require.NoError(t, err)
 	assert.Equal(t, "Original", found.Title)
 }
@@ -788,7 +796,7 @@ func TestUpdateNoteNotFound(t *testing.T) {
 	h := &App{repo: repo}
 
 	r := chi.NewRouter()
-	r.Post("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Update(w, r)
 		if err != nil {
 			var httpErr *burrow.HTTPError
@@ -801,7 +809,7 @@ func TestUpdateNoteNotFound(t *testing.T) {
 	form := strings.NewReader("title=Test&content=Content")
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes/999", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -815,7 +823,7 @@ func TestDeleteNoteHandler(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "Delete Me", Content: "Bye", UserID: 42}
+	note := &Note{Title: "Delete Me", Content: "Bye", UserID: "user-42"}
 	require.NoError(t, repo.Create(ctx, note))
 
 	h := &App{repo: repo}
@@ -831,7 +839,7 @@ func TestDeleteNoteHandler(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	r.Delete("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Delete(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -839,7 +847,7 @@ func TestDeleteNoteHandler(t *testing.T) {
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/1", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = session.Inject(req, map[string]any{})
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
@@ -863,30 +871,38 @@ func TestDeleteNoteUnauthenticatedPanics(t *testing.T) {
 	})
 }
 
-func TestDeleteNoteInvalidIDNotMatched(t *testing.T) {
+func TestDeleteNoteNonExistentIDIsNoOp(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
 	h := &App{repo: repo}
 
+	exec := testTemplateExecutor(t)
+	msgMW := messages.New().Middleware()[0]
 	r := chi.NewRouter()
-	r.Delete("/notes/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	r.Use(msgMW)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.WithTemplateExecutor(r.Context(), exec)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	r.Delete("/notes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		err := h.Delete(w, r)
 		if err != nil {
-			var httpErr *burrow.HTTPError
-			if assert.ErrorAs(t, err, &httpErr) {
-				http.Error(w, httpErr.Message, httpErr.Code)
-			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
 
-	// With regex-constrained routes, non-numeric IDs don't match the route at all.
+	// With string IDs, "abc" matches the route. Deleting a non-existent
+	// note is a no-op, and the handler redirects.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/abc", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
+	req = session.Inject(req, map[string]any{})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
 }
 
 // --- ModelAdmin integration tests ---
@@ -896,7 +912,7 @@ func TestModelAdminRoutes_List(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.Create(ctx, &Note{Title: "Admin View", Content: "Visible", UserID: 42}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Admin View", Content: "Visible", UserID: "user-42"}))
 
 	app := New()
 	require.NoError(t, app.Configure(&burrow.AppConfig{DB: db}, nil))
@@ -917,7 +933,7 @@ func TestModelAdminRoutes_Delete(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	note := &Note{Title: "Delete Me", Content: "Bye", UserID: 42}
+	note := &Note{Title: "Delete Me", Content: "Bye", UserID: "user-42"}
 	require.NoError(t, repo.Create(ctx, note))
 
 	app := New()
@@ -926,7 +942,7 @@ func TestModelAdminRoutes_Delete(t *testing.T) {
 	r := chi.NewRouter()
 	app.AdminRoutes(r)
 
-	form := url.Values{"_selected": {fmt.Sprintf("%d", note.ID)}}
+	form := url.Values{"_selected": {note.ID}}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes/bulk/delete", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -936,9 +952,9 @@ func TestModelAdminRoutes_Delete(t *testing.T) {
 	assert.Equal(t, "/admin/notes", rec.Header().Get("Location"))
 
 	// Verify deletion.
-	count, err := db.NewSelect().Model((*Note)(nil)).Count(ctx)
+	count, err := den.NewQuery[Note](ctx, db).Count()
 	require.NoError(t, err)
-	assert.Equal(t, 0, count)
+	assert.Equal(t, int64(0), count)
 }
 
 func TestAdminNavItems(t *testing.T) {
@@ -977,12 +993,12 @@ func TestListNotesHTMXScrollReturnsFragment(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Scroll Note", Content: "Content", UserID: 42}))
+	require.NoError(t, repo.Create(t.Context(), &Note{Title: "Scroll Note", Content: "Content", UserID: "user-42"}))
 
 	h := &App{repo: repo}
 	// HTMX request with page > 1 → triggers the infinite scroll branch.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?page=2&limit=10", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = injectTemplateExecutor(t, req)
 	req.Header.Set("HX-Request", "true")
 
@@ -1005,13 +1021,13 @@ func TestListByUserIDPaged(t *testing.T) {
 		require.NoError(t, repo.Create(ctx, &Note{
 			Title:   fmt.Sprintf("Note %d", i),
 			Content: "Content",
-			UserID:  1,
+			UserID:  "user-default",
 		}))
 	}
 
 	// First page with limit 3.
 	pr := burrow.PageRequest{Limit: 3, Page: 1}
-	notes, page, err := repo.ListByUserIDPaged(ctx, 1, pr)
+	notes, page, err := repo.ListByUserIDPaged(ctx, "user-default", pr)
 	require.NoError(t, err)
 	assert.Len(t, notes, 3)
 	assert.True(t, page.HasMore)
@@ -1021,7 +1037,7 @@ func TestListByUserIDPaged(t *testing.T) {
 
 	// Second page.
 	pr2 := burrow.PageRequest{Limit: 3, Page: 2}
-	notes2, page2, err := repo.ListByUserIDPaged(ctx, 1, pr2)
+	notes2, page2, err := repo.ListByUserIDPaged(ctx, "user-default", pr2)
 	require.NoError(t, err)
 	assert.Len(t, notes2, 2)
 	assert.False(t, page2.HasMore)
@@ -1032,7 +1048,7 @@ func TestListByUserIDPagedEmpty(t *testing.T) {
 	repo := NewRepository(db)
 
 	pr := burrow.PageRequest{Limit: 10, Page: 1}
-	notes, page, err := repo.ListByUserIDPaged(t.Context(), 999, pr)
+	notes, page, err := repo.ListByUserIDPaged(t.Context(), "nonexistent", pr)
 	require.NoError(t, err)
 	assert.Empty(t, notes)
 	assert.False(t, page.HasMore)
@@ -1044,60 +1060,60 @@ func TestSearchByUserID(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	authtest.CreateUser(t, db, authtest.WithID(2), authtest.WithUsername("otheruser"))
+	authtest.CreateUser(t, db, authtest.WithID("user-other"), authtest.WithUsername("otheruser"))
 
-	require.NoError(t, repo.Create(ctx, &Note{Title: "Golang Tutorial", Content: "Learn Go basics", UserID: 1}))
-	require.NoError(t, repo.Create(ctx, &Note{Title: "Python Guide", Content: "Learn Python", UserID: 1}))
-	require.NoError(t, repo.Create(ctx, &Note{Title: "Golang Advanced", Content: "Concurrency in Go", UserID: 1}))
-	require.NoError(t, repo.Create(ctx, &Note{Title: "Other User Note", Content: "Golang stuff", UserID: 2}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Golang Tutorial", Content: "Learn Go basics", UserID: "user-default"}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Python Guide", Content: "Learn Python", UserID: "user-default"}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Golang Advanced", Content: "Concurrency in Go", UserID: "user-default"}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Other User Note", Content: "Golang stuff", UserID: "user-other"}))
 
 	t.Run("matches word in title", func(t *testing.T) {
-		notes, page, err := repo.SearchByUserID(ctx, 1, "Golang", burrow.PageRequest{Limit: 10})
+		notes, page, err := repo.SearchByUserID(ctx, "user-default", "Golang", burrow.PageRequest{Limit: 10})
 		require.NoError(t, err)
 		assert.Len(t, notes, 2)
 		assert.False(t, page.HasMore)
 	})
 
 	t.Run("matches word in content", func(t *testing.T) {
-		notes, _, err := repo.SearchByUserID(ctx, 1, "Python", burrow.PageRequest{Limit: 10})
+		notes, _, err := repo.SearchByUserID(ctx, "user-default", "Python", burrow.PageRequest{Limit: 10})
 		require.NoError(t, err)
 		assert.Len(t, notes, 1)
 		assert.Equal(t, "Python Guide", notes[0].Title)
 	})
 
 	t.Run("does not return other user's notes", func(t *testing.T) {
-		notes, _, err := repo.SearchByUserID(ctx, 2, "Golang", burrow.PageRequest{Limit: 10})
+		notes, _, err := repo.SearchByUserID(ctx, "user-other", "Golang", burrow.PageRequest{Limit: 10})
 		require.NoError(t, err)
 		assert.Len(t, notes, 1)
 		assert.Equal(t, "Other User Note", notes[0].Title)
 	})
 
 	t.Run("empty query returns empty results", func(t *testing.T) {
-		notes, _, err := repo.SearchByUserID(ctx, 1, "", burrow.PageRequest{Limit: 10})
+		notes, _, err := repo.SearchByUserID(ctx, "user-default", "", burrow.PageRequest{Limit: 10})
 		require.NoError(t, err)
 		assert.Empty(t, notes)
 	})
 
 	t.Run("no matches returns empty", func(t *testing.T) {
-		notes, _, err := repo.SearchByUserID(ctx, 1, "Rust", burrow.PageRequest{Limit: 10})
+		notes, _, err := repo.SearchByUserID(ctx, "user-default", "Rust", burrow.PageRequest{Limit: 10})
 		require.NoError(t, err)
 		assert.Empty(t, notes)
 	})
 
 	t.Run("syntax error returns empty results", func(t *testing.T) {
-		notes, _, err := repo.SearchByUserID(ctx, 1, `"unclosed`, burrow.PageRequest{Limit: 10})
+		notes, _, err := repo.SearchByUserID(ctx, "user-default", `"unclosed`, burrow.PageRequest{Limit: 10})
 		require.NoError(t, err)
 		assert.Empty(t, notes)
 	})
 
 	t.Run("pagination with offset", func(t *testing.T) {
-		notes, page, err := repo.SearchByUserID(ctx, 1, "Learn", burrow.PageRequest{Limit: 1, Page: 1})
+		notes, page, err := repo.SearchByUserID(ctx, "user-default", "Learn", burrow.PageRequest{Limit: 1, Page: 1})
 		require.NoError(t, err)
 		assert.Len(t, notes, 1)
 		assert.True(t, page.HasMore)
 		assert.Equal(t, 2, page.TotalCount)
 
-		notes2, page2, err := repo.SearchByUserID(ctx, 1, "Learn", burrow.PageRequest{Limit: 1, Page: 2})
+		notes2, page2, err := repo.SearchByUserID(ctx, "user-default", "Learn", burrow.PageRequest{Limit: 1, Page: 2})
 		require.NoError(t, err)
 		assert.Len(t, notes2, 1)
 		assert.False(t, page2.HasMore)
@@ -1110,12 +1126,12 @@ func TestListNotesHandlerWithSearch(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.Create(ctx, &Note{Title: "Searchable Note", Content: "Find me", UserID: 42}))
-	require.NoError(t, repo.Create(ctx, &Note{Title: "Other Note", Content: "Not this", UserID: 42}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Searchable Note", Content: "Find me", UserID: "user-42"}))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Other Note", Content: "Not this", UserID: "user-42"}))
 
 	h := &App{repo: repo}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes?q=Searchable", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: 42}))
+	req = req.WithContext(auth.WithUser(req.Context(), testUser()))
 	req = injectTemplateExecutor(t, req)
 	rec := httptest.NewRecorder()
 

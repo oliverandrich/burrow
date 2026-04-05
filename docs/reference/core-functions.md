@@ -292,14 +292,6 @@ func ParsePageRequest(r *http.Request) PageRequest
 
 Extracts `page` and `limit` from query parameters. Defaults: `limit=20`, `page=0`. Limit is clamped to `[1, 100]`.
 
-### ApplyOffset
-
-```go
-func ApplyOffset(q *bun.SelectQuery, pr PageRequest) *bun.SelectQuery
-```
-
-Adds `LIMIT` and `OFFSET` to a Bun query based on the page request.
-
 ### OffsetResult
 
 ```go

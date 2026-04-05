@@ -1,100 +1,117 @@
 # Migrations
 
-The framework provides per-app SQL migrations tracked in a shared `_migrations` table.
+Den handles schema management automatically based on your document struct definitions. There are no hand-written SQL migration files.
 
 ## How It Works
 
-1. Each app embeds its SQL files with `//go:embed migrations`
-2. At startup, the framework calls `RunAppMigrations` for every app that implements `Migratable`
-3. Migrations are applied in filename order, skipping already-applied ones
-4. Each migration is namespaced by app name in the `_migrations` tracking table
+1. Each app declares its document types by implementing `HasDocuments`
+2. At startup, the framework calls `den.Register()` for every document type returned by each app
+3. Den inspects the struct tags (`den:"index"`, `den:"unique"`, `den:"fts"`) and creates or updates the underlying collections and indexes automatically
+4. Schema changes are applied idempotently — adding new fields or indexes is safe
 
-## Creating Migrations
-
-### 1. Create the SQL File
-
-Place migration files in a `migrations/` directory inside your app package:
-
-```
-myapp/
-├── myapp.go
-└── migrations/
-    ├── 001_create_things.up.sql
-    └── 002_add_status_column.up.sql
-```
-
-### 2. Naming Convention
-
-Files must end with `.up.sql`. Use a numeric prefix for ordering:
-
-```
-001_create_things.up.sql
-002_add_status_column.up.sql
-003_add_index_on_status.up.sql
-```
-
-The framework sorts filenames lexicographically and applies them in order.
-
-### 3. Embed the Directory
+## Implementing HasDocuments
 
 ```go
-import "embed"
-
-//go:embed migrations
-var migrationFS embed.FS
-```
-
-### 4. Implement Migratable
-
-```go
-func (a *App) MigrationFS() fs.FS {
-    sub, _ := fs.Sub(migrationFS, "migrations")
-    return sub
+func (a *App) Documents() []any {
+    return []any{
+        &Note{},
+        &Tag{},
+    }
 }
 ```
 
 !!! important
-    Use `fs.Sub()` to strip the `migrations/` prefix. The framework expects the FS root to contain `.up.sql` files directly.
+    Return pointers to zero-value instances of each document type. Den uses these to introspect the struct and set up the collection schema.
 
-## Example Migration
+## Document Definitions
 
-```sql
--- 001_create_notes.up.sql
-CREATE TABLE IF NOT EXISTS notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL DEFAULT '',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at DATETIME
-);
+Den derives the collection name from the struct name (lowercased, no pluralization). Override with `CollectionName` in `DenSettings()`:
 
-CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes (user_id);
+```go
+type Note struct {
+    document.Base
+    UserID  string `json:"user_id"`
+    Title   string `json:"title" den:"index"`
+    Content string `json:"content" den:"fts"`
+    Status  string `json:"status" den:"index"`
+}
 ```
 
-## Tracking Table
+This creates a `note` collection with indexes on `title` and `status`, and a full-text search index on `content`.
 
-The `_migrations` table is created automatically:
+## Schema Evolution
 
-```sql
-CREATE TABLE IF NOT EXISTS _migrations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    app TEXT NOT NULL,
-    name TEXT NOT NULL,
-    applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(app, name)
-);
+Den handles additive schema changes automatically:
+
+- **New fields** — added to existing documents as they are saved
+- **New indexes** — created on the next startup
+- **New FTS indexes** — created on the next startup
+
+Removing fields or indexes requires no special handling — unused indexes are simply ignored.
+
+## Data Migrations
+
+Schema changes (new fields, new indexes) are handled automatically. But sometimes you need to transform existing data — rename a field, split a value, backfill a computed field. For these cases, Den provides a migration registry.
+
+### Defining Migrations
+
+Create a migration registry in your app and register versioned migration functions:
+
+```go
+var migrations = migrate.NewRegistry()
+
+func init() {
+    migrations.Register("001_backfill_slug", migrate.Migration{
+        Forward: func(ctx context.Context, tx *den.Tx) error {
+            for note, err := range den.NewQuery[Note](ctx, db).Iter() {
+                if err != nil {
+                    return err
+                }
+                if note.Slug == "" {
+                    note.Slug = slugify(note.Title)
+                    if err := den.TxUpdate(tx, note); err != nil {
+                        return err
+                    }
+                }
+            }
+            return nil
+        },
+    })
+}
 ```
 
-Each record stores the app name and migration filename. This namespacing means two apps can both have `001_initial.up.sql` without conflict.
+### Running Migrations
+
+Run migrations during your app's `Configure()` phase:
+
+```go
+func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
+    a.repo = NewRepository(cfg.DB)
+
+    // Run data migrations (idempotent — tracks applied versions)
+    if err := migrations.Up(context.Background(), cfg.DB); err != nil {
+        return fmt.Errorf("notes: run migrations: %w", err)
+    }
+
+    return nil
+}
+```
+
+### Key Points
+
+- Each migration runs atomically in a transaction — if it fails, nothing is applied
+- Applied migrations are tracked in a `_den_migrations` collection — running `Up()` again skips already-applied migrations
+- `Forward` receives a `*den.Tx` — use `den.TxInsert`, `den.TxUpdate`, `den.TxDelete` for transactional safety
+- `Backward` is optional — define it if you need rollback support via `migrations.Down()`
+- Migrations run **after** `den.Register()` has created the schema, so your document types are always available
 
 ## Migration Order
 
-Migrations run in app registration order (the order you pass apps to `NewServer`), then by filename within each app. All migrations run before any app's `Configure()` method is called.
+Documents are registered in app registration order (the order you pass apps to `NewServer`). All document schemas are set up before any app's `Configure()` method is called.
 
 ## Tips
 
-- Use `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` for idempotent migrations
-- Keep migrations small and focused — one table or one alteration per file
-- Never modify an already-applied migration — create a new one instead
-- The framework does not support down migrations — roll forward with new migrations
+- Keep document structs focused — one struct per logical entity
+- Use `den:"index"` for fields you frequently query on
+- Use `den:"unique"` for fields that must be unique across the collection
+- Use `den:"fts"` for fields that need full-text search

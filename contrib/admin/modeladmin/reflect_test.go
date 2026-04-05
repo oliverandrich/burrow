@@ -7,22 +7,21 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/uptrace/bun"
 )
 
 type testArticle struct { //nolint:govet // fieldalignment: test struct
-	ID        int64     `bun:",pk,autoincrement" verbose:"ID"`
-	Title     string    `verbose:"Title"`
-	Body      string    `verbose:"Body"`
-	Status    string    `verbose:"Status"`
-	Views     int       `verbose:"Views"`
-	Active    bool      `verbose:"Active"`
-	CreatedAt time.Time `bun:",nullzero,default:current_timestamp"`
+	ID        string    `json:"_id" verbose:"ID"`
+	Title     string    `json:"title" verbose:"Title"`
+	Body      string    `json:"body" verbose:"Body"`
+	Status    string    `json:"status" verbose:"Status"`
+	Views     int       `json:"views" verbose:"Views"`
+	Active    bool      `json:"active" verbose:"Active"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // testCategory implements fmt.Stringer for FK label testing.
 type testCategory struct { //nolint:govet // fieldalignment: test struct
-	ID   int64
+	ID   string
 	Name string
 }
 
@@ -30,7 +29,7 @@ func (c testCategory) String() string { return c.Name }
 
 func TestVerboseNames(t *testing.T) {
 	type tagged struct { //nolint:govet // fieldalignment: test struct
-		ID    int64  `verbose:"ID"`
+		ID    string `verbose:"ID"`
 		Name  string `verbose:"Full Name"`
 		Plain string
 	}
@@ -44,7 +43,7 @@ func TestVerboseNames(t *testing.T) {
 
 func TestVerboseNames_Empty(t *testing.T) {
 	type noTags struct { //nolint:govet // fieldalignment: test struct
-		ID   int64
+		ID   string
 		Name string
 	}
 
@@ -54,13 +53,13 @@ func TestVerboseNames_Empty(t *testing.T) {
 
 func TestFieldValue(t *testing.T) {
 	item := testArticle{
-		ID:    42,
+		ID:    "abc123",
 		Title: "Hello",
 		Views: 100,
 	}
 
 	t.Run("existing field", func(t *testing.T) {
-		assert.Equal(t, int64(42), FieldValue(item, "ID"))
+		assert.Equal(t, "abc123", FieldValue(item, "ID"))
 		assert.Equal(t, "Hello", FieldValue(item, "Title"))
 		assert.Equal(t, 100, FieldValue(item, "Views"))
 	})
@@ -150,7 +149,7 @@ func TestColumnHTML(t *testing.T) {
 		type article struct {
 			Category *testCategory
 		}
-		item := article{Category: &testCategory{ID: 1, Name: "Science"}}
+		item := article{Category: &testCategory{ID: "1", Name: "Science"}}
 		got := columnHTML(item, "Category", nil, nil)
 		assert.Equal(t, template.HTML("<span>Science</span>"), got)
 	})
@@ -168,7 +167,7 @@ func TestColumnHTML(t *testing.T) {
 		type article struct {
 			Category *testCategory
 		}
-		item := article{Category: &testCategory{ID: 1, Name: "<b>Bold</b>"}}
+		item := article{Category: &testCategory{ID: "1", Name: "<b>Bold</b>"}}
 		got := columnHTML(item, "Category", nil, nil)
 		assert.Equal(t, template.HTML("<span>&lt;b&gt;Bold&lt;/b&gt;</span>"), got)
 	})
@@ -177,7 +176,7 @@ func TestColumnHTML(t *testing.T) {
 		type article struct {
 			Category testCategory
 		}
-		item := article{Category: testCategory{ID: 1, Name: "Tech"}}
+		item := article{Category: testCategory{ID: "1", Name: "Tech"}}
 		got := columnHTML(item, "Category", nil, nil)
 		assert.Equal(t, template.HTML("<span>Tech</span>"), got)
 	})
@@ -239,28 +238,3 @@ func TestColumnValueFunc_WithComputed(t *testing.T) {
 
 // Verify that testCategory satisfies fmt.Stringer at compile time.
 var _ fmt.Stringer = testCategory{}
-
-func TestTableName(t *testing.T) {
-	t.Run("with bun table tag", func(t *testing.T) {
-		type tagged struct {
-			bun.BaseModel `bun:"table:articles"`
-			ID            int64 `bun:",pk"`
-		}
-		assert.Equal(t, "articles", tableName[tagged]())
-	})
-
-	t.Run("no bun table tag", func(t *testing.T) {
-		type untagged struct {
-			ID int64 `bun:",pk"`
-		}
-		assert.Empty(t, tableName[untagged]())
-	})
-
-	t.Run("pointer type", func(t *testing.T) {
-		type tagged struct {
-			bun.BaseModel `bun:"table:notes"`
-			ID            int64 `bun:",pk"`
-		}
-		assert.Equal(t, "notes", tableName[tagged]())
-	})
-}

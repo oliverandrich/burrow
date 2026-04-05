@@ -9,23 +9,19 @@ Most test files use a subset of these imports:
 ```go
 import (
     "context"
-    "database/sql"
     "html/template"
     "net/http"
     "net/http/httptest"
     "strings"
     "testing"
-    "testing/fstest"
 
     "github.com/go-chi/chi/v5"
     "github.com/oliverandrich/burrow"
     "github.com/oliverandrich/burrow/contrib/auth"
     "github.com/oliverandrich/burrow/contrib/session"
+    "github.com/oliverandrich/den"
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
-    "github.com/uptrace/bun"
-    "github.com/uptrace/bun/dialect/sqlitedialect"
-    "modernc.org/sqlite/lib/sqliteshim"
 )
 ```
 
@@ -35,20 +31,17 @@ Burrow provides shared test helpers in the root package. These are prefixed with
 
 ### TestDB
 
-`burrow.TestDB` returns a file-backed SQLite database wrapped in a `*bun.DB`. The database is created in `t.TempDir()` and closed automatically when the test finishes:
+`burrow.TestDB` returns an in-memory SQLite database wrapped in a `*den.DB`. The database is closed automatically when the test finishes:
 
 ```go
 func TestListNotes(t *testing.T) {
-    db := burrow.TestDB(t)
-
-    // Run your app's migrations.
-    app := New()
-    err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
-    require.NoError(t, err)
+    db := burrow.TestDB(t, &Note{})
 
     // ... test your handlers/repositories with db
 }
 ```
+
+Pass your document types to `TestDB` so their collections are registered automatically.
 
 ### TestErrorExecContext
 
@@ -196,7 +189,7 @@ Use `session.Inject()` when your handler reads or writes session data:
 
 ```go
 req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-req = requestWithUser(req, &auth.User{ID: 42, Role: auth.RoleUser})
+req = requestWithUser(req, &auth.User{ID: "01J000000000000000000042", Role: auth.RoleUser})
 req = session.Inject(req, map[string]any{})
 ```
 
@@ -217,13 +210,13 @@ Burrow automatically detects HTMX requests via the `HX-Request` header and skips
 func TestListNotes(t *testing.T) {
     db := testDB(t)
     repo := NewRepository(db)
-    require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", UserID: 42}))
+    require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", UserID: "01J000000000000000000042"}))
     app := &App{repo: NewRepository(db)}
 
     setup := func(t *testing.T) *http.Request {
         t.Helper()
         req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-        req = requestWithUser(req, &auth.User{ID: 42})
+        req = requestWithUser(req, &auth.User{ID: "01J000000000000000000042"})
         req = injectTemplateExecutor(t, req)
         return req
     }
@@ -271,56 +264,19 @@ assert.Equal(t, http.StatusSeeOther, rec.Code)
 assert.Equal(t, "/notes", rec.Header().Get("Location"))
 ```
 
-## Testing Migrations
+## Testing Document Registration
 
-Use `fstest.MapFS` to create migration files in memory:
-
-```go
-func TestMigrations(t *testing.T) {
-    db := testDB(t)
-
-    migrations := fstest.MapFS{
-        "001_create_items.up.sql": &fstest.MapFile{
-            Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);"),
-        },
-    }
-
-    err := burrow.RunAppMigrations(t.Context(), db, "myapp", migrations)
-    require.NoError(t, err)
-
-    // Verify the table was created.
-    _, err = db.NewInsert().
-        Model(&struct{ Name string }{Name: "test"}).
-        TableExpr("items").
-        Exec(t.Context())
-    require.NoError(t, err)
-}
-```
-
-Test that failed migrations don't leave partial state:
+Den handles schema creation automatically. In tests, pass your document types to `TestDB`:
 
 ```go
-func TestMigrationRollback(t *testing.T) {
-    db := testDB(t)
+func TestDocumentRegistration(t *testing.T) {
+    db := burrow.TestDB(t, &Item{})
 
-    migrations := fstest.MapFS{
-        "001_create_items.up.sql": &fstest.MapFile{
-            Data: []byte("CREATE TABLE items (id INTEGER PRIMARY KEY);"),
-        },
-        "002_bad.up.sql": &fstest.MapFile{
-            Data: []byte("THIS IS NOT SQL;"),
-        },
-    }
-
-    err := burrow.RunAppMigrations(t.Context(), db, "myapp", migrations)
-    require.Error(t, err)
-
-    // First migration should be committed, second should not.
-    var count int
-    err = db.NewRaw("SELECT COUNT(*) FROM _migrations WHERE app = ?", "myapp").
-        Scan(t.Context(), &count)
+    // Verify the collection works by inserting a document.
+    item := &Item{Name: "test"}
+    err := den.Insert(t.Context(), db, item)
     require.NoError(t, err)
-    assert.Equal(t, 1, count)
+    assert.NotEmpty(t, item.ID)
 }
 ```
 
@@ -351,7 +307,7 @@ func TestRequireAuth(t *testing.T) {
         // Inject user before the middleware.
         r.Use(func(next http.Handler) http.Handler {
             return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                ctx := auth.WithUser(r.Context(), &auth.User{ID: 1})
+                ctx := auth.WithUser(r.Context(), &auth.User{ID: "01J000000000000000000001"})
                 next.ServeHTTP(w, r.WithContext(ctx))
             })
         })
@@ -387,7 +343,7 @@ func TestRequireAdmin(t *testing.T) {
             r := chi.NewRouter()
             r.Use(func(next http.Handler) http.Handler {
                 return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                    ctx := auth.WithUser(r.Context(), &auth.User{ID: 1, Role: tt.role})
+                    ctx := auth.WithUser(r.Context(), &auth.User{ID: "01J000000000000000000001", Role: tt.role})
                     ctx = burrow.TestErrorExecContext(ctx)
                     next.ServeHTTP(w, r.WithContext(ctx))
                 })
@@ -438,9 +394,8 @@ The examples above test individual pieces in isolation. A complete integration t
 
 ```go
 func TestCreateNoteIntegration(t *testing.T) {
-    db := burrow.TestDB(t)
+    db := burrow.TestDB(t, &Note{})
     app := New()
-    require.NoError(t, burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS()))
 
     app.repo = NewRepository(db)
 
@@ -449,7 +404,7 @@ func TestCreateNoteIntegration(t *testing.T) {
     r.Use(session.New().Middleware()...)
     r.Use(func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            ctx := auth.WithUser(r.Context(), &auth.User{ID: 1})
+            ctx := auth.WithUser(r.Context(), &auth.User{ID: "01J000000000000000000001"})
             next.ServeHTTP(w, r.WithContext(ctx))
         })
     })
@@ -467,7 +422,7 @@ func TestCreateNoteIntegration(t *testing.T) {
     assert.Contains(t, rec.Body.String(), "Integration Test")
 
     // Verify the note was persisted.
-    notes, err := repo.ListByUserID(t.Context(), 1)
+    notes, err := repo.ListByUserID(t.Context(), "01J000000000000000000001")
     require.NoError(t, err)
     assert.Len(t, notes, 1)
 }
@@ -542,20 +497,15 @@ The `contrib/auth/authtest` package provides shared helpers for tests that depen
 
 ### Database with Auth Migrations
 
-`authtest.NewDB` returns an in-memory SQLite database with all auth migrations already applied:
+`authtest.NewDB` returns an in-memory database with all auth document types already registered:
 
 ```go
 import "github.com/oliverandrich/burrow/contrib/auth/authtest"
 
-func testDB(t *testing.T) *bun.DB {
+func testDB(t *testing.T) *den.DB {
     t.Helper()
-    db := authtest.NewDB(t)
-
-    // Run your app's own migrations on top.
-    app := New()
-    err := burrow.RunAppMigrations(t.Context(), db, app.Name(), app.MigrationFS())
-    require.NoError(t, err)
-    return db
+    // Pass your app's document types to register them alongside auth types.
+    return authtest.NewDB(t, &Note{})
 }
 ```
 
@@ -585,7 +535,7 @@ Inject a user into the request context with `auth.WithUser`:
 
 ```go
 req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-ctx := auth.WithUser(req.Context(), &auth.User{ID: 42, Role: auth.RoleUser})
+ctx := auth.WithUser(req.Context(), &auth.User{ID: "01J000000000000000000042", Role: auth.RoleUser})
 req = req.WithContext(ctx)
 ```
 
@@ -599,14 +549,14 @@ req = session.Inject(req, map[string]any{})
 
 | What to test | Key tools |
 |---|---|
-| Database | `burrow.TestDB(t)`, `RunAppMigrations` |
-| Auth test DB | `authtest.NewDB(t)` — in-memory DB with auth migrations |
+| Database | `burrow.TestDB(t, &Type{})` |
+| Auth test DB | `authtest.NewDB(t, &Type{})` — in-memory DB with auth documents |
 | Test users | `authtest.CreateUser(t, db, ...options)` |
 | Handlers | `httptest.NewRecorder`, `httptest.NewRequestWithContext(t.Context(), ...)` |
 | Error responses | `burrow.TestErrorExecContext(ctx)`, `burrow.TestErrorExecMiddleware` |
 | Auth context | `auth.WithUser(ctx, user)`, `session.Inject(req, values)` |
 | HTMX responses | `req.Header.Set("HX-Request", "true")`, check `hx-swap-oob` |
-| Migrations | `fstest.MapFS`, `RunAppMigrations` |
+| Documents | `burrow.TestDB(t, &Type{})` registers collections automatically |
 | Middleware | Chi router with `r.Use()`, table-driven tests |
 | Validation | `burrow.Validate()`, `errors.As(err, &ve)`, `ve.HasField()` |
 | Templates | `TemplateExecutor` with stubbed functions, `WithTemplateExecutor` |

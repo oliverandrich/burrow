@@ -2,7 +2,6 @@ package modeladmin
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -10,12 +9,9 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-
-	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
 func TestRowAction_Defaults(t *testing.T) {
@@ -94,16 +90,10 @@ func TestBuildItemActions_Empty(t *testing.T) {
 }
 
 func TestRowAction_RouteMounting(t *testing.T) {
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { db.Close() })
-
-	_, err = db.NewCreateTable().Model((*testItem)(nil)).Exec(context.Background())
-	require.NoError(t, err)
+	db, _, _ := setupHandlerTest(t)
 
 	item := &testItem{Name: "Test", Status: "active"}
-	_, err = db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	actionCalled := false
@@ -130,26 +120,20 @@ func TestRowAction_RouteMounting(t *testing.T) {
 	r := chi.NewRouter()
 	ma.Routes(r)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%d/retry", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, fmt.Sprintf("/items/%s/retry", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	assert.True(t, actionCalled)
-	assert.Equal(t, fmt.Sprintf("%d", item.ID), actionID)
+	assert.Equal(t, item.ID, actionID)
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestRowAction_DeleteMethod(t *testing.T) {
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { db.Close() })
-
-	_, err = db.NewCreateTable().Model((*testItem)(nil)).Exec(context.Background())
-	require.NoError(t, err)
+	db, _, _ := setupHandlerTest(t)
 
 	item := &testItem{Name: "Test", Status: "active"}
-	_, err = db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	actionCalled := false
@@ -175,7 +159,7 @@ func TestRowAction_DeleteMethod(t *testing.T) {
 	r := chi.NewRouter()
 	ma.Routes(r)
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/items/%d/cancel", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, fmt.Sprintf("/items/%s/cancel", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -210,7 +194,7 @@ func TestHandleDetail_PassesActionsToRenderer(t *testing.T) {
 	ma.CanEdit = false // use detail view, not form
 
 	item := &testItem{Name: "Test", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	err := den.Insert(context.Background(), db, item)
 	require.NoError(t, err)
 
 	ma.RowActions = []RowAction{
@@ -218,7 +202,7 @@ func TestHandleDetail_PassesActionsToRenderer(t *testing.T) {
 	}
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/%s", item.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

@@ -36,7 +36,7 @@ func TestGetUserByIDWithCredentialsNotFound(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 
-	_, err := repo.GetUserByIDWithCredentials(context.Background(), 999)
+	_, err := repo.GetUserByIDWithCredentials(context.Background(), "nonexistent")
 	require.Error(t, err)
 }
 
@@ -185,7 +185,7 @@ func TestCreateInvite(t *testing.T) {
 	}
 	err := repo.CreateInvite(ctx, invite)
 	require.NoError(t, err)
-	assert.NotZero(t, invite.ID)
+	assert.NotEmpty(t, invite.ID)
 
 	got, err := repo.GetInviteByTokenHash(ctx, "invite-hash-1")
 	require.NoError(t, err)

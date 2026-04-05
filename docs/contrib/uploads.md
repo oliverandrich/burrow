@@ -81,7 +81,7 @@ func (a *App) DeleteAvatar(w http.ResponseWriter, r *http.Request) error {
     oldKey := user.AvatarKey
 
     user.AvatarKey = ""
-    if _, err := h.db.NewUpdate().Model(user).Column("avatar_key").Exec(r.Context()); err != nil {
+    if err := den.Replace(r.Context(), h.db, user); err != nil {
         return err
     }
 

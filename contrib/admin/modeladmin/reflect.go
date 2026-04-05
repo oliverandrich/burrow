@@ -5,56 +5,13 @@ import (
 	"html"
 	"html/template"
 	"reflect"
-	"strings"
 	"time"
 )
 
-// containsOption checks if a comma-separated tag string contains an option.
-func containsOption(tag, option string) bool {
-	for part := range strings.SplitSeq(tag, ",") {
-		if strings.TrimSpace(part) == option {
-			return true
-		}
-	}
-	return false
-}
-
-// tableName extracts the Bun table name from the bun:"table:..." struct tag
-// on the embedded bun.BaseModel field. Returns "" if not found.
-func tableName[T any]() string {
-	var zero T
-	t := reflect.TypeOf(zero)
-	if t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	for sf := range t.Fields() {
-		if !sf.Anonymous {
-			continue
-		}
-		bunTag := sf.Tag.Get("bun")
-		for part := range strings.SplitSeq(bunTag, ",") {
-			part = strings.TrimSpace(part)
-			if name, ok := strings.CutPrefix(part, "table:"); ok {
-				return name
-			}
-		}
-	}
-	return ""
-}
-
-// pkFieldName returns the struct field name tagged as the primary key.
+// pkFieldName returns the struct field name for the primary key.
+// Den documents always use "ID" from the embedded document.Base.
 func pkFieldName[T any]() string {
-	var zero T
-	t := reflect.TypeOf(zero)
-	if t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	for sf := range t.Fields() {
-		if containsOption(sf.Tag.Get("bun"), "pk") {
-			return sf.Name
-		}
-	}
-	return ""
+	return "ID"
 }
 
 // verboseNames extracts verbose:"..." tags from struct fields,

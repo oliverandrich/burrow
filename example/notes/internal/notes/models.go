@@ -1,21 +1,13 @@
 package notes
 
 import (
-	"time"
-
-	"github.com/uptrace/bun"
-
-	"github.com/oliverandrich/burrow/contrib/auth"
+	"github.com/oliverandrich/den/document"
 )
 
 // Note represents a user's note.
-type Note struct { //nolint:govet // fieldalignment: readability over optimization
-	bun.BaseModel `bun:"table:notes,alias:n"`
-
-	ID        int64      `bun:",pk,autoincrement" json:"id" verbose:"ID"`
-	UserID    int64      `bun:",notnull" json:"user_id" form:"-" verbose:"User ID"`
-	User      *auth.User `bun:"rel:belongs-to,join:user_id=id" json:"-" form:"-" verbose:"User"`
-	Title     string     `bun:",notnull" json:"title" verbose:"Title" form:"title" validate:"required"`
-	Content   string     `bun:",notnull,default:''" json:"content" verbose:"Content" form:"content" widget:"textarea"`
-	CreatedAt time.Time  `bun:",nullzero,notnull,default:current_timestamp" json:"created_at" verbose:"Created at"`
+type Note struct {
+	document.Base
+	UserID  string `json:"user_id" den:"index" form:"-" verbose:"User ID"`
+	Title   string `json:"title" den:"index,fts" verbose:"Title" form:"title" validate:"required"`
+	Content string `json:"content" den:"fts" verbose:"Content" form:"content" widget:"textarea"`
 }

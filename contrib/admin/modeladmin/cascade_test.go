@@ -1,160 +1,15 @@
 package modeladmin
 
 import (
-	"context"
-	"database/sql"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-
-	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
-// setupCascadeDB creates a schema with CASCADE and non-CASCADE foreign keys.
-//
-//	parents   <- children (ON DELETE CASCADE)
-//	parents   <- friends  (ON DELETE SET NULL, no cascade)
-func setupCascadeDB(t *testing.T) *bun.DB {
-	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { db.Close() })
-
-	ctx := context.Background()
-
-	_, err = db.ExecContext(ctx, `CREATE TABLE parents (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL
-	)`)
-	require.NoError(t, err)
-
-	_, err = db.ExecContext(ctx, `CREATE TABLE children (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		parent_id INTEGER NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
-		label TEXT NOT NULL
-	)`)
-	require.NoError(t, err)
-
-	_, err = db.ExecContext(ctx, `CREATE TABLE friends (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		parent_id INTEGER REFERENCES parents(id) ON DELETE SET NULL,
-		note TEXT
-	)`)
-	require.NoError(t, err)
-
-	return db
-}
-
-func TestDetectCascades_FindsCascadeOnly(t *testing.T) {
-	db := setupCascadeDB(t)
-
-	cascades := detectCascades(db, "parents")
-
-	require.Len(t, cascades, 1)
-	assert.Equal(t, "children", cascades[0].Table)
-	assert.Equal(t, "parent_id", cascades[0].Column)
-}
-
-func TestDetectCascades_NoReferences(t *testing.T) {
-	db := setupCascadeDB(t)
-
-	cascades := detectCascades(db, "children")
-
-	assert.Empty(t, cascades)
-}
-
-func TestDetectCascades_EmptyTableName(t *testing.T) {
-	db := setupCascadeDB(t)
-
-	cascades := detectCascades(db, "")
-
-	assert.Empty(t, cascades)
-}
-
-func TestCountCascadeImpacts(t *testing.T) {
-	db := setupCascadeDB(t)
-	ctx := context.Background()
-
-	// Insert a parent.
-	_, err := db.ExecContext(ctx, `INSERT INTO parents (id, name) VALUES (1, 'Alice')`)
-	require.NoError(t, err)
-
-	// Insert children referencing the parent.
-	_, err = db.ExecContext(ctx, `INSERT INTO children (parent_id, label) VALUES (1, 'c1'), (1, 'c2'), (1, 'c3')`)
-	require.NoError(t, err)
-
-	cascades := []cascadeRef{{Table: "children", Column: "parent_id"}}
-
-	perItem, err := countPerItemCascadeImpacts(ctx, db, cascades, []string{"1"})
-	require.NoError(t, err)
-	require.Contains(t, perItem, "1")
-	require.Len(t, perItem["1"], 1)
-	assert.Equal(t, "children", perItem["1"][0].Table)
-	assert.Equal(t, 3, perItem["1"][0].Count)
-}
-
-func TestCountPerItemCascadeImpacts_ZeroRows(t *testing.T) {
-	db := setupCascadeDB(t)
-	ctx := context.Background()
-
-	// Insert a parent with no children.
-	_, err := db.ExecContext(ctx, `INSERT INTO parents (id, name) VALUES (1, 'Alice')`)
-	require.NoError(t, err)
-
-	cascades := []cascadeRef{{Table: "children", Column: "parent_id"}}
-
-	perItem, err := countPerItemCascadeImpacts(ctx, db, cascades, []string{"1"})
-	require.NoError(t, err)
-	// Zero-count impacts are omitted.
-	assert.Empty(t, perItem)
-}
-
-func TestCountPerItemCascadeImpacts_MultipleCascades(t *testing.T) {
-	db := setupCascadeDB(t)
-	ctx := context.Background()
-
-	// Add a second cascade table.
-	_, err := db.ExecContext(ctx, `CREATE TABLE grandchildren (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		parent_id INTEGER NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
-		name TEXT
-	)`)
-	require.NoError(t, err)
-
-	_, err = db.ExecContext(ctx, `INSERT INTO parents (id, name) VALUES (1, 'Alice')`)
-	require.NoError(t, err)
-	_, err = db.ExecContext(ctx, `INSERT INTO children (parent_id, label) VALUES (1, 'c1')`)
-	require.NoError(t, err)
-	_, err = db.ExecContext(ctx, `INSERT INTO grandchildren (parent_id, name) VALUES (1, 'g1'), (1, 'g2')`)
-	require.NoError(t, err)
-
-	cascades := []cascadeRef{
-		{Table: "children", Column: "parent_id"},
-		{Table: "grandchildren", Column: "parent_id"},
-	}
-
-	perItem, err := countPerItemCascadeImpacts(ctx, db, cascades, []string{"1"})
-	require.NoError(t, err)
-	require.Contains(t, perItem, "1")
-	require.Len(t, perItem["1"], 2)
-
-	// Build a map for order-independent assertions.
-	impactMap := make(map[string]int, len(perItem["1"]))
-	for _, imp := range perItem["1"] {
-		impactMap[imp.Table] = imp.Count
-	}
-	assert.Equal(t, 1, impactMap["children"])
-	assert.Equal(t, 2, impactMap["grandchildren"])
-}
-
-func TestLookupTableDisplayName(t *testing.T) {
+func TestRegisterTableDisplayName(t *testing.T) {
 	t.Run("registered name", func(t *testing.T) {
 		RegisterTableDisplayName("test_widgets", "Widgets")
 		t.Cleanup(func() {
@@ -162,17 +17,19 @@ func TestLookupTableDisplayName(t *testing.T) {
 			delete(tableDisplayNames, "test_widgets")
 			tableDisplayMu.Unlock()
 		})
-		assert.Equal(t, "Widgets", lookupTableDisplayName("test_widgets"))
-	})
-
-	t.Run("unregistered falls back to table name", func(t *testing.T) {
-		assert.Equal(t, "unknown_table", lookupTableDisplayName("unknown_table"))
+		tableDisplayMu.RLock()
+		name := tableDisplayNames["test_widgets"]
+		tableDisplayMu.RUnlock()
+		assert.Equal(t, "Widgets", name)
 	})
 
 	t.Run("empty table and name are ignored", func(t *testing.T) {
 		RegisterTableDisplayName("", "Empty")
 		RegisterTableDisplayName("something", "")
-		assert.Equal(t, "something", lookupTableDisplayName("something"))
+		tableDisplayMu.RLock()
+		_, found := tableDisplayNames["something"]
+		tableDisplayMu.RUnlock()
+		assert.False(t, found)
 	})
 }
 
@@ -180,54 +37,20 @@ func TestHandleConfirmDelete(t *testing.T) {
 	db, renderer, ma := setupHandlerTest(t)
 
 	item := &testItem{Name: "Cascade Test", Status: "active"}
-	_, err := db.NewInsert().Model(item).Exec(context.Background())
+	ctx := t.Context()
+	err := createItem(ctx, db, item)
 	require.NoError(t, err)
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/bulk/delete?_selected=%d", item.ID), nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"/items/bulk/delete?_selected="+item.ID, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, renderer.confirmDeleteCalled)
 	require.Len(t, renderer.lastDeleteItems, 1)
-	assert.Equal(t, fmt.Sprintf("%d", item.ID), renderer.lastDeleteItems[0].ID)
-}
-
-func TestHandleConfirmDelete_WithCascades(t *testing.T) {
-	db, renderer, ma := setupHandlerTest(t)
-
-	ctx := context.Background()
-
-	// Create a child table with CASCADE FK.
-	_, err := db.ExecContext(ctx, `CREATE TABLE item_comments (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-		body TEXT
-	)`)
-	require.NoError(t, err)
-
-	// Re-create the router to trigger detectCascades in Routes().
-	item := &testItem{Name: "Parent", Status: "active"}
-	_, err = db.NewInsert().Model(item).Exec(ctx)
-	require.NoError(t, err)
-
-	// Insert child rows.
-	_, err = db.ExecContext(ctx, `INSERT INTO item_comments (item_id, body) VALUES (?, 'c1'), (?, 'c2')`, item.ID, item.ID)
-	require.NoError(t, err)
-
-	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/items/bulk/delete?_selected=%d", item.ID), nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.True(t, renderer.confirmDeleteCalled)
-	require.Len(t, renderer.lastDeleteItems, 1)
-	require.Len(t, renderer.lastDeleteItems[0].Impacts, 1)
-	assert.Equal(t, "item_comments", renderer.lastDeleteItems[0].Impacts[0].Table)
-	assert.Equal(t, "item_comments", renderer.lastDeleteItems[0].Impacts[0].DisplayName) // no ModelAdmin registered → falls back to table name
-	assert.Equal(t, 2, renderer.lastDeleteItems[0].Impacts[0].Count)
+	assert.Equal(t, item.ID, renderer.lastDeleteItems[0].ID)
 }
 
 func TestHandleConfirmDelete_NoItemsSelected(t *testing.T) {
@@ -246,7 +69,7 @@ func TestHandleConfirmDelete_Forbidden(t *testing.T) {
 	ma.CanDelete = false
 
 	r := newRouter(ma)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/bulk/delete?_selected=1", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items/bulk/delete?_selected=someID", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

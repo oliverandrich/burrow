@@ -29,7 +29,7 @@ type fullApp struct {
 }
 
 func (a *fullApp) Name() string                                      { return "full" }
-func (a *fullApp) MigrationFS() fs.FS                                { return nil }
+func (a *fullApp) Documents() []any                                  { return nil }
 func (a *fullApp) Middleware() []func(http.Handler) http.Handler     { return nil }
 func (a *fullApp) NavItems() []NavItem                               { return nil }
 func (a *fullApp) Flags(_ func(string) cli.ValueSource) []cli.Flag   { return nil }
@@ -104,7 +104,7 @@ func (a *failingApp) Seed(_ context.Context) error {
 var (
 	_ App               = (*minimalApp)(nil)
 	_ App               = (*fullApp)(nil)
-	_ Migratable        = (*fullApp)(nil)
+	_ HasDocuments      = (*fullApp)(nil)
 	_ HasMiddleware     = (*fullApp)(nil)
 	_ HasNavItems       = (*fullApp)(nil)
 	_ HasFlags          = (*fullApp)(nil)
@@ -124,7 +124,7 @@ func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
 	var app App = &minimalApp{}
 	assert.Equal(t, "minimal", app.Name())
 
-	_, isMigratable := app.(Migratable)
+	_, hasDocuments := app.(HasDocuments)
 	_, hasMiddleware := app.(HasMiddleware)
 	_, hasNavItems := app.(HasNavItems)
 	_, isConfigurable := app.(Configurable)
@@ -133,7 +133,7 @@ func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
 	_, hasRoutes := app.(HasRoutes)
 	_, hasAdmin := app.(HasAdmin)
 
-	assert.False(t, isMigratable)
+	assert.False(t, hasDocuments)
 	assert.False(t, hasMiddleware)
 	assert.False(t, hasNavItems)
 	assert.False(t, isConfigurable)
@@ -146,7 +146,7 @@ func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
 func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	var app App = &fullApp{}
 
-	_, isMigratable := app.(Migratable)
+	_, hasDocuments := app.(HasDocuments)
 	_, hasMiddleware := app.(HasMiddleware)
 	_, hasNavItems := app.(HasNavItems)
 	_, hasFlags := app.(HasFlags)
@@ -160,7 +160,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	_, hasRequestFuncMap := app.(HasRequestFuncMap)
 	_, isStartable := app.(Startable)
 
-	assert.True(t, isMigratable)
+	assert.True(t, hasDocuments)
 	assert.True(t, hasMiddleware)
 	assert.True(t, hasNavItems)
 	assert.True(t, hasFlags)
@@ -279,7 +279,7 @@ func TestRegistryAddLogsCapabilities(t *testing.T) {
 	output := buf.String()
 	assert.Contains(t, output, "app registered")
 	assert.Contains(t, output, "full")
-	assert.Contains(t, output, "migrations")
+	assert.Contains(t, output, "documents")
 	assert.Contains(t, output, "routes")
 	assert.Contains(t, output, "middleware")
 	assert.Contains(t, output, "nav")

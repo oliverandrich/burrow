@@ -87,8 +87,8 @@ You should see log output indicating the server has started. Burrow creates an `
 When `srv.Run` is called, Burrow follows this sequence:
 
 1. Parse configuration from CLI flags, environment variables, and TOML files
-2. Open the SQLite database (WAL mode, foreign keys enabled)
-3. Run migrations for all `Migratable` apps
+2. Open the database via Den (SQLite with WAL mode, or PostgreSQL)
+3. Register documents from all `HasDocuments` apps
 4. Call `Configure()` on each `Configurable` app with the shared `AppConfig`
 5. Build the global template set from all `HasTemplates` apps
 6. Set up the Chi router with core middleware

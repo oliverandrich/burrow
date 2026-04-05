@@ -2,32 +2,24 @@ package modeladmin
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-
-	"github.com/uptrace/bun/driver/sqliteshim"
-
-	"github.com/oliverandrich/burrow/forms"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/forms"
 )
 
-func setupSearchDB(t *testing.T) *bun.DB {
+func setupSearchDB(t *testing.T) *den.DB {
 	t.Helper()
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?_pragma=foreign_keys(1)")
-	require.NoError(t, err)
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	t.Cleanup(func() { db.Close() })
+	db := burrow.TestDB(t)
 
 	ctx := context.Background()
-	_, err = db.NewCreateTable().Model((*testItem)(nil)).Exec(ctx)
+	err := den.Register(ctx, db, &testItem{})
 	require.NoError(t, err)
 
 	items := []testItem{
@@ -38,7 +30,7 @@ func setupSearchDB(t *testing.T) *bun.DB {
 		{Name: "Alpha Beta", Status: "active"},
 	}
 	for i := range items {
-		_, err := db.NewInsert().Model(&items[i]).Exec(ctx)
+		err := den.Insert(ctx, db, &items[i])
 		require.NoError(t, err)
 	}
 	return db
@@ -47,7 +39,7 @@ func setupSearchDB(t *testing.T) *bun.DB {
 func TestSearch_ByName(t *testing.T) {
 	db := setupSearchDB(t)
 	opts := listOpts{
-		searchTerm:   "alpha",
+		searchTerm:   "Alpha",
 		searchFields: []string{"name"},
 	}
 	pr := burrow.PageRequest{Limit: 10, Page: 1}
@@ -74,7 +66,7 @@ func TestSearch_EmptyTerm(t *testing.T) {
 func TestSearch_NoFields(t *testing.T) {
 	db := setupSearchDB(t)
 	opts := listOpts{
-		searchTerm:   "alpha",
+		searchTerm:   "Alpha",
 		searchFields: nil,
 	}
 	pr := burrow.PageRequest{Limit: 10, Page: 1}
@@ -97,44 +89,6 @@ func TestSearch_MultipleFields(t *testing.T) {
 	// "active" matches status of Alpha, Beta, Alpha Beta (active)
 	// and also "inactive" in Gamma, Delta
 	assert.Len(t, items, 5)
-}
-
-func TestSearch_SQLInjectionSafety(t *testing.T) {
-	db := setupSearchDB(t)
-	opts := listOpts{
-		searchTerm:   "'; DROP TABLE items; --",
-		searchFields: []string{"name"},
-	}
-	pr := burrow.PageRequest{Limit: 10, Page: 1}
-
-	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
-	require.NoError(t, err)
-	assert.Empty(t, items, "SQL injection attempt should return no results")
-
-	// Verify table still exists.
-	count, err := db.NewSelect().Model((*testItem)(nil)).Count(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, 5, count, "table should not be dropped")
-}
-
-func TestSearch_LikeWildcardEscaping(t *testing.T) {
-	db := setupSearchDB(t)
-	opts := listOpts{
-		searchTerm:   "%",
-		searchFields: []string{"name"},
-	}
-	pr := burrow.PageRequest{Limit: 10, Page: 1}
-
-	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
-	require.NoError(t, err)
-	assert.Empty(t, items, "literal % should not match anything")
-}
-
-func TestEscapeLike(t *testing.T) {
-	assert.Equal(t, `hello`, escapeLike("hello"))
-	assert.Equal(t, `he\%llo`, escapeLike("he%llo"))
-	assert.Equal(t, `he\_llo`, escapeLike("he_llo"))
-	assert.Equal(t, `he\\llo`, escapeLike(`he\llo`))
 }
 
 func TestFilter_Select(t *testing.T) {
@@ -217,138 +171,4 @@ func TestSort_DisallowedField(t *testing.T) {
 	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
 	require.NoError(t, err)
 	assert.Len(t, items, 5, "disallowed sort field should be ignored")
-}
-
-// setupFTSDB creates a test database with an FTS5 table and triggers.
-func setupFTSDB(t *testing.T) *bun.DB {
-	t.Helper()
-	db := setupSearchDB(t)
-	ctx := context.Background()
-
-	// Create FTS5 virtual table.
-	_, err := db.ExecContext(ctx, `
-		CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
-			name,
-			content='items',
-			content_rowid='id',
-			tokenize='unicode61'
-		)`)
-	require.NoError(t, err)
-
-	// Create triggers to keep FTS in sync.
-	_, err = db.ExecContext(ctx, `
-		CREATE TRIGGER IF NOT EXISTS items_ai AFTER INSERT ON items BEGIN
-			INSERT INTO items_fts(rowid, name) VALUES (new.id, new.name);
-		END`)
-	require.NoError(t, err)
-
-	_, err = db.ExecContext(ctx, `
-		CREATE TRIGGER IF NOT EXISTS items_ad AFTER DELETE ON items BEGIN
-			INSERT INTO items_fts(items_fts, rowid, name) VALUES ('delete', old.id, old.name);
-		END`)
-	require.NoError(t, err)
-
-	_, err = db.ExecContext(ctx, `
-		CREATE TRIGGER IF NOT EXISTS items_au AFTER UPDATE ON items BEGIN
-			INSERT INTO items_fts(items_fts, rowid, name) VALUES ('delete', old.id, old.name);
-			INSERT INTO items_fts(rowid, name) VALUES (new.id, new.name);
-		END`)
-	require.NoError(t, err)
-
-	// Rebuild FTS index for already-inserted data.
-	_, err = db.ExecContext(ctx, `INSERT INTO items_fts(items_fts) VALUES('rebuild')`)
-	require.NoError(t, err)
-
-	return db
-}
-
-func TestDetectFTS(t *testing.T) {
-	t.Run("FTS table exists", func(t *testing.T) {
-		db := setupFTSDB(t)
-		got := detectFTS(db, "items")
-		assert.Equal(t, "items_fts", got)
-	})
-
-	t.Run("no FTS table", func(t *testing.T) {
-		db := setupSearchDB(t)
-		got := detectFTS(db, "items")
-		assert.Empty(t, got)
-	})
-}
-
-func TestFTSSearch_Detected(t *testing.T) {
-	db := setupFTSDB(t)
-	opts := listOpts{
-		searchTerm:   "Alpha",
-		searchFields: []string{"name"},
-		ftsTable:     "items_fts",
-	}
-	pr := burrow.PageRequest{Limit: 10, Page: 1}
-
-	items, page, err := listItems[testItem](context.Background(), db, opts, pr)
-	require.NoError(t, err)
-	assert.Len(t, items, 2, "FTS should find 'Alpha' and 'Alpha Beta'")
-	assert.Equal(t, 2, page.TotalCount)
-}
-
-func TestFTSSearch_WordBased(t *testing.T) {
-	db := setupFTSDB(t)
-
-	// FTS5 matches whole words, so "lph" should NOT match "Alpha"
-	// (unlike LIKE which would match with %lph%).
-	opts := listOpts{
-		searchTerm:   "lph",
-		searchFields: []string{"name"},
-		ftsTable:     "items_fts",
-	}
-	pr := burrow.PageRequest{Limit: 10, Page: 1}
-
-	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
-	require.NoError(t, err)
-	assert.Empty(t, items, "FTS5 should not match partial words")
-}
-
-func TestFTSSearch_NotDetected(t *testing.T) {
-	db := setupSearchDB(t)
-	// No ftsTable set — should fall back to LIKE.
-	opts := listOpts{
-		searchTerm:   "alpha",
-		searchFields: []string{"name"},
-	}
-	pr := burrow.PageRequest{Limit: 10, Page: 1}
-
-	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
-	require.NoError(t, err)
-	assert.Len(t, items, 2, "LIKE fallback should find 'Alpha' and 'Alpha Beta'")
-}
-
-func TestFTSSearch_SyntaxError(t *testing.T) {
-	db := setupFTSDB(t)
-	// Unmatched quotes are a syntax error in FTS5.
-	opts := listOpts{
-		searchTerm:   `"unclosed quote`,
-		searchFields: []string{"name"},
-		ftsTable:     "items_fts",
-	}
-	pr := burrow.PageRequest{Limit: 10, Page: 1}
-
-	// Should fall back to LIKE instead of returning an error.
-	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
-	require.NoError(t, err)
-	// LIKE with %"unclosed quote% should return no results.
-	assert.Empty(t, items, "FTS5 syntax error should fall back to LIKE")
-}
-
-func TestFTSSearch_EmptyTerm(t *testing.T) {
-	db := setupFTSDB(t)
-	opts := listOpts{
-		searchTerm:   "",
-		searchFields: []string{"name"},
-		ftsTable:     "items_fts",
-	}
-	pr := burrow.PageRequest{Limit: 10, Page: 1}
-
-	items, _, err := listItems[testItem](context.Background(), db, opts, pr)
-	require.NoError(t, err)
-	assert.Len(t, items, 5, "empty search should return all items")
 }

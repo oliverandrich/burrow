@@ -3,8 +3,8 @@ package notes
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/htmx"
@@ -113,7 +113,7 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
 // Edit renders the edit form pre-filled with an existing note.
 func (a *App) Edit(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
-	id := burrow.MustURLParamInt64(r, "id")
+	id := chi.URLParam(r, "id")
 
 	note, err := a.repo.GetByID(r.Context(), id, user.ID)
 	if err != nil {
@@ -127,7 +127,7 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) error {
 	data := map[string]any{
 		"Fields":   f.Fields(),
 		"TitleKey": "notes-edit-title",
-		"Action":   "/notes/" + strconv.FormatInt(note.ID, 10),
+		"Action":   "/notes/" + note.ID,
 	}
 	return burrow.Render(w, r, http.StatusOK, "notes/form", data)
 }
@@ -135,7 +135,7 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) error {
 // Update binds, validates, and updates an existing note.
 func (a *App) Update(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
-	id := burrow.MustURLParamInt64(r, "id")
+	id := chi.URLParam(r, "id")
 
 	note, err := a.repo.GetByID(r.Context(), id, user.ID)
 	if err != nil {
@@ -145,7 +145,7 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	action := "/notes/" + strconv.FormatInt(note.ID, 10)
+	action := "/notes/" + note.ID
 
 	f := forms.FromModel(note, noteFormOpts()...)
 	if !f.Bind(r) {
@@ -179,7 +179,7 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) error {
 // Delete removes a note owned by the authenticated user.
 func (a *App) Delete(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
-	id := burrow.MustURLParamInt64(r, "id")
+	id := chi.URLParam(r, "id")
 
 	if err := a.repo.Delete(r.Context(), id, user.ID); err != nil {
 		return err

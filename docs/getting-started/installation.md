@@ -31,7 +31,7 @@ The framework builds on these libraries — you'll interact with them when build
 | Library | Purpose |
 |---------|---------|
 | [Chi v5](https://go-chi.io/) | HTTP router and middleware (stdlib-compatible) |
-| [Bun](https://bun.uptrace.dev/) | ORM for SQLite (queries, models, migrations) |
+| [Den](https://github.com/oliverandrich/den) | Object-document mapper (ODM) with SQLite and PostgreSQL backends |
 | [`html/template`](https://pkg.go.dev/html/template) | Go's standard template engine with auto-escaping |
 | [urfave/cli](https://cli.urfave.org/) | CLI flags, env vars, subcommands |
 

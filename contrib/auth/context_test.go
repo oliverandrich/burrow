@@ -10,12 +10,13 @@ import (
 )
 
 func TestCurrentUser(t *testing.T) {
-	user := &User{ID: 7, Username: "bob"}
+	user := &User{Username: "bob"}
+	user.ID = "user-7"
 	ctx := WithUser(context.Background(), user)
 
 	got := CurrentUser(ctx)
 	require.NotNil(t, got)
-	assert.Equal(t, int64(7), got.ID)
+	assert.Equal(t, "user-7", got.ID)
 	assert.Equal(t, "bob", got.Username)
 }
 
@@ -26,17 +27,20 @@ func TestCurrentUserEmpty(t *testing.T) {
 func TestIsAuthenticated(t *testing.T) {
 	assert.False(t, IsAuthenticated(context.Background()))
 
-	ctx := WithUser(context.Background(), &User{ID: 1})
+	u := &User{Username: "test"}
+	u.ID = "user-1"
+	ctx := WithUser(context.Background(), u)
 	assert.True(t, IsAuthenticated(ctx))
 }
 
 func TestMustCurrentUser(t *testing.T) {
-	user := &User{ID: 42, Username: "alice"}
+	user := &User{Username: "alice"}
+	user.ID = "user-42"
 	ctx := WithUser(context.Background(), user)
 
 	got := MustCurrentUser(ctx)
 	require.NotNil(t, got)
-	assert.Equal(t, int64(42), got.ID)
+	assert.Equal(t, "user-42", got.ID)
 	assert.Equal(t, "alice", got.Username)
 }
 

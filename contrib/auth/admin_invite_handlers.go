@@ -3,7 +3,6 @@ package auth
 import (
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -72,7 +71,7 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 		slog.Warn("failed to add invite flash message", "error", err)
 	}
 
-	slog.Info("invite created", "invite_id", invite.ID, "created_by", user.ID) //nolint:gosec // G706: IDs are int64, not user-controlled strings
+	slog.Info("invite created", "invite_id", invite.ID, "created_by", user.ID)
 	http.Redirect(w, r, "/admin/invites", http.StatusSeeOther)
 	return nil
 }
@@ -80,8 +79,8 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 // revokeInviteHandler returns a handler that revokes (hard-deletes) an invite.
 func revokeInviteHandler(repo *Repository) burrow.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		inviteID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
+		inviteID := chi.URLParam(r, "id")
+		if inviteID == "" {
 			return burrow.NewHTTPError(http.StatusBadRequest, "invalid invite id")
 		}
 
