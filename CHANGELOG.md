@@ -4,6 +4,12 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.11.1 — 2026-04-05
+
+### Fixed
+
+- **Social card URLs** — updated `og:image` and `twitter:image` meta tags to point to readthedocs.io
+
 ## 0.11.0 — 2026-04-05
 
 ### Breaking Changes
