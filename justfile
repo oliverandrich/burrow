@@ -119,10 +119,6 @@ docs-build:
     ./scripts/generate-llms-full.sh
     uv run --with zensical zensical build
 
-# Serve all versioned docs locally (reads gh-pages branch)
-docs-versioned:
-    uv run --with zensical --with "mike @ git+https://github.com/squidfunk/mike.git" mike serve -a localhost:3000
-
 # Update Bootstrap Icons SVG components (downloads latest release)
 update-icons version="1.13.1":
     #!/usr/bin/env bash
