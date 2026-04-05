@@ -4,9 +4,16 @@ build:
   os: ubuntu-24.04
   tools:
     python: "3.13"
-  commands:
-    - pip install zensical
-    - cp CHANGELOG.md docs/changelog.md
-    - cp THIRD_PARTY_LICENSES.md docs/third-party-licenses.md
-    - ./scripts/generate-llms-full.sh
-    - zensical build -d $READTHEDOCS_OUTPUT/html
+  jobs:
+    install:
+      - pip install zensical
+    pre_build:
+      - cp CHANGELOG.md docs/changelog.md
+      - cp THIRD_PARTY_LICENSES.md docs/third-party-licenses.md
+      - ./scripts/generate-llms-full.sh
+    build:
+      html:
+        - zensical build
+    post_build:
+      - mkdir -p $READTHEDOCS_OUTPUT/html/
+      - cp --recursive site/* $READTHEDOCS_OUTPUT/html/
