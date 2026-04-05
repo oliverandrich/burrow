@@ -78,26 +78,22 @@ func TestWorker_RetryOnFailure(t *testing.T) {
 	go w.Start(ctx)
 
 	// After retry backoff, the job should eventually succeed on attempt 3.
-	// Backoff: 2^1=2s, 2^2=4s — too slow for tests. We'll manually reset run_at.
+	// We speed up retries by resetting run_at for failed jobs, and wait
+	// for the job to reach "completed" status (not just attempt count,
+	// since Complete must finish writing before we cancel).
 	require.Eventually(t, func() bool {
-		// Speed up retries by resetting run_at to now for failed jobs awaiting retry.
 		failedJobs, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 100, Page: 1}, StatusFailed)
 		now := time.Now()
 		for _, j := range failedJobs {
 			j.RunAt = now
 			_ = den.Update(context.Background(), db, j)
 		}
-		return attempts.Load() >= 3
+		completed, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 1, Page: 1}, StatusCompleted)
+		return len(completed) == 1
 	}, 5*time.Second, 20*time.Millisecond)
 
 	cancel()
 	<-w.Done()
-
-	// Verify the job completed.
-	allJobs, _, listErr := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 1, Page: 1}, "")
-	require.NoError(t, listErr)
-	require.Len(t, allJobs, 1)
-	assert.Equal(t, StatusCompleted, allJobs[0].Status)
 }
 
 func TestWorker_DeadAfterMaxRetries(t *testing.T) {
