@@ -4,6 +4,13 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.11.2 — 2026-04-05
+
+### Changed
+
+- **License page** — include full MIT license text, link to third-party licenses
+- **Release workflow** — release now waits for CI success before creating a GitHub release
+
 ## 0.11.1 — 2026-04-05
 
 ### Fixed
