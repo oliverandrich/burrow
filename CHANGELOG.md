@@ -4,6 +4,12 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.11.3 — 2026-04-06
+
+### Changed
+
+- **Den updated to v0.4.2** — adds PostgreSQL version check (requires PostgreSQL 13+) and LLM documentation
+
 ## 0.11.2 — 2026-04-05
 
 ### Changed
