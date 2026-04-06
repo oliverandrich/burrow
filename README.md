@@ -64,8 +64,7 @@ import (
 // homeApp is a minimal app with a single route.
 type homeApp struct{}
 
-func (a *homeApp) Name() string                      { return "home" }
-func (a *homeApp) Register(_ *burrow.AppConfig) error { return nil }
+func (a *homeApp) Name() string { return "home" }
 func (a *homeApp) Routes(r chi.Router) {
     r.Method("GET", "/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
         return burrow.Text(w, http.StatusOK, "Hello from Burrow!")
@@ -125,7 +124,6 @@ Every app implements `burrow.App`:
 ```go
 type App interface {
     Name() string
-    Register(cfg *AppConfig) error
 }
 ```
 
