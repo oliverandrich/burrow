@@ -139,8 +139,8 @@ type RecoveryCode struct {
 	document.Base
 	UsedAt   *time.Time `json:"used_at,omitempty"`
 	CodeHash string     `json:"code_hash"`
-	UserID   string     `json:"user_id" den:"index"`
-	Used     bool       `json:"used"`
+	UserID   string     `json:"user_id" den:"index,index_together:recovery_status"`
+	Used     bool       `json:"used" den:"index_together:recovery_status"`
 }
 
 // EmailVerificationToken stores a hashed token for email verification.

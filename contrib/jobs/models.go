@@ -26,12 +26,12 @@ const (
 // Job represents a background job in the queue.
 type Job struct {
 	document.Base
-	RunAt       time.Time  `json:"run_at"                  den:"index"`
+	RunAt       time.Time  `json:"run_at"                  den:"index,index_together:claim"`
 	Type        string     `json:"type"                    den:"index"`
 	Payload     string     `json:"payload"`
-	Status      JobStatus  `json:"status"                  den:"index"`
+	Status      JobStatus  `json:"status"                  den:"index,index_together:claim,index_together:stale"`
 	LastError   string     `json:"last_error,omitempty"`
-	LockedAt    *time.Time `json:"locked_at,omitempty"`
+	LockedAt    *time.Time `json:"locked_at,omitempty"     den:"index_together:stale"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	FailedAt    *time.Time `json:"failed_at,omitempty"`
 	Attempts    int        `json:"attempts"`

@@ -4,6 +4,14 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+## 0.11.4 — 2026-04-06
+
+### Changed
+
+- **Den updated to v0.5.0** — adds support for composite indexes via `index_together` and `unique_together` struct tags, and fixes `Settings.Indexes` application during `Register()`
+- **Composite indexes for Job model** — added `index_together:claim` (RunAt, Status, WorkerID) and `index_together:stale` (Status, LockedAt) to optimize worker claim and stale-job-rescue queries
+- **Composite index for RecoveryCode model** — added `index_together:recovery_status` (UserID, Used) to optimize unused recovery code lookups
+
 ## 0.11.3 — 2026-04-06
 
 ### Changed
