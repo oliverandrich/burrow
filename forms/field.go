@@ -93,10 +93,11 @@ func extractFields[T any](ctx context.Context, instance *T, validationErr *burro
 }
 
 // fieldValue returns the value for template rendering, dereferencing pointers.
+// Nil pointers return the zero value of the element type (e.g. "" for *string).
 func fieldValue(fv reflect.Value) any {
 	if fv.Kind() == reflect.Pointer {
 		if fv.IsNil() {
-			return nil
+			return reflect.Zero(fv.Type().Elem()).Interface()
 		}
 		return fv.Elem().Interface()
 	}

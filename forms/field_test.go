@@ -183,6 +183,6 @@ func TestExtractFieldsNilPointerValue(t *testing.T) {
 	fields := extractFields(noCtx, instance, nil, nil, nil, nil)
 
 	require.Len(t, fields, 2)
-	assert.Nil(t, fields[0].Value)
+	assert.Empty(t, fields[0].Value, "nil *string should produce zero value")
 	assert.Equal(t, "Bob", fields[1].Value)
 }
