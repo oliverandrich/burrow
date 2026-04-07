@@ -179,8 +179,9 @@ func TestApp_AdminRoutes_WithJobsAdmin(t *testing.T) {
 	app := New()
 	app.defaultDB = db
 
-	// Simulate Configure to create the repo.
+	// Simulate Configure to create the repo and the ModelAdmin.
 	app.repo = NewRepository(db)
+	app.jobsAdmin = newJobsAdmin(db, app.repo)
 
 	r := chi.NewRouter()
 	// Should not panic; registers routes on the router.
@@ -190,8 +191,10 @@ func TestApp_AdminRoutes_WithJobsAdmin(t *testing.T) {
 func TestApp_AdminNavItems(t *testing.T) {
 	app := New()
 	items := app.AdminNavItems()
-	// ModelAdmin integration is disabled during Den migration.
-	assert.Nil(t, items)
+	require.Len(t, items, 1)
+	assert.Equal(t, "Jobs", items[0].Label)
+	assert.Equal(t, "/admin/jobs", items[0].URL)
+	assert.True(t, items[0].AdminOnly)
 }
 
 func TestApp_TemplateFS(t *testing.T) {
