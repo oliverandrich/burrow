@@ -12,18 +12,20 @@ import (
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/den"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme for OpenURL
+	"github.com/oliverandrich/den/validate"
 	"github.com/stretchr/testify/require"
 )
 
 var userCounter atomic.Int64
 
 // NewDB returns a Den *den.DB with all auth document types registered.
+// Struct-tag validation is enabled by default to match [burrow.OpenDB].
 // The database is closed automatically when the test finishes.
 func NewDB(t *testing.T) *den.DB {
 	t.Helper()
 
 	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "auth_test.db")
-	db, err := den.OpenURL(dsn)
+	db, err := den.OpenURL(dsn, validate.WithValidation())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 

@@ -101,6 +101,28 @@ Common struct tags:
 | `den:"unique"` | Unique constraint on this field |
 | `den:"fts"` | Full-text search index on this field |
 | `den:"omitempty"` | Omit from JSON when empty |
+| `validate:"required"` | Enforce at insert/update time (see below) |
+
+### Struct-Tag Validation
+
+Burrow enables Den's struct-tag validation by default. Any document field marked with `validate:"..."` is checked before every Insert and Update; a violation returns an error wrapping `den.ErrValidation`.
+
+```go
+type Note struct {
+    document.Base
+    UserID  string `json:"user_id"  validate:"required"`
+    Title   string `json:"title"    den:"index" validate:"required,min=1,max=200"`
+    Content string `json:"content"`
+}
+```
+
+Supported tags come from [go-playground/validator](https://github.com/go-playground/validator): `required`, `email`, `url`, `min`, `max`, `oneof=...`, `gte`, `lte`, and many more. See the [Den validation guide](https://den-odm.readthedocs.io/guide/validation/) for the full execution order — mutating hooks (`BeforeInsert`, `BeforeSave`) run before validation so defaults can be populated first.
+
+!!! tip "Form-only validators belong on form DTOs"
+    Some validators like `eqfield` (matching a field on a sibling struct) are meant for form input and don't make sense on a persisted document. Keep those on separate form DTOs and use `burrow.Bind()` to validate request input before copying values into the document.
+
+!!! warning "Escape hatch for migration"
+    If an existing project has `validate:"..."` tags on documents that previously had no effect, use `burrow.OpenDBWithoutValidation()` instead of `burrow.OpenDB()` to preserve the old behavior while you clean up the data. Prefer removing the escape hatch as soon as possible.
 
 ### Queries
 

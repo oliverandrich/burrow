@@ -13,28 +13,25 @@ import (
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // --- Repository edge cases ---
 
-func TestCreateNoteEmptyTitle(t *testing.T) {
+func TestCreateNoteEmptyTitle_FailsValidation(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	// The DB schema has title as NOT NULL but does not enforce non-empty at the DB level.
-	// An empty string satisfies NOT NULL, so insertion succeeds.
+	// Note.Title is tagged `validate:"required"`. With Burrow's always-on
+	// struct-tag validation (since v0.12.0), creating a Note without a
+	// Title returns an error wrapping den.ErrValidation.
 	note := &Note{Title: "", Content: "Has content", UserID: "user-default"}
 	err := repo.Create(ctx, note)
-	require.NoError(t, err)
-	assert.NotEmpty(t, note.ID)
-
-	found, err := repo.GetByID(ctx, note.ID, "user-default")
-	require.NoError(t, err)
-	assert.Empty(t, found.Title)
-	assert.Equal(t, "Has content", found.Content)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, den.ErrValidation)
 }
 
 func TestCreateNoteEmptyContent(t *testing.T) {
@@ -42,6 +39,7 @@ func TestCreateNoteEmptyContent(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
+	// Content has no validate tag, so an empty string is allowed.
 	note := &Note{Title: "Title Only", Content: "", UserID: "user-default"}
 	err := repo.Create(ctx, note)
 	require.NoError(t, err)
@@ -53,15 +51,16 @@ func TestCreateNoteEmptyContent(t *testing.T) {
 	assert.Empty(t, found.Content)
 }
 
-func TestCreateNoteEmptyTitleAndContent(t *testing.T) {
+func TestCreateNoteEmptyTitleAndContent_FailsValidation(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
+	// Both fields empty — still fails because of Title's required tag.
 	note := &Note{Title: "", Content: "", UserID: "user-default"}
 	err := repo.Create(ctx, note)
-	require.NoError(t, err)
-	assert.NotEmpty(t, note.ID)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, den.ErrValidation)
 }
 
 func TestListNotesEmptyDatabase(t *testing.T) {

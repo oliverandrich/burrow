@@ -11,15 +11,17 @@ import (
 
 	"github.com/oliverandrich/den"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
+	"github.com/oliverandrich/den/validate"
 )
 
 // TestDB returns a file-backed SQLite database wrapped in a [den.DB] for
-// testing. The database is created in [testing.T.TempDir] and closed
-// automatically when the test finishes.
+// testing. Struct-tag validation is enabled by default to match [OpenDB].
+// The database is created in [testing.T.TempDir] and closed automatically
+// when the test finishes.
 func TestDB(t *testing.T) *den.DB {
 	t.Helper()
 	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := den.OpenURL(dsn)
+	db, err := den.OpenURL(dsn, validate.WithValidation())
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}
