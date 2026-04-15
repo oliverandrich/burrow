@@ -2,6 +2,16 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.13.1 — 2026-04-15
+
+### Changed
+
+- **Den upgraded to v0.7.0** — picks up PostgreSQL JSONB comparison fixes, GroupBy SQL pushdown, revision TOCTOU fix, and link validation enforcement
+
+### Fixed
+
+- **Invalid den struct tags in test models** — `den:"name,index"` and `den:"key,unique"` incorrectly included field names in the den tag (field names come from the json tag). Den v0.7.0 now rejects unknown tag options, catching these at registration time
+
 ## 0.13.0 — 2026-04-15
 
 ### Breaking Changes
