@@ -32,7 +32,7 @@ A full-featured notes application with authentication, an admin panel, and HTMX-
 - **Multi-app architecture** — session, CSRF, auth, admin, jobs, messages, htmx, and bootstrap all wired together in `main.go`
 - **Repository pattern** with Den/SQLite — CRUD operations, offset-based pagination
 - **FTS5 full-text search** — migration with triggers, `SearchByUserID` repository method, HTMX search form
-- **ModelAdmin** — generic CRUD admin with search, filters, row actions, and FTS5 auto-detection
+- **Admin views** — hand-written admin handlers with search, pagination, and htmx actions
 - **Custom layout** — navbar with navigation items, icon helpers, theme switcher
 - **HTMX patterns** — infinite scroll (`hx-trigger="revealed"`), form submission with OOB swap, search with `hx-push-url`
 - **i18n** — English and German translations, translated form labels and flash messages
@@ -55,7 +55,7 @@ A guided, seven-part tutorial that builds a survey/voting application from scrat
 | [Part 3](../tutorial/part3.md) | Templates & Layouts | `html/template`, layouts, `Render` |
 | [Part 4](../tutorial/part4.md) | Forms, CRUD & Validation | Form binding, CSRF, flash messages, validation errors |
 | [Part 5](../tutorial/part5.md) | Authentication | Auth middleware, user context, passkeys |
-| [Part 6](../tutorial/part6.md) | Admin Panel | `ModelAdmin`, `HasAdmin` interface, admin nav |
+| [Part 6](../tutorial/part6.md) | Admin Panel | `HasAdmin` interface, admin routes, admin nav |
 | [Part 7](../tutorial/part7.md) | HTMX, Charts & Pagination | htmx helpers, Chart.js, offset-based infinite scroll |
 
 Unlike the examples (which show final results), the tutorial shows the *process* — how to start from zero and incrementally add features. If you're new to burrow, start with the tutorial and use the examples as reference for patterns not covered there.

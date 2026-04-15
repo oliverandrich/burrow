@@ -20,7 +20,7 @@ Burrow shares Django's "batteries-included" philosophy but takes a Go-idiomatic 
 | `STATIC_URL` / `collectstatic` | `go:embed` + `staticfiles` contrib |
 | `settings.py` | CLI flags + ENV vars + TOML via `Configurable` |
 | `middleware` | `func(http.Handler) http.Handler` via `HasMiddleware` |
-| `django.contrib.admin` | `contrib/admin` with `ModelAdmin` |
+| `django.contrib.admin` | `contrib/admin` with `HasAdmin` interface |
 | `django.contrib.auth` | `contrib/auth` (WebAuthn/passkeys) |
 | `@permission_required` | Middleware checks (e.g. `auth.RequireAuth()`) |
 | `django.contrib.sessions` | `contrib/session` (gorilla/sessions) |
@@ -352,7 +352,7 @@ Key philosophical differences from Django:
 - **Compile-time safety** — type errors are caught at build time, not at runtime when a user hits a page.
 - **Single binary deployment** — no virtualenv, no pip, no process manager, no external database server.
 - **SQLite or PostgreSQL** — two backends, same API. SQLite for single-binary deploys, PostgreSQL for scale. Switch with `--database-dsn`.
-- **No admin auto-generation** — Django introspects your models and auto-generates CRUD forms, list views, and search. Burrow's `ModelAdmin` requires you to manually specify which fields are displayed, editable, and searchable — more work, but fully explicit. Django's `__str__` maps to Go's `fmt.Stringer` interface — implement `String()` on your document types and `ModelAdmin` uses it to display labels in list views.
+- **No admin auto-generation** — Django introspects your models and auto-generates CRUD forms, list views, and search. Burrow's admin views are hand-written handlers with full control over layout and behavior — more work, but fully explicit. The `HasAdmin` interface provides the coordination layer (sidebar, auth middleware, routing).
 - **Context instead of thread-locals** — `context.Context` replaces Django's `request.user` magic and thread-local storage. Values flow explicitly through the call chain.
 - **No signals** — Django dispatches `post_save`, `pre_delete`, etc. automatically via the ORM. Burrow has no automatic lifecycle hooks — you call functions explicitly in your handlers or services. Use `Registry.Get()` for cross-app communication.
 - **No built-in permission system** — Django has model-level permissions and `@permission_required`. Burrow provides authentication middleware (`auth.RequireAuth()`) but authorization logic is your responsibility — write middleware or handler checks.

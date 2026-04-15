@@ -1,4 +1,4 @@
-// Command step06 adds an admin panel with ModelAdmin for questions.
+// Command step06 adds an admin panel for the polls application.
 package main
 
 import (

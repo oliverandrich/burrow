@@ -287,7 +287,7 @@ func (r *myRenderer) LoginPage(w http.ResponseWriter, req *http.Request, loginRe
 
 ## Admin Integration
 
-The auth app implements `HasAdmin` to provide user and invite management in the admin panel. It uses `modeladmin.ModelAdmin` internally — there is no separate `AdminRenderer` interface to implement.
+The auth app implements `HasAdmin` to provide user and invite management in the admin panel with hand-written handlers. Admin views include user list with search and role filter, user edit form with last-admin demotion protection, and an htmx-powered inline invite creation form.
 
 ## Configuration
 

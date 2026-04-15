@@ -111,7 +111,7 @@ See [Layouts & Rendering](../guide/layouts.md) for details on templates and layo
 func RenderContent(w http.ResponseWriter, r *http.Request, statusCode int, content template.HTML, data map[string]any) error
 ```
 
-Writes pre-rendered HTML content with layout wrapping. Unlike `Render`, which executes a named template, `RenderContent` takes already-rendered HTML and wraps it in the active layout. Used by `modeladmin` to render admin pages with dynamically generated content.
+Writes pre-rendered HTML content with layout wrapping. Unlike `Render`, which executes a named template, `RenderContent` takes already-rendered HTML and wraps it in the active layout.
 
 ```go
 return burrow.RenderContent(w, r, http.StatusOK, rendered, map[string]any{

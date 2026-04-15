@@ -21,7 +21,7 @@ Burrow is designed for server-rendered web applications, not API-only services.
 
 ## Contrib Apps
 
-- [Admin](https://burrow.someonewho.codes/contrib/admin/): Admin panel coordinator with ModelAdmin CRUD
+- [Admin](https://burrow.someonewho.codes/contrib/admin/): Admin panel coordinator (layout, sidebar nav, auth middleware)
 - [Alpine.js](https://burrow.someonewho.codes/contrib/alpine/): Alpine.js asset serving with content-hashed URLs
 - [Auth](https://burrow.someonewho.codes/contrib/auth/): WebAuthn/passkey authentication with recovery codes
 - [Auth Mail](https://burrow.someonewho.codes/contrib/authmail/): Pluggable email rendering with SMTP backend

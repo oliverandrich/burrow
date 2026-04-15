@@ -26,7 +26,7 @@ A survey/voting application where users can:
 | [Part 3](part3.md) | Templates & Layouts | Template system, layouts, Render |
 | [Part 4](part4.md) | Forms, CRUD & Validation | Form handling, CSRF, messages |
 | [Part 5](part5.md) | Authentication | Auth system, middleware, user context |
-| [Part 6](part6.md) | Admin Panel | ModelAdmin, HasAdmin interface |
+| [Part 6](part6.md) | Admin Panel | HasAdmin interface, admin routes |
 | [Part 7](part7.md) | HTMX, Charts & Polish | htmx helpers, i18n, pagination |
 
 Each part builds on the previous one. The complete source code for each step lives in the [`tutorial/`](https://github.com/oliverandrich/burrow/tree/main/tutorial) directory.

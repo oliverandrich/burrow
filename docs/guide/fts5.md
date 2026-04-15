@@ -111,25 +111,11 @@ if err != nil {
 !!! important "Empty queries"
     Always check for empty/whitespace-only input before calling search. The `Search` method above already handles this by returning early when `query` is blank.
 
-## ModelAdmin Integration
+## Using FTS in Admin Views
 
-ModelAdmin auto-detects FTS-indexed fields at boot time. If a document type has fields with the `fts` tag option, ModelAdmin automatically uses full-text search instead of `LIKE` queries — no configuration needed.
+When building admin views with hand-written handlers, use the same `den` FTS query methods described above. For example, a search handler can use `where.Field("title").Match(query)` for FTS-indexed fields, falling back to `where.Field("title").Contains(query)` for non-FTS fields.
 
-This gives admin search all the benefits of full-text search: word-based matching, query syntax (AND, OR, NOT, prefix with `*`), and better performance on large datasets. If a user's search query has syntax errors (e.g., unmatched quotes), ModelAdmin falls back to `LIKE` transparently.
-
-To enable search for your model's admin:
-
-1. Add `den:"fts"` tags to your searchable fields
-2. Set `SearchFields` on your `ModelAdmin` — that's it
-
-```go
-ma := &modeladmin.ModelAdmin[Note]{
-    // ...
-    SearchFields: []string{"title", "body"},
-}
-```
-
-See the [Admin docs](../contrib/admin.md#fts5-auto-detection) for more details.
+See `contrib/auth/repository.go` (`SearchUsers`) for a working example of admin search with FTS-compatible queries.
 
 ## Working Example
 

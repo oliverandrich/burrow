@@ -19,65 +19,104 @@ srv := burrow.NewServer(
 )
 ```
 
-## Registering Job Handlers
+## Typed Task Definitions (Recommended)
 
-The recommended way to register handlers is via the `burrow.HasJobs` interface. Implement `RegisterJobs(q burrow.Queue)` on your app — the jobs app discovers all `HasJobs` implementors automatically during its `PostConfigure()` phase:
+Use `burrow.DefineTask` for type-safe job definitions. It handles JSON marshalling on both sides — producer and consumer agree on the payload type at compile time:
 
 ```go
-// Defined in the burrow root package:
-// type JobHandlerFunc func(ctx context.Context, payload []byte) error
+type WelcomeEmailPayload struct {
+    Email  string `json:"email"`
+    Locale string `json:"locale"`
+}
+
+var sendWelcomeEmail = burrow.DefineTask("send-welcome-email",
+    func(ctx context.Context, p WelcomeEmailPayload) error {
+        return mailer.Send(ctx, p.Email, "Welcome!")
+    },
+    burrow.WithMaxRetries(5),
+    burrow.WithPriority(10), // higher = more urgent
+)
 ```
+
+Register in `RegisterJobs` and enqueue with typed payloads:
 
 ```go
 func (a *App) RegisterJobs(q burrow.Queue) {
-    q.Handle("send-welcome-email", func(ctx context.Context, payload []byte) error {
-        var data struct{ Email string }
-        if err := json.Unmarshal(payload, &data); err != nil {
-            return fmt.Errorf("invalid payload: %w", err)
-        }
-        return sendWelcomeEmail(ctx, data.Email)
-    })
-
-    // With custom max retries (default: 3)
-    q.Handle("process-upload", a.processUpload, burrow.WithMaxRetries(5))
-
-    // Save the queue reference for enqueueing later
-    a.jobs = q
+    sendWelcomeEmail.Register(q)
 }
+
+// Later, in a handler:
+_, err := sendWelcomeEmail.Enqueue(ctx, WelcomeEmailPayload{
+    Email: "alice@example.com", Locale: "en",
+})
 ```
 
-Because `PostConfigure()` runs after all `Configure()` calls, your app can safely use state set in `Configure()` inside `RegisterJobs` (e.g., services, config values, clients).
+### Result-Returning Tasks
 
-### Accessing Job Data in Handlers
-
-The handler receives the raw JSON `payload` as `[]byte` — the same data you passed when enqueueing, marshaled to JSON:
+For tasks that produce a result, use `burrow.DefineResultTask`. The result is persisted as JSON on the job:
 
 ```go
-jobsApp.Handle("resize-image", func(ctx context.Context, payload []byte) error {
-    var params struct {
-        ImageID int64  `json:"image_id"`
-        Width   int    `json:"width"`
-    }
-    if err := json.Unmarshal(payload, &params); err != nil {
-        return fmt.Errorf("invalid payload: %w", err)
-    }
+type ReportInput struct {
+    UserID string `json:"user_id"`
+}
+type ReportOutput struct {
+    URL string `json:"url"`
+}
 
-    return resizeImage(ctx, params.ImageID, params.Width)
-})
+var generateReport = burrow.DefineResultTask("generate-report",
+    func(ctx context.Context, in ReportInput) (ReportOutput, error) {
+        url, err := reports.Generate(ctx, in.UserID)
+        return ReportOutput{URL: url}, err
+    },
+)
+```
+
+After the job completes, the result is available via the repository's `GetResult` method and visible in the admin detail view.
+
+### Low-Level API
+
+For dynamic job types or when you need full control, use the raw `Queue.Handle` and `Queue.Enqueue` directly:
+
+```go
+func (a *App) RegisterJobs(q burrow.Queue) {
+    q.Handle("process-upload", func(ctx context.Context, payload []byte) error {
+        var params struct{ ImageID string `json:"image_id"` }
+        json.Unmarshal(payload, &params)
+        return processUpload(ctx, params.ImageID)
+    }, burrow.WithMaxRetries(3))
+    a.jobs = q
+}
+
+// Enqueue:
+jobID, err := a.jobs.Enqueue(ctx, "process-upload", map[string]string{"image_id": "123"})
+```
+
+The `Enqueuer` interface (`Enqueue`, `EnqueueAt`, `Dequeue`) is available for code that only needs to submit jobs without registering handlers. `Queue` embeds `Enqueuer` and adds `Handle`.
 
 ## Enqueueing Jobs
 
 ```go
-// Enqueue for immediate processing — returns the job ID as a string
-jobID, err := jobsApp.Enqueue(ctx, "send-welcome-email", map[string]string{
-    "Email": "alice@example.com",
-})
+// Enqueue for immediate processing — returns the job ID
+jobID, err := sendWelcomeEmail.Enqueue(ctx, WelcomeEmailPayload{Email: "alice@example.com"})
 
 // Schedule for a specific time
-jobID, err := jobsApp.EnqueueAt(ctx, "send-welcome-email", payload, time.Now().Add(time.Hour))
+jobID, err := sendWelcomeEmail.EnqueueAt(ctx, payload, time.Now().Add(time.Hour))
+
+// Or via the raw Queue interface:
+jobID, err := jobsApp.Enqueue(ctx, "send-welcome-email", payload)
 ```
 
-The payload can be any value that `json.Marshal` can serialise. The type must be registered via `Handle()` — unknown types return an error.
+The payload can be any value that `json.Marshal` can serialise. The type must be registered via `Handle()` or `TaskDefinition.Register()` — unknown types return an error.
+
+## Priority
+
+Jobs have a `Priority` field (default 0). Higher values mean higher urgency — a priority-10 job is claimed before a priority-0 job, even if the lower-priority job is older. Within the same priority level, jobs are processed in FIFO order.
+
+Set priority per-type at registration time:
+
+```go
+var urgentTask = burrow.DefineTask("urgent-cleanup", handler, burrow.WithPriority(10))
+```
 
 ## Job Lifecycle
 
@@ -109,7 +148,9 @@ With the default base delay of 30 seconds:
 | 4 | 4m |
 | 5 | 8m |
 
-Once a job has exhausted its `MaxRetries` (default: 3), it transitions to `dead` — a terminal status. The last error message is recorded in `LastError`.
+Once a job has exhausted its `MaxRetries` (default: 3), it transitions to `dead` — a terminal status. The last error message is recorded in `LastError`, and the Go error type is stored in `ErrorClass` (e.g., `*net.OpError`) for monitoring. The `LastAttemptedAt` timestamp records when the last handler execution started.
+
+Jobs that complete successfully store their handler's return value (if any) in the `Result` field as JSON.
 
 Jobs can also reach `dead` by being manually cancelled via the admin UI.
 
@@ -153,17 +194,19 @@ func (a *App) handleSendEmail(ctx context.Context, payload []byte) error {
 
 ## Admin UI
 
-The jobs app implements `HasAdmin` and provides a ModelAdmin-based admin interface at `/admin/jobs`:
+The jobs app implements `HasAdmin` and provides an admin interface at `/admin/jobs`:
 
-- **List view** with status filter, pagination, and sortable columns
-- **Row actions**: Retry (re-queue dead jobs) and Cancel (stop pending/running jobs)
-- **Detail view** with pretty-printed JSON payload and error message
+- **List view** with status filter pills, priority column, pagination, and inline action buttons
+- **Row actions**: Retry (re-queue dead/failed jobs), Cancel (stop pending/running jobs), Delete
+- **Detail view** with pretty-printed JSON payload, result (on success), error message with error class badge, and all timestamps
 
 ## Maintenance
 
 The worker pool runs two automatic maintenance tasks every 5 minutes:
 
-**Stale job rescue:** Jobs stuck in `running` for longer than 10 minutes are reset to `pending`. This handles worker crashes or panics where a job was claimed but never completed.
+**Stale job rescue:** Jobs stuck in `running` for longer than 10 minutes are reset to `pending`. This handles worker crashes where a job was claimed but never completed. The rescue is guarded against concurrent completion — if a worker finishes a job between the stale query and the reset, the job's completed status is preserved.
+
+**Panic recovery:** Worker goroutines recover from panics in job handlers, converting them into failures with a stack trace. The worker stays alive and continues processing other jobs.
 
 **Completed job cleanup:** Jobs in `completed` status older than 24 hours are hard-deleted from the database to prevent unbounded table growth.
 

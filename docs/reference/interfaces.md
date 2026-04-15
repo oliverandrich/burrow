@@ -419,12 +419,20 @@ type HasJobs interface {
 
 Registers background job handlers with the job queue. The queue implementation (e.g., `contrib/jobs`) discovers all `HasJobs` apps during its `PostConfigure()` phase and calls `RegisterJobs` on each one. Because `PostConfigure()` runs after all `Configure()` calls, your app can safely use state set in `Configure()` inside `RegisterJobs`.
 
-Use `q.Handle()` to register named handlers and save the queue reference for later enqueueing:
+Use typed task definitions for compile-time safety, or the raw `q.Handle()` for dynamic job types:
 
 ```go
+// Typed (recommended):
+var cleanupTask = burrow.DefineTask("notes.cleanup", handleCleanup)
+
+func (a *App) RegisterJobs(q burrow.Queue) {
+    cleanupTask.Register(q)
+}
+
+// Raw:
 func (a *App) RegisterJobs(q burrow.Queue) {
     q.Handle("notes.cleanup", a.handleCleanup)
-    a.jobs = q
+    a.jobs = q // store as burrow.Enqueuer for later enqueueing
 }
 ```
 

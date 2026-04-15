@@ -1,5 +1,5 @@
 // Package polls implements a polls application for the burrow tutorial.
-// Step 6 adds an admin panel with ModelAdmin for questions.
+// Step 6 adds an admin panel.
 package polls
 
 import (
