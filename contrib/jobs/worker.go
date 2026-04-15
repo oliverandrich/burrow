@@ -3,7 +3,9 @@ package jobs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"runtime"
 	"sync"
 	"time"
 
@@ -160,7 +162,7 @@ func (w *Worker) processJob(job *Job) {
 	if w.templateExec != nil {
 		ctx = burrow.WithTemplateExecutor(ctx, w.templateExec)
 	}
-	err := handler(ctx, []byte(job.Payload))
+	err := w.safeCall(ctx, handler, job)
 	if err != nil {
 		slog.Error("jobs: handler failed", "type", job.Type, "id", job.ID, "error", err, "attempt", job.Attempts)
 		if failErr := w.repo.Fail(context.Background(), job, err.Error(), w.config.RetryBaseDelay); failErr != nil {
@@ -180,4 +182,17 @@ func (w *Worker) processJob(job *Job) {
 		}
 		slog.Error("jobs: complete failed", "error", err, "id", job.ID)
 	}
+}
+
+// safeCall invokes a job handler and recovers from panics, converting them
+// into errors with a stack trace.
+func (w *Worker) safeCall(ctx context.Context, handler burrow.JobHandlerFunc, job *Job) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			stack := make([]byte, 4096)
+			n := runtime.Stack(stack, false)
+			err = fmt.Errorf("panic: %v\n%s", r, stack[:n])
+		}
+	}()
+	return handler(ctx, []byte(job.Payload))
 }
