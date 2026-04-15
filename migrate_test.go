@@ -12,7 +12,7 @@ import (
 // testWidget is a document type for migration/registration tests.
 type testWidget struct {
 	document.Base
-	Name  string `json:"name" den:"name,index"`
+	Name  string `json:"name" den:"index"`
 	Color string `json:"color"`
 }
 
@@ -75,7 +75,7 @@ func TestRegistryRegisterDocumentsMultipleApps(t *testing.T) {
 	// testSetting is a second document type.
 	type testSetting struct {
 		document.Base
-		Key   string `json:"key" den:"key,unique"`
+		Key   string `json:"key" den:"unique"`
 		Value string `json:"value"`
 	}
 
