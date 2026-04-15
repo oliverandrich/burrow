@@ -145,7 +145,7 @@ func (w *Worker) processJob(job *Job) {
 		slog.Error("jobs: unknown job type", "type", job.Type, "id", job.ID)
 		// Force dead immediately — unknown types should never retry.
 		job.Attempts = job.MaxRetries
-		if err := w.repo.Fail(context.Background(), job, "unknown job type: "+job.Type, w.config.RetryBaseDelay); err != nil {
+		if err := w.repo.Fail(context.Background(), job, "unknown job type: "+job.Type, "", w.config.RetryBaseDelay); err != nil {
 			if errors.Is(err, ErrStaleJob) {
 				slog.Warn("jobs: job was reclaimed by another worker", "id", job.ID)
 				return
@@ -162,10 +162,21 @@ func (w *Worker) processJob(job *Job) {
 	if w.templateExec != nil {
 		ctx = burrow.WithTemplateExecutor(ctx, w.templateExec)
 	}
+
+	// Inject result capture so result-aware handlers (ResultTask) can
+	// write their return values back.
+	capture := &burrow.ResultCapture{}
+	ctx = burrow.WithResultCapture(ctx, capture)
+
+	// Stamp last attempt time.
+	now := time.Now()
+	job.LastAttemptedAt = &now
+
 	err := w.safeCall(ctx, handler, job)
 	if err != nil {
-		slog.Error("jobs: handler failed", "type", job.Type, "id", job.ID, "error", err, "attempt", job.Attempts)
-		if failErr := w.repo.Fail(context.Background(), job, err.Error(), w.config.RetryBaseDelay); failErr != nil {
+		errorClass := fmt.Sprintf("%T", err)
+		slog.Error("jobs: handler failed", "type", job.Type, "id", job.ID, "error", err, "error_class", errorClass, "attempt", job.Attempts)
+		if failErr := w.repo.Fail(context.Background(), job, err.Error(), errorClass, w.config.RetryBaseDelay); failErr != nil {
 			if errors.Is(failErr, ErrStaleJob) {
 				slog.Warn("jobs: job was reclaimed by another worker", "id", job.ID)
 				return
@@ -175,7 +186,8 @@ func (w *Worker) processJob(job *Job) {
 		return
 	}
 
-	if err := w.repo.Complete(context.Background(), job); err != nil {
+	result := capture.Result()
+	if err := w.repo.Complete(context.Background(), job, result); err != nil {
 		if errors.Is(err, ErrStaleJob) {
 			slog.Warn("jobs: job was reclaimed by another worker", "id", job.ID)
 			return

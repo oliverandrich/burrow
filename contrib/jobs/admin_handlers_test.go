@@ -28,7 +28,7 @@ func TestRetryHandler(t *testing.T) {
 	job := claimed[0]
 	job.Attempts = 3
 	job.MaxRetries = 3
-	require.NoError(t, repo.Fail(ctx, job, "boom", 30*time.Second)) // dead
+	require.NoError(t, repo.Fail(ctx, job, "boom", "", 30*time.Second)) // dead
 
 	handler := retryHandler(repo)
 
@@ -106,7 +106,7 @@ func TestCancelHandler_InvalidStatus(t *testing.T) {
 	require.Len(t, claimed, 1)
 	job := claimed[0]
 	job.Attempts = 1
-	require.NoError(t, repo.Complete(ctx, job)) // completed
+	require.NoError(t, repo.Complete(ctx, job, "")) // completed
 
 	handler := cancelHandler(repo)
 

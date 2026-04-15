@@ -93,7 +93,7 @@ func TestRepository_Complete(t *testing.T) {
 	job := claimed[0]
 	job.Attempts = 1
 
-	err = repo.Complete(ctx, job)
+	err = repo.Complete(ctx, job, "")
 	require.NoError(t, err)
 
 	// Verify status.
@@ -119,7 +119,7 @@ func TestRepository_Fail_Retry(t *testing.T) {
 	// Fail with attempts=1, maxRetries=3 -> should retry.
 	job.Attempts = 1
 	job.MaxRetries = 3
-	err = repo.Fail(ctx, job, "connection timeout", 30*time.Second)
+	err = repo.Fail(ctx, job, "connection timeout", "", 30*time.Second)
 	require.NoError(t, err)
 
 	updated, err := den.FindByID[Job](ctx, db, job.ID)
@@ -157,7 +157,7 @@ func TestRepository_Fail_BackoffDuration(t *testing.T) {
 		job.Attempts = tt.attempt
 		job.MaxRetries = 10
 		before := time.Now()
-		err = repo.Fail(ctx, job, "err", baseDelay)
+		err = repo.Fail(ctx, job, "err", "", baseDelay)
 		require.NoError(t, err)
 
 		updated, err := den.FindByID[Job](ctx, db, job.ID)
@@ -185,7 +185,7 @@ func TestRepository_Fail_Dead(t *testing.T) {
 	// Fail with attempts=3, maxRetries=3 -> should be dead.
 	job.Attempts = 3
 	job.MaxRetries = 3
-	err = repo.Fail(ctx, job, "permanent failure", 30*time.Second)
+	err = repo.Fail(ctx, job, "permanent failure", "", 30*time.Second)
 	require.NoError(t, err)
 
 	updated, err := den.FindByID[Job](ctx, db, job.ID)
@@ -210,7 +210,7 @@ func TestRepository_DeleteCompleted(t *testing.T) {
 	job.Attempts = 1
 
 	// Complete and backdate.
-	err = repo.Complete(ctx, job)
+	err = repo.Complete(ctx, job, "")
 	require.NoError(t, err)
 
 	// Backdate the completed_at time.
@@ -297,7 +297,7 @@ func TestRepository_ListPaged(t *testing.T) {
 			require.NoError(t, claimErr)
 			require.Len(t, claimed, 1)
 			claimed[0].Attempts = 1
-			require.NoError(t, repo.Complete(ctx, claimed[0]))
+			require.NoError(t, repo.Complete(ctx, claimed[0], ""))
 		}
 	}
 
@@ -356,7 +356,7 @@ func TestRepository_Retry(t *testing.T) {
 		job := claimed[0]
 		job.Attempts = 3
 		job.MaxRetries = 3
-		require.NoError(t, repo.Fail(ctx, job, "boom", 30*time.Second)) // marks dead
+		require.NoError(t, repo.Fail(ctx, job, "boom", "", 30*time.Second)) // marks dead
 
 		err = repo.Retry(ctx, job.ID)
 		require.NoError(t, err)
@@ -379,7 +379,7 @@ func TestRepository_Retry(t *testing.T) {
 		job := claimed[0]
 		job.Attempts = 1
 		job.MaxRetries = 3
-		require.NoError(t, repo.Fail(ctx, job, "oops", 30*time.Second)) // marks failed
+		require.NoError(t, repo.Fail(ctx, job, "oops", "", 30*time.Second)) // marks failed
 
 		err = repo.Retry(ctx, job.ID)
 		require.NoError(t, err)
@@ -456,7 +456,7 @@ func TestComplete_GuardRejectsWrongWorker(t *testing.T) {
 	// Try to Complete with worker B's ID — should fail.
 	claimed[0].WorkerID = "worker-b"
 	claimed[0].Attempts = 1
-	err = repo.Complete(ctx, claimed[0])
+	err = repo.Complete(ctx, claimed[0], "")
 	require.ErrorIs(t, err, ErrStaleJob)
 
 	// Job should still be running.
@@ -481,7 +481,7 @@ func TestFail_GuardRejectsWrongWorker(t *testing.T) {
 	// Try to Fail with worker B's ID — should fail.
 	claimed[0].WorkerID = "worker-b"
 	claimed[0].Attempts = 1
-	err = repo.Fail(ctx, claimed[0], "error", 30*time.Second)
+	err = repo.Fail(ctx, claimed[0], "error", "", 30*time.Second)
 	require.ErrorIs(t, err, ErrStaleJob)
 
 	// Job should still be running.
@@ -503,7 +503,7 @@ func TestComplete_ClearsWorkerID(t *testing.T) {
 	require.Len(t, claimed, 1)
 
 	claimed[0].Attempts = 1
-	err = repo.Complete(ctx, claimed[0])
+	err = repo.Complete(ctx, claimed[0], "")
 	require.NoError(t, err)
 
 	// Worker ID should be cleared after completion.
@@ -554,7 +554,7 @@ func TestRepository_Cancel(t *testing.T) {
 		require.NoError(t, claimErr)
 		require.Len(t, claimed, 1)
 		job := claimed[0]
-		require.NoError(t, repo.Complete(ctx, job))
+		require.NoError(t, repo.Complete(ctx, job, ""))
 
 		err = repo.Cancel(ctx, job.ID)
 		require.ErrorIs(t, err, ErrInvalidStatus)
@@ -591,7 +591,7 @@ func TestRepository_RescueStale_SkipsCompletedJobs(t *testing.T) {
 	// Complete the job — simulates the race where worker finishes between
 	// RescueStale's query and its update.
 	job.Attempts = 1
-	require.NoError(t, repo.Complete(ctx, job))
+	require.NoError(t, repo.Complete(ctx, job, ""))
 
 	// RescueStale should skip the completed job.
 	rescued, err := repo.RescueStale(ctx, 5*time.Minute)
@@ -601,4 +601,142 @@ func TestRepository_RescueStale_SkipsCompletedJobs(t *testing.T) {
 	got, err := repo.FindByID(ctx, job.ID)
 	require.NoError(t, err)
 	assert.Equal(t, StatusCompleted, got.Status, "status should remain completed")
+}
+
+func TestRepository_Complete_WithResult(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	require.NoError(t, err)
+
+	claimed, err := repo.Claim(ctx, "test-worker", 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	job := claimed[0]
+	job.Attempts = 1
+
+	err = repo.Complete(ctx, job, `{"output":"done"}`)
+	require.NoError(t, err)
+
+	updated, err := den.FindByID[Job](ctx, db, job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, StatusCompleted, updated.Status)
+	assert.JSONEq(t, `{"output":"done"}`, updated.Result)
+}
+
+func TestRepository_Complete_WithoutResult(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	require.NoError(t, err)
+
+	claimed, err := repo.Claim(ctx, "test-worker", 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	job := claimed[0]
+	job.Attempts = 1
+
+	err = repo.Complete(ctx, job, "")
+	require.NoError(t, err)
+
+	updated, err := den.FindByID[Job](ctx, db, job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, StatusCompleted, updated.Status)
+	assert.Empty(t, updated.Result)
+}
+
+func TestRepository_Fail_ErrorClass(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	require.NoError(t, err)
+
+	claimed, err := repo.Claim(ctx, "test-worker", 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	job := claimed[0]
+	job.Attempts = 3
+	job.MaxRetries = 3
+
+	err = repo.Fail(ctx, job, "connection refused", "*net.OpError", 30*time.Second)
+	require.NoError(t, err)
+
+	updated, err := den.FindByID[Job](ctx, db, job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, StatusDead, updated.Status)
+	assert.Equal(t, "connection refused", updated.LastError)
+	assert.Equal(t, "*net.OpError", updated.ErrorClass)
+}
+
+func TestRepository_GetResult(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	require.NoError(t, err)
+
+	claimed, err := repo.Claim(ctx, "test-worker", 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	job := claimed[0]
+	job.Attempts = 1
+
+	err = repo.Complete(ctx, job, `{"count":42}`)
+	require.NoError(t, err)
+
+	result, err := repo.GetResult(ctx, job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, `{"count":42}`, result)
+}
+
+func TestRepository_GetResult_NotFound(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+
+	_, err := repo.GetResult(context.Background(), "nonexistent")
+	require.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestRepository_Retry_ClearsResultAndErrorClass(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	require.NoError(t, err)
+
+	claimed, err := repo.Claim(ctx, "test-worker", 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	job := claimed[0]
+	job.Attempts = 3
+	job.MaxRetries = 3
+
+	// Fail with error class and result won't be set (only on success), but
+	// let's manually set a result to verify it gets cleared on retry.
+	require.NoError(t, repo.Fail(ctx, job, "boom", "*errors.errorString", 30*time.Second))
+
+	// Manually set result to verify retry clears it.
+	_, err = den.FindOneAndUpdate[Job](ctx, db,
+		den.SetFields{"result": `{"stale":"data"}`},
+		where.Field("_id").Eq(job.ID),
+	)
+	require.NoError(t, err)
+
+	err = repo.Retry(ctx, job.ID)
+	require.NoError(t, err)
+
+	got, err := repo.GetByID(ctx, job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, StatusPending, got.Status)
+	assert.Empty(t, got.LastError)
+	assert.Empty(t, got.ErrorClass)
+	assert.Empty(t, got.Result)
 }

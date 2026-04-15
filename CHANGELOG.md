@@ -31,6 +31,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **User search in admin** — the user admin list now supports search across username, name, and email fields.
 - **Inline invite creation** — the invite admin list now features an htmx-powered inline form that slides open on button click instead of navigating to a separate page.
 - **`burrow.DefineTask[P]()`** — type-safe generic task definitions for the jobs system. Wraps `Queue.Handle` and `Queue.Enqueue` with automatic JSON marshalling, ensuring compile-time agreement between producer and consumer payload types. Auth email jobs migrated as first consumer.
+- **`burrow.DefineResultTask[P, R]()`** — variant of `DefineTask` for handlers that return both a result and an error. Results are persisted as JSON on the job and visible in the admin detail view.
+- **Job result persistence** — completed jobs now store their handler's return value in a `Result` field (JSON). Failed jobs additionally record the Go error type in `ErrorClass` and the timestamp of the last handler invocation in `LastAttemptedAt`. All three fields are displayed in the admin detail view and cleared on retry.
 
 ### Changed
 

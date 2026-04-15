@@ -245,7 +245,7 @@ func TestWorker_Maintenance(t *testing.T) {
 	require.Len(t, claimed2, 1)
 	job2 := claimed2[0]
 	job2.Attempts = 1
-	require.NoError(t, repo.Complete(ctx, job2))
+	require.NoError(t, repo.Complete(ctx, job2, ""))
 	completedJob, err := den.FindByID[Job](ctx, db, job2.ID)
 	require.NoError(t, err)
 	oldCompleted := time.Now().Add(-48 * time.Hour)

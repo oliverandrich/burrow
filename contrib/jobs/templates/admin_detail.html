@@ -38,6 +38,10 @@
             <dt class="col-sm-3">{{ t "admin-job-detail-failed-at" }}</dt>
             <dd class="col-sm-9">{{ .Job.FailedAt.Format "2006-01-02 15:04:05" }}</dd>
             {{- end }}
+            {{ if .Job.LastAttemptedAt -}}
+            <dt class="col-sm-3">{{ t "admin-job-detail-last-attempted-at" }}</dt>
+            <dd class="col-sm-9">{{ .Job.LastAttemptedAt.Format "2006-01-02 15:04:05" }}</dd>
+            {{- end }}
             <dt class="col-sm-3">{{ t "admin-job-detail-created-at" }}</dt>
             <dd class="col-sm-9">{{ .Job.CreatedAt.Format "2006-01-02 15:04:05" }}</dd>
             {{ if .Job.UpdatedAt -}}
@@ -56,11 +60,22 @@
         <pre class="mb-0"><code>{{ prettyJSON .Job.Payload }}</code></pre>
     </div>
 </div>
+<!-- Result card (conditional) -->
+{{ if .Job.Result -}}
+<div class="card mb-4 border-success">
+    <div class="card-header text-bg-success">
+        <h5 class="card-title mb-0">{{ t "admin-job-detail-result" }}</h5>
+    </div>
+    <div class="card-body">
+        <pre class="mb-0"><code>{{ prettyJSON .Job.Result }}</code></pre>
+    </div>
+</div>
+{{- end }}
 <!-- Last error card (conditional) -->
 {{ if .Job.LastError -}}
 <div class="card mb-4 border-danger">
     <div class="card-header text-bg-danger">
-        <h5 class="card-title mb-0">{{ t "admin-job-detail-last-error" }}</h5>
+        <h5 class="card-title mb-0">{{ t "admin-job-detail-last-error" }}{{ if .Job.ErrorClass }} <span class="badge text-bg-light ms-2">{{ .Job.ErrorClass }}</span>{{ end }}</h5>
     </div>
     <div class="card-body">
         <pre class="mb-0 text-danger">{{ .Job.LastError }}</pre>

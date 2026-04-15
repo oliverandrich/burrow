@@ -75,17 +75,21 @@ func (r *Repository) Claim(ctx context.Context, workerID string, limit int) ([]*
 	return claimed, nil
 }
 
-// Complete marks a job as completed. The update is guarded by an ownership
-// check: only the worker that claimed the job (matching worker_id and
-// status=running) can complete it. Returns ErrStaleJob if ownership has changed.
-func (r *Repository) Complete(ctx context.Context, job *Job) error {
+// Complete marks a job as completed. The result parameter holds an optional
+// JSON-encoded handler return value (empty string means no result). The update
+// is guarded by an ownership check: only the worker that claimed the job
+// (matching worker_id and status=running) can complete it. Returns ErrStaleJob
+// if ownership has changed.
+func (r *Repository) Complete(ctx context.Context, job *Job, result string) error {
 	now := time.Now()
 	_, err := den.FindOneAndUpdate[Job](ctx, r.db,
 		den.SetFields{
-			"status":       string(StatusCompleted),
-			"completed_at": &now,
-			"attempts":     job.Attempts,
-			"worker_id":    "",
+			"status":            string(StatusCompleted),
+			"completed_at":      &now,
+			"attempts":          job.Attempts,
+			"result":            result,
+			"last_attempted_at": job.LastAttemptedAt,
+			"worker_id":         "",
 		},
 		where.Field("_id").Eq(job.ID),
 		where.Field("status").Eq(string(StatusRunning)),
@@ -102,15 +106,18 @@ func (r *Repository) Complete(ctx context.Context, job *Job) error {
 
 // Fail records a job failure. If attempts < maxRetries, the job is re-queued
 // with exponential backoff (baseDelay * 2^(attempts-1)). Otherwise it is marked dead.
+// The errorClass parameter stores the Go type name of the error for monitoring.
 // The update is guarded by an ownership check matching worker_id and status=running.
 // Returns ErrStaleJob if ownership has changed.
-func (r *Repository) Fail(ctx context.Context, job *Job, errMsg string, baseDelay time.Duration) error {
+func (r *Repository) Fail(ctx context.Context, job *Job, errMsg, errorClass string, baseDelay time.Duration) error {
 	now := time.Now()
 	fields := den.SetFields{
-		"last_error": errMsg,
-		"locked_at":  nil,
-		"worker_id":  "",
-		"attempts":   job.Attempts,
+		"last_error":        errMsg,
+		"error_class":       errorClass,
+		"last_attempted_at": job.LastAttemptedAt,
+		"locked_at":         nil,
+		"worker_id":         "",
+		"attempts":          job.Attempts,
 	}
 
 	if job.Attempts < job.MaxRetries {
@@ -181,18 +188,31 @@ func (r *Repository) Delete(ctx context.Context, id string) error {
 	return den.Delete(ctx, r.db, job)
 }
 
+// GetResult returns the stored result for a job by ID. Returns ErrNotFound
+// if the job does not exist.
+func (r *Repository) GetResult(ctx context.Context, id string) (string, error) {
+	job, err := den.FindByID[Job](ctx, r.db, id)
+	if err != nil {
+		return "", err
+	}
+	return job.Result, nil
+}
+
 // Retry resets a dead or failed job back to pending for re-processing.
 func (r *Repository) Retry(ctx context.Context, id string) error {
 	now := time.Now()
 	_, err := den.FindOneAndUpdate[Job](ctx, r.db,
 		den.SetFields{
-			"status":     string(StatusPending),
-			"attempts":   0,
-			"last_error": "",
-			"failed_at":  nil,
-			"locked_at":  nil,
-			"run_at":     now,
-			"worker_id":  "",
+			"status":            string(StatusPending),
+			"attempts":          0,
+			"last_error":        "",
+			"error_class":       "",
+			"result":            "",
+			"last_attempted_at": nil,
+			"failed_at":         nil,
+			"locked_at":         nil,
+			"run_at":            now,
+			"worker_id":         "",
 		},
 		where.Field("_id").Eq(id),
 		where.Field("status").In(string(StatusFailed), string(StatusDead)),
