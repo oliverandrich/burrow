@@ -1116,3 +1116,134 @@ func TestListNotesHandlerWithSearch(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Searchable Note")
 	assert.NotContains(t, rec.Body.String(), "Other Note")
 }
+
+// --- Repository: ListAllPaged and DeleteByID ---
+
+func TestListAllPaged(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Create notes for different users.
+	for i := range 5 {
+		require.NoError(t, repo.Create(ctx, &Note{
+			Title:   fmt.Sprintf("Note %d", i),
+			Content: "content",
+			UserID:  fmt.Sprintf("user-%d", i%2),
+		}))
+	}
+
+	// ListAllPaged returns notes from all users (no user scope).
+	notes, page, err := repo.ListAllPaged(ctx, burrow.PageRequest{Limit: 10, Page: 1})
+	require.NoError(t, err)
+	assert.Len(t, notes, 5)
+	assert.Equal(t, 5, page.TotalCount)
+}
+
+func TestListAllPaged_Pagination(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	for i := range 5 {
+		require.NoError(t, repo.Create(ctx, &Note{
+			Title:   fmt.Sprintf("Note %d", i),
+			Content: "content",
+			UserID:  "user-42",
+		}))
+	}
+
+	notes, page, err := repo.ListAllPaged(ctx, burrow.PageRequest{Limit: 2, Page: 1})
+	require.NoError(t, err)
+	assert.Len(t, notes, 2)
+	assert.Equal(t, 5, page.TotalCount)
+	assert.Equal(t, 3, page.TotalPages)
+	assert.True(t, page.HasMore)
+}
+
+func TestDeleteByID(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	note := &Note{Title: "To Delete", Content: "bye", UserID: "user-42"}
+	require.NoError(t, repo.Create(ctx, note))
+
+	err := repo.DeleteByID(ctx, note.ID)
+	require.NoError(t, err)
+
+	// Verify deleted.
+	notes, _, err := repo.ListAllPaged(ctx, burrow.PageRequest{Limit: 10, Page: 1})
+	require.NoError(t, err)
+	for _, n := range notes {
+		assert.NotEqual(t, note.ID, n.ID)
+	}
+}
+
+func TestDeleteByID_NonExistent(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+
+	// Should not error for non-existent ID.
+	err := repo.DeleteByID(context.Background(), "nonexistent")
+	require.NoError(t, err)
+}
+
+// --- Admin handler ---
+
+func TestAdminListNotes(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	for i := range 3 {
+		require.NoError(t, repo.Create(ctx, &Note{
+			Title:   fmt.Sprintf("Admin Note %d", i),
+			Content: "content",
+			UserID:  "user-42",
+		}))
+	}
+
+	h := &App{repo: repo}
+
+	// Stub executor that renders template name as content.
+	stubExec := func(_ context.Context, name string, _ map[string]any) (template.HTML, error) { //nolint:unparam // test stub always succeeds
+		return template.HTML("<!-- " + name + " -->"), nil //nolint:gosec // test stub
+	}
+
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.WithTemplateExecutor(r.Context(), stubExec)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	r.Get("/admin/notes", burrow.Handle(h.adminListNotes))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/notes", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestAdminDeleteNote(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	note := &Note{Title: "Admin Delete", Content: "bye", UserID: "user-42"}
+	require.NoError(t, repo.Create(ctx, note))
+
+	h := &App{repo: repo}
+
+	r := chi.NewRouter()
+	r.Delete("/admin/notes/{id}", burrow.Handle(h.adminDeleteNote))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/notes/"+note.ID, nil)
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}

@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -153,4 +154,30 @@ func TestLayoutReturnsTemplateName(t *testing.T) {
 
 func TestNavLayoutReturnsTemplateName(t *testing.T) {
 	assert.Equal(t, "bootstrap/nav_layout", NavLayout())
+}
+
+func TestOverlayFS_OpenCSSHTML(t *testing.T) {
+	ofs := &overlayFS{
+		base:    nil, // not needed for css.html
+		cssHTML: `<link rel="stylesheet" href="/static/bootstrap/custom.css">`,
+	}
+
+	f, err := ofs.Open("css.html")
+	require.NoError(t, err)
+	defer f.Close()
+
+	// Read content.
+	data := make([]byte, 200)
+	n, _ := f.Read(data)
+	assert.Contains(t, string(data[:n]), "custom.css")
+
+	// Stat should work.
+	info, err := f.Stat()
+	require.NoError(t, err)
+	assert.Equal(t, "css.html", info.Name())
+	assert.False(t, info.IsDir())
+	assert.Equal(t, int64(len(ofs.cssHTML)), info.Size())
+	assert.Equal(t, fs.FileMode(0o444), info.Mode())
+	assert.NotNil(t, info.ModTime())
+	assert.Nil(t, info.Sys())
 }

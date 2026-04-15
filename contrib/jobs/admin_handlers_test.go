@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -310,5 +311,135 @@ func TestCancelHandler_InvalidID(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	// "abc" is a valid string ID but doesn't exist — cancel returns ErrNotFound.
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// --- App-level admin handler tests ---
+
+// stubExecMiddleware injects a TemplateExecutor that renders any template
+// as its name — enough for handler tests that just verify status codes.
+var stubExecMiddleware = func(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := burrow.WithTemplateExecutor(r.Context(), func(_ context.Context, name string, _ map[string]any) (template.HTML, error) {
+			return template.HTML("<!-- " + name + " -->"), nil //nolint:gosec // test stub
+		})
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func newTestApp(t *testing.T) *App {
+	t.Helper()
+	db := testDB(t)
+	return &App{
+		repo:       NewRepository(db),
+		handlers:   make(map[string]burrow.JobHandlerFunc),
+		retries:    make(map[string]int),
+		priorities: make(map[string]int),
+	}
+}
+
+func TestAdminListJobs(t *testing.T) {
+	app := newTestApp(t)
+	ctx := context.Background()
+
+	for range 3 {
+		_, err := app.repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
+		require.NoError(t, err)
+	}
+
+	r := chi.NewRouter()
+	r.Use(stubExecMiddleware)
+	r.Get("/admin/jobs", burrow.Handle(app.adminListJobs))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAdminListJobs_StatusFilter(t *testing.T) {
+	app := newTestApp(t)
+	ctx := context.Background()
+
+	_, err := app.repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
+	require.NoError(t, err)
+
+	r := chi.NewRouter()
+	r.Use(stubExecMiddleware)
+	r.Get("/admin/jobs", burrow.Handle(app.adminListJobs))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs?status=pending", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAdminJobDetail(t *testing.T) {
+	app := newTestApp(t)
+	ctx := context.Background()
+
+	job, err := app.repo.Enqueue(ctx, "task", `{"key":"value"}`, 3, 0, time.Now())
+	require.NoError(t, err)
+
+	r := chi.NewRouter()
+	r.Use(stubExecMiddleware)
+	r.Get("/admin/jobs/{id}", burrow.Handle(app.adminJobDetail))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs/"+job.ID, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAdminJobDetail_NotFound(t *testing.T) {
+	app := newTestApp(t)
+
+	r := chi.NewRouter()
+	r.Use(burrow.TestErrorExecMiddleware)
+	r.Get("/admin/jobs/{id}", burrow.Handle(app.adminJobDetail))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs/nonexistent", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestAdminDeleteJob(t *testing.T) {
+	app := newTestApp(t)
+	ctx := context.Background()
+
+	job, err := app.repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
+	require.NoError(t, err)
+
+	r := chi.NewRouter()
+	r.Delete("/admin/jobs/{id}", burrow.Handle(app.adminDeleteJob))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/jobs/"+job.ID, nil)
+	req.Header.Set("HX-Request", "true")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Job should be gone.
+	_, err = app.repo.GetByID(ctx, job.ID)
+	require.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestAdminDeleteJob_NotFound(t *testing.T) {
+	app := newTestApp(t)
+
+	r := chi.NewRouter()
+	r.Use(burrow.TestErrorExecMiddleware)
+	r.Delete("/admin/jobs/{id}", burrow.Handle(app.adminDeleteJob))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/jobs/nonexistent", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
