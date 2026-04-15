@@ -218,8 +218,10 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	if err := s.registry.Seed(ctx); err != nil {
-		return fmt.Errorf("seed: %w", err)
+	if s.appCfg.Config.Server.Seed {
+		if err := s.registry.Seed(ctx); err != nil {
+			return fmt.Errorf("seed: %w", err)
+		}
 	}
 
 	// Register core request func map providers.

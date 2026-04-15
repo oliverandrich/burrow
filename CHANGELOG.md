@@ -37,6 +37,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Changed
 
+- **Seed requires `--seed` flag** — `Seedable.Seed()` no longer runs unconditionally on every server start. Pass `--seed` (or set `SEED=true`) to run seed functions. This prevents non-idempotent seeders from creating duplicates on restart.
 - **`burrow.Queue` split into `Enqueuer` + `Queue`** — new `Enqueuer` interface holds `Enqueue`, `EnqueueAt`, and `Dequeue`. `Queue` embeds `Enqueuer` and adds `Handle`. Code that only submits jobs can now accept `Enqueuer` instead of the full `Queue`. `TaskDefinition` and `ResultTask` store `Enqueuer` internally.
 - **Form fields with nil pointers render as zero values** — `forms.extractFields` now returns the element type's zero value (e.g. `""` for `*string`) instead of `nil` when a pointer field is nil. Templates can use `{{ .Value }}` on optional fields without special-casing nil.
 

@@ -67,7 +67,7 @@ When `Run()` is called, the following happens in order:
 2. **Open database** — connects to Den (SQLite with WAL mode, or PostgreSQL)
 3. **Register documents** — calls `Documents()` on every `HasDocuments` app and registers types with Den
 4. **Configure apps** — calls `Configure()` on each `Configurable` app with the shared `AppConfig`
-5. **Seed database** — calls `Seed()` on each `Seedable` app
+5. **Seed database** — calls `Seed()` on each `Seedable` app (only when `--seed` flag is set)
 6. **Post-configure apps** — calls `PostConfigure()` on each `PostConfigurable` app
 7. **Build i18n bundle** — creates the i18n bundle from configured languages, loads translation files from all `HasTranslations` apps, and registers locale detection middleware
 8. **Build templates** — collects `.html` files from all `HasTemplates` apps and template functions from all `HasFuncMap` apps, parses them into a single global `*template.Template`
@@ -178,7 +178,7 @@ Collects CLI subcommands from all `HasCLICommands` apps.
 func (r *Registry) Seed(ctx context.Context) error
 ```
 
-Calls `Seed()` on each `Seedable` app in order.
+Calls `Seed()` on each `Seedable` app in order. Only invoked when the server is started with the `--seed` flag.
 
 ## Render
 

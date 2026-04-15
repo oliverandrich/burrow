@@ -369,7 +369,7 @@ go run .
 Open `http://localhost:8080` — you'll see the Bootstrap-styled homepage. Click "View Polls" to see the (empty) polls list. There are no questions yet because we haven't added a way to create them.
 
 !!! tip "Seeding test data"
-    You can add a `Seed()` method to your app (implementing the `Seedable` interface) to insert test data automatically at startup. See [Part 2](part2.md) for the app setup pattern — you'd add questions and choices using `den.Insert()` in your `Seed()` method.
+    You can add a `Seed()` method to your app (implementing the `Seedable` interface) to insert test data on demand. Start the server with `--seed` to run all seed functions: `go run . --seed`. See [Part 2](part2.md) for the app setup pattern — you'd add questions and choices using `den.Insert()` in your `Seed()` method.
 
 ## What You've Learnt
 

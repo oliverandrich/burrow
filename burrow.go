@@ -248,8 +248,10 @@ type HasRoutes interface {
 	Routes(r chi.Router)
 }
 
-// Seedable is implemented by apps that can seed the database
-// with initial data.
+// Seedable is implemented by apps that can seed the database with initial
+// data. Seed functions only run when the server is started with the --seed
+// flag (or SEED=true environment variable). Implementations should be
+// idempotent — safe to call multiple times without creating duplicates.
 type Seedable interface {
 	Seed(ctx context.Context) error
 }

@@ -318,7 +318,7 @@ type Seedable interface {
 }
 ```
 
-Seeds the database with initial data. Called automatically during startup after migrations and app registration. Seeders run in app registration order and stop on the first error.
+Seeds the database with initial data. Only runs when the server is started with the `--seed` flag (or `SEED=true`). Seeders run in app registration order and stop on the first error. Implementations should be idempotent — safe to call multiple times without creating duplicates.
 
 ```go
 func (a *App) Seed(ctx context.Context) error {
