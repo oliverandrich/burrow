@@ -236,7 +236,9 @@ func (r *Repository) Cancel(ctx context.Context, id string) error {
 }
 
 // RescueStale resets running jobs that have been locked longer than the
-// given duration back to pending status.
+// given duration back to pending status. Each update is guarded by a
+// status check to prevent resetting jobs that completed between the
+// initial query and the update.
 func (r *Repository) RescueStale(ctx context.Context, staleDuration time.Duration) (int64, error) {
 	cutoffStr := time.Now().Add(-staleDuration).Format(time.RFC3339Nano)
 
@@ -248,12 +250,23 @@ func (r *Repository) RescueStale(ctx context.Context, staleDuration time.Duratio
 		return 0, fmt.Errorf("rescue stale jobs: %w", err)
 	}
 
+	now := time.Now()
 	var count int64
 	for _, job := range stale {
-		job.Status = StatusPending
-		job.LockedAt = nil
-		job.WorkerID = ""
-		if err := den.Update(ctx, r.db, job); err != nil {
+		_, err := den.FindOneAndUpdate[Job](ctx, r.db,
+			den.SetFields{
+				"status":    string(StatusPending),
+				"locked_at": nil,
+				"worker_id": "",
+				"run_at":    now,
+			},
+			where.Field("_id").Eq(job.ID),
+			where.Field("status").Eq(string(StatusRunning)),
+		)
+		if err != nil {
+			if errors.Is(err, den.ErrNotFound) {
+				continue // Job was completed/failed between query and update — skip.
+			}
 			return count, fmt.Errorf("rescue stale job %s: %w", job.ID, err)
 		}
 		count++

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/where"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -563,4 +564,41 @@ func TestRepository_Cancel(t *testing.T) {
 		err := repo.Cancel(ctx, "nonexistent")
 		require.ErrorIs(t, err, ErrNotFound)
 	})
+}
+
+func TestRepository_RescueStale_SkipsCompletedJobs(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Create, claim, and complete a job.
+	_, err := repo.Enqueue(ctx, "completed-task", `{}`, 3, time.Now())
+	require.NoError(t, err)
+
+	claimed, err := repo.Claim(ctx, "worker-1", 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	job := claimed[0]
+
+	// Backdate locked_at first (while still running).
+	past := time.Now().Add(-10 * time.Minute)
+	_, err = den.FindOneAndUpdate[Job](ctx, db,
+		den.SetFields{"locked_at": &past},
+		where.Field("_id").Eq(job.ID),
+	)
+	require.NoError(t, err)
+
+	// Complete the job — simulates the race where worker finishes between
+	// RescueStale's query and its update.
+	job.Attempts = 1
+	require.NoError(t, repo.Complete(ctx, job))
+
+	// RescueStale should skip the completed job.
+	rescued, err := repo.RescueStale(ctx, 5*time.Minute)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), rescued, "should not reset a completed job")
+
+	got, err := repo.FindByID(ctx, job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, StatusCompleted, got.Status, "status should remain completed")
 }
