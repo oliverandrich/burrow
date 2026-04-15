@@ -13,6 +13,7 @@ import (
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -341,7 +342,7 @@ func (a *App) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 // Logout clears the session cookie.
 func (a *App) Logout(w http.ResponseWriter, r *http.Request) error {
 	session.Clear(w, r)
-	http.Redirect(w, r, a.config.LogoutRedirect, http.StatusSeeOther)
+	htmx.SmartRedirect(w, r, a.config.LogoutRedirect)
 	return nil
 }
 
@@ -506,7 +507,7 @@ func (a *App) RecoveryCodesPage(w http.ResponseWriter, r *http.Request) error {
 	values := session.GetValues(r)
 	codesRaw, ok := values["recovery_codes"]
 	if !ok {
-		http.Redirect(w, r, a.config.LoginRedirect, http.StatusSeeOther)
+		htmx.SmartRedirect(w, r, a.config.LoginRedirect)
 		return nil
 	}
 
@@ -530,7 +531,7 @@ func (a *App) AcknowledgeRecoveryCodes(w http.ResponseWriter, r *http.Request) e
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to clear redirect", err)
 	}
 
-	http.Redirect(w, r, redirect, http.StatusSeeOther)
+	htmx.SmartRedirect(w, r, redirect)
 	return nil
 }
 
