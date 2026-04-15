@@ -38,6 +38,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Changed
 
 - **Seed requires `--seed` flag** — `Seedable.Seed()` no longer runs unconditionally on every server start. Pass `--seed` (or set `SEED=true`) to run seed functions. This prevents non-idempotent seeders from creating duplicates on restart.
+- **Auth handlers split into focused files** — the monolithic `handlers.go` (714 lines, 25 functions) has been split into `handlers_registration.go`, `handlers_login.go`, `handlers_credentials.go`, `handlers_recovery.go`, `handlers_email.go`, and `handlers_helpers.go`. No API or behavior changes — pure file reorganization for better navigability.
 - **Admin decoupled from auth package** — `contrib/admin` no longer imports `contrib/auth` directly. Instead, it discovers auth middleware via the new `burrow.AdminAuth` interface from the registry. `contrib/auth` implements `AdminAuth` automatically. Custom auth systems can provide their own implementation.
 - **`Config.IsHTTPS()` helper** — replaces duplicated `strings.HasPrefix(baseURL, "https://")` checks in csrf, session, and secure apps.
 - **WebAuthn flag aliases removed** — the legacy `--webauthn-rp-id`, `--webauthn-rp-display-name`, `--webauthn-rp-origin` aliases (without `auth-` prefix) have been removed. Use the canonical `--auth-webauthn-*` names.
