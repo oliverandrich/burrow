@@ -99,7 +99,7 @@ func (a *App) buildNavGroups() []NavGroup {
 	return groups
 }
 
-// TranslationFS returns the embedded translation files (modeladmin UI labels).
+// TranslationFS returns the embedded translation files (admin UI labels).
 func (a *App) TranslationFS() fs.FS { return translationFS }
 
 // TemplateFS returns the embedded HTML template files.

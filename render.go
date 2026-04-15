@@ -78,7 +78,7 @@ func RenderError(w http.ResponseWriter, r *http.Request, code int, message strin
 // with "Content" added automatically.
 //
 // This is useful when content was rendered by a separate template system
-// (e.g., modeladmin's built-in templates) but still needs layout wrapping.
+// (e.g., a custom renderer's templates) but still needs layout wrapping.
 func RenderContent(w http.ResponseWriter, r *http.Request, statusCode int, content template.HTML, data map[string]any) error {
 	// HTMX requests get the fragment only, no layout wrapping.
 	// Boosted requests targeting "body" (default) get the full layout.

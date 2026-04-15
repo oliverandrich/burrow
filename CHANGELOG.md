@@ -24,6 +24,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **Auth admin rewritten with hand-written handlers** — `contrib/auth` no longer uses ModelAdmin for its admin views. User list, edit, delete, and invite management are now direct handlers with custom templates. The `HasAdmin` interface (`AdminRoutes`, `AdminNavItems`) is unchanged. Auth admin templates now use globally registered icon functions (`iconSearch`, `iconPlus`, `iconPersonSlash`, `iconPersonCheck`, `iconTrash`, `iconXCircle`).
 - **Jobs admin rewritten with hand-written handlers** — `contrib/jobs` no longer uses ModelAdmin. Job list, detail, delete, retry, and cancel are now direct handlers with custom templates including status filter pills and inline action buttons.
+- **ModelAdmin package removed** — `contrib/admin/modeladmin` has been deleted entirely. All admin views now use hand-written handlers. The admin coordinator (layout, sidebar, auth middleware, nav groups) is unchanged.
 
 ### Added
 
