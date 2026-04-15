@@ -35,6 +35,7 @@ type App struct {
 	registry   *burrow.Registry
 	handlers   map[string]burrow.JobHandlerFunc
 	retries    map[string]int
+	priorities map[string]int
 	worker     *Worker
 	cancelFunc context.CancelFunc
 	workerCfg  WorkerConfig
@@ -43,8 +44,9 @@ type App struct {
 // New creates a new jobs app with the given options.
 func New(opts ...Option) *App {
 	a := &App{
-		handlers: make(map[string]burrow.JobHandlerFunc),
-		retries:  make(map[string]int),
+		handlers:   make(map[string]burrow.JobHandlerFunc),
+		retries:    make(map[string]int),
+		priorities: make(map[string]int),
 	}
 	for _, o := range opts {
 		o(a)
@@ -179,6 +181,7 @@ func (a *App) Handle(typeName string, fn burrow.JobHandlerFunc, opts ...burrow.J
 	}
 	a.handlers[typeName] = fn
 	a.retries[typeName] = cfg.MaxRetries
+	a.priorities[typeName] = cfg.Priority
 }
 
 // Enqueue adds a job to the queue for immediate processing.
@@ -198,7 +201,8 @@ func (a *App) EnqueueAt(ctx context.Context, typeName string, payload any, runAt
 	}
 
 	maxRetries := a.retries[typeName]
-	job, err := a.repo.Enqueue(ctx, typeName, string(data), maxRetries, runAt)
+	priority := a.priorities[typeName]
+	job, err := a.repo.Enqueue(ctx, typeName, string(data), maxRetries, priority, runAt)
 	if err != nil {
 		return "", err
 	}

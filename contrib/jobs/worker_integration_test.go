@@ -32,7 +32,7 @@ func TestJobPoolProcesses100Jobs(t *testing.T) {
 
 	// Enqueue 100 jobs.
 	for range 100 {
-		_, err := repo.Enqueue(context.Background(), "counter", `{}`, 3, time.Now())
+		_, err := repo.Enqueue(context.Background(), "counter", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 	}
 
@@ -77,11 +77,11 @@ func TestJobPoolHandlerFailuresDoNotCrashPool(t *testing.T) {
 
 	// Enqueue a mix of good and bad jobs. Bad jobs have maxRetries=1 so they go dead immediately.
 	for range 10 {
-		_, err := repo.Enqueue(context.Background(), "bad", `{}`, 1, time.Now())
+		_, err := repo.Enqueue(context.Background(), "bad", `{}`, 1, 0, time.Now())
 		require.NoError(t, err)
 	}
 	for range 20 {
-		_, err := repo.Enqueue(context.Background(), "good", `{}`, 3, time.Now())
+		_, err := repo.Enqueue(context.Background(), "good", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 	}
 
@@ -139,7 +139,7 @@ func TestJobPoolMaxRetriesExhaustedEndsDead(t *testing.T) {
 	// Enqueue 5 jobs with maxRetries=3 (3 attempts allowed before dead).
 	jobIDs := make([]string, 0, 5)
 	for range 5 {
-		job, err := repo.Enqueue(context.Background(), "doomed", `{}`, 3, time.Now())
+		job, err := repo.Enqueue(context.Background(), "doomed", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 		jobIDs = append(jobIDs, job.ID)
 	}
@@ -191,12 +191,12 @@ func TestJobPoolPanicInHandlerDoesNotCrashPool(t *testing.T) {
 
 	// Enqueue error jobs first (maxRetries=1 so they die quickly).
 	for range 5 {
-		_, err := repo.Enqueue(context.Background(), "error", `{}`, 1, time.Now())
+		_, err := repo.Enqueue(context.Background(), "error", `{}`, 1, 0, time.Now())
 		require.NoError(t, err)
 	}
 	// Then good jobs.
 	for range 10 {
-		_, err := repo.Enqueue(context.Background(), "good", `{}`, 3, time.Now())
+		_, err := repo.Enqueue(context.Background(), "good", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 	}
 

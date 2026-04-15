@@ -29,11 +29,12 @@ func NewRepository(db *den.DB) *Repository {
 }
 
 // Enqueue inserts a new job into the queue.
-func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxRetries int, runAt time.Time) (*Job, error) {
+func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxRetries, priority int, runAt time.Time) (*Job, error) {
 	job := &Job{
 		Type:       typeName,
 		Payload:    payload,
 		Status:     StatusPending,
+		Priority:   priority,
 		MaxRetries: maxRetries,
 		RunAt:      runAt,
 	}
@@ -44,31 +45,50 @@ func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxR
 }
 
 // Claim atomically claims up to limit pending or failed jobs that are ready to run.
-// Each job is claimed individually via FindOneAndUpdate for atomic safety —
-// the find and status update happen in a single transaction, preventing
-// two workers from claiming the same job. The workerID is stamped on each
-// claimed job so that Complete and Fail can verify ownership.
+// Jobs are claimed in priority order (highest first), with FIFO ordering within
+// the same priority level. Each claim is a two-step operation: first find the
+// best candidate via a sorted query, then atomically update it. If another
+// worker claims the candidate between the two steps, we retry with the next one.
 func (r *Repository) Claim(ctx context.Context, workerID string, limit int) ([]*Job, error) {
 	var claimed []*Job
 	now := time.Now()
 	nowStr := now.Format(time.RFC3339Nano)
 
+	readyConds := []where.Condition{
+		where.Field("status").In(string(StatusPending), string(StatusFailed)),
+		where.Field("run_at").Lte(nowStr),
+		where.Field("worker_id").Eq(""),
+	}
+
 	for range limit {
+		// Step 1: Find the highest-priority ready job.
+		candidate, err := den.NewQuery[Job](ctx, r.db, readyConds...).
+			Sort("priority", den.Desc).
+			Sort("run_at", den.Asc).
+			First()
+		if err != nil {
+			if errors.Is(err, den.ErrNotFound) {
+				break
+			}
+			return nil, fmt.Errorf("claim jobs: find candidate: %w", err)
+		}
+
+		// Step 2: Atomically claim by ID + guards.
 		job, err := den.FindOneAndUpdate[Job](ctx, r.db,
 			den.SetFields{
 				"status":    string(StatusRunning),
 				"locked_at": &now,
 				"worker_id": workerID,
 			},
+			where.Field("_id").Eq(candidate.ID),
 			where.Field("status").In(string(StatusPending), string(StatusFailed)),
-			where.Field("run_at").Lte(nowStr),
 			where.Field("worker_id").Eq(""),
 		)
 		if err != nil {
 			if errors.Is(err, den.ErrNotFound) {
-				break
+				continue // Lost race — another worker claimed it, try next.
 			}
-			return nil, fmt.Errorf("claim jobs: %w", err)
+			return nil, fmt.Errorf("claim jobs: update: %w", err)
 		}
 		claimed = append(claimed, job)
 	}

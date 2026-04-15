@@ -22,6 +22,8 @@
             <dd class="col-sm-9">{{ .Job.Type }}</dd>
             <dt class="col-sm-3">{{ t "admin-job-detail-status" }}</dt>
             <dd class="col-sm-9">{{ template "jobs/status_badge" .Job.Status }}</dd>
+            <dt class="col-sm-3">{{ t "admin-job-detail-priority" }}</dt>
+            <dd class="col-sm-9">{{ .Job.Priority }}</dd>
             <dt class="col-sm-3">{{ t "admin-job-detail-attempts" }}</dt>
             <dd class="col-sm-9">{{ printf "%d/%d" .Job.Attempts .Job.MaxRetries }}</dd>
             <dt class="col-sm-3">{{ t "admin-job-detail-run-at" }}</dt>

@@ -16,11 +16,19 @@ type JobOption func(*JobConfig)
 // JobConfig holds per-handler configuration.
 type JobConfig struct {
 	MaxRetries int
+	Priority   int
 }
 
 // WithMaxRetries sets the maximum number of retries for a job type.
 func WithMaxRetries(n int) JobOption {
 	return func(c *JobConfig) { c.MaxRetries = n }
+}
+
+// WithPriority sets the default priority for a job type. Higher values
+// mean higher urgency — priority 10 jobs are claimed before priority 0 jobs.
+// The default priority is 0.
+func WithPriority(n int) JobOption {
+	return func(c *JobConfig) { c.Priority = n }
 }
 
 // Queue provides job handler registration, enqueueing, and cancellation.

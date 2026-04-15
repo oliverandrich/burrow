@@ -39,7 +39,7 @@ func TestWorker_ProcessJob(t *testing.T) {
 	w := NewWorker(repo, handlers, testWorkerConfig(), nil)
 
 	// Enqueue a job.
-	_, err := repo.Enqueue(context.Background(), "test", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(context.Background(), "test", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	go w.Start(ctx)
@@ -72,7 +72,7 @@ func TestWorker_RetryOnFailure(t *testing.T) {
 	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue with maxRetries=3.
-	_, err := repo.Enqueue(context.Background(), "flaky", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(context.Background(), "flaky", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	go w.Start(ctx)
@@ -111,7 +111,7 @@ func TestWorker_DeadAfterMaxRetries(t *testing.T) {
 	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue with maxRetries=1 (only 1 attempt allowed).
-	_, err := repo.Enqueue(context.Background(), "always_fail", `{}`, 1, time.Now())
+	_, err := repo.Enqueue(context.Background(), "always_fail", `{}`, 1, 0, time.Now())
 	require.NoError(t, err)
 
 	go w.Start(ctx)
@@ -135,7 +135,7 @@ func TestWorker_UnknownType(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	w := NewWorker(repo, handlers, cfg, nil)
 
-	_, err := repo.Enqueue(context.Background(), "nonexistent", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(context.Background(), "nonexistent", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	go w.Start(ctx)
@@ -166,7 +166,7 @@ func TestWorker_GracefulShutdown(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	w := NewWorker(repo, handlers, cfg, nil)
 
-	_, err := repo.Enqueue(context.Background(), "slow", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(context.Background(), "slow", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	go w.Start(ctx)
@@ -226,7 +226,7 @@ func TestWorker_Maintenance(t *testing.T) {
 	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Create a stale running job (locked 30 min ago).
-	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	job, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
 	require.NoError(t, err)
@@ -238,7 +238,7 @@ func TestWorker_Maintenance(t *testing.T) {
 	require.NoError(t, den.Update(ctx, db, staleJob))
 
 	// Create a completed job older than 24h.
-	_, err = repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err = repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 	claimed2, err := repo.Claim(ctx, "test-worker-2", 1)
 	require.NoError(t, err)
@@ -328,7 +328,7 @@ func TestWorker_ProcessJob_Direct(t *testing.T) {
 			cfg.RetryBaseDelay = time.Millisecond
 			w := NewWorker(repo, handlers, cfg, nil)
 
-			_, err := repo.Enqueue(context.Background(), tt.typeName, `{}`, tt.maxRetries, time.Now())
+			_, err := repo.Enqueue(context.Background(), tt.typeName, `{}`, tt.maxRetries, 0, time.Now())
 			require.NoError(t, err)
 			claimed, err := repo.Claim(context.Background(), w.id, 1)
 			require.NoError(t, err)
@@ -353,7 +353,7 @@ func TestWorker_ProcessJob_Direct(t *testing.T) {
 		cfg := testWorkerConfig()
 		w := NewWorker(repo, handlers, cfg, nil)
 
-		_, err := repo.Enqueue(context.Background(), "unknown", `{}`, 3, time.Now())
+		_, err := repo.Enqueue(context.Background(), "unknown", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 		claimed, err := repo.Claim(context.Background(), w.id, 1)
 		require.NoError(t, err)
@@ -386,7 +386,7 @@ func TestWorker_InjectsTemplateExecutor(t *testing.T) {
 	cfg := testWorkerConfig()
 	w := NewWorker(repo, handlers, cfg, exec)
 
-	_, err := repo.Enqueue(context.Background(), "check_exec", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(context.Background(), "check_exec", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -419,7 +419,7 @@ func TestWorker_NoTemplateExecutor(t *testing.T) {
 	w := NewWorker(repo, handlers, cfg, nil)
 	// templateExec is nil — not set.
 
-	_, err := repo.Enqueue(context.Background(), "check_no_exec", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(context.Background(), "check_no_exec", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -453,7 +453,7 @@ func TestWorker_ScheduledJob(t *testing.T) {
 	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Schedule for 100ms in the future.
-	_, err := repo.Enqueue(context.Background(), "scheduled", `{}`, 3, time.Now().Add(100*time.Millisecond))
+	_, err := repo.Enqueue(context.Background(), "scheduled", `{}`, 3, 0, time.Now().Add(100*time.Millisecond))
 	require.NoError(t, err)
 
 	go w.Start(ctx)
@@ -486,7 +486,7 @@ func TestWorker_PanicRecovery(t *testing.T) {
 	w := NewWorker(repo, handlers, cfg, nil)
 
 	// Enqueue a panic-triggering job.
-	job, err := repo.Enqueue(context.Background(), "panic-task", `{}`, 1, time.Now())
+	job, err := repo.Enqueue(context.Background(), "panic-task", `{}`, 1, 0, time.Now())
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -513,7 +513,7 @@ func TestWorker_PanicRecovery(t *testing.T) {
 		processed.Add(1)
 		return nil
 	}
-	_, err = repo.Enqueue(context.Background(), "normal-task", `{}`, 3, time.Now())
+	_, err = repo.Enqueue(context.Background(), "normal-task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	// The worker should still pick up new jobs — no goroutine died.

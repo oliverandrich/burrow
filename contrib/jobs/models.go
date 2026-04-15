@@ -30,6 +30,7 @@ type Job struct {
 	Type            string     `json:"type"                      den:"index"`
 	Payload         string     `json:"payload"`
 	Status          JobStatus  `json:"status"                    den:"index,index_together:claim,index_together:stale"`
+	Priority        int        `json:"priority"                  den:"index_together:claim"`
 	Result          string     `json:"result,omitempty"`
 	LastError       string     `json:"last_error,omitempty"`
 	ErrorClass      string     `json:"error_class,omitempty"`

@@ -43,6 +43,7 @@
                 <tr>
                     <th scope="col">Type</th>
                     <th scope="col">Status</th>
+                    <th scope="col">{{ t "admin-job-detail-priority" }}</th>
                     <th scope="col">Attempts</th>
                     <th scope="col">Created</th>
                     <th scope="col" class="text-end">{{ t "modeladmin-actions" }}</th>
@@ -53,6 +54,7 @@
                 <tr>
                     <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ .Type }}</a></td>
                     <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ template "jobs/status_badge" .Status }}</a></td>
+                    <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ if .Priority }}<span class="badge text-bg-info">{{ .Priority }}</span>{{ else }}<span class="text-body-secondary">0</span>{{ end }}</a></td>
                     <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ printf "%d/%d" .Attempts .MaxRetries }}</a></td>
                     <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ .CreatedAt.Format "2006-01-02 15:04" }}</a></td>
                     <td class="text-end">

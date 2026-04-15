@@ -27,7 +27,7 @@ func TestRepository_Enqueue(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	job, err := repo.Enqueue(ctx, "send_email", `{"to":"user@example.com"}`, 3, time.Now())
+	job, err := repo.Enqueue(ctx, "send_email", `{"to":"user@example.com"}`, 3, 0, time.Now())
 	require.NoError(t, err)
 	assert.NotEmpty(t, job.ID)
 	assert.Equal(t, "send_email", job.Type)
@@ -43,7 +43,7 @@ func TestRepository_Claim(t *testing.T) {
 
 	// Enqueue 3 jobs.
 	for i := range 3 {
-		_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now().Add(-time.Duration(3-i)*time.Second))
+		_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now().Add(-time.Duration(3-i)*time.Second))
 		require.NoError(t, err)
 	}
 
@@ -70,7 +70,7 @@ func TestRepository_Claim_RespectsRunAt(t *testing.T) {
 	ctx := context.Background()
 
 	// Enqueue a future job.
-	_, err := repo.Enqueue(ctx, "future", `{}`, 3, time.Now().Add(time.Hour))
+	_, err := repo.Enqueue(ctx, "future", `{}`, 3, 0, time.Now().Add(time.Hour))
 	require.NoError(t, err)
 
 	// Claim should return nothing.
@@ -84,7 +84,7 @@ func TestRepository_Complete(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -108,7 +108,7 @@ func TestRepository_Fail_Retry(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -146,7 +146,7 @@ func TestRepository_Fail_BackoffDuration(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		_, err := repo.Enqueue(ctx, "task", `{}`, 10, time.Now())
+		_, err := repo.Enqueue(ctx, "task", `{}`, 10, 0, time.Now())
 		require.NoError(t, err)
 
 		claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -174,7 +174,7 @@ func TestRepository_Fail_Dead(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -200,7 +200,7 @@ func TestRepository_DeleteCompleted(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -237,7 +237,7 @@ func TestRepository_RescueStale(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	job, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	// Claim it, then backdate locked_at.
@@ -270,7 +270,7 @@ func TestRepository_GetByID(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	job, err := repo.Enqueue(ctx, "send_email", `{"to":"a@b.com"}`, 3, time.Now())
+	job, err := repo.Enqueue(ctx, "send_email", `{"to":"a@b.com"}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	got, err := repo.GetByID(ctx, job.ID)
@@ -290,7 +290,7 @@ func TestRepository_ListPaged(t *testing.T) {
 
 	// Create jobs with different statuses.
 	for i := range 5 {
-		_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now().Add(-time.Duration(5-i)*time.Second))
+		_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now().Add(-time.Duration(5-i)*time.Second))
 		require.NoError(t, err)
 		if i >= 3 {
 			claimed, claimErr := repo.Claim(ctx, "test-worker", 1)
@@ -327,7 +327,7 @@ func TestRepository_Delete(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	job, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	err = repo.Delete(ctx, job.ID)
@@ -348,7 +348,7 @@ func TestRepository_Retry(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("from dead", func(t *testing.T) {
-		_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 		claimed, err := repo.Claim(ctx, "test-worker", 1)
 		require.NoError(t, err)
@@ -371,7 +371,7 @@ func TestRepository_Retry(t *testing.T) {
 	})
 
 	t.Run("from failed", func(t *testing.T) {
-		_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 		claimed, err := repo.Claim(ctx, "test-worker", 1)
 		require.NoError(t, err)
@@ -390,7 +390,7 @@ func TestRepository_Retry(t *testing.T) {
 	})
 
 	t.Run("invalid status", func(t *testing.T) {
-		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		job, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 		require.NoError(t, err) // pending
 
 		err = repo.Retry(ctx, job.ID)
@@ -408,7 +408,7 @@ func TestClaim_SetsWorkerID(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "worker-1", 1)
@@ -428,7 +428,7 @@ func TestClaim_SkipsOwnedJobs(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a failed job and manually set worker_id (simulating an owned job).
-	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	job, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 	job.Status = StatusFailed
 	job.WorkerID = "other-worker"
@@ -445,7 +445,7 @@ func TestComplete_GuardRejectsWrongWorker(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	// Claim with worker A.
@@ -470,7 +470,7 @@ func TestFail_GuardRejectsWrongWorker(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	// Claim with worker A.
@@ -495,7 +495,7 @@ func TestComplete_ClearsWorkerID(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "worker-1", 1)
@@ -519,7 +519,7 @@ func TestRepository_Cancel(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("from pending", func(t *testing.T) {
-		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		job, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 
 		err = repo.Cancel(ctx, job.ID)
@@ -533,7 +533,7 @@ func TestRepository_Cancel(t *testing.T) {
 	})
 
 	t.Run("from running", func(t *testing.T) {
-		job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		job, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 		claimed, err := repo.Claim(ctx, "test-worker", 1)
 		require.NoError(t, err)
@@ -548,7 +548,7 @@ func TestRepository_Cancel(t *testing.T) {
 	})
 
 	t.Run("invalid status — completed", func(t *testing.T) {
-		_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+		_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 		require.NoError(t, err)
 		claimed, claimErr := repo.Claim(ctx, "test-worker", 1)
 		require.NoError(t, claimErr)
@@ -572,7 +572,7 @@ func TestRepository_RescueStale_SkipsCompletedJobs(t *testing.T) {
 	ctx := context.Background()
 
 	// Create, claim, and complete a job.
-	_, err := repo.Enqueue(ctx, "completed-task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "completed-task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "worker-1", 1)
@@ -608,7 +608,7 @@ func TestRepository_Complete_WithResult(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -631,7 +631,7 @@ func TestRepository_Complete_WithoutResult(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -654,7 +654,7 @@ func TestRepository_Fail_ErrorClass(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -679,7 +679,7 @@ func TestRepository_GetResult(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -709,7 +709,7 @@ func TestRepository_Retry_ClearsResultAndErrorClass(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -739,4 +739,59 @@ func TestRepository_Retry_ClearsResultAndErrorClass(t *testing.T) {
 	assert.Empty(t, got.LastError)
 	assert.Empty(t, got.ErrorClass)
 	assert.Empty(t, got.Result)
+}
+
+func TestRepository_Enqueue_WithPriority(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	job, err := repo.Enqueue(ctx, "urgent", `{}`, 3, 10, time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, 10, job.Priority)
+
+	// Verify persisted.
+	got, err := den.FindByID[Job](ctx, db, job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 10, got.Priority)
+}
+
+func TestRepository_Claim_PriorityOrdering(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Enqueue: normal (oldest), high, normal.
+	_, err := repo.Enqueue(ctx, "task", `{"n":"old-normal"}`, 3, 0, time.Now().Add(-3*time.Second))
+	require.NoError(t, err)
+	highJob, err := repo.Enqueue(ctx, "task", `{"n":"high"}`, 3, 10, time.Now().Add(-1*time.Second))
+	require.NoError(t, err)
+	_, err = repo.Enqueue(ctx, "task", `{"n":"new-normal"}`, 3, 0, time.Now())
+	require.NoError(t, err)
+
+	// Claim 1 — should get the high-priority job, not the oldest.
+	claimed, err := repo.Claim(ctx, "test-worker", 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	assert.Equal(t, highJob.ID, claimed[0].ID)
+}
+
+func TestRepository_Claim_SamePriority_FIFO(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	// Enqueue 3 jobs at same priority, different times.
+	oldest, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now().Add(-3*time.Second))
+	require.NoError(t, err)
+	_, err = repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now().Add(-2*time.Second))
+	require.NoError(t, err)
+	_, err = repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now().Add(-1*time.Second))
+	require.NoError(t, err)
+
+	// Claim 1 — should get the oldest (FIFO within same priority).
+	claimed, err := repo.Claim(ctx, "test-worker", 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	assert.Equal(t, oldest.ID, claimed[0].ID)
 }

@@ -20,7 +20,7 @@ func TestRetryHandler(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 	claimed, claimErr := repo.Claim(ctx, "test-worker", 1)
 	require.NoError(t, claimErr)
@@ -53,7 +53,7 @@ func TestRetryHandler_InvalidStatus(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now()) // pending
+	job, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now()) // pending
 	require.NoError(t, err)
 
 	handler := retryHandler(repo)
@@ -74,7 +74,7 @@ func TestCancelHandler(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	job, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	job, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 
 	handler := cancelHandler(repo)
@@ -99,7 +99,7 @@ func TestCancelHandler_InvalidStatus(t *testing.T) {
 	repo := NewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Enqueue(ctx, "task", `{}`, 3, time.Now())
+	_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
 	require.NoError(t, err)
 	claimed, claimErr := repo.Claim(ctx, "test-worker", 1)
 	require.NoError(t, claimErr)
