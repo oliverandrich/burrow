@@ -217,17 +217,7 @@ func (r *Repository) DeleteUser(ctx context.Context, id string) error {
 func (r *Repository) PurgeOrphanedUsers(ctx context.Context, olderThan time.Duration) (int, error) {
 	cutoffStr := time.Now().Add(-olderThan).Format(time.RFC3339Nano)
 
-	// Get all user IDs that have credentials.
-	creds, err := den.NewQuery[Credential](ctx, r.db).All()
-	if err != nil {
-		return 0, fmt.Errorf("purge orphaned users: list credentials: %w", err)
-	}
-	hasCredentials := make(map[string]bool)
-	for _, c := range creds {
-		hasCredentials[c.UserID] = true
-	}
-
-	// Find old users without credentials.
+	// Find old users only — abandoned registrations are typically very few.
 	oldUsers, err := den.NewQuery[User](ctx, r.db, where.Field("_created_at").Lt(cutoffStr)).All()
 	if err != nil {
 		return 0, fmt.Errorf("purge orphaned users: list old users: %w", err)
@@ -235,7 +225,11 @@ func (r *Repository) PurgeOrphanedUsers(ctx context.Context, olderThan time.Dura
 
 	var purged int
 	for _, u := range oldUsers {
-		if !hasCredentials[u.ID] {
+		hasCredentials, err := den.NewQuery[Credential](ctx, r.db, where.Field("user_id").Eq(u.ID)).Exists()
+		if err != nil {
+			return purged, fmt.Errorf("purge orphaned users: check credentials for %s: %w", u.ID, err)
+		}
+		if !hasCredentials {
 			if err := den.Delete(ctx, r.db, u); err != nil {
 				return purged, fmt.Errorf("purge orphaned users: delete user %s: %w", u.ID, err)
 			}
