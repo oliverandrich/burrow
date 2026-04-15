@@ -2,22 +2,6 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## 0.12.0 — 2026-04-08
-
-### Breaking Changes
-
-- **Den struct-tag validation is now enabled by default** — `burrow.OpenDB()` now enables Den's `validate.WithValidation()` automatically, so any document field tagged with `validate:"..."` (e.g., `validate:"required"`, `validate:"email"`, `validate:"oneof=..."`) is enforced before every Insert and Update. Violations return an error wrapping `den.ErrValidation`.
-
-  Projects that had `validate:` tags on Den documents where the tags previously had no effect will now see those constraints enforced. If the data layer needs to stay lax temporarily during migration, use the new `burrow.OpenDBWithoutValidation()` escape hatch. Remove it once the data is clean.
-
-  `burrow.TestDB()` and `authtest.NewDB()` also enable validation so test code runs with the same constraints as production.
-
-- **Upgraded to Den v0.6.0** — Den now runs mutating hooks (`BeforeInsert`, `BeforeUpdate`, `BeforeSave`) before both struct-tag validation and the `Validator.Validate()` interface. This lets a `BeforeInsert` hook populate a default value for a field that validation then requires, matching the ActiveRecord/Django/SQLAlchemy pattern. See the [Den changelog](https://github.com/oliverandrich/den/blob/main/CHANGELOG.md) for details. If you had custom validation that depended on running before the hooks (unusual), move it into `BeforeInsert` itself.
-
-### Added
-
-- **`burrow.OpenDBWithoutValidation(dsn)`** — opens a database with struct-tag validation disabled. Intended only as a migration escape hatch when moving a project from pre-v0.12.0 behavior.
-
 ## Unreleased
 
 ### Breaking Changes
@@ -59,6 +43,22 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Jobs admin UI re-enabled** — `contrib/jobs` `AdminRoutes` and `AdminNavItems` were stubbed out during the Den migration. The ModelAdmin integration is now wired up again, restoring the list/detail/retry/cancel/delete views and the sidebar nav entry.
 - **Auth redirects use SmartRedirect** — `Logout`, `RecoveryCodesPage`, and `AcknowledgeRecoveryCodes` now use `htmx.SmartRedirect` instead of `http.Redirect`, fixing redirect behavior when triggered via htmx.
 - **Invite creation uses SmartRedirect** — `handleCreateInvite` now uses `htmx.SmartRedirect` instead of `http.Redirect`, fixing redirect behavior when the form is submitted via htmx.
+
+## 0.12.0 — 2026-04-08
+
+### Breaking Changes
+
+- **Den struct-tag validation is now enabled by default** — `burrow.OpenDB()` now enables Den's `validate.WithValidation()` automatically, so any document field tagged with `validate:"..."` (e.g., `validate:"required"`, `validate:"email"`, `validate:"oneof=..."`) is enforced before every Insert and Update. Violations return an error wrapping `den.ErrValidation`.
+
+  Projects that had `validate:` tags on Den documents where the tags previously had no effect will now see those constraints enforced. If the data layer needs to stay lax temporarily during migration, use the new `burrow.OpenDBWithoutValidation()` escape hatch. Remove it once the data is clean.
+
+  `burrow.TestDB()` and `authtest.NewDB()` also enable validation so test code runs with the same constraints as production.
+
+- **Upgraded to Den v0.6.0** — Den now runs mutating hooks (`BeforeInsert`, `BeforeUpdate`, `BeforeSave`) before both struct-tag validation and the `Validator.Validate()` interface. This lets a `BeforeInsert` hook populate a default value for a field that validation then requires, matching the ActiveRecord/Django/SQLAlchemy pattern. See the [Den changelog](https://github.com/oliverandrich/den/blob/main/CHANGELOG.md) for details. If you had custom validation that depended on running before the hooks (unusual), move it into `BeforeInsert` itself.
+
+### Added
+
+- **`burrow.OpenDBWithoutValidation(dsn)`** — opens a database with struct-tag validation disabled. Intended only as a migration escape hatch when moving a project from pre-v0.12.0 behavior.
 
 ## 0.11.4 — 2026-04-06
 
