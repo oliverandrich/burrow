@@ -307,6 +307,18 @@ func TestRenderError_HTMXRequestGetsFragmentOnly(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "<html>")
 }
 
+func TestRenderError_PlaintextFallbackWhenNoTemplates(t *testing.T) {
+	// No template executor — both error/404 and error/default will fail.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/missing", nil)
+	rec := httptest.NewRecorder()
+
+	RenderError(rec, req, http.StatusNotFound, "page not found")
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "404")
+	assert.Contains(t, rec.Body.String(), "page not found")
+}
+
 func TestHandle_UsesRenderError(t *testing.T) {
 	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "error/403" {

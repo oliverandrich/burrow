@@ -67,9 +67,12 @@ func RenderError(w http.ResponseWriter, r *http.Request, code int, message strin
 		"Message": localizedMessage,
 	}
 
-	// Try the code-specific template first, fall back to the generic default.
+	// Try the code-specific template first, fall back to the generic default,
+	// and finally fall back to a plain text response if no error template exists.
 	if err := Render(w, r, code, fmt.Sprintf("error/%d", code), data); err != nil {
-		_ = Render(w, r, code, "error/default", data)
+		if err := Render(w, r, code, "error/default", data); err != nil {
+			http.Error(w, fmt.Sprintf("%d — %s", code, localizedMessage), code)
+		}
 	}
 }
 
