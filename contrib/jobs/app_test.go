@@ -179,9 +179,7 @@ func TestApp_AdminRoutes_WithJobsAdmin(t *testing.T) {
 	app := New()
 	app.defaultDB = db
 
-	// Simulate Configure to create the repo and the ModelAdmin.
 	app.repo = NewRepository(db)
-	app.jobsAdmin = newJobsAdmin(db, app.repo)
 
 	r := chi.NewRouter()
 	// Should not panic; registers routes on the router.

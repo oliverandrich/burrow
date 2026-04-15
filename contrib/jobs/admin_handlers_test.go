@@ -159,12 +159,6 @@ func TestShowWhenCancellable(t *testing.T) {
 	}
 }
 
-func TestStatusChoices(t *testing.T) {
-	choices := statusChoices()
-	assert.Len(t, choices, 5)
-	assert.Equal(t, "pending", choices[0].Value)
-}
-
 func TestParseJobID_EmptyID(t *testing.T) {
 	r := chi.NewRouter()
 	var capturedErr error

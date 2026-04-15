@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
 	"github.com/oliverandrich/den"
 	"github.com/urfave/cli/v3"
@@ -39,7 +38,6 @@ type App struct {
 	worker     *Worker
 	cancelFunc context.CancelFunc
 	workerCfg  WorkerConfig
-	jobsAdmin  *modeladmin.ModelAdmin[Job]
 }
 
 // New creates a new jobs app with the given options.
@@ -104,7 +102,6 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	}
 
 	a.repo = NewRepository(effectiveDB)
-	a.jobsAdmin = newJobsAdmin(effectiveDB, a.repo)
 
 	// Store worker config for PostConfigure (which starts the worker).
 	a.workerCfg = DefaultWorkerConfig()
@@ -215,9 +212,11 @@ func (a *App) Dequeue(ctx context.Context, id string) error {
 
 // AdminRoutes registers admin routes for job management.
 func (a *App) AdminRoutes(r chi.Router) {
-	if a.jobsAdmin != nil {
-		a.jobsAdmin.Routes(r)
-	}
+	r.Get("/jobs", burrow.Handle(a.adminListJobs))
+	r.Get("/jobs/{id}", burrow.Handle(a.adminJobDetail))
+	r.Delete("/jobs/{id}", burrow.Handle(a.adminDeleteJob))
+	r.Post("/jobs/{id}/retry", burrow.Handle(retryHandler(a.repo)))
+	r.Post("/jobs/{id}/cancel", burrow.Handle(cancelHandler(a.repo)))
 }
 
 // AdminNavItems returns navigation items for the admin panel.
@@ -230,46 +229,6 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 			Icon:      bsicons.ListTask(),
 			Position:  40,
 			AdminOnly: true,
-		},
-	}
-}
-
-// newJobsAdmin creates the ModelAdmin for the jobs admin panel.
-func newJobsAdmin(db *den.DB, repo *Repository) *modeladmin.ModelAdmin[Job] {
-	return &modeladmin.ModelAdmin[Job]{
-		Slug:              "jobs",
-		DisplayName:       "Job",
-		DisplayPluralName: "Jobs",
-		DB:                db,
-		Renderer:          newJobsRenderer(),
-		CanCreate:         false,
-		CanEdit:           false,
-		CanDelete:         true,
-		ListFields:        []string{"ID", "Type", "Status", "Attempts", "CreatedAt"},
-		OrderBy:           "created_at DESC, id DESC",
-		PageSize:          25,
-		EmptyMessageKey:   "admin-jobs-empty",
-		Filters: []modeladmin.FilterDef{
-			{Field: "status", Label: "Status", Type: "select", Choices: statusChoices()},
-		},
-		RowActions: []modeladmin.RowAction{
-			{
-				Slug:     "retry",
-				Label:    "admin-jobs-action-retry",
-				Icon:     bsicons.ArrowCounterclockwise(),
-				Class:    "btn-outline-success",
-				Handler:  retryHandler(repo),
-				ShowWhen: isRetryable,
-			},
-			{
-				Slug:     "cancel",
-				Label:    "admin-jobs-action-cancel",
-				Icon:     bsicons.XCircle(),
-				Class:    "btn-outline-warning",
-				Confirm:  "admin-jobs-cancel-confirm",
-				Handler:  cancelHandler(repo),
-				ShowWhen: isCancellable,
-			},
 		},
 	}
 }

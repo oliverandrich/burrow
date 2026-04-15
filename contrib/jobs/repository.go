@@ -167,6 +167,11 @@ func (r *Repository) ListPaged(ctx context.Context, pr burrow.PageRequest, statu
 	return jobs, burrow.OffsetResult(pr, int(count)), nil
 }
 
+// FindByID retrieves a job by ID.
+func (r *Repository) FindByID(ctx context.Context, id string) (*Job, error) {
+	return den.FindByID[Job](ctx, r.db, id)
+}
+
 // Delete deletes a job by ID (any status).
 func (r *Repository) Delete(ctx context.Context, id string) error {
 	job, err := den.FindByID[Job](ctx, r.db, id)

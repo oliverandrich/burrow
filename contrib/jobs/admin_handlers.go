@@ -7,19 +7,55 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/htmx"
-
-	"github.com/oliverandrich/burrow/forms"
 )
 
-// statusChoices returns filter choices for all job statuses.
-func statusChoices() []forms.Choice {
-	return []forms.Choice{
-		{Value: string(StatusPending), Label: "Pending", LabelKey: "admin-jobs-filter-pending"},
-		{Value: string(StatusRunning), Label: "Running", LabelKey: "admin-jobs-filter-running"},
-		{Value: string(StatusFailed), Label: "Failed", LabelKey: "admin-jobs-filter-failed"},
-		{Value: string(StatusDead), Label: "Dead", LabelKey: "admin-jobs-filter-dead"},
-		{Value: string(StatusCompleted), Label: "Completed", LabelKey: "admin-jobs-filter-completed"},
+// adminListJobs handles GET /admin/jobs — paginated job list with status filter.
+func (a *App) adminListJobs(w http.ResponseWriter, r *http.Request) error {
+	pr := burrow.ParsePageRequest(r)
+	status := JobStatus(r.URL.Query().Get("status"))
+
+	jobs, page, err := a.repo.ListPaged(r.Context(), pr, status)
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list jobs")
 	}
+
+	return burrow.Render(w, r, http.StatusOK, "jobs/admin_list", map[string]any{
+		"Jobs":   jobs,
+		"Page":   page,
+		"Status": string(status),
+	})
+}
+
+// adminJobDetail handles GET /admin/jobs/{id} — job detail page.
+func (a *App) adminJobDetail(w http.ResponseWriter, r *http.Request) error {
+	id, err := parseJobID(r)
+	if err != nil {
+		return err
+	}
+
+	job, err := a.repo.FindByID(r.Context(), id)
+	if err != nil {
+		return mapRepoError(err)
+	}
+
+	return burrow.Render(w, r, http.StatusOK, "jobs/admin_detail", map[string]any{
+		"Job": job,
+	})
+}
+
+// adminDeleteJob handles DELETE /admin/jobs/{id} — delete a job.
+func (a *App) adminDeleteJob(w http.ResponseWriter, r *http.Request) error {
+	id, err := parseJobID(r)
+	if err != nil {
+		return err
+	}
+
+	if err := a.repo.Delete(r.Context(), id); err != nil {
+		return mapRepoError(err)
+	}
+
+	htmx.SmartRedirect(w, r, "/admin/jobs")
+	return nil
 }
 
 // retryHandler returns a HandlerFunc that retries a dead/failed job.
