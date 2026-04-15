@@ -45,6 +45,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Fixed
 
+- **Session cookies written once per request** — `session.Set()`, `Delete()`, and `Save()` no longer write the `Set-Cookie` header immediately. Instead, the session middleware defers the write until the response is sent, producing exactly one `Set-Cookie` header regardless of how many session mutations occur. Previously, each `Set()` call wrote a separate header, and only the last one survived to the browser.
 - **Jobs recover from handler panics** — worker goroutines now recover from panics in job handlers, converting them into failures with a stack trace. The worker stays alive and continues processing other jobs.
 - **RenderError falls back to plaintext** — when both `error/{code}` and `error/default` templates are missing, `RenderError` now writes a plaintext HTTP error instead of a blank response.
 - **NavItem.LabelKey now translated in navLinks** — `buildNavLinks` now translates `LabelKey` via `i18n.T` at render time, falling back to `Label` when no translation is found. Previously `LabelKey` was silently dropped.

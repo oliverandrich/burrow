@@ -383,6 +383,49 @@ func TestSetRoundtrip(t *testing.T) {
 	assert.Equal(t, "dark", values["theme"])
 }
 
+func TestMultipleSetProducesSingleCookie(t *testing.T) {
+	r, _ := routerWithSession(t)
+
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		_ = Set(w, r, "a", "1")
+		_ = Set(w, r, "b", "2")
+		_ = Set(w, r, "c", "3")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	cookies := rec.Result().Cookies()
+	sessionCookies := 0
+	for _, c := range cookies {
+		if c.Name == "_session" {
+			sessionCookies++
+		}
+	}
+	assert.Equal(t, 1, sessionCookies, "multiple Set calls should produce exactly one Set-Cookie header")
+}
+
+func TestNoSetProducesNoCookie(t *testing.T) {
+	r, _ := routerWithSession(t)
+
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		// Read-only: no Set/Delete/Save calls.
+		_ = GetValues(r)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	cookies := rec.Result().Cookies()
+	for _, c := range cookies {
+		assert.NotEqual(t, "_session", c.Name, "read-only request should not write a session cookie")
+	}
+}
+
 // --- Inject test helper ---
 
 func TestInject(t *testing.T) {
@@ -394,12 +437,9 @@ func TestInject(t *testing.T) {
 	// Getters should work.
 	assert.Equal(t, int64(42), GetInt64(req, "user_id"))
 
-	// Set should work (writes cookie).
+	// Set should update values in context (cookie is written by middleware, not Inject).
 	require.NoError(t, Set(rec, req, "theme", "dark"))
 	assert.Equal(t, "dark", GetString(req, "theme"))
-
-	cookies := rec.Result().Cookies()
-	require.NotEmpty(t, cookies)
 }
 
 // --- Corrupted session cookie through middleware ---

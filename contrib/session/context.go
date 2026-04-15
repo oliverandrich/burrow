@@ -3,7 +3,9 @@
 // # Reading and Writing Values
 //
 // Use [GetString] and [GetInt64] to read typed values from the session.
-// Use [Set] to write a single key-value pair (the cookie is saved immediately).
+// Use [Set] to write a single key-value pair. The cookie is written
+// automatically when the response is sent — multiple Set calls produce
+// a single Set-Cookie header.
 // Use [Save] to replace all session values at once, and [Clear] to delete the session.
 //
 // All read/write functions require the session middleware to be active.
@@ -39,16 +41,20 @@ type ctxKeySession struct{}
 type state struct {
 	manager *Manager
 	values  map[string]any
+	dirty   bool
 }
 
-// save encodes the current values into a cookie and sets it on the response.
-func (s *state) save(w http.ResponseWriter) error {
+// flush writes the session cookie if any values have changed. Called
+// automatically by deferredWriter before the first response write.
+func (s *state) flush(w http.ResponseWriter) {
+	if !s.dirty {
+		return
+	}
 	cookie, err := s.manager.Save(s.values)
 	if err != nil {
-		return err
+		return
 	}
 	http.SetCookie(w, cookie)
-	return nil
 }
 
 // getState returns the session state from the request context, or nil if no middleware is active.
@@ -97,8 +103,10 @@ func GetInt64(r *http.Request, key string) int64 {
 
 // --- Context-based setters ---
 
-// Set sets a single value in the session and immediately writes the cookie.
-func Set(w http.ResponseWriter, r *http.Request, key string, value any) error {
+// Set sets a single value in the session. The cookie is written
+// automatically when the response is sent — multiple Set calls within
+// a single request produce exactly one Set-Cookie header.
+func Set(_ http.ResponseWriter, r *http.Request, key string, value any) error {
 	s := getState(r)
 	if s == nil {
 		return errNoMiddleware
@@ -107,37 +115,42 @@ func Set(w http.ResponseWriter, r *http.Request, key string, value any) error {
 		s.values = make(map[string]any)
 	}
 	s.values[key] = value
-	return s.save(w)
+	s.dirty = true
+	return nil
 }
 
-// Delete removes a key from the session and immediately writes the cookie.
-func Delete(w http.ResponseWriter, r *http.Request, key string) error {
+// Delete removes a key from the session. The cookie is written
+// automatically when the response is sent.
+func Delete(_ http.ResponseWriter, r *http.Request, key string) error {
 	s := getState(r)
 	if s == nil {
 		return errNoMiddleware
 	}
 	delete(s.values, key)
-	return s.save(w)
+	s.dirty = true
+	return nil
 }
 
-// Save replaces all session values and immediately writes the cookie.
-// Use this for operations like login where you want a fresh session.
-func Save(w http.ResponseWriter, r *http.Request, values map[string]any) error {
+// Save replaces all session values. The cookie is written automatically
+// when the response is sent.
+func Save(_ http.ResponseWriter, r *http.Request, values map[string]any) error {
 	s := getState(r)
 	if s == nil {
 		return errNoMiddleware
 	}
 	s.values = values
-	return s.save(w)
+	s.dirty = true
+	return nil
 }
 
-// Clear clears the session and writes a deletion cookie.
+// Clear clears the session and writes a deletion cookie immediately.
 func Clear(w http.ResponseWriter, r *http.Request) {
 	s := getState(r)
 	if s == nil {
 		return
 	}
 	s.values = nil
+	s.dirty = false // explicit clear, not a deferred write
 	http.SetCookie(w, s.manager.Clear())
 }
 
@@ -152,4 +165,38 @@ func Inject(r *http.Request, values map[string]any) *http.Request {
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, ctxKeySession{}, s)
 	return r.WithContext(ctx)
+}
+
+// deferredWriter wraps an http.ResponseWriter to flush session changes
+// before the first write. This ensures exactly one Set-Cookie header
+// regardless of how many Set/Delete/Save calls the handler makes.
+type deferredWriter struct {
+	http.ResponseWriter
+	state   *state
+	flushed bool
+}
+
+func (dw *deferredWriter) flush() {
+	if dw.flushed {
+		return
+	}
+	dw.flushed = true
+	dw.state.flush(dw.ResponseWriter)
+}
+
+// WriteHeader flushes session state before writing the status code.
+func (dw *deferredWriter) WriteHeader(code int) {
+	dw.flush()
+	dw.ResponseWriter.WriteHeader(code)
+}
+
+// Write flushes session state before writing the body.
+func (dw *deferredWriter) Write(b []byte) (int, error) {
+	dw.flush()
+	return dw.ResponseWriter.Write(b)
+}
+
+// Unwrap returns the underlying ResponseWriter for http.ResponseController compatibility.
+func (dw *deferredWriter) Unwrap() http.ResponseWriter {
+	return dw.ResponseWriter
 }

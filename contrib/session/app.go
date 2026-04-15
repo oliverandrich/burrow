@@ -87,7 +87,8 @@ func (a *App) sessionMiddleware(next http.Handler) http.Handler {
 		values, _ := a.manager.Parse(r)
 		s := &state{manager: a.manager, values: values}
 		ctx := context.WithValue(r.Context(), ctxKeySession{}, s)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		dw := &deferredWriter{ResponseWriter: w, state: s}
+		next.ServeHTTP(dw, r.WithContext(ctx))
 	})
 }
 
