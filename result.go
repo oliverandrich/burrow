@@ -50,7 +50,7 @@ type ResultTask[P, R any] struct {
 	name    string
 	handler func(context.Context, P) (R, error)
 	opts    []JobOption
-	queue   Queue
+	queue   Enqueuer
 }
 
 // DefineResultTask creates a typed task definition with a result-returning

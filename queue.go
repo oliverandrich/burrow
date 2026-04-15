@@ -31,13 +31,19 @@ func WithPriority(n int) JobOption {
 	return func(c *JobConfig) { c.Priority = n }
 }
 
-// Queue provides job handler registration, enqueueing, and cancellation.
-// contrib/jobs provides a SQLite-backed implementation.
-type Queue interface {
-	Handle(typeName string, fn JobHandlerFunc, opts ...JobOption)
+// Enqueuer provides job submission and cancellation. Use this interface
+// for code that only needs to enqueue jobs, not register handlers.
+type Enqueuer interface {
 	Enqueue(ctx context.Context, typeName string, payload any) (string, error)
 	EnqueueAt(ctx context.Context, typeName string, payload any, runAt time.Time) (string, error)
 	Dequeue(ctx context.Context, id string) error
+}
+
+// Queue provides job handler registration, enqueueing, and cancellation.
+// contrib/jobs provides a SQLite-backed implementation.
+type Queue interface {
+	Enqueuer
+	Handle(typeName string, fn JobHandlerFunc, opts ...JobOption)
 }
 
 // HasJobs is implemented by apps that register background job handlers.

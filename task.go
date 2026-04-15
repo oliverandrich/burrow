@@ -28,7 +28,7 @@ type TaskDefinition[P any] struct {
 	name    string
 	handler func(context.Context, P) error
 	opts    []JobOption
-	queue   Queue
+	queue   Enqueuer
 }
 
 // DefineTask creates a typed task definition. Call Register in your
