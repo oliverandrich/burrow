@@ -12,8 +12,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
-	matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/messages"
@@ -187,8 +185,7 @@ func (a *App) Results(w http.ResponseWriter, r *http.Request) error {
 var templateFS embed.FS
 
 type App struct {
-	repo           *Repository
-	questionsAdmin *modeladmin.ModelAdmin[Question]
+	repo *Repository
 }
 
 func New() *App { return &App{} }
@@ -199,19 +196,6 @@ func (a *App) Dependencies() []string { return []string{"auth"} }
 
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.repo = NewRepository(cfg.DB)
-
-	a.questionsAdmin = &modeladmin.ModelAdmin[Question]{
-		Slug:              "questions",
-		DisplayName:       "Question",
-		DisplayPluralName: "Questions",
-		DB:                cfg.DB,
-		Renderer:          matpl.DefaultRenderer[Question](),
-		CanCreate:         true,
-		CanEdit:           true,
-		CanDelete:         true,
-		ListFields:        []string{"ID", "Text", "PublishedAt"},
-		OrderBy:           "published_at DESC, _id DESC",
-	}
 
 	return nil
 }
@@ -231,12 +215,6 @@ func (a *App) NavItems() []burrow.NavItem {
 	}
 }
 
-func (a *App) AdminNavItems() []burrow.NavItem {
-	return []burrow.NavItem{
-		{Label: "Questions", URL: "/admin/questions", Position: 30},
-	}
-}
-
 func (a *App) Routes(r chi.Router) {
 	r.Route("/polls", func(r chi.Router) {
 		r.Get("/", burrow.Handle(a.List))
@@ -247,17 +225,5 @@ func (a *App) Routes(r chi.Router) {
 			r.Use(auth.RequireAuth())
 			r.Post("/{id}/vote", burrow.Handle(a.Vote))
 		})
-	})
-}
-
-func (a *App) AdminRoutes(r chi.Router) {
-	r.Route("/questions", func(r chi.Router) {
-		r.Get("/", burrow.Handle(a.questionsAdmin.HandleList))
-		r.Get("/new", burrow.Handle(a.questionsAdmin.HandleNew))
-		r.Post("/new", burrow.Handle(a.questionsAdmin.HandleNew))
-		r.Get("/{id}", burrow.Handle(a.questionsAdmin.HandleDetail))
-		r.Post("/{id}", burrow.Handle(a.questionsAdmin.HandleDetail))
-		r.Get("/{id}/delete", burrow.Handle(a.questionsAdmin.HandleDelete))
-		r.Post("/{id}/delete", burrow.Handle(a.questionsAdmin.HandleDelete))
 	})
 }

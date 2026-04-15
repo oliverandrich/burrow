@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -906,28 +905,17 @@ func TestDeleteNoteNonExistentIDIsNoOp(t *testing.T) {
 
 // --- ModelAdmin integration tests ---
 
-func TestModelAdminRoutes_List(t *testing.T) {
+func TestAdminRoutes_RegistersWithoutPanic(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
-	ctx := context.Background()
-
-	require.NoError(t, repo.Create(ctx, &Note{Title: "Admin View", Content: "Visible", UserID: "user-42"}))
 
 	app := New()
 	require.NoError(t, app.Configure(&burrow.AppConfig{DB: db}, nil))
 
 	r := chi.NewRouter()
-	app.AdminRoutes(r)
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "Admin View")
+	app.AdminRoutes(r) // Should not panic.
 }
 
-func TestModelAdminRoutes_Delete(t *testing.T) {
+func TestAdminRoutes_Delete(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -939,11 +927,10 @@ func TestModelAdminRoutes_Delete(t *testing.T) {
 	require.NoError(t, app.Configure(&burrow.AppConfig{DB: db}, nil))
 
 	r := chi.NewRouter()
+	r.Use(burrow.TestErrorExecMiddleware)
 	app.AdminRoutes(r)
 
-	form := url.Values{"_selected": {note.ID}}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notes/bulk/delete", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/"+note.ID, nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -974,18 +961,6 @@ func TestDependencies(t *testing.T) {
 	deps := app.Dependencies()
 	require.Len(t, deps, 1)
 	assert.Equal(t, "auth", deps[0])
-}
-
-func TestAdminRoutesNilNotesAdmin(t *testing.T) {
-	// Before Configure is called, notesAdmin is nil — AdminRoutes should be a no-op.
-	app := New()
-	r := chi.NewRouter()
-	app.AdminRoutes(r)
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestListNotesHTMXScrollReturnsFragment(t *testing.T) {

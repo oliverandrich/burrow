@@ -102,6 +102,39 @@ func (r *Repository) SearchByUserID(ctx context.Context, userID string, query st
 	return notes, burrow.OffsetResult(pr, count), nil
 }
 
+// ListAllPaged returns all notes with pagination (no user scope, for admin).
+func (r *Repository) ListAllPaged(ctx context.Context, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
+	ptrs, count, err := den.NewQuery[Note](ctx, r.db).
+		Sort("_created_at", den.Desc).
+		Limit(pr.Limit).
+		Skip(pr.Offset()).
+		AllWithCount()
+	if err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("list all notes: %w", err)
+	}
+
+	notes := make([]Note, len(ptrs))
+	for i, p := range ptrs {
+		notes[i] = *p
+	}
+	return notes, burrow.OffsetResult(pr, int(count)), nil
+}
+
+// DeleteByID deletes a note by ID (no user scope, for admin).
+func (r *Repository) DeleteByID(ctx context.Context, noteID string) error {
+	note, err := den.FindByID[Note](ctx, r.db, noteID)
+	if err != nil {
+		if errors.Is(err, den.ErrNotFound) {
+			return nil
+		}
+		return fmt.Errorf("delete note %s: %w", noteID, err)
+	}
+	if err := den.Delete(ctx, r.db, note); err != nil {
+		return fmt.Errorf("delete note %s: %w", noteID, err)
+	}
+	return nil
+}
+
 // GetByID returns a single note by ID, scoped to the given user.
 func (r *Repository) GetByID(ctx context.Context, noteID, userID string) (*Note, error) {
 	note, err := den.NewQuery[Note](ctx, r.db,
