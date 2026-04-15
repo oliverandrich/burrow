@@ -31,18 +31,19 @@ var htmlTemplateFS embed.FS
 
 // App implements the auth contrib app.
 type App struct {
-	repo          *Repository
-	webauthn      WebAuthnService
-	recovery      *RecoveryService
-	renderer      Renderer
-	emailService  EmailService
-	authLayout    string
-	cancelCleanup context.CancelFunc
-	config        *Config
-	globalConfig  *burrow.Config
-	withLocale    func(ctx context.Context, lang string) context.Context
-	jobs          burrow.Queue
-	logo          template.HTML
+	repo           *Repository
+	webauthn       WebAuthnService
+	recovery       *RecoveryService
+	renderer       Renderer
+	emailService   EmailService
+	authLayout     string
+	cancelCleanup  context.CancelFunc
+	cancelWebAuthn context.CancelFunc
+	config         *Config
+	globalConfig   *burrow.Config
+	withLocale     func(ctx context.Context, lang string) context.Context
+	jobs           burrow.Queue
+	logo           template.HTML
 }
 
 // Config holds auth-specific configuration.
@@ -133,16 +134,19 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	if rpOrigin == "" {
 		rpOrigin = baseURL
 	}
+	waCtx, waCancel := context.WithCancel(context.Background())
 	waSvc, err := NewWebAuthnService(
-		context.Background(),
+		waCtx,
 		cmd.String("auth-webauthn-rp-display-name"),
 		cmd.String("auth-webauthn-rp-id"),
 		rpOrigin,
 	)
 	if err != nil {
+		waCancel()
 		return fmt.Errorf("create webauthn service: %w", err)
 	}
 
+	a.cancelWebAuthn = waCancel
 	a.webauthn = waSvc
 	a.recovery = NewRecoveryService()
 
@@ -260,6 +264,9 @@ func (a *App) backgroundCleanup(ctx context.Context) {
 func (a *App) Shutdown(_ context.Context) error {
 	if a.cancelCleanup != nil {
 		a.cancelCleanup()
+	}
+	if a.cancelWebAuthn != nil {
+		a.cancelWebAuthn()
 	}
 	return nil
 }
