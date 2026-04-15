@@ -14,10 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/admin/modeladmin"
-	matpl "github.com/oliverandrich/burrow/contrib/admin/modeladmin/templates"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
-	"github.com/oliverandrich/burrow/forms"
 
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/urfave/cli/v3"
@@ -37,8 +34,6 @@ type App struct {
 	repo          *Repository
 	webauthn      WebAuthnService
 	recovery      *RecoveryService
-	usersAdmin    *modeladmin.ModelAdmin[User]
-	invitesAdmin  *modeladmin.ModelAdmin[Invite]
 	renderer      Renderer
 	emailService  EmailService
 	authLayout    string
@@ -110,110 +105,13 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	a.globalConfig = cfg.Config
 	a.withLocale = cfg.WithLocale
 
-	// Register display names for internal tables (used on cascade-delete confirmation pages).
-	modeladmin.RegisterTableDisplayName("credentials", "auth-cascade-credentials")
-	modeladmin.RegisterTableDisplayName("recovery_codes", "auth-cascade-recovery-codes")
-	modeladmin.RegisterTableDisplayName("email_verification_tokens", "auth-cascade-email-verification-tokens")
-
-	a.usersAdmin = &modeladmin.ModelAdmin[User]{
-		Slug:              "users",
-		DisplayName:       "User",
-		DisplayPluralName: "Users",
-		DB:                cfg.DB,
-		Renderer:          matpl.DefaultRenderer[User](),
-		CanCreate:         false,
-		CanEdit:           true,
-		CanDelete:         true,
-		ListFields:        []string{"ID", "Username", "Name", "Email", "Role", "IsActive", "CreatedAt"},
-		OrderBy:           "_created_at DESC",
-		ReadOnlyFields:    []string{"Username", "IsActive", "CreatedAt"},
-		FieldChoices: map[string]modeladmin.ChoicesFunc{
-			"Role": func(_ context.Context) ([]forms.Choice, error) {
-				return []forms.Choice{
-					{Value: RoleUser, Label: "User"},
-					{Value: RoleAdmin, Label: "Admin"},
-				}, nil
-			},
-		},
-		FormOptions: []forms.Option[User]{
-			forms.WithCleanFunc(func(ctx context.Context, u *User) error {
-				if u.Role == RoleAdmin || u.ID == "" {
-					return nil
-				}
-				// Check if this user is currently an admin being demoted.
-				current, err := a.repo.GetUserByID(ctx, u.ID)
-				if err != nil {
-					return err
-				}
-				if current.Role != RoleAdmin {
-					return nil // Not currently admin, no demotion check needed.
-				}
-				adminCount, err := a.repo.CountAdminUsers(ctx)
-				if err != nil {
-					return fmt.Errorf("failed to count admins: %w", err)
-				}
-				if adminCount <= 1 {
-					return &burrow.ValidationError{
-						Errors: []burrow.FieldError{
-							{Field: "role", Message: "admin-user-cannot-demote-last"},
-						},
-					}
-				}
-				return nil
-			}),
-		},
-		Filters: []modeladmin.FilterDef{
-			{Field: "role", Label: "Role", LabelKey: "admin-users-role", Type: "select", Choices: roleChoices()},
-		},
-		RowActions: []modeladmin.RowAction{
-			{
-				Slug:     "deactivate",
-				Label:    "admin-users-action-deactivate",
-				Icon:     bsicons.PersonSlash(),
-				Method:   "POST",
-				Class:    "btn-outline-secondary",
-				Confirm:  "admin-users-deactivate-confirm",
-				Handler:  deactivateUserHandler(a.repo),
-				ShowWhen: isDeactivatable,
-			},
-			{
-				Slug:     "activate",
-				Label:    "admin-users-action-activate",
-				Icon:     bsicons.PersonCheck(),
-				Method:   "POST",
-				Class:    "btn-outline-success",
-				Handler:  activateUserHandler(a.repo),
-				ShowWhen: isActivatable,
-			},
-		},
-		EmptyMessageKey: "admin-users-none",
-	}
-
-	a.invitesAdmin = &modeladmin.ModelAdmin[Invite]{
-		Slug:              "invites",
-		DisplayName:       "Invite",
-		DisplayPluralName: "Invites",
-		DB:                cfg.DB,
-		Renderer:          matpl.DefaultRenderer[Invite](),
-		CanCreate:         true,
-		CanEdit:           false,
-		CanDelete:         false,
-		ListFields:        []string{"ID", "Label", "Email", "ExpiresAt", "CreatedAt"},
-		OrderBy:           "_created_at DESC",
-		RowActions: []modeladmin.RowAction{
-			{
-				Slug:     "revoke",
-				Label:    "admin-invites-revoke",
-				Method:   "DELETE",
-				Icon:     bsicons.XCircle(),
-				Class:    "btn-outline-danger",
-				Confirm:  "admin-invites-revoke-confirm",
-				Handler:  revokeInviteHandler(a.repo),
-				ShowWhen: isRevokable,
-			},
-		},
-		EmptyMessageKey: "admin-invites-none",
-	}
+	// Register icon functions used in admin templates.
+	cfg.RegisterIconFunc("iconSearch", bsicons.Search)
+	cfg.RegisterIconFunc("iconPlus", bsicons.PlusLg)
+	cfg.RegisterIconFunc("iconPersonSlash", bsicons.PersonSlash)
+	cfg.RegisterIconFunc("iconPersonCheck", bsicons.PersonCheck)
+	cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
+	cfg.RegisterIconFunc("iconXCircle", bsicons.XCircle)
 
 	// Read flag values and create config.
 	baseURL := ""
@@ -259,14 +157,6 @@ func (a *App) Start(_ *burrow.Server) error {
 	a.cancelCleanup = cancel
 	go a.backgroundCleanup(ctx)
 	return nil
-}
-
-// roleChoices returns filter choices for the user role field.
-func roleChoices() []forms.Choice {
-	return []forms.Choice{
-		{Value: RoleUser, Label: "User", LabelKey: "admin-user-detail-role-user"},
-		{Value: RoleAdmin, Label: "Admin", LabelKey: "admin-user-detail-role-admin"},
-	}
 }
 
 // StaticFS returns the embedded static assets (webauthn.js) under the "auth" prefix.
@@ -501,14 +391,19 @@ func authLogoMiddleware(logo template.HTML) func(http.Handler) http.Handler {
 // AdminRoutes registers admin routes for user and invite management.
 // The router is expected to already have auth middleware applied.
 func (a *App) AdminRoutes(r chi.Router) {
-	a.usersAdmin.Routes(r)
-	r.Route("/invites", func(r chi.Router) {
-		r.Get("/", burrow.Handle(a.invitesAdmin.HandleList))
-		r.Get("/new", burrow.Handle(a.invitesAdmin.HandleNew))
-		r.Post("/", burrow.Handle(a.handleCreateInvite))
-		r.Get("/{id}", burrow.Handle(a.invitesAdmin.HandleDetail))
-		r.Delete("/{id}/revoke", burrow.Handle(revokeInviteHandler(a.repo)))
-	})
+	// Users
+	r.Get("/users", burrow.Handle(a.adminListUsers))
+	r.Get("/users/{id}", burrow.Handle(a.adminEditUser))
+	r.Post("/users/{id}", burrow.Handle(a.adminUpdateUser))
+	r.Delete("/users/{id}", burrow.Handle(a.adminDeleteUser))
+	r.Post("/users/{id}/deactivate", burrow.Handle(deactivateUserHandler(a.repo)))
+	r.Post("/users/{id}/activate", burrow.Handle(activateUserHandler(a.repo)))
+
+	// Invites
+	r.Get("/invites", burrow.Handle(a.adminListInvites))
+	r.Get("/invites/new", burrow.Handle(a.adminNewInviteForm))
+	r.Post("/invites", burrow.Handle(a.handleCreateInvite))
+	r.Delete("/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(a.repo)))
 }
 
 // AdminNavItems returns navigation items for the admin panel.

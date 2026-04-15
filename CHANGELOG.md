@@ -20,6 +20,15 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Auth admin rewritten with hand-written handlers** — `contrib/auth` no longer uses ModelAdmin for its admin views. User list, edit, delete, and invite management are now direct handlers with custom templates. The `HasAdmin` interface (`AdminRoutes`, `AdminNavItems`) is unchanged. Auth admin templates now use globally registered icon functions (`iconSearch`, `iconPlus`, `iconPersonSlash`, `iconPersonCheck`, `iconTrash`, `iconXCircle`).
+
+### Added
+
+- **User search in admin** — the user admin list now supports search across username, name, and email fields.
+- **Inline invite creation** — the invite admin list now features an htmx-powered inline form that slides open on button click instead of navigating to a separate page.
+
 ### Changed
 
 - **Form fields with nil pointers render as zero values** — `forms.extractFields` now returns the element type's zero value (e.g. `""` for `*string`) instead of `nil` when a pointer field is nil. Templates can use `{{ .Value }}` on optional fields without special-casing nil.
@@ -27,6 +36,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Fixed
 
 - **Jobs admin UI re-enabled** — `contrib/jobs` `AdminRoutes` and `AdminNavItems` were stubbed out during the Den migration. The ModelAdmin integration is now wired up again, restoring the list/detail/retry/cancel/delete views and the sidebar nav entry.
+- **Invite creation uses SmartRedirect** — `handleCreateInvite` now uses `htmx.SmartRedirect` instead of `http.Redirect`, fixing redirect behavior when the form is submitted via htmx.
 
 ## 0.11.4 — 2026-04-06
 

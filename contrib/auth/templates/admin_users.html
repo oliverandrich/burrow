@@ -1,0 +1,126 @@
+{{ define "auth/admin_users" -}}
+<div class="flex-shrink-0">
+    <nav aria-label="breadcrumb" class="mb-2">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ t "admin-nav-users" }}</li>
+        </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ t "admin-nav-users" }}</h2>
+        <form class="d-flex" action="/admin/users" method="GET">
+            {{- if .Role }}
+            <input type="hidden" name="role" value="{{ .Role }}">
+            {{- end }}
+            <div class="input-group">
+                <input type="search" class="form-control" name="q" value="{{ .SearchTerm }}" placeholder="{{ t "modeladmin-search" }}">
+                <button class="btn btn-outline-secondary" type="submit">{{ iconSearch }}</button>
+            </div>
+        </form>
+    </div>
+    <div class="d-flex align-items-center mb-3">
+        <div class="d-flex align-items-center">
+            <span class="fw-semibold me-2 small text-body-secondary">{{ t "admin-users-role" }}:</span>
+            <ul class="nav nav-pills nav-pills-sm">
+                <li class="nav-item">
+                    <a class="nav-link py-1 px-2{{ if eq .Role "" }} active{{ end }}" href="/admin/users{{ if .SearchTerm }}?q={{ .SearchTerm }}{{ end }}">{{ t "admin-users-role-all" }}</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-1 px-2{{ if eq .Role "user" }} active{{ end }}" href="/admin/users?role=user{{ if .SearchTerm }}&q={{ .SearchTerm }}{{ end }}">{{ t "admin-user-detail-role-user" }}</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-1 px-2{{ if eq .Role "admin" }} active{{ end }}" href="/admin/users?role=admin{{ if .SearchTerm }}&q={{ .SearchTerm }}{{ end }}">{{ t "admin-user-detail-role-admin" }}</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{{- if .Users }}
+<div class="flex-grow-1 overflow-auto">
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Username</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Active</th>
+                    <th scope="col" class="text-end">{{ t "modeladmin-actions" }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{- range .Users }}
+                <tr>
+                    <td class="p-0"><a href="/admin/users/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ .Username }}</a></td>
+                    <td class="p-0"><a href="/admin/users/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ .Name }}</a></td>
+                    <td class="p-0"><a href="/admin/users/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ deref .Email }}</a></td>
+                    <td class="p-0"><a href="/admin/users/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">
+                        {{- if eq .Role "admin" }}<span class="badge bg-primary">Admin</span>{{ else }}<span class="badge bg-secondary">User</span>{{ end -}}
+                    </a></td>
+                    <td class="p-0"><a href="/admin/users/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">
+                        {{- if .IsActive }}<span class="badge bg-success">{{ t "admin-users-active" }}</span>{{ else }}<span class="badge bg-danger">{{ t "admin-users-inactive" }}</span>{{ end -}}
+                    </a></td>
+                    <td class="text-end">
+                        <div class="d-flex gap-1 justify-content-end">
+                            {{- if .IsActive }}
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                hx-post="/admin/users/{{ .ID }}/deactivate"
+                                hx-swap="none"
+                                hx-confirm="{{ t "admin-users-deactivate-confirm" }}">
+                                {{ iconPersonSlash }} {{ t "admin-users-action-deactivate" }}
+                            </button>
+                            {{- else }}
+                            <button type="button" class="btn btn-sm btn-outline-success"
+                                hx-post="/admin/users/{{ .ID }}/activate"
+                                hx-swap="none">
+                                {{ iconPersonCheck }} {{ t "admin-users-action-activate" }}
+                            </button>
+                            {{- end }}
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                hx-delete="/admin/users/{{ .ID }}"
+                                hx-swap="none"
+                                hx-confirm="{{ t "admin-users-delete-confirm" }}">
+                                {{ iconTrash }} {{ t "modeladmin-delete" }}
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {{- end }}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{- if gt .Page.TotalPages 1 }}
+<div class="flex-shrink-0 pt-3">
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center mb-0">
+            <li class="page-item{{ if le .Page.Page 1 }} disabled{{ end }}">
+                <a class="page-link" href="{{ pageURL "/admin/users" "" (sub .Page.Page 1) }}">
+                    {{ t "modeladmin-previous" }}
+                </a>
+            </li>
+            {{- range pageNumbers .Page.Page .Page.TotalPages }}
+            {{- if eq . -1 }}
+            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+            {{- else }}
+            <li class="page-item{{ if eq . $.Page.Page }} active{{ end }}">
+                <a class="page-link" href="{{ pageURL "/admin/users" "" . }}">{{ . }}</a>
+            </li>
+            {{- end }}
+            {{- end }}
+            <li class="page-item{{ if not .Page.HasMore }} disabled{{ end }}">
+                <a class="page-link" href="{{ pageURL "/admin/users" "" (add .Page.Page 1) }}">
+                    {{ t "modeladmin-next" }}
+                </a>
+            </li>
+        </ul>
+    </nav>
+</div>
+{{- end }}
+{{- else }}
+<div class="text-center py-5 text-body-secondary">
+    <p>{{ t "admin-users-none" }}</p>
+</div>
+{{- end }}
+{{- end }}

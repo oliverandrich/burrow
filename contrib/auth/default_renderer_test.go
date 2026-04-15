@@ -22,13 +22,11 @@ var testRendererTemplateFS embed.FS
 // Compile-time interface assertion.
 var _ Renderer = (*defaultRenderer)(nil)
 
-// rendererTestExecutor creates a TemplateExecutor for testing with stub functions.
-func rendererTestExecutor() burrow.TemplateExecutor {
-	funcMap := template.FuncMap{
+// testBaseFuncMap returns the common template functions needed to parse auth templates in tests.
+func testBaseFuncMap() template.FuncMap {
+	return template.FuncMap{
 		"t":               func(key string) string { return key },
-		"csrfToken":       func() string { return "test-csrf-token" },
 		"staticURL":       func(name string) string { return "/static/" + name },
-		"authLogo":        func() template.HTML { return "" },
 		"currentUser":     func() *User { return nil },
 		"isAuthenticated": func() bool { return false },
 		"lang":            func() string { return "en" },
@@ -39,7 +37,24 @@ func rendererTestExecutor() burrow.TemplateExecutor {
 			}
 			return ""
 		},
+		"iconSearch":      func(class ...string) template.HTML { return "" },
+		"iconPlus":        func(class ...string) template.HTML { return "" },
+		"iconPersonSlash": func(class ...string) template.HTML { return "" },
+		"iconPersonCheck": func(class ...string) template.HTML { return "" },
+		"iconTrash":       func(class ...string) template.HTML { return "" },
+		"iconXCircle":     func(class ...string) template.HTML { return "" },
+		"pageURL":         func(base, query string, page int) string { return "" },
+		"pageNumbers":     func(current, total int) []int { return nil },
+		"add":             func(a, b int) int { return a + b },
+		"sub":             func(a, b int) int { return a - b },
 	}
+}
+
+// rendererTestExecutor creates a TemplateExecutor for testing with stub functions.
+func rendererTestExecutor() burrow.TemplateExecutor {
+	funcMap := testBaseFuncMap()
+	funcMap["csrfToken"] = func() string { return "test-csrf-token" }
+	funcMap["authLogo"] = func() template.HTML { return "" }
 
 	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(`{{ define "bootstrap/theme_script" }}{{ end }}`))
 	template.Must(tmpl.ParseFS(testRendererTemplateFS, "templates/*.html"))
@@ -252,22 +267,9 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 	r := DefaultRenderer()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
-	funcMap := template.FuncMap{
-		"t":               func(key string) string { return key },
-		"csrfToken":       func() string { return "test-csrf-token-value" },
-		"staticURL":       func(name string) string { return "/static/" + name },
-		"authLogo":        func() template.HTML { return "" },
-		"currentUser":     func() *User { return nil },
-		"isAuthenticated": func() bool { return false },
-		"lang":            func() string { return "en" },
-		"credName":        credName,
-		"deref": func(s *string) string {
-			if s != nil {
-				return *s
-			}
-			return ""
-		},
-	}
+	funcMap := testBaseFuncMap()
+	funcMap["csrfToken"] = func() string { return "test-csrf-token-value" }
+	funcMap["authLogo"] = func() template.HTML { return "" }
 	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(`{{ define "bootstrap/theme_script" }}{{ end }}`))
 	template.Must(tmpl.ParseFS(testRendererTemplateFS, "templates/*.html"))
 	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
@@ -358,22 +360,9 @@ func TestRenderCardExecError(t *testing.T) {
 
 // rendererTestExecutorWithLogo creates an executor where authLogo returns the given HTML.
 func rendererTestExecutorWithLogo(logoHTML template.HTML) burrow.TemplateExecutor {
-	funcMap := template.FuncMap{
-		"t":               func(key string) string { return key },
-		"csrfToken":       func() string { return "test-csrf-token" },
-		"staticURL":       func(name string) string { return "/static/" + name },
-		"authLogo":        func() template.HTML { return logoHTML },
-		"currentUser":     func() *User { return nil },
-		"isAuthenticated": func() bool { return false },
-		"lang":            func() string { return "en" },
-		"credName":        credName,
-		"deref": func(s *string) string {
-			if s != nil {
-				return *s
-			}
-			return ""
-		},
-	}
+	funcMap := testBaseFuncMap()
+	funcMap["csrfToken"] = func() string { return "test-csrf-token" }
+	funcMap["authLogo"] = func() template.HTML { return logoHTML }
 	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(`{{ define "bootstrap/theme_script" }}{{ end }}`))
 	template.Must(tmpl.ParseFS(testRendererTemplateFS, "templates/*.html"))
 	return func(_ context.Context, name string, data map[string]any) (template.HTML, error) {

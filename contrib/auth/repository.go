@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/where"
 	"golang.org/x/crypto/bcrypt"
@@ -242,6 +243,92 @@ func (r *Repository) PurgeOrphanedUsers(ctx context.Context, olderThan time.Dura
 		}
 	}
 	return purged, nil
+}
+
+// --- Paginated query methods ---
+
+// ListUsersPaged returns users with pagination and optional role filter, ordered by created_at desc.
+func (r *Repository) ListUsersPaged(ctx context.Context, pr burrow.PageRequest, role string) ([]User, burrow.PageResult, error) {
+	conditions := []where.Condition{}
+	if role != "" {
+		conditions = append(conditions, where.Field("role").Eq(role))
+	}
+
+	ptrs, count, err := den.NewQuery[User](ctx, r.db, conditions...).
+		Sort("_created_at", den.Desc).
+		Limit(pr.Limit).
+		Skip(pr.Offset()).
+		AllWithCount()
+	if err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("list users paged: %w", err)
+	}
+
+	users := make([]User, len(ptrs))
+	for i, p := range ptrs {
+		users[i] = *p
+	}
+	return users, burrow.OffsetResult(pr, int(count)), nil
+}
+
+// SearchUsers searches users by username, name, or email with pagination and optional role filter.
+func (r *Repository) SearchUsers(ctx context.Context, query string, pr burrow.PageRequest, role string) ([]User, burrow.PageResult, error) {
+	searchCond := where.Or(
+		where.Field("username").StringContains(query),
+		where.Field("name").StringContains(query),
+		where.Field("email").StringContains(query),
+	)
+
+	var cond where.Condition
+	if role != "" {
+		cond = where.And(searchCond, where.Field("role").Eq(role))
+	} else {
+		cond = searchCond
+	}
+
+	ptrs, count, err := den.NewQuery[User](ctx, r.db, cond).
+		Sort("_created_at", den.Desc).
+		Limit(pr.Limit).
+		Skip(pr.Offset()).
+		AllWithCount()
+	if err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("search users: %w", err)
+	}
+
+	users := make([]User, len(ptrs))
+	for i, p := range ptrs {
+		users[i] = *p
+	}
+	return users, burrow.OffsetResult(pr, int(count)), nil
+}
+
+// GetInviteByID retrieves an invite by its ID.
+func (r *Repository) GetInviteByID(ctx context.Context, id string) (*Invite, error) {
+	invite, err := den.FindByID[Invite](ctx, r.db, id)
+	if err != nil {
+		if errors.Is(err, den.ErrNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get invite by id %s: %w", id, err)
+	}
+	return invite, nil
+}
+
+// ListInvitesPaged returns invites with pagination, ordered by created_at desc.
+func (r *Repository) ListInvitesPaged(ctx context.Context, pr burrow.PageRequest) ([]Invite, burrow.PageResult, error) {
+	ptrs, count, err := den.NewQuery[Invite](ctx, r.db).
+		Sort("_created_at", den.Desc).
+		Limit(pr.Limit).
+		Skip(pr.Offset()).
+		AllWithCount()
+	if err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("list invites paged: %w", err)
+	}
+
+	invites := make([]Invite, len(ptrs))
+	for i, p := range ptrs {
+		invites[i] = *p
+	}
+	return invites, burrow.OffsetResult(pr, int(count)), nil
 }
 
 // --- Credential methods ---

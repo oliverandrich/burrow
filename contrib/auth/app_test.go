@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -823,8 +822,7 @@ func TestAdminUpdateUserLastAdminDemotion(t *testing.T) {
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
-	// WithCleanFunc returns a validation error, which re-renders the form (200 OK).
-	assert.Equal(t, http.StatusOK, rec.Code, "should reject demotion of last admin")
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "should reject demotion of last admin")
 
 	got, err := repo.GetUserByID(ctx, admin.ID)
 	require.NoError(t, err)
@@ -960,20 +958,6 @@ func TestRevokeInviteSuccess(t *testing.T) {
 	assert.Empty(t, invites)
 }
 
-func TestIsRevokable(t *testing.T) {
-	active := Invite{ExpiresAt: time.Now().Add(time.Hour)}
-	assert.True(t, isRevokable(active))
-
-	expired := Invite{ExpiresAt: time.Now().Add(-time.Hour)}
-	assert.False(t, isRevokable(expired))
-
-	now := time.Now()
-	used := Invite{ExpiresAt: time.Now().Add(time.Hour), UsedAt: &now}
-	assert.False(t, isRevokable(used))
-
-	assert.False(t, isRevokable("not an invite"))
-}
-
 // --- Admin delete user tests ---
 
 func TestDeleteUser(t *testing.T) {
@@ -1002,17 +986,23 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
-	_, err := repo.CreateUser(ctx, "admin", "Admin")
+	admin, err := repo.CreateUser(ctx, "admin", "Admin")
 	require.NoError(t, err)
 
 	target, err := repo.CreateUser(ctx, "alice", "Alice")
 	require.NoError(t, err)
 
-	router := adminUserRouter(app)
+	router := chi.NewRouter()
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rctx := WithUser(r.Context(), admin)
+			rctx = burrow.TestErrorExecContext(rctx)
+			next.ServeHTTP(w, r.WithContext(rctx))
+		})
+	})
+	app.AdminRoutes(router)
 
-	form := url.Values{"_selected": {target.ID}}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/bulk/delete", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/users/"+target.ID, nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -1022,21 +1012,32 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 	// Verify user was deleted.
 	users, err := repo.ListUsers(ctx)
 	require.NoError(t, err)
-	assert.Len(t, users, 1, "only the other user should remain")
+	assert.Len(t, users, 1, "only the admin should remain")
 }
 
 func TestAdminDeleteUserNotFound(t *testing.T) {
-	app, _ := newTestApp(t)
-	router := adminUserRouter(app)
+	app, repo := newTestApp(t)
+	ctx := context.Background()
 
-	form := url.Values{"_selected": {"999"}}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/users/bulk/delete", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	admin, err := repo.CreateUser(ctx, "admin", "Admin")
+	require.NoError(t, err)
+	_ = admin
+
+	router := chi.NewRouter()
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rctx := WithUser(r.Context(), admin)
+			rctx = burrow.TestErrorExecContext(rctx)
+			next.ServeHTTP(w, r.WithContext(rctx))
+		})
+	})
+	app.AdminRoutes(router)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/users/999", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
-	// Item doesn't exist but deleteItem still attempts to delete — no error
-	// since DELETE WHERE id=999 succeeds with 0 rows affected.
+	// DeleteUser silently succeeds when ID doesn't exist.
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 }
 
@@ -1122,18 +1123,6 @@ func TestSetUserActive(t *testing.T) {
 	updated, err = repo.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
 	assert.True(t, updated.IsActive)
-}
-
-func TestIsDeactivatable(t *testing.T) {
-	assert.True(t, isDeactivatable(User{IsActive: true}))
-	assert.False(t, isDeactivatable(User{IsActive: false}))
-	assert.False(t, isDeactivatable("not a user"))
-}
-
-func TestIsActivatable(t *testing.T) {
-	assert.True(t, isActivatable(User{IsActive: false}))
-	assert.False(t, isActivatable(User{IsActive: true}))
-	assert.False(t, isActivatable("not a user"))
 }
 
 // userActionRouter creates a chi router with a POST handler and user context.

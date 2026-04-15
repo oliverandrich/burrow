@@ -18,6 +18,29 @@ type CreateInviteRequest struct {
 	Email string `form:"email"`
 }
 
+// adminListInvites handles GET /admin/invites — paginated invite list.
+func (a *App) adminListInvites(w http.ResponseWriter, r *http.Request) error {
+	pr := burrow.ParsePageRequest(r)
+
+	invites, page, err := a.repo.ListInvitesPaged(r.Context(), pr)
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list invites")
+	}
+
+	return burrow.Render(w, r, http.StatusOK, "auth/admin_invites", map[string]any{
+		"Invites":  invites,
+		"Page":     page,
+		"UseEmail": a.config != nil && a.config.UseEmail,
+	})
+}
+
+// adminNewInviteForm handles GET /admin/invites/new — returns the invite form fragment for htmx.
+func (a *App) adminNewInviteForm(w http.ResponseWriter, r *http.Request) error {
+	return burrow.Render(w, r, http.StatusOK, "auth/admin_invite_form", map[string]any{
+		"UseEmail": a.config != nil && a.config.UseEmail,
+	})
+}
+
 // handleCreateInvite creates a new invite and optionally sends an email.
 func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 	var req CreateInviteRequest
@@ -72,7 +95,7 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	slog.Info("invite created", "invite_id", invite.ID, "created_by", user.ID)
-	http.Redirect(w, r, "/admin/invites", http.StatusSeeOther)
+	htmx.SmartRedirect(w, r, "/admin/invites")
 	return nil
 }
 
@@ -91,13 +114,4 @@ func revokeInviteHandler(repo *Repository) burrow.HandlerFunc {
 		htmx.SmartRedirect(w, r, "/admin/invites")
 		return nil
 	}
-}
-
-// isRevokable returns true if the invite is active (not used and not expired).
-func isRevokable(item any) bool {
-	inv, ok := item.(Invite)
-	if !ok {
-		return false
-	}
-	return !inv.IsUsed() && !inv.IsExpired()
 }
