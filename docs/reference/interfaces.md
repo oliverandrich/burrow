@@ -361,6 +361,17 @@ type HasAdmin interface {
 
 Contributes admin panel routes and navigation items. `AdminRoutes` receives a Chi router already prefixed with `/admin` and protected by auth middleware. The `admin` contrib app discovers all `HasAdmin` implementations and mounts them.
 
+### AdminAuth
+
+```go
+type AdminAuth interface {
+    RequireAuth() func(http.Handler) http.Handler
+    RequireAdmin() func(http.Handler) http.Handler
+}
+```
+
+Provides authentication and authorization middleware for the admin panel. The `admin` contrib app discovers an `AdminAuth` provider from the registry during `Configure` and uses its middleware to protect `/admin` routes. `contrib/auth` implements this interface — custom auth systems can provide their own implementation.
+
 ```go
 func (a *App) AdminRoutes(r chi.Router) {
     r.Get("/notes", burrow.Handle(a.adminListNotes))

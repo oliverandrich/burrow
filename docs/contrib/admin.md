@@ -4,7 +4,7 @@ Admin panel coordinator that discovers and mounts admin views from other apps.
 
 **Package:** `github.com/oliverandrich/burrow/contrib/admin`
 
-**Depends on:** `auth`
+**Requires:** an app implementing `burrow.AdminAuth` (e.g., `contrib/auth`)
 
 ## Setup
 
@@ -24,7 +24,7 @@ srv := burrow.NewServer(
 admin.New(admin.WithLayout("myapp/admin-layout"), admin.WithDashboardRenderer(myCustomDashboard))
 ```
 
-The admin app discovers admin views from other apps via the `HasAdmin` interface. Any app that implements `HasAdmin` gets its routes mounted under `/admin` with auth protection.
+The admin app discovers auth middleware via the `AdminAuth` interface and admin views via the `HasAdmin` interface. Any app that implements `HasAdmin` gets its routes mounted under `/admin` with auth protection. The admin app does not import `contrib/auth` directly — any app implementing `AdminAuth` can provide the middleware.
 
 ## Default Layout
 

@@ -9,14 +9,8 @@ import (
 	"github.com/oliverandrich/burrow/contrib/session"
 )
 
-// RequireAuth returns middleware that redirects to login if not authenticated.
-// The original request URL is stored in the session as "redirect_after_login"
-// so the user can be redirected back after successful authentication.
-//
-// For GET requests, the full request URI is stored. For other methods (POST,
-// PUT, DELETE, etc.), the Referer header is used instead — since the redirect
-// back is always a GET, storing a POST-only URL would cause a 405.
-func RequireAuth() func(http.Handler) http.Handler {
+// requireAuth returns middleware that redirects to login if not authenticated.
+func requireAuth() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !IsAuthenticated(r.Context()) {
@@ -50,10 +44,8 @@ func redirectTarget(r *http.Request) string {
 	return parsed.RequestURI()
 }
 
-// RequireAdmin returns middleware that enforces admin access.
-// Unauthenticated users are redirected to login (like [RequireAuth]).
-// Authenticated non-admin users see a 403 error page.
-func RequireAdmin() func(http.Handler) http.Handler {
+// requireAdmin returns middleware that enforces admin access.
+func requireAdmin() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user := CurrentUser(r.Context())
@@ -79,6 +71,30 @@ func RequireAdmin() func(http.Handler) http.Handler {
 func redirectToLogin(w http.ResponseWriter, r *http.Request) {
 	htmx.SmartRedirect(w, r, "/auth/login")
 }
+
+// RequireAuth returns middleware that redirects to login if not authenticated.
+// The original request URL is stored in the session as "redirect_after_login"
+// so the user can be redirected back after successful authentication.
+//
+// For GET requests, the full request URI is stored. For other methods (POST,
+// PUT, DELETE, etc.), the Referer header is used instead — since the redirect
+// back is always a GET, storing a POST-only URL would cause a 405.
+func RequireAuth() func(http.Handler) http.Handler { return requireAuth() }
+
+// RequireAdmin returns middleware that enforces admin access.
+// Unauthenticated users are redirected to login (like [RequireAuth]).
+// Authenticated non-admin users see a 403 error page.
+func RequireAdmin() func(http.Handler) http.Handler { return requireAdmin() }
+
+// Compile-time check: auth.App implements burrow.AdminAuth.
+var _ burrow.AdminAuth = (*App)(nil)
+
+// RequireAuth satisfies the burrow.AdminAuth interface so the admin app
+// can discover auth middleware from the registry without importing this package.
+func (a *App) RequireAuth() func(http.Handler) http.Handler { return requireAuth() }
+
+// RequireAdmin satisfies the burrow.AdminAuth interface.
+func (a *App) RequireAdmin() func(http.Handler) http.Handler { return requireAdmin() }
 
 // SafeRedirectPath validates a redirect path, falling back to defaultPath.
 func SafeRedirectPath(next, defaultPath string) string {

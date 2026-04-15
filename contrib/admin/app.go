@@ -1,18 +1,18 @@
 // Package admin provides the admin panel coordinator as a burrow contrib app.
 // It handles layout, navigation, dashboard rendering, and acts as the mount
-// point for ModelAdmin instances that provide per-model CRUD views.
+// point for admin views contributed by apps implementing HasAdmin.
 package admin
 
 import (
 	"context"
 	"embed"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
 	"github.com/urfave/cli/v3"
 )
@@ -30,9 +30,10 @@ type DashboardRenderer interface {
 
 // App implements the admin coordinator contrib app.
 type App struct {
-	dashboard DashboardRenderer
-	registry  *burrow.Registry
-	layout    string
+	dashboard      DashboardRenderer
+	registry       *burrow.Registry
+	authMiddleware burrow.AdminAuth
+	layout         string
 }
 
 // Option configures the admin app.
@@ -64,13 +65,22 @@ func New(opts ...Option) *App {
 
 func (a *App) Name() string { return "admin" }
 
-func (a *App) Dependencies() []string { return []string{"auth"} }
-
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.registry = cfg.Registry
 	cfg.RegisterIconFunc("iconGearFill", bsicons.GearFill)
 	cfg.RegisterIconFunc("iconChevronRight", bsicons.ChevronRight)
 	cfg.RegisterIconFunc("iconPersonCircle", bsicons.PersonCircle)
+
+	// Discover the AdminAuth provider from the registry.
+	for _, app := range cfg.Registry.Apps() {
+		if aa, ok := app.(burrow.AdminAuth); ok {
+			a.authMiddleware = aa
+			break
+		}
+	}
+	if a.authMiddleware == nil {
+		return fmt.Errorf("admin: no AdminAuth provider found (register an auth app before admin)")
+	}
 	return nil
 }
 
@@ -125,7 +135,7 @@ func (a *App) Routes(r chi.Router) {
 	}
 
 	r.Route("/admin", func(r chi.Router) {
-		r.Use(auth.RequireAuth(), auth.RequireAdmin())
+		r.Use(a.authMiddleware.RequireAuth(), a.authMiddleware.RequireAdmin())
 
 		groups := a.buildNavGroups()
 

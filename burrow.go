@@ -256,6 +256,15 @@ type Seedable interface {
 	Seed(ctx context.Context) error
 }
 
+// AdminAuth provides authentication and authorization middleware for the
+// admin panel. The admin app discovers an AdminAuth provider from the
+// registry during Configure and uses its middleware to protect /admin routes.
+// contrib/auth implements this interface.
+type AdminAuth interface {
+	RequireAuth() func(http.Handler) http.Handler
+	RequireAdmin() func(http.Handler) http.Handler
+}
+
 // HasAdmin is implemented by apps that contribute admin panel routes
 // and navigation items. AdminRoutes receives a chi router already
 // prefixed with /admin and protected by auth middleware.

@@ -29,7 +29,6 @@ var (
 	_ burrow.App               = (*App)(nil)
 	_ burrow.Configurable      = (*App)(nil)
 	_ burrow.HasRoutes         = (*App)(nil)
-	_ burrow.HasDependencies   = (*App)(nil)
 	_ burrow.HasTemplates      = (*App)(nil)
 	_ burrow.HasTranslations   = (*App)(nil)
 	_ burrow.HasRequestFuncMap = (*App)(nil)
@@ -77,11 +76,6 @@ func TestAppName(t *testing.T) {
 	assert.Equal(t, "admin", app.Name())
 }
 
-func TestAppDependencies(t *testing.T) {
-	app := New()
-	assert.Equal(t, []string{"auth"}, app.Dependencies())
-}
-
 func TestAppConfigure(t *testing.T) {
 	app := New()
 	registry := burrow.NewRegistry()
@@ -97,13 +91,16 @@ func TestAppConfigure(t *testing.T) {
 	assert.NotNil(t, app.registry)
 }
 
-func TestAppAddMissingAuthPanics(t *testing.T) {
+func TestAppConfigureWithoutAuthReturnsError(t *testing.T) {
 	registry := burrow.NewRegistry()
+	registry.Add(New())
 
-	assert.PanicsWithValue(t,
-		`burrow: app "admin" requires "auth" to be registered first`,
-		func() { registry.Add(New()) },
-	)
+	app := New()
+	cfg := &burrow.AppConfig{Registry: registry, Config: &burrow.Config{}}
+
+	err := app.Configure(cfg, &cli.Command{Name: "test"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no AdminAuth provider found")
 }
 
 // hasAdminApp is a test app implementing HasAdmin.

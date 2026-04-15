@@ -22,7 +22,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 }
 ```
 
-This pattern is used by the `admin` app to access the auth repository for user management.
+This pattern is used by the `admin` app to discover its `AdminAuth` middleware provider from the registry.
 
 ## Declaring Dependencies
 
