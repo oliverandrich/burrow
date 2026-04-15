@@ -3,7 +3,6 @@ package session
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/securecookie"
 	"github.com/oliverandrich/burrow"
@@ -65,7 +64,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	cookieName := cmd.String("session-cookie-name")
 	maxAge := int(cmd.Int("session-max-age"))
 
-	secure := cfg.Config != nil && strings.HasPrefix(cfg.Config.Server.BaseURL, "https://")
+	secure := cfg.Config != nil && cfg.Config.IsHTTPS()
 
 	sc := securecookie.New(hashKey, blockKey)
 	sc.MaxAge(maxAge)

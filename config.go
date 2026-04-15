@@ -75,6 +75,11 @@ func NewConfig(cmd *cli.Command) *Config {
 	}
 }
 
+// IsHTTPS reports whether the base URL uses HTTPS.
+func (c *Config) IsHTTPS() bool {
+	return strings.HasPrefix(c.Server.BaseURL, "https://")
+}
+
 // ResolveBaseURL computes the base URL from server and TLS config
 // if BaseURL is not explicitly set.
 func (c *Config) ResolveBaseURL() string {

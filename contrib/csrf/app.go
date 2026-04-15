@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	gorillacsrf "github.com/gorilla/csrf"
 	"github.com/oliverandrich/burrow"
@@ -36,7 +35,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 
 func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	keyHex := cmd.String("csrf-key")
-	secure := cfg.Config != nil && strings.HasPrefix(cfg.Config.Server.BaseURL, "https://")
+	secure := cfg.Config != nil && cfg.Config.IsHTTPS()
 	return a.configure(keyHex, secure)
 }
 

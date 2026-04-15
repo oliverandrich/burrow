@@ -106,7 +106,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 }
 
 func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
-	isHTTPS := cfg.Config != nil && strings.HasPrefix(cfg.Config.Server.BaseURL, "https://")
+	isHTTPS := cfg.Config != nil && cfg.Config.IsHTTPS()
 
 	if a.csp == nil {
 		if v := cmd.String("secure-csp"); v != "" {

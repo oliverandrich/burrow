@@ -1688,9 +1688,9 @@ func TestConfigure(t *testing.T) {
 
 	err := cliCmd.Run(context.Background(), []string{
 		"test",
-		"--webauthn-rp-id", "localhost",
-		"--webauthn-rp-display-name", "Test App",
-		"--webauthn-rp-origin", "http://localhost:8080",
+		"--auth-webauthn-rp-id", "localhost",
+		"--auth-webauthn-rp-display-name", "Test App",
+		"--auth-webauthn-rp-origin", "http://localhost:8080",
 		"--auth-login-redirect", "/home",
 		"--auth-logout-redirect", "/goodbye",
 	})
@@ -1730,8 +1730,8 @@ func TestConfigureWithDefaultOrigin(t *testing.T) {
 	// No --webauthn-rp-origin set, should fallback to base URL.
 	err := cliCmd.Run(context.Background(), []string{
 		"test",
-		"--webauthn-rp-id", "localhost",
-		"--webauthn-rp-display-name", "Test App",
+		"--auth-webauthn-rp-id", "localhost",
+		"--auth-webauthn-rp-display-name", "Test App",
 	})
 	require.NoError(t, err)
 	require.NotNil(t, app.config)

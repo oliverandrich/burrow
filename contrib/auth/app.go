@@ -208,21 +208,18 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name:    "auth-webauthn-rp-id",
-			Aliases: []string{"webauthn-rp-id"},
 			Value:   "localhost",
 			Usage:   "WebAuthn Relying Party ID (domain name)",
 			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_ID", "auth.webauthn_rp_id"),
 		},
 		&cli.StringFlag{
 			Name:    "auth-webauthn-rp-display-name",
-			Aliases: []string{"webauthn-rp-display-name"},
 			Value:   "Web App",
 			Usage:   "WebAuthn Relying Party display name",
 			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_DISPLAY_NAME", "auth.webauthn_rp_display_name"),
 		},
 		&cli.StringFlag{
 			Name:    "auth-webauthn-rp-origin",
-			Aliases: []string{"webauthn-rp-origin"},
 			Usage:   "WebAuthn Relying Party origin (defaults to base URL)",
 			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_ORIGIN", "auth.webauthn_rp_origin"),
 		},
