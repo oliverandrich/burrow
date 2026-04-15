@@ -2,14 +2,13 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
-// emailJobPayload is the JSON payload for the auth.send_email job.
+// emailJobPayload is the JSON payload for the auth.send_email task.
 type emailJobPayload struct {
 	Kind   string `json:"kind"` // "verification" or "invite"
 	Email  string `json:"email"`
@@ -24,17 +23,13 @@ func (a *App) RegisterJobs(q burrow.Queue) {
 	if a.emailService == nil {
 		return
 	}
-	q.Handle("auth.send_email", a.handleEmailJob, burrow.WithMaxRetries(5))
-	a.jobs = q
+	a.emailTask = burrow.DefineTask("auth.send_email",
+		a.handleEmailJob, burrow.WithMaxRetries(5))
+	a.emailTask.Register(q)
 }
 
 // handleEmailJob processes an email delivery job.
-func (a *App) handleEmailJob(ctx context.Context, payload []byte) error {
-	var p emailJobPayload
-	if err := json.Unmarshal(payload, &p); err != nil {
-		return fmt.Errorf("unmarshal email job payload: %w", err)
-	}
-
+func (a *App) handleEmailJob(ctx context.Context, p emailJobPayload) error {
 	ctx = a.withLocale(ctx, p.Locale)
 
 	switch p.Kind {
@@ -47,13 +42,13 @@ func (a *App) handleEmailJob(ctx context.Context, payload []byte) error {
 	}
 }
 
-// enqueueEmail enqueues an email delivery job. If no queue is configured,
+// enqueueEmail enqueues an email delivery job. If no task is configured,
 // it falls back to sending the email directly (synchronous).
 func (a *App) enqueueEmail(ctx context.Context, kind, email, url string) error {
-	if a.jobs == nil {
+	if a.emailTask == nil {
 		return a.sendEmailDirect(ctx, kind, email, url)
 	}
-	_, err := a.jobs.Enqueue(ctx, "auth.send_email", emailJobPayload{
+	_, err := a.emailTask.Enqueue(ctx, emailJobPayload{
 		Kind:   kind,
 		Email:  email,
 		URL:    url,

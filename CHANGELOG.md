@@ -30,6 +30,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **User search in admin** — the user admin list now supports search across username, name, and email fields.
 - **Inline invite creation** — the invite admin list now features an htmx-powered inline form that slides open on button click instead of navigating to a separate page.
+- **`burrow.DefineTask[P]()`** — type-safe generic task definitions for the jobs system. Wraps `Queue.Handle` and `Queue.Enqueue` with automatic JSON marshalling, ensuring compile-time agreement between producer and consumer payload types. Auth email jobs migrated as first consumer.
 
 ### Changed
 

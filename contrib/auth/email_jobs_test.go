@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -61,7 +60,7 @@ func TestRegisterJobs(t *testing.T) {
 	app.RegisterJobs(q)
 
 	assert.Contains(t, q.handlers, "auth.send_email")
-	assert.Same(t, q, app.jobs)
+	assert.NotNil(t, app.emailTask)
 }
 
 func TestRegisterJobs_NoEmailService(t *testing.T) {
@@ -71,7 +70,7 @@ func TestRegisterJobs_NoEmailService(t *testing.T) {
 
 	// No handler registered when email service is not configured.
 	assert.Empty(t, q.handlers)
-	assert.Nil(t, app.jobs)
+	assert.Nil(t, app.emailTask)
 }
 
 func TestHandleEmailJob_Verification(t *testing.T) {
@@ -79,15 +78,12 @@ func TestHandleEmailJob_Verification(t *testing.T) {
 	bundle := testI18nBundle(t)
 	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
 
-	payload, err := json.Marshal(emailJobPayload{
+	err := app.handleEmailJob(context.Background(), emailJobPayload{
 		Kind:   "verification",
 		Email:  "test@example.com",
 		URL:    "http://localhost/verify",
 		Locale: "en",
 	})
-	require.NoError(t, err)
-
-	err = app.handleEmailJob(context.Background(), payload)
 	require.NoError(t, err)
 	assert.True(t, emailSvc.sendCalled)
 }
@@ -97,15 +93,12 @@ func TestHandleEmailJob_Invite(t *testing.T) {
 	bundle := testI18nBundle(t)
 	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
 
-	payload, err := json.Marshal(emailJobPayload{
+	err := app.handleEmailJob(context.Background(), emailJobPayload{
 		Kind:   "invite",
 		Email:  "invitee@example.com",
 		URL:    "http://localhost/register?invite=abc",
 		Locale: "en",
 	})
-	require.NoError(t, err)
-
-	err = app.handleEmailJob(context.Background(), payload)
 	require.NoError(t, err)
 	assert.True(t, emailSvc.sendCalled)
 }
@@ -115,33 +108,21 @@ func TestHandleEmailJob_UnknownKind(t *testing.T) {
 	bundle := testI18nBundle(t)
 	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
 
-	payload, err := json.Marshal(emailJobPayload{
+	err := app.handleEmailJob(context.Background(), emailJobPayload{
 		Kind:   "unknown",
 		Email:  "test@example.com",
 		URL:    "http://localhost",
 		Locale: "en",
 	})
-	require.NoError(t, err)
-
-	err = app.handleEmailJob(context.Background(), payload)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown email kind")
-}
-
-func TestHandleEmailJob_InvalidPayload(t *testing.T) {
-	emailSvc := &mockEmailService{}
-	bundle := testI18nBundle(t)
-	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
-
-	err := app.handleEmailJob(context.Background(), []byte("not json"))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unmarshal email job payload")
 }
 
 func TestEnqueueEmail(t *testing.T) {
 	q := newMockQueue()
 	bundle := testI18nBundle(t)
-	app := &App{jobs: q, emailService: &mockEmailService{}, withLocale: bundle.WithLocale}
+	app := &App{emailService: &mockEmailService{}, withLocale: bundle.WithLocale}
+	app.RegisterJobs(q)
 
 	err := app.enqueueEmail(context.Background(), "verification", "test@example.com", "http://localhost/verify")
 	require.NoError(t, err)
@@ -158,7 +139,7 @@ func TestEnqueueEmail(t *testing.T) {
 func TestEnqueueEmail_FallbackDirect(t *testing.T) {
 	emailSvc := &mockEmailService{}
 	bundle := testI18nBundle(t)
-	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale} // no jobs queue
+	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale} // no emailTask
 
 	err := app.enqueueEmail(context.Background(), "verification", "test@example.com", "http://localhost/verify")
 	require.NoError(t, err)

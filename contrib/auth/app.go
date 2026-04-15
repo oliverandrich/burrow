@@ -42,7 +42,7 @@ type App struct {
 	config         *Config
 	globalConfig   *burrow.Config
 	withLocale     func(ctx context.Context, lang string) context.Context
-	jobs           burrow.Queue
+	emailTask      *burrow.TaskDefinition[emailJobPayload]
 	logo           template.HTML
 }
 
