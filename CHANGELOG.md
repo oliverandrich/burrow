@@ -37,6 +37,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Fixed
 
+- **NavItem.LabelKey now translated in navLinks** — `buildNavLinks` now translates `LabelKey` via `i18n.T` at render time, falling back to `Label` when no translation is found. Previously `LabelKey` was silently dropped.
 - **Jobs admin UI re-enabled** — `contrib/jobs` `AdminRoutes` and `AdminNavItems` were stubbed out during the Den migration. The ModelAdmin integration is now wired up again, restoring the list/detail/retry/cancel/delete views and the sidebar nav entry.
 - **Invite creation uses SmartRedirect** — `handleCreateInvite` now uses `htmx.SmartRedirect` instead of `http.Redirect`, fixing redirect behavior when the form is submitted via htmx.
 

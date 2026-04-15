@@ -443,6 +443,32 @@ func TestBuildNavLinks_PreservesIcon(t *testing.T) {
 	assert.Equal(t, template.HTML("<svg>icon</svg>"), links[0].Icon)
 }
 
+func TestBuildNavLinks_TranslatesLabelKey(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Fallback", LabelKey: "nav-home", URL: "/"},
+	})
+
+	// Without i18n configured, LabelKey returns itself — falls back to Label.
+	links := buildNavLinks(ctx, "/")
+
+	require.Len(t, links, 1)
+	assert.Equal(t, "Fallback", links[0].Label, "should fall back to Label when translation equals key")
+}
+
+func TestBuildNavLinks_LabelKeyWithoutLabelFallsThrough(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{LabelKey: "nav-untranslated", URL: "/"},
+	})
+
+	// No Label set, no i18n configured — LabelKey is returned as-is.
+	links := buildNavLinks(ctx, "/")
+
+	require.Len(t, links, 1)
+	assert.Equal(t, "nav-untranslated", links[0].Label, "should use LabelKey as label when Label is empty and translation equals key")
+}
+
 func TestCoreRequestFuncMap_NavLinks(t *testing.T) {
 	ctx := context.Background()
 	ctx = WithNavItems(ctx, []NavItem{

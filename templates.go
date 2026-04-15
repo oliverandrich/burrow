@@ -9,6 +9,8 @@ import (
 	"io/fs"
 	"net/http"
 	"strings"
+
+	"github.com/oliverandrich/burrow/i18n"
 )
 
 //go:embed templates/*.html
@@ -77,8 +79,17 @@ func buildNavLinks(ctx context.Context, requestPath string) []NavLink {
 		if item.AdminOnly && !admin {
 			continue
 		}
+		label := item.Label
+		if item.LabelKey != "" {
+			translated := i18n.T(ctx, item.LabelKey)
+			if translated != item.LabelKey {
+				label = translated
+			} else if label == "" {
+				label = item.LabelKey
+			}
+		}
 		links = append(links, NavLink{
-			Label:    item.Label,
+			Label:    label,
 			URL:      item.URL,
 			Icon:     item.Icon,
 			IsActive: isActivePath(requestPath, item.URL),
