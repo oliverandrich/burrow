@@ -2,7 +2,6 @@ package uploads
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -66,12 +65,6 @@ func StoreFile(r *http.Request, fieldName string, storage Store, opts StoreOptio
 	return storage.Store(r.Context(), file, opts)
 }
 
-// contentHash returns the first 16 hex characters of the SHA-256 hash.
-func contentHash(data []byte) string {
-	h := sha256.Sum256(data)
-	return fmt.Sprintf("%x", h[:8])
-}
-
 // buildKey constructs a storage key from prefix, hash, and MIME type.
 // The extension is derived from the detected MIME type rather than the
 // original filename to prevent attacker-controlled extensions (e.g.,
@@ -130,11 +123,13 @@ func extFromMIME(mimeType string) string {
 	return exts[0]
 }
 
-// detectMIME reads the first 512 bytes to detect the content type.
-// It returns the MIME type and the full content (header + rest).
-func detectMIME(file io.Reader) (mimeType string, content []byte, err error) {
-	header := make([]byte, 512)
-	n, err := io.ReadAtLeast(file, header, 1)
+// detectMIMEType reads the first 512 bytes to detect the content type.
+// It returns the MIME type and the bytes read so far. The caller is
+// responsible for recombining the header with the remaining stream
+// (e.g., via io.MultiReader).
+func detectMIMEType(file io.Reader) (mimeType string, header []byte, err error) {
+	buf := make([]byte, 512)
+	n, err := io.ReadAtLeast(file, buf, 1)
 	if err != nil {
 		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			if n == 0 {
@@ -144,20 +139,9 @@ func detectMIME(file io.Reader) (mimeType string, content []byte, err error) {
 			return "", nil, fmt.Errorf("read file header: %w", err)
 		}
 	}
-	header = header[:n]
-
+	header = buf[:n]
 	mimeType = http.DetectContentType(header)
-
-	rest, err := io.ReadAll(file)
-	if err != nil {
-		return "", nil, fmt.Errorf("read file body: %w", err)
-	}
-
-	content = make([]byte, len(header)+len(rest))
-	copy(content, header)
-	copy(content[len(header):], rest)
-
-	return mimeType, content, nil
+	return mimeType, header, nil
 }
 
 // isTypeAllowed checks if the MIME type is in the allowed list.

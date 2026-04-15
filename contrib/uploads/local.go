@@ -1,7 +1,9 @@
 package uploads
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -29,8 +31,12 @@ func NewLocalStorage(root, urlPrefix string) (*LocalStorage, error) {
 }
 
 // Store persists a file and returns its content-hashed storage key.
+// The file is streamed to a temp file while simultaneously computing
+// the SHA-256 hash — only the first 512 bytes are buffered in memory
+// for MIME detection.
 func (s *LocalStorage) Store(_ context.Context, file io.Reader, opts StoreOptions) (string, error) {
-	mimeType, content, err := detectMIME(file)
+	// 1. Detect MIME type from first 512 bytes.
+	mimeType, header, err := detectMIMEType(file)
 	if err != nil {
 		return "", err
 	}
@@ -39,57 +45,75 @@ func (s *LocalStorage) Store(_ context.Context, file io.Reader, opts StoreOption
 		return "", ErrTypeNotAllowed
 	}
 
-	if opts.MaxSize > 0 && int64(len(content)) > opts.MaxSize {
-		return "", ErrFileTooLarge
+	// 2. Create temp file for streaming.
+	tmp, err := os.CreateTemp(s.root, ".upload-*")
+	if err != nil {
+		return "", fmt.Errorf("uploads: create temp file: %w", err)
+	}
+	cleanup := func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmp.Name()) //nolint:gosec // tmp.Name() is from os.CreateTemp
 	}
 
-	hash := contentHash(content)
+	// 3. Recombine header bytes with the remaining stream.
+	combined := io.MultiReader(bytes.NewReader(header), file)
+
+	// 4. Stream through SHA-256 hasher to temp file.
+	hasher := sha256.New()
+	reader := io.TeeReader(combined, hasher)
+
+	var written int64
+	if opts.MaxSize > 0 {
+		// Read at most MaxSize+1 bytes — if we get more, the file is too large.
+		written, err = io.Copy(tmp, io.LimitReader(reader, opts.MaxSize+1))
+		if err != nil {
+			cleanup()
+			return "", fmt.Errorf("uploads: stream to temp file: %w", err)
+		}
+		if written > opts.MaxSize {
+			cleanup()
+			return "", ErrFileTooLarge
+		}
+	} else {
+		written, err = io.Copy(tmp, reader)
+		if err != nil {
+			cleanup()
+			return "", fmt.Errorf("uploads: stream to temp file: %w", err)
+		}
+	}
+
+	if written == 0 {
+		cleanup()
+		return "", ErrEmptyFile
+	}
+
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmp.Name()) //nolint:gosec // tmp.Name() is from os.CreateTemp
+		return "", fmt.Errorf("uploads: close temp file: %w", err)
+	}
+
+	// 5. Build storage key from content hash.
+	hash := fmt.Sprintf("%x", hasher.Sum(nil)[:8])
 	key := buildKey(opts.Prefix, hash, mimeType, opts.Filename)
 	dst := filepath.Join(s.root, key)
 
-	// Deduplication: skip write if file already exists.
-	if _, statErr := os.Stat(dst); statErr == nil { //nolint:gosec // G703: dst is built from root + content-hash + sanitized filename
+	// 6. Deduplication: if file already exists, discard temp.
+	if _, statErr := os.Stat(dst); statErr == nil { //nolint:gosec // dst is built from root + content-hash
+		_ = os.Remove(tmp.Name()) //nolint:gosec // tmp.Name() is from os.CreateTemp
 		return key, nil
 	}
 
-	if writeErr := atomicWrite(dst, content); writeErr != nil {
-		return "", writeErr
+	// 7. Create parent directories and rename temp → final.
+	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil { //nolint:gosec // dst is built from root + content-hash
+		_ = os.Remove(tmp.Name()) //nolint:gosec // tmp.Name() is from os.CreateTemp
+		return "", fmt.Errorf("uploads: create dir: %w", err)
+	}
+	if err := os.Rename(tmp.Name(), dst); err != nil { //nolint:gosec // tmp.Name() from os.CreateTemp
+		_ = os.Remove(tmp.Name()) //nolint:gosec // tmp.Name() is from os.CreateTemp
+		return "", fmt.Errorf("uploads: rename temp file: %w", err)
 	}
 
 	return key, nil
-}
-
-// atomicWrite creates parent directories and writes content to dst via
-// a temp file + rename for crash safety.
-func atomicWrite(dst string, content []byte) error {
-	if mkdirErr := os.MkdirAll(filepath.Dir(dst), 0o750); mkdirErr != nil { //nolint:gosec // G703: dst is built from root + content-hash + sanitized filename
-		return fmt.Errorf("uploads: create dir: %w", mkdirErr)
-	}
-
-	tmp, tmpErr := os.CreateTemp(filepath.Dir(dst), ".upload-*")
-	if tmpErr != nil {
-		return fmt.Errorf("uploads: create temp file: %w", tmpErr)
-	}
-
-	// cleanupTemp removes the temp file; safe to call multiple times.
-	cleanupTemp := func() { _ = os.Remove(tmp.Name()) } //nolint:gosec // tmp.Name() is from os.CreateTemp
-
-	if _, writeErr := tmp.Write(content); writeErr != nil {
-		_ = tmp.Close()
-		cleanupTemp()
-		return fmt.Errorf("uploads: write temp file: %w", writeErr)
-	}
-	if closeErr := tmp.Close(); closeErr != nil {
-		cleanupTemp()
-		return fmt.Errorf("uploads: close temp file: %w", closeErr)
-	}
-
-	if renameErr := os.Rename(tmp.Name(), dst); renameErr != nil { //nolint:gosec // tmp.Name() is from os.CreateTemp
-		cleanupTemp()
-		return fmt.Errorf("uploads: rename temp file: %w", renameErr)
-	}
-
-	return nil
 }
 
 // Delete removes the file at the given key. It does not return an error

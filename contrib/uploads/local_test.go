@@ -20,13 +20,6 @@ import (
 
 // --- Helper function tests ---
 
-func TestContentHash(t *testing.T) {
-	hash := contentHash([]byte("hello world"))
-	assert.Len(t, hash, 16)
-	assert.Equal(t, hash, contentHash([]byte("hello world")), "same input produces same hash")
-	assert.NotEqual(t, hash, contentHash([]byte("different")), "different input produces different hash")
-}
-
 func TestBuildKey(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -50,39 +43,37 @@ func TestBuildKey(t *testing.T) {
 	}
 }
 
-func TestDetectMIME(t *testing.T) {
+func TestDetectMIMEType(t *testing.T) {
 	t.Run("detects PNG", func(t *testing.T) {
-		// Minimal PNG header
 		png := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
-		mime, content, err := detectMIME(bytes.NewReader(png))
+		mime, header, err := detectMIMEType(bytes.NewReader(png))
 		require.NoError(t, err)
 		assert.Equal(t, "image/png", mime)
-		assert.Equal(t, png, content)
+		assert.Equal(t, png, header)
 	})
 
 	t.Run("detects plain text", func(t *testing.T) {
 		text := []byte("Hello, World!")
-		mime, content, err := detectMIME(bytes.NewReader(text))
+		mime, header, err := detectMIMEType(bytes.NewReader(text))
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(mime, "text/plain"))
-		assert.Equal(t, text, content)
+		assert.Equal(t, text, header)
 	})
 
 	t.Run("empty file", func(t *testing.T) {
-		_, _, err := detectMIME(bytes.NewReader(nil))
+		_, _, err := detectMIMEType(bytes.NewReader(nil))
 		assert.ErrorIs(t, err, ErrEmptyFile)
 	})
 
-	t.Run("large file preserves all content", func(t *testing.T) {
-		// File larger than 512-byte detection buffer
+	t.Run("returns only header not full content", func(t *testing.T) {
 		data := bytes.Repeat([]byte("x"), 2048)
-		_, content, err := detectMIME(bytes.NewReader(data))
+		_, header, err := detectMIMEType(bytes.NewReader(data))
 		require.NoError(t, err)
-		assert.Equal(t, data, content)
+		assert.Len(t, header, 512, "should return at most 512 bytes")
 	})
 
 	t.Run("reader error propagates", func(t *testing.T) {
-		_, _, err := detectMIME(&failingReader{err: io.ErrClosedPipe})
+		_, _, err := detectMIMEType(&failingReader{err: io.ErrClosedPipe})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, io.ErrClosedPipe)
 	})
