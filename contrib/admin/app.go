@@ -74,8 +74,11 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	// Discover the AdminAuth provider from the registry.
 	for _, app := range cfg.Registry.Apps() {
 		if aa, ok := app.(burrow.AdminAuth); ok {
+			if a.authMiddleware != nil {
+				first, _ := a.authMiddleware.(burrow.App) //nolint:errcheck // AdminAuth providers are always Apps
+				return fmt.Errorf("admin: multiple AdminAuth providers found (%s and %s)", first.Name(), app.Name())
+			}
 			a.authMiddleware = aa
-			break
 		}
 	}
 	if a.authMiddleware == nil {

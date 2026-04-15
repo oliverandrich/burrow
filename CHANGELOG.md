@@ -47,6 +47,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Fixed
 
+- **Job retry backoff capped at 1 hour** — exponential backoff (`baseDelay * 2^(attempts-1)`) now caps at 1 hour. Previously, high attempt counts could overflow `time.Duration` and produce negative or astronomically large delays.
+- **Session flush logs encoding errors** — `state.flush()` now logs via `slog.Error` when cookie encoding fails instead of silently swallowing the error.
+- **Admin rejects duplicate AdminAuth providers** — `admin.Configure()` returns an error if multiple apps implement `AdminAuth`, instead of silently using the first one.
+- **Session deferredWriter supports http.Flusher** — the session middleware's response wrapper now implements `Flush()`, fixing SSE and streaming handlers that use direct `w.(http.Flusher)` type assertions.
 - **Session cookies written once per request** — `session.Set()`, `Delete()`, and `Save()` no longer write the `Set-Cookie` header immediately. Instead, the session middleware defers the write until the response is sent, producing exactly one `Set-Cookie` header regardless of how many session mutations occur. Previously, each `Set()` call wrote a separate header, and only the last one survived to the browser.
 - **Jobs recover from handler panics** — worker goroutines now recover from panics in job handlers, converting them into failures with a stack trace. The worker stays alive and continues processing other jobs.
 - **RenderError falls back to plaintext** — when both `error/{code}` and `error/default` templates are missing, `RenderError` now writes a plaintext HTTP error instead of a blank response.

@@ -143,10 +143,12 @@ func TestRepository_Fail_BackoffDuration(t *testing.T) {
 		{2, 60 * time.Second},  // 30s * 2^1
 		{3, 120 * time.Second}, // 30s * 2^2
 		{4, 240 * time.Second}, // 30s * 2^3
+		{20, time.Hour},        // 30s * 2^19 would be ~182 days, capped to 1h
+		{30, time.Hour},        // 30s * 2^29 would be ~512 years, capped to 1h
 	}
 
 	for _, tt := range tests {
-		_, err := repo.Enqueue(ctx, "task", `{}`, 10, 0, time.Now())
+		_, err := repo.Enqueue(ctx, "task", `{}`, 50, 0, time.Now())
 		require.NoError(t, err)
 
 		claimed, err := repo.Claim(ctx, "test-worker", 1)
@@ -155,7 +157,7 @@ func TestRepository_Fail_BackoffDuration(t *testing.T) {
 		job := claimed[0]
 
 		job.Attempts = tt.attempt
-		job.MaxRetries = 10
+		job.MaxRetries = 50
 		before := time.Now()
 		err = repo.Fail(ctx, job, "err", "", baseDelay)
 		require.NoError(t, err)

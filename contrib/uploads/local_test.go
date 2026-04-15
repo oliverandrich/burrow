@@ -462,3 +462,45 @@ func TestLocalStorage_MaxSizeBoundary(t *testing.T) {
 		assert.Equal(t, data, got)
 	})
 }
+
+func TestLocalStorage_AbortingReader(t *testing.T) {
+	s := newTestStorage(t)
+	ctx := context.Background()
+
+	// Reader that delivers some bytes then errors mid-stream.
+	r := &abortingReader{
+		data: bytes.Repeat([]byte("x"), 2048),
+		err:  io.ErrUnexpectedEOF,
+		at:   1024,
+	}
+
+	_, err := s.Store(ctx, r, StoreOptions{Filename: "abort.txt"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "stream to temp file")
+
+	// Verify no temp files leaked in storage root.
+	entries, dirErr := os.ReadDir(s.root)
+	require.NoError(t, dirErr)
+	for _, e := range entries {
+		assert.False(t, strings.HasPrefix(e.Name(), ".upload-"),
+			"temp file %s should have been cleaned up", e.Name())
+	}
+}
+
+// abortingReader delivers data normally until position 'at', then returns err.
+type abortingReader struct {
+	data []byte
+	err  error
+	at   int
+	pos  int
+}
+
+func (r *abortingReader) Read(p []byte) (int, error) {
+	if r.pos >= r.at {
+		return 0, r.err
+	}
+	n := min(len(p), r.at-r.pos)
+	copy(p, r.data[r.pos:r.pos+n])
+	r.pos += n
+	return n, nil
+}

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/gob"
 	"errors"
+	"log/slog"
 	"maps"
 	"net/http"
 	"time"
@@ -52,6 +53,7 @@ func (s *state) flush(w http.ResponseWriter) {
 	}
 	cookie, err := s.manager.Save(s.values)
 	if err != nil {
+		slog.Error("session: failed to encode cookie", "error", err)
 		return
 	}
 	http.SetCookie(w, cookie)
@@ -194,6 +196,15 @@ func (dw *deferredWriter) WriteHeader(code int) {
 func (dw *deferredWriter) Write(b []byte) (int, error) {
 	dw.flush()
 	return dw.ResponseWriter.Write(b)
+}
+
+// Flush flushes session state and then delegates to the underlying Flusher.
+// This supports SSE and streaming handlers that call w.(http.Flusher).Flush().
+func (dw *deferredWriter) Flush() {
+	dw.flush()
+	if f, ok := dw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 // Unwrap returns the underlying ResponseWriter for http.ResponseController compatibility.

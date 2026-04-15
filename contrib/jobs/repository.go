@@ -18,6 +18,10 @@ var (
 	ErrInvalidStatus = errors.New("invalid job status for this operation")
 )
 
+// maxBackoff caps the exponential retry delay to prevent astronomically
+// large values at high attempt counts (e.g. 2^30 * 30s ≈ 1000 years).
+const maxBackoff = time.Hour
+
 // Repository provides data access for the jobs queue.
 type Repository struct {
 	db *den.DB
@@ -141,7 +145,11 @@ func (r *Repository) Fail(ctx context.Context, job *Job, errMsg, errorClass stri
 	}
 
 	if job.Attempts < job.MaxRetries {
-		backoff := baseDelay * time.Duration(math.Pow(2, float64(job.Attempts-1)))
+		exp := math.Pow(2, float64(job.Attempts-1))
+		backoff := time.Duration(float64(baseDelay) * exp)
+		if backoff <= 0 || backoff > maxBackoff {
+			backoff = maxBackoff
+		}
 		fields["status"] = string(StatusFailed)
 		fields["run_at"] = now.Add(backoff)
 	} else {
@@ -194,9 +202,11 @@ func (r *Repository) ListPaged(ctx context.Context, pr burrow.PageRequest, statu
 	return jobs, burrow.OffsetResult(pr, int(count)), nil
 }
 
-// FindByID retrieves a job by ID.
+// FindByID is an alias for GetByID.
+//
+//go:fix inline
 func (r *Repository) FindByID(ctx context.Context, id string) (*Job, error) {
-	return den.FindByID[Job](ctx, r.db, id)
+	return r.GetByID(ctx, id)
 }
 
 // Delete deletes a job by ID (any status).
