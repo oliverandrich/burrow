@@ -63,13 +63,13 @@ var migrations = migrate.NewRegistry()
 func init() {
     migrations.Register("001_backfill_slug", migrate.Migration{
         Forward: func(ctx context.Context, tx *den.Tx) error {
-            for note, err := range den.NewQuery[Note](ctx, db).Iter() {
+            for note, err := range den.NewQuery[Note](tx).Iter(ctx) {
                 if err != nil {
                     return err
                 }
                 if note.Slug == "" {
                     note.Slug = slugify(note.Title)
-                    if err := den.TxUpdate(tx, note); err != nil {
+                    if err := den.Update(ctx, tx, note); err != nil {
                         return err
                     }
                 }
@@ -101,7 +101,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 
 - Each migration runs atomically in a transaction — if it fails, nothing is applied
 - Applied migrations are tracked in a `_den_migrations` collection — running `Up()` again skips already-applied migrations
-- `Forward` receives a `*den.Tx` — use `den.TxInsert`, `den.TxUpdate`, `den.TxDelete` for transactional safety
+- `Forward` receives a `*den.Tx` — pass it to `den.Insert`, `den.Update`, `den.Delete` etc. for transactional safety (since den v0.8.0, the unified `Scope` interface accepts both `*den.DB` and `*den.Tx`)
 - `Backward` is optional — define it if you need rollback support via `migrations.Down()`
 - Migrations run **after** `den.Register()` has created the schema, so your document types are always available
 

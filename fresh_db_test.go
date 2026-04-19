@@ -38,7 +38,7 @@ func TestFreshDB_EmptyTableReturnsEmptyResults(t *testing.T) {
 	require.NoError(t, err)
 
 	// Query the empty table — should return zero items, not an error.
-	items, err := den.NewQuery[testItem](t.Context(), db).All()
+	items, err := den.NewQuery[testItem](db).All(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, items)
 }
@@ -94,7 +94,7 @@ func TestFreshDB_EmptyListEndpointReturnsOK(t *testing.T) {
 	// Build a handler that counts items from the empty table.
 	r := chi.NewRouter()
 	r.Get("/items", Handle(func(w http.ResponseWriter, r *http.Request) error {
-		count, err := den.NewQuery[testItem](r.Context(), db).Count()
+		count, err := den.NewQuery[testItem](db).Count(r.Context())
 		if err != nil {
 			return NewHTTPError(http.StatusInternalServerError, "query failed")
 		}
@@ -136,7 +136,7 @@ func TestFreshDB_BootstrapAndHandleRequestsCleanly(t *testing.T) {
 	// Simulate a request to a fresh (empty) table.
 	r := chi.NewRouter()
 	r.Get("/things", Handle(func(w http.ResponseWriter, r *http.Request) error {
-		count, err := den.NewQuery[testItem](r.Context(), db).Count()
+		count, err := den.NewQuery[testItem](db).Count(r.Context())
 		if err != nil {
 			return NewHTTPError(http.StatusInternalServerError, "query failed")
 		}

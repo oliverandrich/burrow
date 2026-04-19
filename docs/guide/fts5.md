@@ -35,12 +35,12 @@ Use `den.NewQuery` with `.Search()` to perform full-text queries:
 
 ```go
 // Search across all FTS-indexed fields
-results, err := den.NewQuery[Note](ctx, db).Search("hello world")
+results, err := den.NewQuery[Note](db).Search(ctx, "hello world")
 
 // Search with additional conditions
-results, err := den.NewQuery[Note](ctx, db,
+results, err := den.NewQuery[Note](db,
     where.Field("user_id").Eq(userID),
-).Search("hello world")
+).Search(ctx, "hello world")
 ```
 
 ## Repository Integration
@@ -61,15 +61,15 @@ func (r *Repository) Search(
     }
 
     // Count total matches for pagination.
-    count, err := den.NewQuery[Note](ctx, r.db,
+    count, err := den.NewQuery[Note](r.db,
         where.Field("user_id").Eq(userID),
-    ).Count()
+    ).Count(ctx)
     if err != nil {
         return nil, burrow.PageResult{}, fmt.Errorf("count search results: %w", err)
     }
 
     // Fetch matching notes ranked by relevance.
-    results, err := den.NewQuery[Note](ctx, r.db,
+    results, err := den.NewQuery[Note](r.db,
         where.Field("user_id").Eq(userID),
     ).Limit(pr.Limit).Skip(pr.Offset()).Search(query)
     if err != nil {

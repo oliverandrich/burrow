@@ -72,9 +72,9 @@ func NewRepository(db *den.DB) *Repository {
 }
 
 func (r *Repository) ListQuestions(ctx context.Context) ([]Question, error) {
-    return den.NewQuery[Question](ctx, r.db).
+    return den.NewQuery[Question](r.db).
         Sort("published_at", den.Desc).
-        All()
+        All(ctx)
 }
 
 func (r *Repository) GetQuestion(ctx context.Context, id string) (*Question, error) {
@@ -82,9 +82,9 @@ func (r *Repository) GetQuestion(ctx context.Context, id string) (*Question, err
 }
 
 func (r *Repository) GetChoicesForQuestion(ctx context.Context, questionID string) ([]Choice, error) {
-    return den.NewQuery[Choice](ctx, r.db,
+    return den.NewQuery[Choice](r.db,
         where.Field("question_id").Eq(questionID),
-    ).All()
+    ).All(ctx)
 }
 ```
 

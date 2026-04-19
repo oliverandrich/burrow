@@ -1,6 +1,8 @@
 package burrow
 
 import (
+	"context"
+
 	"github.com/oliverandrich/den"
 	_ "github.com/oliverandrich/den/backend/postgres" // register postgres:// scheme
 	_ "github.com/oliverandrich/den/backend/sqlite"   // register sqlite:// scheme
@@ -18,8 +20,8 @@ import (
 //
 // For the rare case where you need the pre-v0.12.0 behavior (no tag
 // validation at the data layer), use OpenDBWithoutValidation.
-func OpenDB(dsn string) (*den.DB, error) {
-	return den.OpenURL(dsn, validate.WithValidation())
+func OpenDB(ctx context.Context, dsn string) (*den.DB, error) {
+	return den.OpenURL(ctx, dsn, validate.WithValidation())
 }
 
 // OpenDBWithoutValidation opens a database with struct-tag validation
@@ -30,6 +32,6 @@ func OpenDB(dsn string) (*den.DB, error) {
 //
 // New projects should use OpenDB. Prefer cleaning up the validation tags
 // and switching back to OpenDB as soon as possible.
-func OpenDBWithoutValidation(dsn string) (*den.DB, error) {
-	return den.OpenURL(dsn)
+func OpenDBWithoutValidation(ctx context.Context, dsn string) (*den.DB, error) {
+	return den.OpenURL(ctx, dsn)
 }

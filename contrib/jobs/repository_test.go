@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -229,7 +230,7 @@ func TestRepository_DeleteCompleted(t *testing.T) {
 	assert.Equal(t, int64(1), n)
 
 	// Verify it's gone.
-	count, err := den.NewQuery[Job](ctx, db).Count()
+	count, err := den.NewQuery[Job](db).Count(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), count)
 }
@@ -796,4 +797,60 @@ func TestRepository_Claim_SamePriority_FIFO(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, claimed, 1)
 	assert.Equal(t, oldest.ID, claimed[0].ID)
+}
+
+// TestRepository_Claim_ConcurrentWorkers proves the SKIP LOCKED claim path:
+// N workers racing to claim from the same pool end up with disjoint slices
+// and no job is claimed twice. On SQLite the transaction serialization gives
+// the same guarantee; on PostgreSQL the rows are partitioned across workers
+// via `FOR UPDATE SKIP LOCKED`.
+func TestRepository_Claim_ConcurrentWorkers(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	const (
+		totalJobs  = 50
+		numWorkers = 5
+		perWorker  = 10
+	)
+
+	for range totalJobs {
+		_, err := repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
+		require.NoError(t, err)
+	}
+
+	type result struct {
+		workerID string
+		jobs     []*Job
+		err      error
+	}
+
+	resultsCh := make(chan result, numWorkers)
+	for i := range numWorkers {
+		workerID := fmt.Sprintf("worker-%d", i)
+		go func() {
+			jobs, err := repo.Claim(ctx, workerID, perWorker)
+			resultsCh <- result{workerID: workerID, jobs: jobs, err: err}
+		}()
+	}
+
+	seen := make(map[string]string) // jobID -> workerID
+	totalClaimed := 0
+	for range numWorkers {
+		r := <-resultsCh
+		require.NoError(t, r.err)
+		for _, j := range r.jobs {
+			if prev, dup := seen[j.ID]; dup {
+				t.Fatalf("job %s double-claimed by %s and %s", j.ID, prev, r.workerID)
+			}
+			seen[j.ID] = r.workerID
+			assert.Equal(t, r.workerID, j.WorkerID, "worker_id on returned job must match the claiming worker")
+			assert.Equal(t, StatusRunning, j.Status)
+		}
+		totalClaimed += len(r.jobs)
+	}
+
+	assert.Equal(t, totalJobs, totalClaimed, "all jobs should be claimed across all workers with no overlap")
+	assert.Len(t, seen, totalJobs)
 }

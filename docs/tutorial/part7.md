@@ -128,16 +128,16 @@ In `internal/polls/polls.go`, replace the simple `ListQuestions` with a paginate
 
 ```go
 func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageRequest) ([]Question, burrow.PageResult, error) {
-    count, err := den.NewQuery[Question](ctx, r.db).Count()
+    count, err := den.NewQuery[Question](r.db).Count(ctx)
     if err != nil {
         return nil, burrow.PageResult{}, err
     }
 
-    questions, err := den.NewQuery[Question](ctx, r.db).
+    questions, err := den.NewQuery[Question](r.db).
         Sort("id", den.Desc).
         Limit(pr.Limit).
         Skip(pr.Offset()).
-        All()
+        All(ctx)
     if err != nil {
         return nil, burrow.PageResult{}, err
     }

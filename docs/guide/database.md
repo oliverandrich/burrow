@@ -133,12 +133,12 @@ Den provides a chainable QuerySet API for queries and a functional API for mutat
 note, err := den.FindByID[Note](ctx, db, id)
 
 // Find one with conditions
-note, err := den.NewQuery[Note](ctx, db, where.Field("user_id").Eq(userID)).First()
+note, err := den.NewQuery[Note](db, where.Field("user_id").Eq(userID)).First(ctx)
 
 // Find many with sorting
-notes, err := den.NewQuery[Note](ctx, db,
+notes, err := den.NewQuery[Note](db,
     where.Field("user_id").Eq(userID),
-).Sort("created_at", den.Desc).All()
+).Sort("created_at", den.Desc).All(ctx)
 
 // Insert
 note := &Note{UserID: "01J...", Title: "Hello"}
@@ -154,10 +154,10 @@ err := den.Save(ctx, db, note)
 err := den.Delete(ctx, db, note)
 
 // Count
-count, err := den.NewQuery[Note](ctx, db, where.Field("user_id").Eq(userID)).Count()
+count, err := den.NewQuery[Note](db, where.Field("user_id").Eq(userID)).Count(ctx)
 
 // Exists check
-exists, err := den.NewQuery[Note](ctx, db, where.Field("id").Eq(id)).Exists()
+exists, err := den.NewQuery[Note](db, where.Field("id").Eq(id)).Exists(ctx)
 ```
 
 ### Transactions

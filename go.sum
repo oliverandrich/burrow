@@ -74,8 +74,8 @@ github.com/nicksnyder/go-i18n/v2 v2.6.1 h1:JDEJraFsQE17Dut9HFDHzCoAWGEQJom5s0TRd
 github.com/nicksnyder/go-i18n/v2 v2.6.1/go.mod h1:Vee0/9RD3Quc/NmwEjzzD7VTZ+Ir7QbXocrkhOzmUKA=
 github.com/oklog/ulid/v2 v2.1.1 h1:suPZ4ARWLOJLegGFiZZ1dFAkqzhMjL3J1TzI+5wHz8s=
 github.com/oklog/ulid/v2 v2.1.1/go.mod h1:rcEKHmBBKfef9DhnvX7y1HZBYxjXb0cP5ExxNsTT1QQ=
-github.com/oliverandrich/den v0.7.0 h1:+mPAwgzAsyOoex59JYDEQ6Sqk1ljUyz1SuCr9giJeUI=
-github.com/oliverandrich/den v0.7.0/go.mod h1:q+mcfv0N7ZRb+sbbGaGfYjYnJRxSulpD2T8ks0p/esg=
+github.com/oliverandrich/den v0.8.0 h1:VVIqf6zYZ4DkX+PFKKr/VZkWhFP7Uh4pRf5aAsY6en0=
+github.com/oliverandrich/den v0.8.0/go.mod h1:q+mcfv0N7ZRb+sbbGaGfYjYnJRxSulpD2T8ks0p/esg=
 github.com/pborman/getopt v0.0.0-20170112200414-7148bc3a4c30/go.mod h1:85jBQOZwpVEaDAr341tbn15RS4fCAsIst0qp7i8ex1o=
 github.com/philhofer/fwd v1.2.0 h1:e6DnBTl7vGY+Gz322/ASL4Gyp1FspeMvx1RNDoToZuM=
 github.com/philhofer/fwd v1.2.0/go.mod h1:RqIHx9QI14HlwKwm98g9Re5prTQ6LdeRQn+gXJFxsJM=

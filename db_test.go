@@ -17,33 +17,33 @@ type validatedDoc struct {
 
 func TestOpenDB_SQLite(t *testing.T) {
 	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := OpenDB(dsn)
+	db, err := OpenDB(t.Context(), dsn)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	require.NoError(t, db.Ping(t.Context()))
 }
 
 func TestOpenDB_SQLiteMemory(t *testing.T) {
-	db, err := OpenDB("sqlite://:memory:")
+	db, err := OpenDB(t.Context(), "sqlite://:memory:")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	require.NoError(t, db.Ping(t.Context()))
 }
 
 func TestOpenDB_UnsupportedScheme(t *testing.T) {
-	_, err := OpenDB("mysql://localhost/test")
+	_, err := OpenDB(t.Context(), "mysql://localhost/test")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported")
 }
 
 func TestOpenDB_EmptyDSN(t *testing.T) {
-	_, err := OpenDB("")
+	_, err := OpenDB(t.Context(), "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "empty")
 }
 
 func TestOpenDB_NoScheme(t *testing.T) {
-	_, err := OpenDB("app.db")
+	_, err := OpenDB(t.Context(), "app.db")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "missing scheme")
 }
@@ -53,7 +53,7 @@ func TestOpenDB_NoScheme(t *testing.T) {
 // tag is rejected at insert time.
 func TestOpenDB_ValidationEnabled(t *testing.T) {
 	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := OpenDB(dsn)
+	db, err := OpenDB(t.Context(), dsn)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
@@ -75,7 +75,7 @@ func TestOpenDB_ValidationEnabled(t *testing.T) {
 // inserts successfully.
 func TestOpenDBWithoutValidation_IsEscapeHatch(t *testing.T) {
 	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := OpenDBWithoutValidation(dsn)
+	db, err := OpenDBWithoutValidation(t.Context(), dsn)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 

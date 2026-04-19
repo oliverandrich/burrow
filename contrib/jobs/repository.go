@@ -50,51 +50,46 @@ func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxR
 
 // Claim atomically claims up to limit pending or failed jobs that are ready to run.
 // Jobs are claimed in priority order (highest first), with FIFO ordering within
-// the same priority level. Each claim is a two-step operation: first find the
-// best candidate via a sorted query, then atomically update it. If another
-// worker claims the candidate between the two steps, we retry with the next one.
+// the same priority level.
+//
+// On PostgreSQL the claim is a single `SELECT ... FOR UPDATE SKIP LOCKED` plus
+// per-row updates, all inside one transaction: N concurrent workers each get a
+// disjoint slice of the pending set without blocking each other. On SQLite the
+// FOR UPDATE modifier is a no-op — IMMEDIATE transactions already serialize
+// writers, so the claim is atomic by construction.
 func (r *Repository) Claim(ctx context.Context, workerID string, limit int) ([]*Job, error) {
 	var claimed []*Job
 	now := time.Now()
 	nowStr := now.Format(time.RFC3339Nano)
 
-	readyConds := []where.Condition{
-		where.Field("status").In(string(StatusPending), string(StatusFailed)),
-		where.Field("run_at").Lte(nowStr),
-		where.Field("worker_id").Eq(""),
-	}
-
-	for range limit {
-		// Step 1: Find the highest-priority ready job.
-		candidate, err := den.NewQuery[Job](ctx, r.db, readyConds...).
+	err := den.RunInTransaction(ctx, r.db, func(tx *den.Tx) error {
+		jobs, err := den.NewQuery[Job](tx,
+			where.Field("status").In(string(StatusPending), string(StatusFailed)),
+			where.Field("run_at").Lte(nowStr),
+			where.Field("worker_id").Eq(""),
+		).
 			Sort("priority", den.Desc).
 			Sort("run_at", den.Asc).
-			First()
+			Limit(limit).
+			ForUpdate(den.SkipLocked()).
+			All(ctx)
 		if err != nil {
-			if errors.Is(err, den.ErrNotFound) {
-				break
-			}
-			return nil, fmt.Errorf("claim jobs: find candidate: %w", err)
+			return fmt.Errorf("claim jobs: lock candidates: %w", err)
 		}
 
-		// Step 2: Atomically claim by ID + guards.
-		job, err := den.FindOneAndUpdate[Job](ctx, r.db,
-			den.SetFields{
-				"status":    string(StatusRunning),
-				"locked_at": &now,
-				"worker_id": workerID,
-			},
-			where.Field("_id").Eq(candidate.ID),
-			where.Field("status").In(string(StatusPending), string(StatusFailed)),
-			where.Field("worker_id").Eq(""),
-		)
-		if err != nil {
-			if errors.Is(err, den.ErrNotFound) {
-				continue // Lost race — another worker claimed it, try next.
+		for _, job := range jobs {
+			job.Status = StatusRunning
+			job.LockedAt = &now
+			job.WorkerID = workerID
+			if err := den.Update(ctx, tx, job); err != nil {
+				return fmt.Errorf("claim jobs: update %s: %w", job.ID, err)
 			}
-			return nil, fmt.Errorf("claim jobs: update: %w", err)
+			claimed = append(claimed, job)
 		}
-		claimed = append(claimed, job)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return claimed, nil
 }
@@ -188,13 +183,13 @@ func (r *Repository) GetByID(ctx context.Context, id string) (*Job, error) {
 // ListPaged returns a paginated list of jobs, optionally filtered by status.
 // Results are ordered by created_at DESC.
 func (r *Repository) ListPaged(ctx context.Context, pr burrow.PageRequest, status JobStatus) ([]*Job, burrow.PageResult, error) {
-	qs := den.NewQuery[Job](ctx, r.db)
+	qs := den.NewQuery[Job](r.db)
 	if status != "" {
 		qs = qs.Where(where.Field("status").Eq(string(status)))
 	}
 	qs = qs.Sort("_created_at", den.Desc).Limit(pr.Limit).Skip(pr.Offset())
 
-	jobs, count, err := qs.AllWithCount()
+	jobs, count, err := qs.AllWithCount(ctx)
 	if err != nil {
 		return nil, burrow.PageResult{}, fmt.Errorf("list jobs: %w", err)
 	}
@@ -292,10 +287,10 @@ func (r *Repository) Cancel(ctx context.Context, id string) error {
 func (r *Repository) RescueStale(ctx context.Context, staleDuration time.Duration) (int64, error) {
 	cutoffStr := time.Now().Add(-staleDuration).Format(time.RFC3339Nano)
 
-	stale, err := den.NewQuery[Job](ctx, r.db,
+	stale, err := den.NewQuery[Job](r.db,
 		where.Field("status").Eq(string(StatusRunning)),
 		where.Field("locked_at").Lt(cutoffStr),
-	).All()
+	).All(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("rescue stale jobs: %w", err)
 	}

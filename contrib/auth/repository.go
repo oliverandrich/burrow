@@ -80,7 +80,7 @@ func (r *Repository) GetUserByIDWithCredentials(ctx context.Context, id string) 
 
 // GetUserByUsername retrieves a user by username.
 func (r *Repository) GetUserByUsername(ctx context.Context, username string) (*User, error) {
-	user, err := den.NewQuery[User](ctx, r.db, where.Field("username").Eq(username)).First()
+	user, err := den.NewQuery[User](r.db, where.Field("username").Eq(username)).First(ctx)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			return nil, ErrNotFound
@@ -92,7 +92,7 @@ func (r *Repository) GetUserByUsername(ctx context.Context, username string) (*U
 
 // GetUserByEmail retrieves a user by email.
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-	user, err := den.NewQuery[User](ctx, r.db, where.Field("email").Eq(email)).First()
+	user, err := den.NewQuery[User](r.db, where.Field("email").Eq(email)).First(ctx)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			return nil, ErrNotFound
@@ -149,7 +149,7 @@ func (r *Repository) MarkEmailVerified(ctx context.Context, userID string) error
 
 // UserExists checks if a user with the given username exists.
 func (r *Repository) UserExists(ctx context.Context, username string) (bool, error) {
-	exists, err := den.NewQuery[User](ctx, r.db, where.Field("username").Eq(username)).Exists()
+	exists, err := den.NewQuery[User](r.db, where.Field("username").Eq(username)).Exists(ctx)
 	if err != nil {
 		return false, fmt.Errorf("check user exists %q: %w", username, err)
 	}
@@ -158,7 +158,7 @@ func (r *Repository) UserExists(ctx context.Context, username string) (bool, err
 
 // EmailExists checks if a user with the given email exists.
 func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error) {
-	exists, err := den.NewQuery[User](ctx, r.db, where.Field("email").Eq(email)).Exists()
+	exists, err := den.NewQuery[User](r.db, where.Field("email").Eq(email)).Exists(ctx)
 	if err != nil {
 		return false, fmt.Errorf("check email exists %q: %w", email, err)
 	}
@@ -167,7 +167,7 @@ func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error
 
 // ListUsers returns all users ordered by creation time ascending.
 func (r *Repository) ListUsers(ctx context.Context) ([]User, error) {
-	users, err := den.NewQuery[User](ctx, r.db).Sort("_created_at", den.Asc).All()
+	users, err := den.NewQuery[User](r.db).Sort("_created_at", den.Asc).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
@@ -180,7 +180,7 @@ func (r *Repository) ListUsers(ctx context.Context) ([]User, error) {
 
 // CountUsers returns the total number of users.
 func (r *Repository) CountUsers(ctx context.Context) (int, error) {
-	count, err := den.NewQuery[User](ctx, r.db).Count()
+	count, err := den.NewQuery[User](r.db).Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count users: %w", err)
 	}
@@ -189,7 +189,7 @@ func (r *Repository) CountUsers(ctx context.Context) (int, error) {
 
 // CountAdminUsers returns the number of users with the admin role.
 func (r *Repository) CountAdminUsers(ctx context.Context) (int, error) {
-	count, err := den.NewQuery[User](ctx, r.db, where.Field("role").Eq(RoleAdmin)).Count()
+	count, err := den.NewQuery[User](r.db, where.Field("role").Eq(RoleAdmin)).Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count admin users: %w", err)
 	}
@@ -218,14 +218,14 @@ func (r *Repository) PurgeOrphanedUsers(ctx context.Context, olderThan time.Dura
 	cutoffStr := time.Now().Add(-olderThan).Format(time.RFC3339Nano)
 
 	// Find old users only — abandoned registrations are typically very few.
-	oldUsers, err := den.NewQuery[User](ctx, r.db, where.Field("_created_at").Lt(cutoffStr)).All()
+	oldUsers, err := den.NewQuery[User](r.db, where.Field("_created_at").Lt(cutoffStr)).All(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("purge orphaned users: list old users: %w", err)
 	}
 
 	var purged int
 	for _, u := range oldUsers {
-		hasCredentials, err := den.NewQuery[Credential](ctx, r.db, where.Field("user_id").Eq(u.ID)).Exists()
+		hasCredentials, err := den.NewQuery[Credential](r.db, where.Field("user_id").Eq(u.ID)).Exists(ctx)
 		if err != nil {
 			return purged, fmt.Errorf("purge orphaned users: check credentials for %s: %w", u.ID, err)
 		}
@@ -248,11 +248,11 @@ func (r *Repository) ListUsersPaged(ctx context.Context, pr burrow.PageRequest, 
 		conditions = append(conditions, where.Field("role").Eq(role))
 	}
 
-	ptrs, count, err := den.NewQuery[User](ctx, r.db, conditions...).
+	ptrs, count, err := den.NewQuery[User](r.db, conditions...).
 		Sort("_created_at", den.Desc).
 		Limit(pr.Limit).
 		Skip(pr.Offset()).
-		AllWithCount()
+		AllWithCount(ctx)
 	if err != nil {
 		return nil, burrow.PageResult{}, fmt.Errorf("list users paged: %w", err)
 	}
@@ -279,11 +279,11 @@ func (r *Repository) SearchUsers(ctx context.Context, query string, pr burrow.Pa
 		cond = searchCond
 	}
 
-	ptrs, count, err := den.NewQuery[User](ctx, r.db, cond).
+	ptrs, count, err := den.NewQuery[User](r.db, cond).
 		Sort("_created_at", den.Desc).
 		Limit(pr.Limit).
 		Skip(pr.Offset()).
-		AllWithCount()
+		AllWithCount(ctx)
 	if err != nil {
 		return nil, burrow.PageResult{}, fmt.Errorf("search users: %w", err)
 	}
@@ -309,11 +309,11 @@ func (r *Repository) GetInviteByID(ctx context.Context, id string) (*Invite, err
 
 // ListInvitesPaged returns invites with pagination, ordered by created_at desc.
 func (r *Repository) ListInvitesPaged(ctx context.Context, pr burrow.PageRequest) ([]Invite, burrow.PageResult, error) {
-	ptrs, count, err := den.NewQuery[Invite](ctx, r.db).
+	ptrs, count, err := den.NewQuery[Invite](r.db).
 		Sort("_created_at", den.Desc).
 		Limit(pr.Limit).
 		Skip(pr.Offset()).
-		AllWithCount()
+		AllWithCount(ctx)
 	if err != nil {
 		return nil, burrow.PageResult{}, fmt.Errorf("list invites paged: %w", err)
 	}
@@ -337,7 +337,7 @@ func (r *Repository) CreateCredential(ctx context.Context, cred *Credential) err
 
 // GetCredentialsByUserID retrieves all credentials for a user.
 func (r *Repository) GetCredentialsByUserID(ctx context.Context, userID string) ([]Credential, error) {
-	creds, err := den.NewQuery[Credential](ctx, r.db, where.Field("user_id").Eq(userID)).All()
+	creds, err := den.NewQuery[Credential](r.db, where.Field("user_id").Eq(userID)).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get credentials for user %s: %w", userID, err)
 	}
@@ -364,10 +364,10 @@ func (r *Repository) UpdateCredentialSignCount(ctx context.Context, credentialID
 
 // DeleteCredential deletes a credential.
 func (r *Repository) DeleteCredential(ctx context.Context, credID, userID string) error {
-	cred, err := den.NewQuery[Credential](ctx, r.db,
+	cred, err := den.NewQuery[Credential](r.db,
 		where.Field("_id").Eq(credID),
 		where.Field("user_id").Eq(userID),
-	).First()
+	).First(ctx)
 	if err != nil {
 		return fmt.Errorf("delete credential %s for user %s: %w", credID, userID, err)
 	}
@@ -379,7 +379,7 @@ func (r *Repository) DeleteCredential(ctx context.Context, credID, userID string
 
 // CountUserCredentials counts the number of credentials for a user.
 func (r *Repository) CountUserCredentials(ctx context.Context, userID string) (int64, error) {
-	count, err := den.NewQuery[Credential](ctx, r.db, where.Field("user_id").Eq(userID)).Count()
+	count, err := den.NewQuery[Credential](r.db, where.Field("user_id").Eq(userID)).Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count credentials for user %s: %w", userID, err)
 	}
@@ -405,10 +405,10 @@ func (r *Repository) CreateRecoveryCodes(ctx context.Context, userID string, cod
 
 // GetUnusedRecoveryCodes retrieves unused recovery codes for a user.
 func (r *Repository) GetUnusedRecoveryCodes(ctx context.Context, userID string) ([]RecoveryCode, error) {
-	codes, err := den.NewQuery[RecoveryCode](ctx, r.db,
+	codes, err := den.NewQuery[RecoveryCode](r.db,
 		where.Field("user_id").Eq(userID),
 		where.Field("used").Eq(false),
-	).All()
+	).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get unused recovery codes for user %s: %w", userID, err)
 	}
@@ -421,10 +421,10 @@ func (r *Repository) GetUnusedRecoveryCodes(ctx context.Context, userID string) 
 
 // GetUnusedRecoveryCodeCount returns the count of unused recovery codes.
 func (r *Repository) GetUnusedRecoveryCodeCount(ctx context.Context, userID string) (int64, error) {
-	count, err := den.NewQuery[RecoveryCode](ctx, r.db,
+	count, err := den.NewQuery[RecoveryCode](r.db,
 		where.Field("user_id").Eq(userID),
 		where.Field("used").Eq(false),
-	).Count()
+	).Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count unused recovery codes for user %s: %w", userID, err)
 	}
@@ -457,7 +457,7 @@ func (r *Repository) DeleteRecoveryCodes(ctx context.Context, userID string) err
 
 // HasRecoveryCodes checks if a user has any recovery codes.
 func (r *Repository) HasRecoveryCodes(ctx context.Context, userID string) (bool, error) {
-	exists, err := den.NewQuery[RecoveryCode](ctx, r.db, where.Field("user_id").Eq(userID)).Exists()
+	exists, err := den.NewQuery[RecoveryCode](r.db, where.Field("user_id").Eq(userID)).Exists(ctx)
 	if err != nil {
 		return false, fmt.Errorf("check has recovery codes for user %s: %w", userID, err)
 	}
@@ -509,7 +509,7 @@ func (r *Repository) CreateEmailVerificationToken(ctx context.Context, userID st
 
 // GetEmailVerificationToken retrieves a token by hash.
 func (r *Repository) GetEmailVerificationToken(ctx context.Context, tokenHash string) (*EmailVerificationToken, error) {
-	token, err := den.NewQuery[EmailVerificationToken](ctx, r.db, where.Field("token_hash").Eq(tokenHash)).First()
+	token, err := den.NewQuery[EmailVerificationToken](r.db, where.Field("token_hash").Eq(tokenHash)).First(ctx)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			return nil, ErrNotFound
@@ -568,7 +568,7 @@ func (r *Repository) CreateInvite(ctx context.Context, invite *Invite) error {
 
 // GetInviteByTokenHash retrieves an invite by its token hash.
 func (r *Repository) GetInviteByTokenHash(ctx context.Context, tokenHash string) (*Invite, error) {
-	invite, err := den.NewQuery[Invite](ctx, r.db, where.Field("token_hash").Eq(tokenHash)).First()
+	invite, err := den.NewQuery[Invite](r.db, where.Field("token_hash").Eq(tokenHash)).First(ctx)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			return nil, ErrNotFound
@@ -580,7 +580,7 @@ func (r *Repository) GetInviteByTokenHash(ctx context.Context, tokenHash string)
 
 // ListInvites returns all invites ordered by creation date descending.
 func (r *Repository) ListInvites(ctx context.Context) ([]Invite, error) {
-	invites, err := den.NewQuery[Invite](ctx, r.db).Sort("_created_at", den.Desc).All()
+	invites, err := den.NewQuery[Invite](r.db).Sort("_created_at", den.Desc).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list invites: %w", err)
 	}

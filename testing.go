@@ -21,7 +21,7 @@ import (
 func TestDB(t *testing.T) *den.DB {
 	t.Helper()
 	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := den.OpenURL(dsn, validate.WithValidation())
+	db, err := den.OpenURL(t.Context(), dsn, validate.WithValidation())
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}

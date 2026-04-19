@@ -52,11 +52,11 @@ func NewRepository(db *den.DB) *Repository {
 }
 
 func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageRequest) ([]Question, burrow.PageResult, error) {
-	ptrs, count, err := den.NewQuery[Question](ctx, r.db).
+	ptrs, count, err := den.NewQuery[Question](r.db).
 		Sort("_id", den.Desc).
 		Limit(pr.Limit).
 		Skip(pr.Offset()).
-		AllWithCount()
+		AllWithCount(ctx)
 	if err != nil {
 		return nil, burrow.PageResult{}, fmt.Errorf("list questions paged: %w", err)
 	}
@@ -73,7 +73,7 @@ func (r *Repository) GetQuestion(ctx context.Context, id string) (*Question, err
 	if err != nil {
 		return nil, fmt.Errorf("get question %s: %w", id, err)
 	}
-	choicePtrs, err := den.NewQuery[Choice](ctx, r.db, where.Field("question_id").Eq(id)).All()
+	choicePtrs, err := den.NewQuery[Choice](r.db, where.Field("question_id").Eq(id)).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get choices for question %s: %w", id, err)
 	}

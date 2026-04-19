@@ -225,30 +225,30 @@ func TestApplyOffset_Integration(t *testing.T) {
 
 	t.Run("first page", func(t *testing.T) {
 		pr := PageRequest{Limit: 3, Page: 1}
-		items, err := den.NewQuery[paginationItem](t.Context(), db).
+		items, err := den.NewQuery[paginationItem](db).
 			Limit(pr.Limit).
 			Skip(pr.Offset()).
-			All()
+			All(t.Context())
 		require.NoError(t, err)
 		assert.Len(t, items, 3)
 	})
 
 	t.Run("second page", func(t *testing.T) {
 		pr := PageRequest{Limit: 3, Page: 2}
-		items, err := den.NewQuery[paginationItem](t.Context(), db).
+		items, err := den.NewQuery[paginationItem](db).
 			Limit(pr.Limit).
 			Skip(pr.Offset()).
-			All()
+			All(t.Context())
 		require.NoError(t, err)
 		assert.Len(t, items, 3)
 	})
 
 	t.Run("last partial page", func(t *testing.T) {
 		pr := PageRequest{Limit: 3, Page: 4}
-		items, err := den.NewQuery[paginationItem](t.Context(), db).
+		items, err := den.NewQuery[paginationItem](db).
 			Limit(pr.Limit).
 			Skip(pr.Offset()).
-			All()
+			All(t.Context())
 		require.NoError(t, err)
 		assert.Len(t, items, 1)
 	})

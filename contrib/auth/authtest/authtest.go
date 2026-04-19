@@ -25,7 +25,7 @@ func NewDB(t *testing.T) *den.DB {
 	t.Helper()
 
 	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "auth_test.db")
-	db, err := den.OpenURL(dsn, validate.WithValidation())
+	db, err := den.OpenURL(t.Context(), dsn, validate.WithValidation())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 

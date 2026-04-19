@@ -141,7 +141,7 @@ func (a *App) resolveDB(ctx context.Context, dsn string) (*den.DB, error) {
 		return a.defaultDB, nil
 	}
 
-	db, err := burrow.OpenDB(dsn)
+	db, err := burrow.OpenDB(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("jobs: open separate database: %w", err)
 	}

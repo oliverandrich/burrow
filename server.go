@@ -191,7 +191,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	}
 	s.i18nBundle = bundle
 
-	db, err := OpenDB(cfg.Database.DSN)
+	db, err := OpenDB(ctx, cfg.Database.DSN)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}

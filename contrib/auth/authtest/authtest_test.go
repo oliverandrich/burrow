@@ -1,7 +1,6 @@
 package authtest
 
 import (
-	"context"
 	"testing"
 
 	"github.com/oliverandrich/den"
@@ -16,7 +15,7 @@ func TestNewDB(t *testing.T) {
 	require.NotNil(t, db)
 
 	// Verify user collection exists by running a count query.
-	count, err := den.NewQuery[auth.User](context.Background(), db).Count()
+	count, err := den.NewQuery[auth.User](db).Count(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), count)
 }

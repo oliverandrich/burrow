@@ -51,10 +51,10 @@ func NewRepository(db *den.DB) *Repository {
 }
 
 func (r *Repository) ListQuestions(ctx context.Context) ([]Question, error) {
-	ptrs, err := den.NewQuery[Question](ctx, r.db).
+	ptrs, err := den.NewQuery[Question](r.db).
 		Sort("published_at", den.Desc).
 		Sort("_id", den.Desc).
-		All()
+		All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list questions: %w", err)
 	}
@@ -70,7 +70,7 @@ func (r *Repository) GetQuestion(ctx context.Context, id string) (*Question, err
 	if err != nil {
 		return nil, fmt.Errorf("get question %s: %w", id, err)
 	}
-	choicePtrs, err := den.NewQuery[Choice](ctx, r.db, where.Field("question_id").Eq(id)).All()
+	choicePtrs, err := den.NewQuery[Choice](r.db, where.Field("question_id").Eq(id)).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get choices for question %s: %w", id, err)
 	}

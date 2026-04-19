@@ -86,16 +86,16 @@ func (r *Repository) Create(ctx context.Context, note *Note) error {
 }
 
 func (r *Repository) ListByUserID(ctx context.Context, userID string) ([]Note, error) {
-    return den.NewQuery[Note](ctx, r.db,
+    return den.NewQuery[Note](r.db,
         where.Field("user_id").Eq(userID),
-    ).Sort("created_at", den.Desc).All()
+    ).Sort("created_at", den.Desc).All(ctx)
 }
 
 func (r *Repository) Delete(ctx context.Context, noteID, userID string) error {
-    note, err := den.NewQuery[Note](ctx, r.db,
+    note, err := den.NewQuery[Note](r.db,
         where.Field("id").Eq(noteID),
         where.Field("user_id").Eq(userID),
-    ).First()
+    ).First(ctx)
     if err != nil {
         return err
     }

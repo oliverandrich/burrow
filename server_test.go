@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/den"
@@ -152,10 +153,14 @@ func TestServerRunAction(t *testing.T) {
 	app := &trackingApp{name: "testapp"}
 	s := NewServer(app)
 
-	// Build a CLI command that exercises the full Run path but
-	// cancels the context immediately so the server doesn't block.
+	// Build a CLI command that exercises the full Run path. Cancel the
+	// context shortly after Run starts so the database opens, apps configure,
+	// and then the serve loop exits cleanly.
 	ctx, cancel := context.WithCancel(t.Context())
-	cancel() // Cancel immediately.
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+	}()
 
 	cmd := &cli.Command{
 		Name:  "test",

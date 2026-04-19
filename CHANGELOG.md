@@ -2,6 +2,17 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.14.0 — 2026-04-19
+
+### Breaking Changes
+
+- **Den upgraded to v0.8.0** — picks up the sealed `Scope` unification (Tx\* CRUD variants removed), ctx-on-terminals for `QuerySet`, ctx on `Open`/`OpenURL`, renamed change-tracking `Rollback` → `Revert`, composable `document.SoftDelete`/`document.Tracked` embeds (replacing `SoftBase`/`TrackedBase`/`TrackedSoftBase`), non-blocking PostgreSQL index creation, GIN-friendly `Eq` predicates, and batched `WithFetchLinks`. See the [den v0.8.0 CHANGELOG](https://github.com/oliverandrich/den/blob/main/CHANGELOG.md#080--2026-04-18) for the full list.
+- **`burrow.OpenDB` and `burrow.OpenDBWithoutValidation` take a leading `context.Context`** — mirroring den's new `Open`/`OpenURL` signature. A cancelled context aborts the open cleanly; callers with a startup deadline now get the guarantee they expect. Migration: `burrow.OpenDB(dsn)` → `burrow.OpenDB(ctx, dsn)`. The internal server boot already has `ctx` in scope; tests should pass `t.Context()`.
+
+### Changed
+
+- **`contrib/jobs` claim uses `SELECT ... FOR UPDATE SKIP LOCKED`** — the per-candidate CAS retry loop is replaced by a single locking query inside a transaction. N concurrent workers each receive a disjoint slice of the pending set without blocking each other, removing the O(N²) CAS contention under load. On SQLite the `ForUpdate` modifier is a no-op (IMMEDIATE transactions already serialize writers), so behavior is unchanged there. No schema migration required. Enabled by den v0.8.0's `den.NewQuery[T](tx).ForUpdate(den.SkipLocked())`.
+
 ## 0.13.1 — 2026-04-15
 
 ### Changed

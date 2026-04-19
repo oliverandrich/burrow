@@ -71,7 +71,7 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	srv.SetLayout("integration/layout")
 
 	// Open an in-memory database, matching the real boot sequence.
-	db, err := OpenDB("sqlite://:memory:")
+	db, err := OpenDB(t.Context(), "sqlite://:memory:")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 

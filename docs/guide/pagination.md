@@ -56,16 +56,16 @@ pageResult := burrow.OffsetResult(pr, totalCount)
 
 ```go
 func (r *Repository) ListAllPaged(ctx context.Context, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
-    count, err := den.NewQuery[Note](ctx, r.db).Count()
+    count, err := den.NewQuery[Note](r.db).Count(ctx)
     if err != nil {
         return nil, burrow.PageResult{}, err
     }
 
-    notes, err := den.NewQuery[Note](ctx, r.db).
+    notes, err := den.NewQuery[Note](r.db).
         Sort("created_at", den.Desc).
         Limit(pr.Limit).
         Skip(pr.Offset()).
-        All()
+        All(ctx)
     if err != nil {
         return nil, burrow.PageResult{}, err
     }

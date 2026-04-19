@@ -938,7 +938,7 @@ func TestAdminRoutes_Delete(t *testing.T) {
 	assert.Equal(t, "/admin/notes", rec.Header().Get("Location"))
 
 	// Verify deletion.
-	count, err := den.NewQuery[Note](ctx, db).Count()
+	count, err := den.NewQuery[Note](db).Count(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), count)
 }
