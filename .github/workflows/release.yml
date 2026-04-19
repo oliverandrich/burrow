@@ -15,22 +15,24 @@ jobs:
     if: >
       github.event.workflow_run.conclusion == 'success' &&
       startsWith(github.event.workflow_run.head_branch, 'v')
+    env:
+      VERSION: ${{ github.event.workflow_run.head_branch }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
+          persist-credentials: false
 
       - name: Extract changelog for this version
         run: |
-          VERSION="${{ github.event.workflow_run.head_branch }}"
-          VERSION="${VERSION#v}"
-          awk "
-            /^## ${VERSION}/ { found=1; next }
+          NUMBER="${VERSION#v}"
+          awk -v v="$NUMBER" '
+            $0 ~ "^## " v { found=1; next }
             found && /^## / { exit }
             found { print }
-          " CHANGELOG.md > release-notes.md
+          ' CHANGELOG.md > release-notes.md
 
       - name: Create GitHub Release
-        run: gh release create "${{ github.event.workflow_run.head_branch }}" --title "${{ github.event.workflow_run.head_branch }}" --notes-file release-notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$VERSION" --title "$VERSION" --notes-file release-notes.md

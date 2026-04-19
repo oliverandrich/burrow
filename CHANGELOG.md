@@ -7,6 +7,11 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Added
 
 - **Tooling page in Getting Started docs** — new `getting-started/tooling.md` documents the two companion projects: the [`go-burrow-template`](https://github.com/oliverandrich/go-burrow-template) project template (scaffolds a runnable Burrow app with contrib stack, air live reload, goreleaser config, and CI) and the [`burrow-claude-plugin`](https://github.com/oliverandrich/burrow-claude-plugin) Claude Code plugin (specialized agents and commands for feature development, architecture, and review). Linked from `quickstart.md` as a "faster start" entry point.
+- **`zizmor` workflow audit in CI** — new `zizmor` job in `.github/workflows/ci.yml` runs the [zizmor](https://docs.zizmor.sh/) static analyzer against all workflow files on every PR and push. A `.github/zizmor.yml` config documents the one accepted risk (the `workflow_run` trigger in `release.yml`, gated on branch-prefix + CI success).
+
+### Changed
+
+- **CI and release workflows hardened** — all `actions/*` and `golangci/*` uses are now pinned to commit SHAs with version comments. `persist-credentials: false` on every `actions/checkout`. `actions/setup-go` runs with `cache: false` to prevent cache-poisoning on tag pushes. `release.yml` routes `github.event.workflow_run.head_branch` through a `VERSION` env var instead of direct `${{ … }}` interpolation inside `run:` blocks, closing the template-injection vector. The manual `actions/cache` steps were removed.
 
 ## 0.14.0 — 2026-04-19
 
