@@ -234,26 +234,6 @@ func URL(ctx context.Context, name string) string
 
 Returns the content-hashed URL for a static file. Falls back to the original name if the file is not in the manifest or the middleware is not active.
 
-## Uploads Helpers
-
-Defined in `github.com/oliverandrich/burrow/contrib/uploads`.
-
-### Storage
-
-```go
-func Storage(ctx context.Context) Store
-```
-
-Returns the `Store` from the context. Injected by the uploads middleware.
-
-### URL
-
-```go
-func URL(ctx context.Context, key string) string
-```
-
-Returns the public URL for a storage key. If no storage is in the context, returns the key as-is.
-
 ## SSE Helpers
 
 Defined in `github.com/oliverandrich/burrow/contrib/sse`.

@@ -274,7 +274,7 @@ The application now has:
 Congratulations — you've built a complete web application with Burrow! Here are some ideas for extending it further:
 
 - Add i18n translations (see [i18n](../guide/i18n.md))
-- Upload images for questions (see [Uploads](../contrib/uploads.md))
+- Upload images for questions (see [Uploader](../guide/uploader.md))
 - Add background jobs for vote tallying (see [Jobs](../contrib/jobs.md))
 - Deploy with zero-downtime restarts (see [Deployment](../guide/deployment.md))
 

@@ -19,7 +19,14 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 
 | Flag | Env Var | TOML Key | Default | Description |
 |------|---------|----------|---------|-------------|
-| `--database-dsn` | `DATABASE_DSN` | `database.dsn` | `sqlite:///app.db` | Database DSN |
+| `--database-dsn` | `DATABASE_DSN` | `database.dsn` | `sqlite:///data/app.db` | Database DSN. Parent directory is auto-created for file-backed SQLite. |
+
+### Storage
+
+| Flag | Env Var | TOML Key | Default | Description |
+|------|---------|----------|---------|-------------|
+| `--storage-dsn` | `STORAGE_DSN` | `storage.dsn` | `file:///data/media` | Storage URL for attachments. Schemes: `file://` (SQLAlchemy-style: `file:///relative` or `file:////absolute`). Empty disables Storage. |
+| `--media-url-prefix` | `MEDIA_URL_PREFIX` | `storage.url_prefix` | `/media/` | Public URL prefix for locally served attachments |
 
 ### TLS
 

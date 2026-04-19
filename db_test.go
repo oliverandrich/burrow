@@ -87,3 +87,45 @@ func TestOpenDBWithoutValidation_IsEscapeHatch(t *testing.T) {
 	doc := &validatedDoc{}
 	require.NoError(t, den.Insert(ctx, db, doc))
 }
+
+func TestOpenStorage_EmptyDSNReturnsNil(t *testing.T) {
+	s, err := openStorage(StorageConfig{})
+	require.NoError(t, err)
+	assert.Nil(t, s)
+}
+
+func TestOpenStorage_FileScheme(t *testing.T) {
+	// t.TempDir() returns an absolute path. Concatenating with "file://"
+	// produces "file:///<abs>" (3 slashes). Under the SQLAlchemy-style
+	// convention that is relative; to keep the path absolute we use
+	// "file:///" + absPath, which yields "file:////abs/..." (4 slashes).
+	dir := t.TempDir()
+	s, err := openStorage(StorageConfig{
+		DSN:       "file:///" + dir,
+		URLPrefix: "/media/",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	sv, ok := s.(interface{ URLPrefix() string })
+	require.True(t, ok, "file.Storage must expose URLPrefix")
+	assert.Equal(t, "/media", sv.URLPrefix())
+}
+
+func TestOpenStorage_MissingScheme(t *testing.T) {
+	_, err := openStorage(StorageConfig{DSN: "./data/media"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing scheme")
+}
+
+func TestOpenStorage_UnregisteredScheme(t *testing.T) {
+	_, err := openStorage(StorageConfig{DSN: "s3://bucket/prefix"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no backend registered")
+}
+
+func TestOpenStorage_FileSchemeWithoutPath(t *testing.T) {
+	_, err := openStorage(StorageConfig{DSN: "file://"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires a path")
+}

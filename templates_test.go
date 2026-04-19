@@ -9,6 +9,9 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/document"
+	"github.com/oliverandrich/den/storage/file"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,6 +84,35 @@ func TestBaseFuncMapCsrfFallbacks(t *testing.T) {
 
 	hxFn := fm["csrfHxHeaders"].(func() template.HTMLAttr)
 	assert.Equal(t, template.HTMLAttr(""), hxFn(), "csrfHxHeaders fallback should return empty attr")
+}
+
+func TestCollectFuncMap_MediaURLFromStorage(t *testing.T) {
+	fs, err := file.New(t.TempDir(), "/media/")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = fs.Close() })
+
+	db, err := den.OpenURL(t.Context(), "sqlite://:memory:", den.WithStorage(fs))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	s := &Server{registry: NewRegistry(), appCfg: &AppConfig{DB: db}}
+	fm, _ := s.collectFuncMap()
+
+	fn, ok := fm["mediaURL"].(func(document.Attachment) string)
+	require.True(t, ok, "mediaURL must be registered when DB has a Storage")
+	assert.Equal(t, "/media/2026/04/x.jpg", fn(document.Attachment{StoragePath: "2026/04/x.jpg"}))
+}
+
+func TestCollectFuncMap_NoMediaURLWithoutStorage(t *testing.T) {
+	db, err := den.OpenURL(t.Context(), "sqlite://:memory:")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	s := &Server{registry: NewRegistry(), appCfg: &AppConfig{DB: db}}
+	fm, _ := s.collectFuncMap()
+
+	_, ok := fm["mediaURL"]
+	assert.False(t, ok, "mediaURL must not be registered when DB has no Storage")
 }
 
 func TestCsrfHxHeadersFallbackRendersCleanBody(t *testing.T) {

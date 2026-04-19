@@ -81,6 +81,7 @@ nav:
       - Advanced:
           - Pagination: guide/pagination.md
           - Full-Text Search: guide/fts5.md
+          - File Uploads: guide/uploader.md
           - Inter-App Communication: guide/inter-app-communication.md
       - Testing:
           - Testing: guide/testing.md
@@ -121,7 +122,6 @@ nav:
           - Admin: contrib/admin.md
           - Jobs: contrib/jobs.md
           - SSE: contrib/sse.md
-          - Uploads: contrib/uploads.md
   - Reference:
       - Core Interfaces: reference/interfaces.md
       - Core Functions: reference/core-functions.md

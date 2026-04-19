@@ -20,6 +20,7 @@ Provided by the framework itself. Always available.
 | `sub` | `{{ sub .Total 1 }}` | Integer subtraction |
 | `pageURL` | `{{ pageURL .BasePath .RawQuery 3 }}` | Builds a pagination URL preserving existing query parameters |
 | `pageNumbers` | `{{ range pageNumbers .Current .Total }}` | Generates a slice of page numbers with ellipsis gaps (`-1`) |
+| `mediaURL` | `{{ mediaURL .Hero }}` | Returns the public URL for a `document.Attachment`. Auto-registered when Den is opened with `den.WithStorage(...)`; unregistered (and a parse-time error) when no Storage is configured. |
 
 **Navigation (request-scoped, provided by the framework):**
 

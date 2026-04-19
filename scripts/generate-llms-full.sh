@@ -22,6 +22,7 @@ files=(
     guide/navigation.md
     guide/validation.md
     guide/pagination.md
+    guide/uploader.md
     guide/inter-app-communication.md
     guide/tls.md
     guide/deployment.md
@@ -40,7 +41,6 @@ files=(
     contrib/bsicons.md
     contrib/htmx.md
     contrib/jobs.md
-    contrib/uploads.md
     contrib/messages.md
     contrib/ratelimit.md
     contrib/staticfiles.md

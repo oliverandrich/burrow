@@ -191,7 +191,17 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	}
 	s.i18nBundle = bundle
 
-	db, err := OpenDB(ctx, cfg.Database.DSN)
+	storage, err := openStorage(cfg.Storage)
+	if err != nil {
+		return fmt.Errorf("open storage: %w", err)
+	}
+
+	var dbOpts []den.Option
+	if storage != nil {
+		dbOpts = append(dbOpts, den.WithStorage(storage))
+	}
+
+	db, err := OpenDB(ctx, cfg.Database.DSN, dbOpts...)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}

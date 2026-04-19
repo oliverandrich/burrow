@@ -37,7 +37,10 @@ Burrow is designed for server-rendered web applications, not API-only services.
 - [Session](https://burrow.someonewho.codes/contrib/session/): Cookie-based sessions via gorilla/sessions
 - [SSE](https://burrow.someonewho.codes/contrib/sse/): Server-Sent Events with in-memory pub/sub broker
 - [Static Files](https://burrow.someonewho.codes/contrib/staticfiles/): Content-hashed static file serving
-- [Uploads](https://burrow.someonewho.codes/contrib/uploads/): File upload storage with content-hashed serving
+
+## Other Packages
+
+- [Uploader](https://burrow.someonewho.codes/guide/uploader/): HTTP file-upload helpers built on den.Storage (not a contrib app)
 
 ## Reference
 

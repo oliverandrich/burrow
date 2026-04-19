@@ -66,7 +66,7 @@ The database path is configured via the `--database-dsn` flag:
     dsn = "sqlite:///data/myapp.db"
     ```
 
-The default is `sqlite:///app.db` in the working directory. The parent directory must exist — Burrow creates the file but not the directory. For PostgreSQL, use a URL like `postgres://user:pass@localhost/mydb`.
+The default is `sqlite:///data/app.db`, colocated with the attachment storage at `./data/media`. Den's SQLite backend auto-creates the parent directory, so a fresh checkout works without a manual `mkdir`. For PostgreSQL, use a URL like `postgres://user:pass@localhost/mydb`.
 
 For testing, you can use an in-memory SQLite database:
 

@@ -188,6 +188,18 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 		}
 	}
 
+	// Expose the configured den.Storage's URL composer as mediaURL when
+	// a Storage is installed. Lets templates render attachments with
+	// `{{ mediaURL .Hero }}` without any per-app FuncMap boilerplate;
+	// works unchanged whether the backend is local (relative URL) or
+	// remote (absolute URL).
+	if s.appCfg != nil && s.appCfg.DB != nil {
+		if st := s.appCfg.DB.Storage(); st != nil {
+			checkDuplicate("mediaURL", "core (den.Storage)")
+			funcMap["mediaURL"] = st.URL
+		}
+	}
+
 	return funcMap, templateFSes
 }
 

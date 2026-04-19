@@ -2,19 +2,28 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## 0.15.0 — 2026-04-19
 
-### Changed
+### Breaking Changes
 
-- **Den upgraded to v0.9.0** — picks up the new `document.Attachment` embed and `den.Storage` interface (plus a reference `FilesystemStorage` implementation). `contrib/uploads` is unchanged; the new Den primitives cover the document-embedded attachment use case while `contrib/uploads` continues to handle HTTP multipart parsing and file serving. See the [uploads guide](docs/contrib/uploads.md) for when to use which layer.
+- **`contrib/uploads` → `uploader`** — moved out of `contrib/` because it is no longer a `burrow.App`. New import path: `github.com/oliverandrich/burrow/uploader`. Construct the `*uploader.Uploader` in your domain app's `Configure` (`u := uploader.NewUploader(cfg.DB)`) and register the serving route in `Routes` (`uploader.Mount(r, cfg.DB.Storage())`). File ingress is `u.Store(r, "file", opts)`. Gone: `App`, `Store` interface, `LocalStorage`, all `With*` options, all `--uploads-*` flags and `UPLOADS_*` env vars, the middleware, the context helpers, `StoreFile`, `ErrNoStorage`, `StoreOptions.Storage`, and `StoreOptions.Prefix`. `NewUploader` panics if the DB has no Storage. Orphan-bytes cleanup on `Insert`/`Update` failure is the caller's responsibility (`_ = u.Storage().Delete(ctx, att)`); an offline sweeper is planned. See [`docs/guide/uploader.md`](docs/guide/uploader.md) for the new shape.
 
 ### Added
 
+- **Built-in Storage configuration** — two new core flags construct a `den.Storage` at boot and install it on the opened `*den.DB`:
+    - `--storage-dsn` (`STORAGE_DSN`, default `file:///data/media`) — Storage URL. Schemes: `file://` (SQLAlchemy/JDBC-style: `file:///relative` or `file:////absolute`; one leading slash is stripped on parse). Set to an empty string to disable Storage.
+    - `--media-url-prefix` (`MEDIA_URL_PREFIX`, default `/media/`) — public URL prefix for locally served attachments.
+
+    Domain apps receive the configured Storage via `cfg.DB.Storage()`; no `main.go` setup is required. Mirrors the `--database-dsn` pattern so the full data layer is flag-driven.
+- **Built-in `mediaURL` template function** — when a Storage is installed on the DB, Burrow auto-registers `mediaURL` (an alias for `den.Storage.URL`) in the global `FuncMap`. Templates can render attachments with `{{ mediaURL .Hero }}` without any per-app `FuncMap` wiring. When Storage is disabled, the function is not registered, so any reference fails at template-parse time — the right signal for an unwired dependency.
+- **`burrow.OpenDB` accepts `den.Option` variadics** — `OpenDB(ctx, dsn, opts...)` forwards options to `den.OpenURL` after applying `validate.WithValidation()`. Used internally to layer in `den.WithStorage`; callers who open the DB themselves (tests, tools) can layer in their own options.
 - **Tooling page in Getting Started docs** — new `getting-started/tooling.md` documents the two companion projects: the [`go-burrow-template`](https://github.com/oliverandrich/go-burrow-template) project template (scaffolds a runnable Burrow app with contrib stack, air live reload, goreleaser config, and CI) and the [`burrow-claude-plugin`](https://github.com/oliverandrich/burrow-claude-plugin) Claude Code plugin (specialized agents and commands for feature development, architecture, and review). Linked from `quickstart.md` as a "faster start" entry point.
 - **`zizmor` workflow audit in CI** — new `zizmor` job in `.github/workflows/ci.yml` runs the [zizmor](https://docs.zizmor.sh/) static analyzer against all workflow files on every PR and push. A `.github/zizmor.yml` config documents the one accepted risk (the `workflow_run` trigger in `release.yml`, gated on branch-prefix + CI success).
 
 ### Changed
 
+- **Default `--database-dsn` is now `sqlite:///data/app.db`** — colocated with the attachment storage root at `./data/media`, so a fresh project keeps all its local state in one directory. Den v0.10.1's SQLite backend auto-creates the parent directory on `Open`, so first-run setup needs no manual `mkdir`.
+- **Den upgraded to v0.10.1** — picks up the new `document.Attachment` embed, `den.Storage` interface, pluggable storage-backend registry (`storage.OpenURL` + `storage/file` sub-package), the `URLPrefix()` accessor the `uploader` package uses to derive its serving route, and SQLite auto-mkdir on open.
 - **CI and release workflows hardened** — all `actions/*` and `golangci/*` uses are now pinned to commit SHAs with version comments. `persist-credentials: false` on every `actions/checkout`. `actions/setup-go` runs with `cache: false` to prevent cache-poisoning on tag pushes. `release.yml` routes `github.event.workflow_run.head_branch` through a `VERSION` env var instead of direct `${{ … }}` interpolation inside `run:` blocks, closing the template-injection vector. The manual `actions/cache` steps were removed.
 
 ## 0.14.0 — 2026-04-19
