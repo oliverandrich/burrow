@@ -62,6 +62,7 @@ nav:
       - Quick Start: getting-started/quickstart.md
       - Project Structure: getting-started/project-structure.md
       - Examples & Tutorial: getting-started/examples.md
+      - Tooling: getting-started/tooling.md
       - Coming from Django: getting-started/coming-from-django.md
   - Guide:
       - Core:

@@ -2,6 +2,11 @@
 
 Build a minimal working application with a custom homepage and health check endpoint.
 
+!!! tip "Faster start"
+    For a ready-to-run project with a contrib stack, `justfile`, live
+    reload, CI, and goreleaser config already wired up, use the
+    [project template and Claude Code plugin](tooling.md).
+
 ## 1. Create the Project
 
 ```bash

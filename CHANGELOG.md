@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+
+- **Tooling page in Getting Started docs** — new `getting-started/tooling.md` documents the two companion projects: the [`go-burrow-template`](https://github.com/oliverandrich/go-burrow-template) project template (scaffolds a runnable Burrow app with contrib stack, air live reload, goreleaser config, and CI) and the [`burrow-claude-plugin`](https://github.com/oliverandrich/burrow-claude-plugin) Claude Code plugin (specialized agents and commands for feature development, architecture, and review). Linked from `quickstart.md` as a "faster start" entry point.
+
 ## 0.14.0 — 2026-04-19
 
 ### Breaking Changes

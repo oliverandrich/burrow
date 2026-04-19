@@ -12,6 +12,7 @@ files=(
     getting-started/quickstart.md
     getting-started/installation.md
     getting-started/project-structure.md
+    getting-started/tooling.md
     guide/creating-an-app.md
     guide/routing.md
     guide/database.md
