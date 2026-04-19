@@ -4,6 +4,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Changed
+
+- **Den upgraded to v0.9.0** — picks up the new `document.Attachment` embed and `den.Storage` interface (plus a reference `FilesystemStorage` implementation). `contrib/uploads` is unchanged; the new Den primitives cover the document-embedded attachment use case while `contrib/uploads` continues to handle HTTP multipart parsing and file serving. See the [uploads guide](docs/contrib/uploads.md) for when to use which layer.
+
 ### Added
 
 - **Tooling page in Getting Started docs** — new `getting-started/tooling.md` documents the two companion projects: the [`go-burrow-template`](https://github.com/oliverandrich/go-burrow-template) project template (scaffolds a runnable Burrow app with contrib stack, air live reload, goreleaser config, and CI) and the [`burrow-claude-plugin`](https://github.com/oliverandrich/burrow-claude-plugin) Claude Code plugin (specialized agents and commands for feature development, architecture, and review). Linked from `quickstart.md` as a "faster start" entry point.

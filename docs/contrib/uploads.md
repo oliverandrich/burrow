@@ -6,6 +6,24 @@ Pluggable file upload storage with a local filesystem backend and HTTP serving.
 
 **Depends on:** none
 
+!!! info "uploads vs. `den.Storage`"
+    This contrib app is the **HTTP-facing** piece: parsing multipart form
+    data, enforcing MIME allow-lists and size limits, and serving uploaded
+    files through a URL prefix. It is independent of Den.
+
+    Den v0.9.0 introduced its own [`den.Storage`](https://den-odm.readthedocs.io/guide/attachments/)
+    abstraction for **document-embedded attachments**:
+    `document.Attachment` fields on a struct, `Storage.Store` returning an
+    Attachment, and hard-delete cascade of bytes when the document goes.
+
+    Use this contrib app when your handler just needs to receive a file
+    and return a URL. Use Den's attachment layer when the file is part of
+    a document record and you want its lifecycle managed alongside the
+    record's. The two can be used together — the HTTP handler parses the
+    upload via this app's validation helpers, then calls
+    `db.Storage().Store(...)` to persist and returns the resulting
+    `document.Attachment` as part of a domain record.
+
 ## Setup
 
 ```go
