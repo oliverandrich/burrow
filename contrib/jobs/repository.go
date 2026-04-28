@@ -94,6 +94,18 @@ func (r *Repository) Claim(ctx context.Context, workerID string, limit int) ([]*
 	return claimed, nil
 }
 
+// ownedRunningConditions returns the predicate triple that asserts a worker
+// still owns a running job: matching ID, status=running, and matching
+// worker_id. Used by Complete and Fail to guard their writes against another
+// worker (or a rescue sweep) having reclaimed the job.
+func ownedRunningConditions(job *Job) []where.Condition {
+	return []where.Condition{
+		where.Field("_id").Eq(job.ID),
+		where.Field("status").Eq(string(StatusRunning)),
+		where.Field("worker_id").Eq(job.WorkerID),
+	}
+}
+
 // Complete marks a job as completed. The result parameter holds an optional
 // JSON-encoded handler return value (empty string means no result). The update
 // is guarded by an ownership check: only the worker that claimed the job
@@ -110,11 +122,7 @@ func (r *Repository) Complete(ctx context.Context, job *Job, result string) erro
 			"last_attempted_at": job.LastAttemptedAt,
 			"worker_id":         "",
 		},
-		[]where.Condition{
-			where.Field("_id").Eq(job.ID),
-			where.Field("status").Eq(string(StatusRunning)),
-			where.Field("worker_id").Eq(job.WorkerID),
-		},
+		ownedRunningConditions(job),
 	)
 	if errors.Is(err, den.ErrNotFound) {
 		return ErrStaleJob
@@ -154,13 +162,7 @@ func (r *Repository) Fail(ctx context.Context, job *Job, errMsg, errorClass stri
 		fields["failed_at"] = &now
 	}
 
-	_, err := den.FindOneAndUpdate[Job](ctx, r.db, fields,
-		[]where.Condition{
-			where.Field("_id").Eq(job.ID),
-			where.Field("status").Eq(string(StatusRunning)),
-			where.Field("worker_id").Eq(job.WorkerID),
-		},
-	)
+	_, err := den.FindOneAndUpdate[Job](ctx, r.db, fields, ownedRunningConditions(job))
 	if errors.Is(err, den.ErrNotFound) {
 		return ErrStaleJob
 	}
