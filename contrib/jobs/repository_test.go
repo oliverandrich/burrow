@@ -587,7 +587,7 @@ func TestRepository_RescueStale_SkipsCompletedJobs(t *testing.T) {
 	past := time.Now().Add(-10 * time.Minute)
 	_, err = den.FindOneAndUpdate[Job](ctx, db,
 		den.SetFields{"locked_at": &past},
-		where.Field("_id").Eq(job.ID),
+		[]where.Condition{where.Field("_id").Eq(job.ID)},
 	)
 	require.NoError(t, err)
 
@@ -729,7 +729,7 @@ func TestRepository_Retry_ClearsResultAndErrorClass(t *testing.T) {
 	// Manually set result to verify retry clears it.
 	_, err = den.FindOneAndUpdate[Job](ctx, db,
 		den.SetFields{"result": `{"stale":"data"}`},
-		where.Field("_id").Eq(job.ID),
+		[]where.Condition{where.Field("_id").Eq(job.ID)},
 	)
 	require.NoError(t, err)
 

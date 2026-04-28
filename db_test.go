@@ -101,8 +101,7 @@ func TestOpenStorage_FileScheme(t *testing.T) {
 	// "file:///" + absPath, which yields "file:////abs/..." (4 slashes).
 	dir := t.TempDir()
 	s, err := openStorage(StorageConfig{
-		DSN:       "file:///" + dir,
-		URLPrefix: "/media/",
+		DSN: "file:///" + dir + "?url_prefix=/media/",
 	})
 	require.NoError(t, err)
 	require.NotNil(t, s)

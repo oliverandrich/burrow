@@ -22,14 +22,13 @@ URL prefix, and a raw `ServeHandler` for hand-routed serving.
 
 ## Setup
 
-Burrow constructs the Storage from two CLI flags during `srv.Run`,
-mirrors the `--database-dsn` mechanism. There is **nothing to wire in
+Burrow constructs the Storage from a single CLI flag during `srv.Run`,
+mirroring the `--database-dsn` mechanism. There is **nothing to wire in
 `main.go`** — attachments just work:
 
 | Flag | Env | Default | Description |
 |---|---|---|---|
-| `--storage-dsn` | `STORAGE_DSN` | `file:///data/media` | Backend DSN. Schemes: `file://` (`file:///relative` or `file:////absolute`, SQLAlchemy-style). Empty string disables Storage. |
-| `--media-url-prefix` | `MEDIA_URL_PREFIX` | `/media/` | Public URL prefix for locally served attachments. |
+| `--storage-dsn` | `STORAGE_DSN` | `file:///data/media?url_prefix=/media/` | Backend DSN. Schemes: `file://` (`file:///relative` or `file:////absolute`, SQLAlchemy-style). The optional `?url_prefix=` query parameter sets the public URL prefix for locally served attachments (file backend only — S3-style backends ignore it). Empty string disables Storage. |
 
 ```go
 // main.go — identical to any Burrow app
@@ -90,6 +89,13 @@ STORAGE_DSN='' ./myapp
 With no Storage, `cfg.DB.Storage()` returns `nil`, `mediaURL` is not
 registered in the template func map, and any call to
 `uploader.NewUploader(db)` panics.
+
+!!! warning "Hard-deleting attachment-bearing documents requires Storage"
+    Den 0.11.0 rejects `den.Delete(ctx, db, doc, den.HardDelete())` (or
+    a `LinkDelete` cascade reaching such a doc) on a document carrying
+    `document.Attachment` bytes when no Storage is installed. With
+    `STORAGE_DSN=''`, the only safe options are soft-delete or
+    re-enabling Storage before the hard-delete.
 
 ## Storing Files
 

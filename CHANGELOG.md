@@ -2,6 +2,13 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Breaking Changes
+
+- **`--media-url-prefix` flag removed** — the public URL prefix for locally served attachments now lives inside `--storage-dsn` as a `?url_prefix=…` query parameter. Default DSN is `file:///data/media?url_prefix=/media/`, so out-of-the-box behavior is unchanged. Migrate explicit configs by folding the prefix into the DSN, for example `STORAGE_DSN='file:///data/media?url_prefix=/uploads/'`. The `MEDIA_URL_PREFIX` env var, the `storage.url_prefix` TOML key, and the `StorageConfig.URLPrefix` Go field are gone with the flag.
+- **Den upgraded to v0.11.0** — see the [den v0.11.0 CHANGELOG](https://github.com/oliverandrich/den/blob/main/CHANGELOG.md#0110--2026-04-27) for the full list. The two changes that surface in burrow's contract: the single-arg `storage.OpenURL` (covered above) and the `[]where.Condition` slice argument on `FindOneAndUpdate` (callers that pass conditions to it must wrap them in a slice).
+
 ## 0.15.0 — 2026-04-19
 
 ### Breaking Changes

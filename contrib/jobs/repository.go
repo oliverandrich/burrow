@@ -110,9 +110,11 @@ func (r *Repository) Complete(ctx context.Context, job *Job, result string) erro
 			"last_attempted_at": job.LastAttemptedAt,
 			"worker_id":         "",
 		},
-		where.Field("_id").Eq(job.ID),
-		where.Field("status").Eq(string(StatusRunning)),
-		where.Field("worker_id").Eq(job.WorkerID),
+		[]where.Condition{
+			where.Field("_id").Eq(job.ID),
+			where.Field("status").Eq(string(StatusRunning)),
+			where.Field("worker_id").Eq(job.WorkerID),
+		},
 	)
 	if errors.Is(err, den.ErrNotFound) {
 		return ErrStaleJob
@@ -153,9 +155,11 @@ func (r *Repository) Fail(ctx context.Context, job *Job, errMsg, errorClass stri
 	}
 
 	_, err := den.FindOneAndUpdate[Job](ctx, r.db, fields,
-		where.Field("_id").Eq(job.ID),
-		where.Field("status").Eq(string(StatusRunning)),
-		where.Field("worker_id").Eq(job.WorkerID),
+		[]where.Condition{
+			where.Field("_id").Eq(job.ID),
+			where.Field("status").Eq(string(StatusRunning)),
+			where.Field("worker_id").Eq(job.WorkerID),
+		},
 	)
 	if errors.Is(err, den.ErrNotFound) {
 		return ErrStaleJob
@@ -239,8 +243,10 @@ func (r *Repository) Retry(ctx context.Context, id string) error {
 			"run_at":            now,
 			"worker_id":         "",
 		},
-		where.Field("_id").Eq(id),
-		where.Field("status").In(string(StatusFailed), string(StatusDead)),
+		[]where.Condition{
+			where.Field("_id").Eq(id),
+			where.Field("status").In(string(StatusFailed), string(StatusDead)),
+		},
 	)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
@@ -265,8 +271,10 @@ func (r *Repository) Cancel(ctx context.Context, id string) error {
 			"locked_at": nil,
 			"worker_id": "",
 		},
-		where.Field("_id").Eq(id),
-		where.Field("status").In(string(StatusPending), string(StatusRunning), string(StatusFailed)),
+		[]where.Condition{
+			where.Field("_id").Eq(id),
+			where.Field("status").In(string(StatusPending), string(StatusRunning), string(StatusFailed)),
+		},
 	)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
@@ -305,8 +313,10 @@ func (r *Repository) RescueStale(ctx context.Context, staleDuration time.Duratio
 				"worker_id": "",
 				"run_at":    now,
 			},
-			where.Field("_id").Eq(job.ID),
-			where.Field("status").Eq(string(StatusRunning)),
+			[]where.Condition{
+				where.Field("_id").Eq(job.ID),
+				where.Field("status").Eq(string(StatusRunning)),
+			},
 		)
 		if err != nil {
 			if errors.Is(err, den.ErrNotFound) {

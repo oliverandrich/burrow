@@ -114,7 +114,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User) error {
 func (r *Repository) SetUserRole(ctx context.Context, userID string, role string) error {
 	_, err := den.FindOneAndUpdate[User](ctx, r.db,
 		den.SetFields{"role": role},
-		where.Field("_id").Eq(userID),
+		[]where.Condition{where.Field("_id").Eq(userID)},
 	)
 	if err != nil {
 		return fmt.Errorf("set role for user %s: %w", userID, err)
@@ -126,7 +126,7 @@ func (r *Repository) SetUserRole(ctx context.Context, userID string, role string
 func (r *Repository) SetUserActive(ctx context.Context, userID string, active bool) error {
 	_, err := den.FindOneAndUpdate[User](ctx, r.db,
 		den.SetFields{"is_active": active},
-		where.Field("_id").Eq(userID),
+		[]where.Condition{where.Field("_id").Eq(userID)},
 	)
 	if err != nil {
 		return fmt.Errorf("set active for user %s: %w", userID, err)
@@ -139,7 +139,7 @@ func (r *Repository) MarkEmailVerified(ctx context.Context, userID string) error
 	now := time.Now()
 	_, err := den.FindOneAndUpdate[User](ctx, r.db,
 		den.SetFields{"email_verified": true, "email_verified_at": &now},
-		where.Field("_id").Eq(userID),
+		[]where.Condition{where.Field("_id").Eq(userID)},
 	)
 	if err != nil {
 		return fmt.Errorf("mark email verified for user %s: %w", userID, err)
@@ -354,7 +354,7 @@ func (r *Repository) UpdateCredentialSignCount(ctx context.Context, credentialID
 	credIDBase64 := base64.StdEncoding.EncodeToString(credentialID)
 	_, err := den.FindOneAndUpdate[Credential](ctx, r.db,
 		den.SetFields{"sign_count": signCount},
-		where.Field("credential_id").Eq(credIDBase64),
+		[]where.Condition{where.Field("credential_id").Eq(credIDBase64)},
 	)
 	if err != nil {
 		return fmt.Errorf("update credential sign count: %w", err)
@@ -436,7 +436,7 @@ func (r *Repository) MarkRecoveryCodeUsed(ctx context.Context, codeID string) er
 	now := time.Now()
 	_, err := den.FindOneAndUpdate[RecoveryCode](ctx, r.db,
 		den.SetFields{"used": true, "used_at": &now},
-		where.Field("_id").Eq(codeID),
+		[]where.Condition{where.Field("_id").Eq(codeID)},
 	)
 	if err != nil {
 		return fmt.Errorf("mark recovery code %s as used: %w", codeID, err)
@@ -601,8 +601,10 @@ func (r *Repository) MarkInviteUsed(ctx context.Context, inviteID, userID string
 	now := time.Now()
 	_, err := den.FindOneAndUpdate[Invite](ctx, r.db,
 		den.SetFields{"used_at": &now, "used_by": &userID},
-		where.Field("_id").Eq(inviteID),
-		where.Field("used_at").IsNil(),
+		[]where.Condition{
+			where.Field("_id").Eq(inviteID),
+			where.Field("used_at").IsNil(),
+		},
 	)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {

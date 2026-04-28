@@ -44,16 +44,15 @@ type DatabaseConfig struct {
 // cfg.DB.Storage() and templates via the built-in mediaURL function.
 // Set DSN to an empty string to disable Storage entirely.
 type StorageConfig struct {
-	// DSN selects the backend. Format: "<scheme>://<location>".
+	// DSN selects the backend. Format: "<scheme>://<location>[?url_prefix=…]".
 	// Supported schemes:
 	//   - file:// — local filesystem. SQLAlchemy/JDBC convention:
 	//     "file:///relative" (3 slashes) or "file:////absolute"
 	//     (4 slashes). One leading slash is stripped on parse.
-	// Default: file:///data/media (relative).
+	// The optional ?url_prefix= query parameter sets the public URL
+	// prefix for locally served attachments (defaults to /media/).
+	// Default: file:///data/media?url_prefix=/media/ (relative path).
 	DSN string
-	// URLPrefix is the public-URL prefix applied to attachments by local
-	// backends. Default: /media/.
-	URLPrefix string
 }
 
 // TLSConfig holds TLS settings.
@@ -81,8 +80,7 @@ func NewConfig(cmd *cli.Command) *Config {
 			DSN: cmd.String("database-dsn"),
 		},
 		Storage: StorageConfig{
-			DSN:       cmd.String("storage-dsn"),
-			URLPrefix: cmd.String("media-url-prefix"),
+			DSN: cmd.String("storage-dsn"),
 		},
 		TLS: TLSConfig{
 			Mode:     cmd.String("tls-mode"),
@@ -253,15 +251,9 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name:    "storage-dsn",
-			Value:   "file:///data/media",
-			Usage:   "Storage URL for attachments (file:///relative or file:////absolute; empty disables Storage)",
+			Value:   "file:///data/media?url_prefix=/media/",
+			Usage:   "Storage URL for attachments (file:///relative or file:////absolute; ?url_prefix= sets the public URL prefix; empty disables Storage)",
 			Sources: FlagSources(configSource, "STORAGE_DSN", "storage.dsn"),
-		},
-		&cli.StringFlag{
-			Name:    "media-url-prefix",
-			Value:   "/media/",
-			Usage:   "Public URL prefix for attachments served through the local Storage backend",
-			Sources: FlagSources(configSource, "MEDIA_URL_PREFIX", "storage.url_prefix"),
 		},
 		&cli.StringFlag{
 			Name:    "tls-mode",

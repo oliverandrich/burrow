@@ -47,7 +47,6 @@ func TestServerFlags(t *testing.T) {
 	assert.True(t, names["port"])
 	assert.True(t, names["database-dsn"])
 	assert.True(t, names["storage-dsn"])
-	assert.True(t, names["media-url-prefix"])
 
 	// App flags present.
 	assert.True(t, names["flaggy-key"])

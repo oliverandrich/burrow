@@ -25,8 +25,7 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 
 | Flag | Env Var | TOML Key | Default | Description |
 |------|---------|----------|---------|-------------|
-| `--storage-dsn` | `STORAGE_DSN` | `storage.dsn` | `file:///data/media` | Storage URL for attachments. Schemes: `file://` (SQLAlchemy-style: `file:///relative` or `file:////absolute`). Empty disables Storage. |
-| `--media-url-prefix` | `MEDIA_URL_PREFIX` | `storage.url_prefix` | `/media/` | Public URL prefix for locally served attachments |
+| `--storage-dsn` | `STORAGE_DSN` | `storage.dsn` | `file:///data/media?url_prefix=/media/` | Storage URL for attachments. Schemes: `file://` (SQLAlchemy-style: `file:///relative` or `file:////absolute`). The optional `?url_prefix=` query parameter sets the public URL prefix for locally served attachments. Empty disables Storage. |
 
 ### TLS
 

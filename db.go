@@ -54,7 +54,7 @@ func openStorage(cfg StorageConfig) (den.Storage, error) {
 	if cfg.DSN == "" {
 		return nil, nil
 	}
-	s, err := storage.OpenURL(cfg.DSN, cfg.URLPrefix)
+	s, err := storage.OpenURL(cfg.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("storage-dsn %q: %w", cfg.DSN, err)
 	}
