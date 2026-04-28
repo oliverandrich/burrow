@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/den"
@@ -75,7 +76,7 @@ func TestDocuments(t *testing.T) {
 
 func openTestDB(t *testing.T) *den.DB {
 	t.Helper()
-	db := burrow.TestDB(t)
+	db := burrowtest.DB(t)
 
 	app := New()
 	err := den.Register(t.Context(), db, app.Documents()...)
@@ -739,7 +740,7 @@ func adminUserRouter(app *App) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rctx := burrow.TestErrorExecContext(r.Context())
+			rctx := burrowtest.ErrorExecContext(r.Context())
 			next.ServeHTTP(w, r.WithContext(rctx))
 		})
 	})
@@ -898,7 +899,7 @@ func TestAdminCreateInviteNoAuth(t *testing.T) {
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := burrow.TestErrorExecContext(r.Context())
+			ctx := burrowtest.ErrorExecContext(r.Context())
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
@@ -996,7 +997,7 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			rctx := WithUser(r.Context(), admin)
-			rctx = burrow.TestErrorExecContext(rctx)
+			rctx = burrowtest.ErrorExecContext(rctx)
 			next.ServeHTTP(w, r.WithContext(rctx))
 		})
 	})
@@ -1027,7 +1028,7 @@ func TestAdminDeleteUserNotFound(t *testing.T) {
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			rctx := WithUser(r.Context(), admin)
-			rctx = burrow.TestErrorExecContext(rctx)
+			rctx = burrowtest.ErrorExecContext(rctx)
 			next.ServeHTTP(w, r.WithContext(rctx))
 		})
 	})
@@ -1131,7 +1132,7 @@ func userActionRouter(handler burrow.HandlerFunc, user *User) *chi.Mux {
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			rctx := WithUser(r.Context(), user)
-			rctx = burrow.TestErrorExecContext(rctx)
+			rctx = burrowtest.ErrorExecContext(rctx)
 			next.ServeHTTP(w, r.WithContext(rctx))
 		})
 	})

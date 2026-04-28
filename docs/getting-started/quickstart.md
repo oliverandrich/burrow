@@ -27,6 +27,7 @@ import (
     "os"
 
     "github.com/oliverandrich/burrow"
+    _ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
     "github.com/go-chi/chi/v5"
     "github.com/urfave/cli/v3"
 )
@@ -66,6 +67,7 @@ This shows the core pattern:
 - Apps that serve HTTP routes also implement `Routes(r chi.Router)` (the `HasRoutes` interface)
 - Handlers return `error` instead of silently failing — `burrow.Handle()` wraps them and handles errors automatically: `*HTTPError` renders an error page with the appropriate status code, any other error becomes a logged 500
 - `srv.Flags(nil)` adds built-in CLI flags (`--host`, `--port`, `--database-dsn`, etc.)
+- The blank-import `_ "…/den/backend/sqlite"` registers the `sqlite://` scheme. Use `…/den/backend/postgres` instead (or alongside) when running against PostgreSQL — Burrow does not pull either backend in by default, so binaries only link the engine they actually use.
 
 No layout needed yet — that comes later when you want to render HTML templates (see the [Tutorial](../tutorial/index.md)).
 

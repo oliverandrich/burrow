@@ -62,7 +62,7 @@ func TestServerBootstrap(t *testing.T) {
 	app := &docApp{name: "things", docs: []any{&testThing{}}}
 
 	s := NewServer(app)
-	db := TestDB(t)
+	db := testDB(t)
 
 	err := s.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestServerBootstrap(t *testing.T) {
 
 func TestServerBootstrapCreatesAppConfig(t *testing.T) {
 	s := NewServer(&minimalApp{})
-	db := TestDB(t)
+	db := testDB(t)
 
 	cfg := &Config{Server: ServerConfig{Host: "testhost", Port: 9090}}
 	err := s.bootstrap(t.Context(), db, cfg)
@@ -91,7 +91,7 @@ func TestServerBootstrapDoesNotSeed(t *testing.T) {
 	app := &trackingApp{name: "seedable"}
 
 	s := NewServer(app)
-	db := TestDB(t)
+	db := testDB(t)
 
 	err := s.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)

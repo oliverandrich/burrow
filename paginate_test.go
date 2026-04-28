@@ -207,7 +207,7 @@ func TestPageNumbers(t *testing.T) {
 }
 
 func TestApplyOffset_Integration(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 
 	type paginationItem struct {
 		document.Base

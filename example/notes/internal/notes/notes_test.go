@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/auth/authtest"
 	"github.com/oliverandrich/burrow/contrib/messages"
@@ -927,7 +928,7 @@ func TestAdminRoutes_Delete(t *testing.T) {
 	require.NoError(t, app.Configure(&burrow.AppConfig{DB: db}, nil))
 
 	r := chi.NewRouter()
-	r.Use(burrow.TestErrorExecMiddleware)
+	r.Use(burrowtest.ErrorExecMiddleware)
 	app.AdminRoutes(r)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/"+note.ID, nil)

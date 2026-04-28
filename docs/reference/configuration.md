@@ -19,7 +19,7 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 
 | Flag | Env Var | TOML Key | Default | Description |
 |------|---------|----------|---------|-------------|
-| `--database-dsn` | `DATABASE_DSN` | `database.dsn` | `sqlite:///data/app.db` | Database DSN. Parent directory is auto-created for file-backed SQLite. |
+| `--database-dsn` | `DATABASE_DSN` | `database.dsn` | `sqlite:///data/app.db` | Database DSN. Parent directory is auto-created for file-backed SQLite. The matching Den backend must be blank-imported in `main.go` (`_ "github.com/oliverandrich/den/backend/sqlite"` or `…/backend/postgres`). |
 
 ### Storage
 

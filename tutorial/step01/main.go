@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
 )
 

@@ -11,6 +11,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/bootstrap"
 	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
+	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
 
 	"tutorial/step03/internal/pages"

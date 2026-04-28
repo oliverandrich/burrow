@@ -9,13 +9,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func setupRouter(t *testing.T, apps ...burrow.App) chi.Router {
 	t.Helper()
-	db := burrow.TestDB(t)
+	db := burrowtest.DB(t)
 	reg := burrow.NewRegistry()
 	for _, a := range apps {
 		reg.Add(a)
@@ -45,7 +46,7 @@ func TestAppName(t *testing.T) {
 
 func TestAppConfigure(t *testing.T) {
 	app := New()
-	db := burrow.TestDB(t)
+	db := burrowtest.DB(t)
 	reg := burrow.NewRegistry()
 	cfg := &burrow.AppConfig{DB: db, Registry: reg}
 

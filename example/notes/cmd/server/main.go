@@ -22,6 +22,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	"github.com/oliverandrich/burrow/example/notes/internal/notes"
 	"github.com/oliverandrich/burrow/example/notes/internal/pages"
+	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
 )
 

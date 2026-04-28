@@ -2,6 +2,38 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.17.0 — 2026-04-28
+
+### Breaking Changes
+
+- **Den backend imports moved out of `db.go`** — every binary using `burrow.OpenDB` must now blank-import the Den backend that matches its DSN in its own `main.go`. Burrow no longer pulls in either backend by default, so production binaries only link the engine they actually use (sqlite-only deployments drop ~3 MB; postgres-only deployments drop ~9 MB). Migration:
+
+    ```go
+    // main.go
+    import (
+        _ "github.com/oliverandrich/den/backend/sqlite"   // for sqlite:// DSNs
+        _ "github.com/oliverandrich/den/backend/postgres" // for postgres:// DSNs
+    )
+    ```
+
+    `OpenDB` and `OpenDBWithoutValidation` wrap Den's "unsupported database scheme" error with the exact import path to add. The `den/storage/file` blank-import stays in `db.go` (negligible weight, no native deps); `s3://` is already opt-in via `den/storage/s3`.
+
+- **`burrow.TestDB`, `burrow.TestErrorExecContext`, `burrow.TestErrorExecMiddleware` moved to new sub-package `burrow/burrowtest`** and renamed (Test prefix dropped, matching the `httptest` / `fstest` convention). Migration:
+
+    ```go
+    // before
+    db := burrow.TestDB(t)
+    ctx := burrow.TestErrorExecContext(ctx)
+    handler := burrow.TestErrorExecMiddleware(next)
+    // after
+    import "github.com/oliverandrich/burrow/burrowtest"
+    db := burrowtest.DB(t)
+    ctx := burrowtest.ErrorExecContext(ctx)
+    handler := burrowtest.ErrorExecMiddleware(next)
+    ```
+
+    The sub-package blank-imports SQLite for `DB(t)`. Production binaries that do not depend on `burrowtest` therefore do not link SQLite via this path.
+
 ## 0.16.0 — 2026-04-28
 
 ### Breaking Changes

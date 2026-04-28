@@ -43,7 +43,7 @@ func TestHandleHTTPError(t *testing.T) {
 		return NewHTTPError(http.StatusForbidden, "forbidden")
 	})
 
-	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(testErrorExecContext(t.Context()), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -56,7 +56,7 @@ func TestHandleGenericError(t *testing.T) {
 		return errors.New("something broke")
 	})
 
-	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(testErrorExecContext(t.Context()), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -148,7 +148,7 @@ func TestHandle5xxErrorIsLogged(t *testing.T) {
 		return NewHTTPError(http.StatusInternalServerError, "db down")
 	})
 
-	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodGet, "/test-path", nil)
+	req := httptest.NewRequestWithContext(testErrorExecContext(t.Context()), http.MethodGet, "/test-path", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -168,7 +168,7 @@ func TestHandle4xxErrorNotLogged(t *testing.T) {
 		return NewHTTPError(http.StatusNotFound, "not found")
 	})
 
-	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodGet, "/missing", nil)
+	req := httptest.NewRequestWithContext(testErrorExecContext(t.Context()), http.MethodGet, "/missing", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -385,7 +385,7 @@ func TestHandleValidationErrorIsUnhandled(t *testing.T) {
 		}
 	})
 
-	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodPost, "/", nil)
+	req := httptest.NewRequestWithContext(testErrorExecContext(t.Context()), http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -427,7 +427,7 @@ func TestHandleUnhandledErrorIsLogged(t *testing.T) {
 		return errors.New("unexpected failure")
 	})
 
-	req := httptest.NewRequestWithContext(TestErrorExecContext(t.Context()), http.MethodPost, "/submit", nil)
+	req := httptest.NewRequestWithContext(testErrorExecContext(t.Context()), http.MethodPost, "/submit", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -460,7 +460,7 @@ func BenchmarkHandle_HTTPError(b *testing.B) {
 		return NewHTTPError(http.StatusNotFound, "not found")
 	})
 
-	ctx := TestErrorExecContext(context.Background())
+	ctx := testErrorExecContext(context.Background())
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 
 	// Silence slog output during benchmarks.

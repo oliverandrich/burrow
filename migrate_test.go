@@ -17,7 +17,7 @@ type testWidget struct {
 }
 
 func TestRegistryRegisterDocumentsCreatesTable(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 	reg := NewRegistry()
 
 	app := &docApp{name: "widgets", docs: []any{&testWidget{}}}
@@ -34,7 +34,7 @@ func TestRegistryRegisterDocumentsCreatesTable(t *testing.T) {
 }
 
 func TestRegistryRegisterDocumentsSkipsNonDocumentApps(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 	reg := NewRegistry()
 
 	reg.Add(&docApp{name: "docapp", docs: []any{&testWidget{}}})
@@ -50,7 +50,7 @@ func TestRegistryRegisterDocumentsSkipsNonDocumentApps(t *testing.T) {
 }
 
 func TestRegistryRegisterDocumentsIdempotent(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 	reg := NewRegistry()
 
 	app := &docApp{name: "widgets", docs: []any{&testWidget{}}}
@@ -69,7 +69,7 @@ func TestRegistryRegisterDocumentsIdempotent(t *testing.T) {
 }
 
 func TestRegistryRegisterDocumentsMultipleApps(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 	reg := NewRegistry()
 
 	// testSetting is a second document type.
@@ -96,7 +96,7 @@ func TestRegistryRegisterDocumentsMultipleApps(t *testing.T) {
 }
 
 func TestRegistryRegisterDocumentsWithDependencyOrder(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 	reg := NewRegistry()
 
 	// Register in dependency order.

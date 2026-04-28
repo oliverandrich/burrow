@@ -15,6 +15,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
+	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
 
 	"tutorial/step05/internal/pages"

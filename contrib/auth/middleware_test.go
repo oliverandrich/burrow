@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/stretchr/testify/assert"
 )
@@ -121,7 +121,7 @@ func TestRequireAdmin(t *testing.T) {
 					u := &User{Username: "test", Role: tt.role}
 					u.ID = "user-1"
 					ctx := WithUser(r.Context(), u)
-					ctx = burrow.TestErrorExecContext(ctx)
+					ctx = burrowtest.ErrorExecContext(ctx)
 					next.ServeHTTP(w, r.WithContext(ctx))
 				})
 			})

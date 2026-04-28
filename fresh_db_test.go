@@ -19,7 +19,7 @@ type testItem struct {
 }
 
 func TestFreshDB_RegisterDocumentsOnEmptyDatabase(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 
 	err := den.Register(t.Context(), db, &testItem{})
 	require.NoError(t, err)
@@ -32,7 +32,7 @@ func TestFreshDB_RegisterDocumentsOnEmptyDatabase(t *testing.T) {
 }
 
 func TestFreshDB_EmptyTableReturnsEmptyResults(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 
 	err := den.Register(t.Context(), db, &testItem{})
 	require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
 	appB := &minimalApp{} // no documents
 
 	srv := NewServer(appA, appB)
-	db := TestDB(t)
+	db := testDB(t)
 
 	err := srv.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
@@ -75,7 +75,7 @@ func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
 func TestFreshDB_ServerBootstrapWithNoDocuments(t *testing.T) {
 	app := &minimalApp{}
 	srv := NewServer(app)
-	db := TestDB(t)
+	db := testDB(t)
 
 	err := srv.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestFreshDB_ServerBootstrapWithNoDocuments(t *testing.T) {
 }
 
 func TestFreshDB_EmptyListEndpointReturnsOK(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 	err := den.Register(t.Context(), db, &testItem{})
 	require.NoError(t, err)
 
@@ -110,7 +110,7 @@ func TestFreshDB_EmptyListEndpointReturnsOK(t *testing.T) {
 }
 
 func TestFreshDB_RegisterDocumentsIdempotent(t *testing.T) {
-	db := TestDB(t)
+	db := testDB(t)
 
 	// Register twice — second call should be idempotent.
 	err := den.Register(t.Context(), db, &testItem{})
@@ -128,7 +128,7 @@ func TestFreshDB_RegisterDocumentsIdempotent(t *testing.T) {
 func TestFreshDB_BootstrapAndHandleRequestsCleanly(t *testing.T) {
 	appA := &docApp{name: "things", docs: []any{&testItem{}}}
 	srv := NewServer(appA)
-	db := TestDB(t)
+	db := testDB(t)
 
 	err := srv.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)

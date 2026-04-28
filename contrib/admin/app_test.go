@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/session"
 
@@ -189,7 +190,7 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithUser(r.Context(), testAuthUser(auth.RoleUser))
-			ctx = burrow.TestErrorExecContext(ctx)
+			ctx = burrowtest.ErrorExecContext(ctx)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})

@@ -12,11 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/burrowtest"
 )
 
 func testDB(t *testing.T) *den.DB {
 	t.Helper()
-	db := burrow.TestDB(t)
+	db := burrowtest.DB(t)
 
 	err := den.Register(t.Context(), db, &Job{})
 	require.NoError(t, err)

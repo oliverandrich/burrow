@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/burrowtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,7 +61,7 @@ func TestRetryHandler_InvalidStatus(t *testing.T) {
 	handler := retryHandler(repo)
 
 	r := chi.NewRouter()
-	r.Use(burrow.TestErrorExecMiddleware)
+	r.Use(burrowtest.ErrorExecMiddleware)
 	r.Post("/admin/jobs/{id}/retry", burrow.Handle(handler))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/"+job.ID+"/retry", nil)
@@ -112,7 +113,7 @@ func TestCancelHandler_InvalidStatus(t *testing.T) {
 	handler := cancelHandler(repo)
 
 	r := chi.NewRouter()
-	r.Use(burrow.TestErrorExecMiddleware)
+	r.Use(burrowtest.ErrorExecMiddleware)
 	r.Post("/admin/jobs/{id}/cancel", burrow.Handle(handler))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/"+job.ID+"/cancel", nil)
@@ -254,7 +255,7 @@ func TestRetryHandler_NotFound(t *testing.T) {
 	handler := retryHandler(repo)
 
 	r := chi.NewRouter()
-	r.Use(burrow.TestErrorExecMiddleware)
+	r.Use(burrowtest.ErrorExecMiddleware)
 	r.Post("/admin/jobs/{id}/retry", burrow.Handle(handler))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/99999/retry", nil)
@@ -270,7 +271,7 @@ func TestCancelHandler_NotFound(t *testing.T) {
 	handler := cancelHandler(repo)
 
 	r := chi.NewRouter()
-	r.Use(burrow.TestErrorExecMiddleware)
+	r.Use(burrowtest.ErrorExecMiddleware)
 	r.Post("/admin/jobs/{id}/cancel", burrow.Handle(handler))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/99999/cancel", nil)
@@ -286,7 +287,7 @@ func TestRetryHandler_InvalidID(t *testing.T) {
 	handler := retryHandler(repo)
 
 	r := chi.NewRouter()
-	r.Use(burrow.TestErrorExecMiddleware)
+	r.Use(burrowtest.ErrorExecMiddleware)
 	r.Post("/admin/jobs/{id}/retry", burrow.Handle(handler))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/abc/retry", nil)
@@ -303,7 +304,7 @@ func TestCancelHandler_InvalidID(t *testing.T) {
 	handler := cancelHandler(repo)
 
 	r := chi.NewRouter()
-	r.Use(burrow.TestErrorExecMiddleware)
+	r.Use(burrowtest.ErrorExecMiddleware)
 	r.Post("/admin/jobs/{id}/cancel", burrow.Handle(handler))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/jobs/abc/cancel", nil)
@@ -398,7 +399,7 @@ func TestAdminJobDetail_NotFound(t *testing.T) {
 	app := newTestApp(t)
 
 	r := chi.NewRouter()
-	r.Use(burrow.TestErrorExecMiddleware)
+	r.Use(burrowtest.ErrorExecMiddleware)
 	r.Get("/admin/jobs/{id}", burrow.Handle(app.adminJobDetail))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/jobs/nonexistent", nil)
@@ -434,7 +435,7 @@ func TestAdminDeleteJob_NotFound(t *testing.T) {
 	app := newTestApp(t)
 
 	r := chi.NewRouter()
-	r.Use(burrow.TestErrorExecMiddleware)
+	r.Use(burrowtest.ErrorExecMiddleware)
 	r.Delete("/admin/jobs/{id}", burrow.Handle(app.adminDeleteJob))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/jobs/nonexistent", nil)
