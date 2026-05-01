@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+
+- **`contrib/pico`** — new design system contrib app providing PicoCSS v2.x as an alternative to `contrib/bootstrap`. Ships the upstream default theme plus 19 named accent variants (`pico.WithColor`), a base layout, a navbar layout with overridable slots, and a dark/light/auto theme switcher. Customize via CSS custom properties through `pico.WithCustomCSS`. Bootstrap stays unchanged; pick one design contrib per server. New example `example/hello-pico` demonstrates the setup.
+
 ## 0.17.0 — 2026-04-28
 
 ### Breaking Changes
