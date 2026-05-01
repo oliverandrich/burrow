@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/oliverandrich/burrow"
@@ -107,6 +108,46 @@ func TestWithCustomCSSOverridesColor(t *testing.T) {
 func TestWithColorClearsCustomCSS(t *testing.T) {
 	app := New(WithCustomCSS("myapp/custom.css"), WithColor(Zinc))
 	assert.Contains(t, app.cssTemplate(), "pico/pico.zinc.min.css")
+}
+
+func TestNoCompactByDefault(t *testing.T) {
+	app := New()
+	assert.NotContains(t, app.cssTemplate(), "pico-compact.min.css")
+}
+
+func TestWithCompactType(t *testing.T) {
+	app := New(WithCompactType())
+	tpl := app.cssTemplate()
+	assert.Contains(t, tpl, "pico/pico.min.css")
+	assert.Contains(t, tpl, "pico/pico-compact.min.css")
+	assert.Greater(t, strings.Index(tpl, "pico/pico-compact.min.css"),
+		strings.Index(tpl, "pico/pico.min.css"),
+		"compact override must follow the main stylesheet so source-order cascade applies")
+}
+
+func TestCompactCombinesWithColor(t *testing.T) {
+	app := New(WithColor(Blue), WithCompactType())
+	tpl := app.cssTemplate()
+	assert.Contains(t, tpl, "pico/pico.blue.min.css")
+	assert.Contains(t, tpl, "pico/pico-compact.min.css")
+	assert.Greater(t, strings.Index(tpl, "pico/pico-compact.min.css"),
+		strings.Index(tpl, "pico/pico.blue.min.css"),
+		"compact override must follow the color stylesheet so source-order cascade applies")
+}
+
+func TestCompactIgnoredWithCustomCSS(t *testing.T) {
+	app := New(WithCustomCSS("myapp/custom.css"), WithCompactType())
+	tpl := app.cssTemplate()
+	assert.Contains(t, tpl, "myapp/custom.css")
+	assert.NotContains(t, tpl, "pico-compact.min.css")
+	assert.NotContains(t, tpl, "pico.min.css")
+}
+
+func TestStaticFSContainsCompact(t *testing.T) {
+	_, fsys := New().StaticFS()
+	f, err := fsys.Open("pico-compact.min.css")
+	require.NoError(t, err)
+	_ = f.Close()
 }
 
 func TestMiddlewareInjectsLayout(t *testing.T) {

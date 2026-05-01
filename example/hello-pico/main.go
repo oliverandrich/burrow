@@ -46,7 +46,7 @@ func main() {
 	srv := burrow.NewServer(
 		staticApp,
 		htmx.New(),
-		pico.New(),
+		pico.New(pico.WithCompactType()),
 		hello,
 	)
 	srv.SetLayout(pico.NavLayout())

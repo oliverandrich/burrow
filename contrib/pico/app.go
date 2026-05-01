@@ -78,9 +78,10 @@ func WithColor(c Color) Option {
 }
 
 // WithCustomCSS sets a custom CSS file path (relative to staticfiles).
-// This overrides [WithColor]. The CSS file must be served by the
-// staticfiles app — either embedded in your app's static FS or in a
-// contrib app.
+// This overrides [WithColor] and disables [WithCompactType] — when set,
+// the custom file is the only stylesheet emitted. The CSS file must be
+// served by the staticfiles app — either embedded in your app's static
+// FS or in a contrib app.
 //
 //	pico.New(pico.WithCustomCSS("myapp/overrides.css"))
 //
@@ -91,10 +92,22 @@ func WithCustomCSS(path string) Option {
 	return func(a *App) { a.customCSS = path }
 }
 
+// WithCompactType ships an additional small stylesheet that flattens
+// PicoCSS's responsive font-size scaling (capped at 106.25% on viewports
+// ≥1024px instead of growing to 131.25% at 1536px) and tightens
+// --pico-line-height to 1.4. Useful for admin/app UIs on large displays
+// where Pico's blog-oriented defaults feel too heavy.
+//
+// Combines with [WithColor]. Ignored when [WithCustomCSS] is set.
+func WithCompactType() Option {
+	return func(a *App) { a.compactType = true }
+}
+
 // App implements a design system contrib app providing PicoCSS and htmx.
 type App struct {
-	color     Color
-	customCSS string
+	color       Color
+	customCSS   string
+	compactType bool
 }
 
 // New creates a new pico design app with the given options.
@@ -123,18 +136,24 @@ func (a *App) TemplateFS() fs.FS {
 }
 
 // cssTemplate returns the pico/css template content with the configured
-// CSS path baked in.
+// stylesheet links baked in. Emits one <link> for the primary stylesheet
+// (custom CSS, color variant, or default), plus an additional <link> for
+// the compact-type override when [WithCompactType] is set.
 func (a *App) cssTemplate() string {
-	path := "pico/pico.min.css"
-	if a.customCSS != "" {
-		path = a.customCSS
-	} else if a.color != Default {
-		path = "pico/pico." + string(a.color) + ".min.css"
+	primary := "pico/pico.min.css"
+	switch {
+	case a.customCSS != "":
+		primary = a.customCSS
+	case a.color != Default:
+		primary = "pico/pico." + string(a.color) + ".min.css"
 	}
-	return fmt.Sprintf(`{{ define "pico/css" -}}
-<link rel="stylesheet" href="{{ staticURL %q }}">
-{{- end }}
-`, path)
+
+	links := fmt.Sprintf(`<link rel="stylesheet" href="{{ staticURL %q }}">`, primary)
+	if a.compactType && a.customCSS == "" {
+		links += "\n" + fmt.Sprintf(`<link rel="stylesheet" href="{{ staticURL %q }}">`, "pico/pico-compact.min.css")
+	}
+
+	return fmt.Sprintf("{{ define \"pico/css\" -}}\n%s\n{{- end }}\n", links)
 }
 
 // Middleware returns middleware that injects the pico layout into the

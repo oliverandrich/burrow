@@ -7,6 +7,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Added
 
 - **`contrib/pico`** — new design system contrib app providing PicoCSS v2.x as an alternative to `contrib/bootstrap`. Ships the upstream default theme plus 19 named accent variants (`pico.WithColor`), a base layout, a navbar layout with overridable slots, and a dark/light/auto theme switcher. Customize via CSS custom properties through `pico.WithCustomCSS`. Bootstrap stays unchanged; pick one design contrib per server. New example `example/hello-pico` demonstrates the setup.
+- **`pico.WithCompactType()`** — opt-in option that loads an additional override stylesheet capping `--pico-font-size` at 106.25% on viewports ≥1024px (instead of growing to 131.25% at 1536px) and tightening `--pico-line-height` to 1.4. Useful for admin/app UIs on large displays where Pico's blog-oriented defaults feel too heavy. Combines with `WithColor`; ignored when `WithCustomCSS` is set.
 
 ## 0.17.0 — 2026-04-28
 

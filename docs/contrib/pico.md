@@ -28,7 +28,13 @@ pico.New(pico.WithColor(pico.Blue))
 pico.New(pico.WithColor(pico.Zinc))
 pico.New(pico.WithColor(pico.Default))   // upstream default
 
-// Provide your own CSS file (overrides WithColor)
+// Flatter font scaling and tighter line-height for app-style UIs
+pico.New(pico.WithCompactType())
+
+// Combine
+pico.New(pico.WithColor(pico.Blue), pico.WithCompactType())
+
+// Provide your own CSS file (overrides WithColor and WithCompactType)
 pico.New(pico.WithCustomCSS("myapp/overrides.css"))
 ```
 
@@ -85,6 +91,25 @@ pico.New(pico.WithColor(pico.Jade))
 ```
 
 The full list is also available via `pico.AllColors()`.
+
+## Compact Typography (`WithCompactType`)
+
+PicoCSS's responsive font-size scales `--pico-font-size` from 100% on mobile up to 131.25% (~21px) on viewports ≥1536px. That suits long-form blog content but feels heavy on app/admin UIs on large displays.
+
+`WithCompactType()` ships an additional small stylesheet that:
+
+- Caps `--pico-font-size` at 106.25% (~17px) on viewports ≥1024px (mobile/tablet defaults are kept as-is)
+- Tightens `--pico-line-height` from 1.5 to 1.4
+
+Pico's heading sizes, block spacing, and other rem-based metrics scale automatically with the base font-size, so they follow the change without further tweaks.
+
+The override is loaded as a second `<link>` after the main pico stylesheet, so source-order cascade gives the override priority over Pico's media queries at 1280px and 1536px.
+
+```go
+pico.New(pico.WithCompactType())
+```
+
+`WithCompactType` is ignored when `WithCustomCSS` is set — custom CSS owns the entire stylesheet.
 
 ## Customization via CSS Variables
 

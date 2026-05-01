@@ -1,0 +1,2 @@
+/* Burrow compact-type override for PicoCSS — see pico.WithCompactType */
+:root,:host{--pico-line-height:1.4}@media (min-width:1024px){:root,:host{--pico-font-size:106.25%}}
