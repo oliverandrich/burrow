@@ -96,10 +96,6 @@ tidy:
 example-hello *args:
     go run ./example/hello {{args}}
 
-# Run the PicoCSS hello example
-example-hello-pico *args:
-    go run ./example/hello-pico {{args}}
-
 # Run the notes example application
 example-notes *args:
     go run ./example/notes/cmd/server {{args}}

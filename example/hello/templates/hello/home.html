@@ -1,6 +1,27 @@
 {{ define "hello/home" -}}
-<div class="container py-5 text-center">
-    <h1 class="display-4 mb-3">{{ t "hello-title" }}</h1>
-    <p class="lead text-body-secondary">{{ t "hello-subtitle" }}</p>
-</div>
+<section style="text-align:center;padding:3rem 0">
+    <hgroup>
+        <h1>{{ t "hello-title" }}</h1>
+        <p>{{ t "hello-subtitle" }}</p>
+    </hgroup>
+    <p>
+        <button id="demo-dialog-open">Open dialog</button>
+    </p>
+    <dialog id="demo-dialog">
+        <article>
+            <header>
+                <button aria-label="Close" rel="prev"></button>
+                <p><strong>Native &lt;dialog&gt;</strong></p>
+            </header>
+            <p>This dialog is styled by PicoCSS without any JavaScript framework.</p>
+        </article>
+    </dialog>
+    <script>
+        (function(){
+            var d=document.getElementById("demo-dialog");
+            document.getElementById("demo-dialog-open").addEventListener("click",function(){d.showModal()});
+            d.querySelector('[rel="prev"]').addEventListener("click",function(){d.close()});
+        })()
+    </script>
+</section>
 {{- end }}
