@@ -63,9 +63,7 @@ func (a *App) List(w http.ResponseWriter, r *http.Request) error {
 	return burrow.Render(w, r, http.StatusOK, tmpl, data)
 }
 
-// New renders the empty create form.
-// HTMX: returns the form fragment for inline insertion.
-// Non-HTMX: returns the form wrapped in the layout.
+// New renders the empty create form into the modal dialog.
 func (a *App) New(w http.ResponseWriter, r *http.Request) error {
 	_ = auth.MustCurrentUser(r.Context())
 
@@ -75,6 +73,7 @@ func (a *App) New(w http.ResponseWriter, r *http.Request) error {
 		"TitleKey": "notes-new-title",
 		"Action":   "/notes",
 	}
+	htmx.OpenDialog(w, "modal")
 	return burrow.Render(w, r, http.StatusOK, "notes/form", data)
 }
 
@@ -103,14 +102,15 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	// HTMX: prepend new card via OOB + clear the form.
+	// HTMX: prepend new card via OOB + close the dialog.
+	htmx.CloseDialog(w, "modal")
 	return htmx.RenderOrRedirect(w, r, "/notes", "notes/create_response", map[string]any{
 		"Note":     note,
 		"Messages": messages.Get(r.Context()),
 	})
 }
 
-// Edit renders the edit form pre-filled with an existing note.
+// Edit renders the edit form pre-filled with an existing note into the modal.
 func (a *App) Edit(w http.ResponseWriter, r *http.Request) error {
 	user := auth.MustCurrentUser(r.Context())
 	id := chi.URLParam(r, "id")
@@ -129,6 +129,7 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) error {
 		"TitleKey": "notes-edit-title",
 		"Action":   "/notes/" + note.ID,
 	}
+	htmx.OpenDialog(w, "modal")
 	return burrow.Render(w, r, http.StatusOK, "notes/form", data)
 }
 
@@ -169,7 +170,8 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	// HTMX: replace existing card via OOB + clear the form.
+	// HTMX: replace existing card via OOB + close the dialog.
+	htmx.CloseDialog(w, "modal")
 	return htmx.RenderOrRedirect(w, r, "/notes", "notes/update_response", map[string]any{
 		"Note":     updated,
 		"Messages": messages.Get(r.Context()),

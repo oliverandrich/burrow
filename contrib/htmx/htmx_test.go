@@ -136,3 +136,21 @@ func TestLocation(t *testing.T) {
 	Location(w, "/somewhere")
 	assert.Equal(t, "/somewhere", w.Header().Get("HX-Location"))
 }
+
+func TestOpenDialog(t *testing.T) {
+	w := httptest.NewRecorder()
+	OpenDialog(w, "edit-note")
+	assert.JSONEq(t, `{"openDialog":"edit-note"}`, w.Header().Get("HX-Trigger-After-Swap"))
+}
+
+func TestCloseDialog(t *testing.T) {
+	w := httptest.NewRecorder()
+	CloseDialog(w, "edit-note")
+	assert.JSONEq(t, `{"closeDialog":"edit-note"}`, w.Header().Get("HX-Trigger-After-Swap"))
+}
+
+func TestDialogTriggerEscapesSpecialChars(t *testing.T) {
+	w := httptest.NewRecorder()
+	OpenDialog(w, `id"with"quotes`)
+	assert.JSONEq(t, `{"openDialog":"id\"with\"quotes"}`, w.Header().Get("HX-Trigger-After-Swap"))
+}

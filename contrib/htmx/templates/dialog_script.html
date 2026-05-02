@@ -1,0 +1,23 @@
+{{ define "htmx/dialog_script" -}}
+<script>
+(function(){
+    document.body.addEventListener("openDialog", function(e){
+        var dlg = document.getElementById(e.detail.value);
+        if (dlg && !dlg.open) dlg.showModal();
+    });
+    document.body.addEventListener("closeDialog", function(e){
+        var dlg = document.getElementById(e.detail.value);
+        if (dlg && dlg.open) dlg.close();
+    });
+    document.body.addEventListener("click", function(e){
+        var btn = e.target.closest('[rel="prev"]');
+        if (!btn) return;
+        var dlg = btn.closest("dialog");
+        if (dlg && dlg.open) {
+            e.preventDefault();
+            dlg.close();
+        }
+    });
+})()
+</script>
+{{- end }}

@@ -1,6 +1,9 @@
 {{ define "notes/form" -}}
 <article>
-    <header><strong>{{ t .TitleKey }}</strong></header>
+    <header>
+        <button aria-label="Close" rel="prev"></button>
+        <strong>{{ t .TitleKey }}</strong>
+    </header>
     {{ if .NonFieldErrors -}}
     <div class="alert alert-error" role="alert">
         {{ range .NonFieldErrors -}}
@@ -10,7 +13,7 @@
     {{- end }}
     <form method="post" action="{{ .Action }}"
         hx-post="{{ .Action }}"
-        hx-target="#note-form"
+        hx-target="#modal-body"
         hx-swap="innerHTML">
         {{ csrfField }}
         {{ range .Fields -}}
@@ -26,13 +29,12 @@
         <small class="field-error">{{ . }}</small>
         {{- end }}
         {{- end }}
-        <div class="form-actions">
+        <footer class="form-actions">
             <button type="submit">{{ t "notes-save-button" }}</button>
-            <button type="button" class="secondary outline"
-                onclick="document.getElementById('note-form').innerHTML=''">
+            <button type="button" class="secondary outline" rel="prev">
                 {{ t "notes-cancel-button" }}
             </button>
-        </div>
+        </footer>
     </form>
 </article>
 <style>

@@ -279,7 +279,7 @@ func TestListNotesHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "Test")
-	assert.Contains(t, body, `id="note-form"`)
+	assert.Contains(t, body, `hx-target="#modal-body"`)
 	assert.Contains(t, body, `hx-get="/notes/new"`)
 }
 
@@ -377,6 +377,7 @@ func TestNewNoteHandler(t *testing.T) {
 	assert.Contains(t, body, `hx-post="/notes"`)
 	assert.Contains(t, body, `name="title"`)
 	assert.Contains(t, body, `name="content"`)
+	assert.JSONEq(t, `{"openDialog":"modal"}`, rec.Header().Get("HX-Trigger-After-Swap"))
 }
 
 func TestNewNoteUnauthenticatedPanics(t *testing.T) {
@@ -428,13 +429,14 @@ func TestCreateNoteHTMX(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	// OOB: new card prepended to grid.
+	// OOB: new card prepended to grid (the card itself targets #modal-body for editing).
 	assert.Contains(t, body, "My Note")
 	assert.Contains(t, body, `hx-swap-oob="afterbegin"`)
-	// OOB: form cleared.
-	assert.Contains(t, body, `id="note-form"`)
+	assert.Contains(t, body, `hx-target="#modal-body"`)
 	// OOB: flash message.
 	assert.Contains(t, body, "notes-created")
+	// Dialog closes via after-swap trigger.
+	assert.JSONEq(t, `{"closeDialog":"modal"}`, rec.Header().Get("HX-Trigger-After-Swap"))
 
 	notes, err := repo.ListByUserID(context.Background(), "user-42")
 	require.NoError(t, err)
@@ -600,6 +602,7 @@ func TestEditNoteHTMX(t *testing.T) {
 	assert.Contains(t, body, "Original")
 	assert.Contains(t, body, `action="/notes/`+note.ID+`"`)
 	assert.Contains(t, body, `hx-post="/notes/`+note.ID+`"`)
+	assert.JSONEq(t, `{"openDialog":"modal"}`, rec.Header().Get("HX-Trigger-After-Swap"))
 }
 
 func TestEditNoteUnauthenticatedPanics(t *testing.T) {
@@ -680,13 +683,14 @@ func TestUpdateNoteHTMX(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	// OOB: updated card replaces existing.
+	// OOB: updated card replaces existing (the card itself targets #modal-body for editing).
 	assert.Contains(t, body, "Updated")
 	assert.Contains(t, body, `hx-swap-oob="outerHTML"`)
-	// OOB: form cleared.
-	assert.Contains(t, body, `id="note-form"`)
+	assert.Contains(t, body, `hx-target="#modal-body"`)
 	// OOB: flash message.
 	assert.Contains(t, body, "notes-updated")
+	// Dialog closes via after-swap trigger.
+	assert.JSONEq(t, `{"closeDialog":"modal"}`, rec.Header().Get("HX-Trigger-After-Swap"))
 
 	found, err := repo.GetByID(context.Background(), note.ID, "user-42")
 	require.NoError(t, err)

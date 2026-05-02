@@ -159,6 +159,8 @@ The inner `<ul dir="rtl">` makes the dropdown right-anchored — Pico's default 
 
 µCSS styles native `<dialog>` elements via its modal component. No JavaScript framework needed — only the browser's `showModal()` / `close()` calls.
 
+The `mucss/nav_layout` ships a permanent `<dialog id="modal"><div id="modal-body"></div></dialog>` container plus the `htmx/dialog_script` listener, so HTMX-driven dialogs work out of the box. See [HTMX-driven dialogs](htmx.md#htmx-driven-dialogs) for the recommended pattern (open/close from the server via `htmx.OpenDialog` / `htmx.CloseDialog`).
+
 ## Pagination
 
 `mucss/pagination` provides a `<nav class="pagination">` page navigator that integrates with the `paginate` package:

@@ -36,6 +36,88 @@ The htmx app implements `HasTemplates` and contributes these templates:
 |----------|-------------|
 | `htmx/js` | `<script defer>` tag for htmx JS |
 | `htmx/config` | `<meta>` tag with htmx response handling config (swaps 422 responses) |
+| `htmx/dialog_script` | Client-side listeners for `htmx.OpenDialog` / `htmx.CloseDialog` server triggers, plus delegated close on `[rel="prev"]` clicks. Included automatically by the `mucss` and `bootstrap` `nav_layout`s. |
+
+## HTMX-driven dialogs
+
+A standard pattern for opening forms (or any other content) inside a `<dialog>` element via HTMX. The server returns content swapped into a permanent modal container plus a trigger header; the client opens or closes the dialog accordingly.
+
+### Setup
+
+The `mucss` and `bootstrap` `nav_layout` templates ship a permanent `<dialog id="modal"><div id="modal-body"></div></dialog>` container plus the `htmx/dialog_script` listener — no app-side wiring needed. If you build a custom layout, include both yourself:
+
+```html
+<dialog id="modal"><div id="modal-body"></div></dialog>
+{{ template "htmx/dialog_script" . }}
+```
+
+### Trigger buttons
+
+Point the trigger at `#modal-body` and let the server set the open header:
+
+```html
+<a href="/notes/new" role="button"
+   hx-get="/notes/new"
+   hx-target="#modal-body"
+   hx-swap="innerHTML">
+    Add note
+</a>
+```
+
+```go
+func (a *App) New(w http.ResponseWriter, r *http.Request) error {
+    // ... build form data ...
+    htmx.OpenDialog(w, "modal")
+    return burrow.Render(w, r, http.StatusOK, "notes/form", data)
+}
+```
+
+### Validation errors
+
+Forms inside the dialog post back to `#modal-body`. On a validation error, the handler returns the form with errors filled in — content swaps in place, dialog stays open:
+
+```go
+func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
+    f := forms.New[Note]()
+    if !f.Bind(r) {
+        // No OpenDialog needed — dialog is already open.
+        return burrow.Render(w, r, http.StatusUnprocessableEntity, "notes/form", errorData)
+    }
+    // ... persist ...
+    htmx.CloseDialog(w, "modal")
+    return htmx.RenderOrRedirect(w, r, "/notes", "notes/create_response", successData)
+}
+```
+
+### Closing
+
+The server tells the client to close via `htmx.CloseDialog(w, id)`. Users can also close manually by clicking any element with `rel="prev"` inside the dialog (works without server roundtrip):
+
+```html
+<header>
+    <button aria-label="Close" rel="prev"></button>
+    <strong>Edit note</strong>
+</header>
+```
+
+### How it works
+
+`htmx.OpenDialog(w, id)` sets `HX-Trigger-After-Swap: {"openDialog":"<id>"}`. After the swap completes, htmx fires an `openDialog` event on `<body>` with `event.detail.value === "<id>"`. The `htmx/dialog_script` listener finds the matching `<dialog>` and calls `showModal()`. `CloseDialog` is the symmetric mirror with `closeDialog`.
+
+The script also installs a delegated `click` listener: any element with `rel="prev"` *inside an open dialog* closes that dialog client-side (no server roundtrip). This intentionally swallows the click — including links — so place `<a rel="prev" href="...">` *inside* an open dialog only if you mean "close the dialog, do not navigate." Outside dialogs the listener does nothing.
+
+### Multiple dialogs on one page
+
+The default `nav_layout` ships a single `<dialog id="modal">` container, which is why the docs use `htmx.OpenDialog(w, "modal")` everywhere. For a second dialog on the same page, render an additional `<dialog id="other-modal">` element somewhere in your layout (or an OOB swap) and pass that id to the helpers:
+
+```go
+htmx.OpenDialog(w, "confirm-delete")
+htmx.CloseDialog(w, "confirm-delete")
+```
+
+### Header composition
+
+`HX-Trigger`, `HX-Trigger-After-Swap`, and `HX-Trigger-After-Settle` are single-slot headers. `htmx.OpenDialog` / `htmx.CloseDialog` both write `HX-Trigger-After-Swap`, as does `htmx.TriggerAfterSwap`. A handler that calls more than one of these for the same response will only ship the last value. If you need to fire multiple after-swap events, build the JSON object yourself with `w.Header().Set("HX-Trigger-After-Swap", ...)` containing all events.
 
 ## Request Detection
 

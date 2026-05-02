@@ -3,7 +3,10 @@
 // static asset via the burrow staticfiles contrib app.
 package htmx
 
-import "net/http"
+import (
+	"encoding/json"
+	"net/http"
+)
 
 // HtmxRequest holds parsed htmx request headers.
 type HtmxRequest struct {
@@ -93,4 +96,32 @@ func Retarget(w http.ResponseWriter, selector string) {
 // without a full page reload.
 func Location(w http.ResponseWriter, url string) {
 	w.Header().Set("HX-Location", url)
+}
+
+// OpenDialog tells the client to open the <dialog> element with the given id
+// once the response has been swapped into the DOM. Pairs with the
+// htmx/dialog_script template, which the standard mucss and bootstrap nav
+// layouts include automatically; if you build a custom layout, include the
+// template yourself.
+//
+//	htmx.OpenDialog(w, "modal")
+//
+// Sets HX-Trigger-After-Swap to {"openDialog":"<id>"}.
+func OpenDialog(w http.ResponseWriter, id string) {
+	setDialogTrigger(w, "openDialog", id)
+}
+
+// CloseDialog tells the client to close the <dialog> element with the given
+// id. See [OpenDialog] for the script-include requirement.
+//
+//	htmx.CloseDialog(w, "modal")
+//
+// Sets HX-Trigger-After-Swap to {"closeDialog":"<id>"}.
+func CloseDialog(w http.ResponseWriter, id string) {
+	setDialogTrigger(w, "closeDialog", id)
+}
+
+func setDialogTrigger(w http.ResponseWriter, event, id string) {
+	payload, _ := json.Marshal(map[string]string{event: id})
+	w.Header().Set("HX-Trigger-After-Swap", string(payload))
 }

@@ -3,12 +3,11 @@
     <h1>{{ t "notes-title" }}</h1>
     <a href="/notes/new" role="button"
        hx-get="/notes/new"
-       hx-target="#note-form"
+       hx-target="#modal-body"
        hx-swap="innerHTML">
         {{ iconPlusLg }} {{ t "notes-add-button" }}
     </a>
 </header>
-<div id="note-form"></div>
 <form method="get" action="/notes" role="search" class="notes-search"
       hx-get="/notes"
       hx-target="#notes-list"
@@ -72,7 +71,7 @@
 <footer class="note-card-actions">
     <a href="/notes/{{ .ID }}" role="button" class="secondary outline"
        hx-get="/notes/{{ .ID }}"
-       hx-target="#note-form"
+       hx-target="#modal-body"
        hx-swap="innerHTML">
         {{ iconPencil }} {{ t "notes-edit-button" }}
     </a>
@@ -98,7 +97,6 @@
 {{- end }}
 
 {{ define "notes/create_response" -}}
-<div id="note-form" hx-swap-oob="innerHTML"></div>
 <div id="notes-grid" hx-swap-oob="afterbegin">
     {{ template "notes/note_card" .Note }}
 </div>
@@ -106,7 +104,6 @@
 {{- end }}
 
 {{ define "notes/update_response" -}}
-<div id="note-form" hx-swap-oob="innerHTML"></div>
 <article id="note-{{ .Note.ID }}" hx-swap-oob="outerHTML">
     {{ template "notes/note_card_inner" .Note }}
 </article>
