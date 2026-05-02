@@ -210,12 +210,12 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 	fm := template.FuncMap{
 		"t":               func(key string) string { return key },
 		"csrfToken":       func() string { return "test-token" },
+		"csrfField":       func() template.HTML { return `<input type="hidden" name="csrf" value="test-token">` },
 		"staticURL":       func(name string) string { return "/static/" + name },
 		"iconTrash":       func(class ...string) template.HTML { return "<svg>trash</svg>" },
 		"iconPlusLg":      func(class ...string) template.HTML { return "<svg>plus</svg>" },
 		"iconPencil":      func(class ...string) template.HTML { return "<svg>pencil</svg>" },
 		"iconJournalText": func(class ...string) template.HTML { return "<svg>journal</svg>" },
-		"alertClass":      func(level messages.Level) string { return string(level) },
 		"add":             func(a, b int) int { return a + b },
 		"sub":             func(a, b int) int { return a - b },
 	}
@@ -510,7 +510,7 @@ func TestCreateNoteValidationErrorHTMX(t *testing.T) {
 	body := rec.Body.String()
 	assert.Contains(t, body, "notes-new-title")
 	assert.Contains(t, body, `action="/notes"`)
-	assert.Contains(t, body, "is-invalid")
+	assert.Contains(t, body, `aria-invalid="true"`)
 
 	// No note should have been created.
 	notes, err := repo.ListByUserID(context.Background(), "user-42")
@@ -765,7 +765,7 @@ func TestUpdateNoteValidationErrorHTMX(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "notes-edit-title")
-	assert.Contains(t, body, "is-invalid")
+	assert.Contains(t, body, `aria-invalid="true"`)
 
 	// Note should be unchanged.
 	found, err := repo.GetByID(context.Background(), note.ID, "user-42")

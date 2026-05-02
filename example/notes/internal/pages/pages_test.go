@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +21,6 @@ var (
 	_ burrow.HasNavItems     = (*App)(nil)
 	_ burrow.HasTranslations = (*App)(nil)
 	_ burrow.HasTemplates    = (*App)(nil)
-	_ burrow.HasFuncMap      = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
@@ -86,23 +84,6 @@ func TestLogo_ReturnsNonEmpty(t *testing.T) {
 	html := Logo()
 	assert.NotEmpty(t, html)
 	assert.Contains(t, string(html), "Burrow")
-}
-
-func TestFuncMap_ContainsExpectedEntries(t *testing.T) {
-	app := New()
-	fm := app.FuncMap()
-	assert.Contains(t, fm, "alertClass")
-}
-
-func TestAlertClass(t *testing.T) {
-	app := New()
-	fm := app.FuncMap()
-	alertClassFn := fm["alertClass"].(func(messages.Level) string)
-
-	assert.Equal(t, "danger", alertClassFn(messages.Error))
-	assert.Equal(t, "info", alertClassFn(messages.Info))
-	assert.Equal(t, "success", alertClassFn(messages.Success))
-	assert.Equal(t, "warning", alertClassFn(messages.Warning))
 }
 
 func TestTemplateFS_ReturnsNonNil(t *testing.T) {

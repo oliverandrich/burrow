@@ -1,40 +1,43 @@
 {{ define "notes/form" -}}
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">{{ t .TitleKey }}</h5>
-        {{ if .NonFieldErrors -}}
-        <div class="alert alert-danger">
-            {{ range .NonFieldErrors -}}
-            <p class="mb-0">{{ . }}</p>
-            {{- end }}
-        </div>
+<article>
+    <header><strong>{{ t .TitleKey }}</strong></header>
+    {{ if .NonFieldErrors -}}
+    <div role="alert" data-level="error" class="form-errors">
+        {{ range .NonFieldErrors -}}
+        <p>{{ . }}</p>
         {{- end }}
-        <form method="post" action="{{ .Action }}"
-            hx-post="{{ .Action }}"
-            hx-target="#note-form"
-            hx-swap="innerHTML">
-            <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
-            {{ range .Fields -}}
-            <div class="mb-3">
-                <label for="{{ .FormName }}" class="form-label">{{ t .Label }}{{ if .Required }} *{{ end }}</label>
-                {{ if eq .Type "textarea" -}}
-                <textarea class="form-control{{ if .Errors }} is-invalid{{ end }}" id="{{ .FormName }}" name="{{ .FormName }}" rows="3">{{ .Value }}</textarea>
-                {{- else -}}
-                <input type="{{ .Type }}" class="form-control{{ if .Errors }} is-invalid{{ end }}" id="{{ .FormName }}" name="{{ .FormName }}" value="{{ .Value }}"{{ if .Required }} required{{ end }}>
-                {{- end }}
-                {{ range .Errors -}}
-                <div class="invalid-feedback">{{ . }}</div>
-                {{- end }}
-            </div>
-            {{- end }}
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">{{ t "notes-save-button" }}</button>
-                <button type="button" class="btn btn-outline-secondary"
-                    onclick="document.getElementById('note-form').innerHTML=''">
-                    {{ t "notes-cancel-button" }}
-                </button>
-            </div>
-        </form>
     </div>
-</div>
+    {{- end }}
+    <form method="post" action="{{ .Action }}"
+        hx-post="{{ .Action }}"
+        hx-target="#note-form"
+        hx-swap="innerHTML">
+        {{ csrfField }}
+        {{ range .Fields -}}
+        <label for="{{ .FormName }}">
+            {{ t .Label }}{{ if .Required }} *{{ end }}
+            {{ if eq .Type "textarea" -}}
+            <textarea id="{{ .FormName }}" name="{{ .FormName }}" rows="3"{{ if .Errors }} aria-invalid="true"{{ end }}>{{ .Value }}</textarea>
+            {{- else -}}
+            <input type="{{ .Type }}" id="{{ .FormName }}" name="{{ .FormName }}" value="{{ .Value }}"{{ if .Required }} required{{ end }}{{ if .Errors }} aria-invalid="true"{{ end }}>
+            {{- end }}
+        </label>
+        {{ range .Errors -}}
+        <small class="field-error">{{ . }}</small>
+        {{- end }}
+        {{- end }}
+        <div class="form-actions">
+            <button type="submit">{{ t "notes-save-button" }}</button>
+            <button type="button" class="secondary outline"
+                onclick="document.getElementById('note-form').innerHTML=''">
+                {{ t "notes-cancel-button" }}
+            </button>
+        </div>
+    </form>
+</article>
+<style>
+.form-actions { display: flex; gap: .5rem; flex-wrap: wrap }
+.form-actions button { width: auto }
+.field-error { color: var(--pico-del-color); display: block; margin-top: -.5rem; margin-bottom: .75rem }
+</style>
 {{- end }}

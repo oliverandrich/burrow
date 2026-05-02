@@ -7,6 +7,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Changed
 
 - **`example/hello`** migrated from Bootstrap to PicoCSS with `WithCompactType` and a native `<dialog>` demo. The previous evaluation example `example/hello-pico` has been removed; `example/hello` is now the canonical "Hello, World!" reference for new projects.
+- **`example/notes`** user-facing pages migrated from Bootstrap to PicoCSS. `bootstrap.New()` is still registered alongside `pico.New(pico.WithCompactType())` because `contrib/admin` and `contrib/auth` still ship Bootstrap-coupled templates; both contribs coexist transitionally until those migrate. The notes admin list (`admin_list.html`) stays on Bootstrap markup until the admin migration lands.
 
 ### Added
 

@@ -11,7 +11,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
-	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/urfave/cli/v3"
 )
 
@@ -45,18 +44,6 @@ func (a *App) TranslationFS() fs.FS { return translationFS }
 func (a *App) TemplateFS() fs.FS {
 	sub, _ := fs.Sub(templateFS, "templates")
 	return sub
-}
-
-// FuncMap returns template functions for the layout and home page.
-func (a *App) FuncMap() template.FuncMap {
-	return template.FuncMap{
-		"alertClass": func(level messages.Level) string {
-			if level == messages.Error {
-				return "danger"
-			}
-			return string(level)
-		},
-	}
 }
 
 func (a *App) NavItems() []burrow.NavItem {
