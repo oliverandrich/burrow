@@ -1,11 +1,11 @@
 // Command hello is a minimal burrow application that serves a single
-// "Hello, World!" page with PicoCSS styling and i18n support.
+// "Hello, World!" page with µCSS styling and i18n support.
 //
 // This example demonstrates the core concepts of a burrow app:
 //
-//   - Creating a server with contrib apps (staticfiles, htmx, pico)
+//   - Creating a server with contrib apps (staticfiles, htmx, mucss)
 //   - Defining a custom app that provides routes, templates, and translations
-//   - Using the Pico layout for page rendering
+//   - Using the µCSS layout for page rendering
 //   - Configuring the CLI with urfave/cli for flags like --host, --port, etc.
 //
 // Translations are provided via burrow's built-in `t` template function;
@@ -29,7 +29,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/htmx"
-	"github.com/oliverandrich/burrow/contrib/pico"
+	"github.com/oliverandrich/burrow/contrib/mucss"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
@@ -47,12 +47,12 @@ var translationFS embed.FS
 
 // emptyFS is an empty embedded filesystem. We pass it to staticfiles because
 // this example has no custom static assets (CSS, JS, images). Contrib apps
-// like pico contribute their own static files automatically.
+// like mucss contribute their own static files automatically.
 var emptyFS embed.FS
 
 func main() {
 	// staticfiles serves static assets with content-hashed URLs for cache busting.
-	// Even though we have no custom assets, we need it because pico depends on it.
+	// Even though we have no custom assets, we need it because mucss depends on it.
 	staticApp, err := staticfiles.New(emptyFS)
 	if err != nil {
 		log.Fatal(err)
@@ -64,21 +64,22 @@ func main() {
 
 	// Create the server and register apps. Order matters: apps are initialized
 	// in the order they are passed, and some apps depend on others being
-	// registered first (e.g. pico depends on staticfiles and htmx).
+	// registered first (e.g. mucss depends on staticfiles and htmx).
 	//
-	// pico.WithCompactType caps the responsive font-size scaling on large
-	// displays — Pico's blog-oriented defaults grow to 21px at 1536px, which
-	// feels heavy for app UIs. The compact override holds it at ~17px.
+	// mucss.WithCompactType caps the responsive font-size scaling on large
+	// displays — µCSS's blog-oriented defaults (inherited from PicoCSS) grow
+	// to 21px at 1536px, which feels heavy for app UIs. The compact override
+	// holds it at ~17px and tightens spacing for desktop layouts.
 	srv := burrow.NewServer(
-		staticApp,                        // Static file serving with content-hashed URLs
-		htmx.New(),                       // HTMX request detection and response helpers
-		pico.New(pico.WithCompactType()), // PicoCSS design system, dark mode, compact typography
-		hello,                            // Our custom app (defined below)
+		staticApp,                          // Static file serving with content-hashed URLs
+		htmx.New(),                         // HTMX request detection and response helpers
+		mucss.New(mucss.WithCompactType()), // µCSS design system, dark mode, compact typography
+		hello,                              // Our custom app (defined below)
 	)
 
 	// SetLayout picks the layout template for full-page renders. NavLayout
 	// wraps content in <main class="container"> and exposes a navbar slot.
-	srv.SetLayout(pico.NavLayout())
+	srv.SetLayout(mucss.NavLayout())
 
 	// Wire up the CLI. The server provides built-in flags (--host, --port,
 	// --database-dsn, --log-level, etc.) and the Action runs the HTTP server.

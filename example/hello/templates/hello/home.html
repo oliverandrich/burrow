@@ -1,9 +1,12 @@
 {{ define "hello/home" -}}
-<section style="text-align:center;padding:3rem 0">
+<section class="hero">
     <hgroup>
         <h1>{{ t "hello-title" }}</h1>
         <p>{{ t "hello-subtitle" }}</p>
     </hgroup>
+</section>
+
+<article>
     <p>
         <button id="demo-dialog-open">Open dialog</button>
     </p>
@@ -11,9 +14,9 @@
         <article>
             <header>
                 <button aria-label="Close" rel="prev"></button>
-                <p><strong>Native &lt;dialog&gt;</strong></p>
+                <strong>Native &lt;dialog&gt;</strong>
             </header>
-            <p>This dialog is styled by PicoCSS without any JavaScript framework.</p>
+            <p>This dialog is styled by µCSS without any JavaScript framework.</p>
         </article>
     </dialog>
     <script>
@@ -23,5 +26,5 @@
             d.querySelector('[rel="prev"]').addEventListener("click",function(){d.close()});
         })()
     </script>
-</section>
+</article>
 {{- end }}
