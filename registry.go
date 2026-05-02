@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 
 	"github.com/go-chi/chi/v5"
@@ -244,11 +245,11 @@ func (r *Registry) RegisterRoutes(router chi.Router) {
 // other apps from shutting down.
 func (r *Registry) Shutdown(ctx context.Context) error {
 	var errs []error
-	for i := len(r.apps) - 1; i >= 0; i-- {
-		if provider, ok := r.apps[i].(HasShutdown); ok {
+	for _, v := range slices.Backward(r.apps) {
+		if provider, ok := v.(HasShutdown); ok {
 			if err := provider.Shutdown(ctx); err != nil {
-				slog.Error("app shutdown error", "app", r.apps[i].Name(), "error", err)
-				errs = append(errs, fmt.Errorf("shutdown app %q: %w", r.apps[i].Name(), err))
+				slog.Error("app shutdown error", "app", v.Name(), "error", err)
+				errs = append(errs, fmt.Errorf("shutdown app %q: %w", v.Name(), err))
 			}
 		}
 	}

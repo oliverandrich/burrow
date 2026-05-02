@@ -494,7 +494,7 @@ func TestWorker_PanicRecovery(t *testing.T) {
 
 	// Wait for the job to be processed.
 	require.Eventually(t, func() bool {
-		j, err := repo.FindByID(context.Background(), job.ID)
+		j, err := repo.GetByID(context.Background(), job.ID)
 		if err != nil {
 			return false
 		}
@@ -502,7 +502,7 @@ func TestWorker_PanicRecovery(t *testing.T) {
 	}, 2*time.Second, 10*time.Millisecond)
 
 	// Verify the job was marked as failed with panic info.
-	got, err := repo.FindByID(context.Background(), job.ID)
+	got, err := repo.GetByID(context.Background(), job.ID)
 	require.NoError(t, err)
 	assert.Contains(t, got.LastError, "panic: something went terribly wrong")
 	assert.Contains(t, got.LastError, "goroutine") // stack trace present

@@ -36,7 +36,7 @@ func (m *Manager) Save(values map[string]any) (*http.Cookie, error) {
 		return nil, err
 	}
 
-	return &http.Cookie{
+	return &http.Cookie{ //nolint:gosec // HttpOnly/Secure/SameSite all set; m.secure is configurable to allow plain HTTP in dev/test
 		Name:     m.cookieName,
 		Value:    encoded,
 		Path:     "/",
@@ -77,7 +77,7 @@ func (m *Manager) Parse(r *http.Request) (map[string]any, error) {
 
 // Clear returns a cookie that clears the session.
 func (m *Manager) Clear() *http.Cookie {
-	return &http.Cookie{
+	return &http.Cookie{ //nolint:gosec // HttpOnly/Secure/SameSite all set; m.secure is configurable to allow plain HTTP in dev/test
 		Name:     m.cookieName,
 		Value:    "",
 		Path:     "/",

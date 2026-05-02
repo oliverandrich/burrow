@@ -100,14 +100,14 @@ func TestIsActivePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := WithRequestPath(context.Background(), tt.path)
+			ctx := burrow.WithRequestPath(context.Background(), tt.path)
 			assert.Equal(t, tt.want, isActivePath(ctx, tt.itemURL))
 		})
 	}
 }
 
 func TestSidebarLinkClass(t *testing.T) {
-	ctx := WithRequestPath(context.Background(), "/admin/users")
+	ctx := burrow.WithRequestPath(context.Background(), "/admin/users")
 
 	active := sidebarLinkClass(ctx, "/admin/users")
 	assert.Equal(t, "nav-link active", active)
@@ -117,7 +117,7 @@ func TestSidebarLinkClass(t *testing.T) {
 }
 
 func TestPrepareSidebar(t *testing.T) {
-	ctx := WithRequestPath(context.Background(), "/admin/users")
+	ctx := burrow.WithRequestPath(context.Background(), "/admin/users")
 
 	groups := []NavGroup{
 		{AppName: "auth", Items: []burrow.NavItem{

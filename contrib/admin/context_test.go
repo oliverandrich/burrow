@@ -25,10 +25,10 @@ func TestNavGroupsContextEmpty(t *testing.T) {
 }
 
 func TestRequestPathContext(t *testing.T) {
-	ctx := WithRequestPath(context.Background(), "/admin/users")
-	assert.Equal(t, "/admin/users", RequestPath(ctx))
+	ctx := burrow.WithRequestPath(context.Background(), "/admin/users")
+	assert.Equal(t, "/admin/users", burrow.RequestPath(ctx))
 }
 
 func TestRequestPathContextEmpty(t *testing.T) {
-	assert.Empty(t, RequestPath(context.Background()))
+	assert.Empty(t, burrow.RequestPath(context.Background()))
 }

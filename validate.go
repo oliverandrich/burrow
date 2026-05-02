@@ -88,7 +88,7 @@ func (e *ValidationError) HasField(name string) bool {
 // Returns nil if v is not a struct, has no validate tags, or passes all checks.
 func Validate(v any) error {
 	rv := reflect.ValueOf(v)
-	if rv.Kind() == reflect.Ptr {
+	if rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
 	}
 	if rv.Kind() != reflect.Struct {

@@ -602,7 +602,7 @@ func TestRepository_RescueStale_SkipsCompletedJobs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), rescued, "should not reset a completed job")
 
-	got, err := repo.FindByID(ctx, job.ID)
+	got, err := repo.GetByID(ctx, job.ID)
 	require.NoError(t, err)
 	assert.Equal(t, StatusCompleted, got.Status, "status should remain completed")
 }

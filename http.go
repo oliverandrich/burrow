@@ -133,7 +133,7 @@ func Bind(r *http.Request, v any) error {
 			return fmt.Errorf("decode json: %w", err)
 		}
 	case strings.HasPrefix(ct, "multipart/form-data"):
-		if err := r.ParseMultipartForm(defaultMaxMemory); err != nil {
+		if err := r.ParseMultipartForm(defaultMaxMemory); err != nil { //nolint:gosec // bounded by defaultMaxMemory; framework's accepted upload size limit
 			return fmt.Errorf("parse multipart form: %w", err)
 		}
 		if err := formDecoder.Decode(v, r.Form); err != nil {

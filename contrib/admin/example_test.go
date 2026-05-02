@@ -23,7 +23,7 @@ func ExampleWithNavGroups() {
 func ExampleWithRequestPath() {
 	ctx := admin.WithRequestPath(context.Background(), "/admin/users/42")
 
-	fmt.Println(admin.RequestPath(ctx))
+	fmt.Println(burrow.RequestPath(ctx))
 	// Output:
 	// /admin/users/42
 }
