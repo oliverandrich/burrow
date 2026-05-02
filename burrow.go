@@ -124,9 +124,9 @@
 //   - csrf — CSRF protection (gorilla/csrf)
 //   - i18n — locale detection and translations (go-i18n)
 //   - admin — admin panel with generic CRUD via ModelAdmin
+//   - mucss — µCSS v1.x design system (built on PicoCSS), JS-free, dark mode, 20 accent colors
 //   - bootstrap — Bootstrap 5 CSS/JS with dark mode
 //   - bsicons — Bootstrap Icons as inline SVG template functions
-//   - pico — PicoCSS v2.x design system, JS-free, with dark mode
 //   - alpine — Alpine.js asset serving via staticfiles
 //   - htmx — HTMX asset serving and request/response helpers
 //   - jobs — SQLite-backed in-process job queue with retry
