@@ -111,6 +111,7 @@ nav:
           - Rate Limiting: contrib/ratelimit.md
           - Security Headers: contrib/secure.md
       - UI & Templates:
+          - µCSS: contrib/mucss.md
           - Bootstrap: contrib/bootstrap.md
           - Bootstrap Icons: contrib/bsicons.md
           - PicoCSS: contrib/pico.md

@@ -1,0 +1,17 @@
+{{ define "mucss/layout" -}}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }}</title>
+    {{ template "mucss/css" . }}
+    {{ template "mucss/theme_script" . }}
+    {{ template "htmx/js" . }}
+    {{ template "htmx/config" . }}
+</head>
+<body {{- csrfHxHeaders }}>
+    {{ .Content }}
+</body>
+</html>
+{{- end }}

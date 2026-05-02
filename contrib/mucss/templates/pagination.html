@@ -1,0 +1,27 @@
+{{ define "mucss/pagination" -}}
+{{ if gt .Page.TotalPages 1 }}
+<nav class="pagination" aria-label="Page navigation">
+    <ul>
+        {{ if le .Page.Page 1 -}}
+        <li><a href="#" aria-disabled="true">&laquo;</a></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (sub .Page.Page 1) }}" aria-label="Previous">&laquo;</a></li>
+        {{- end }}
+        {{ range pageNumbers .Page.Page .Page.TotalPages -}}
+        {{ if eq . -1 -}}
+        <li><span aria-hidden="true">&hellip;</span></li>
+        {{- else if eq . $.Page.Page -}}
+        <li><a href="#" aria-current="page">{{ . }}</a></li>
+        {{- else -}}
+        <li><a href="{{ pageURL $.BasePath $.RawQuery . }}">{{ . }}</a></li>
+        {{- end }}
+        {{- end }}
+        {{ if not .Page.HasMore -}}
+        <li><a href="#" aria-disabled="true">&raquo;</a></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (add .Page.Page 1) }}" aria-label="Next">&raquo;</a></li>
+        {{- end }}
+    </ul>
+</nav>
+{{ end }}
+{{- end }}
