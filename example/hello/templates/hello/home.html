@@ -4,27 +4,26 @@
         <h1>{{ t "hello-title" }}</h1>
         <p>{{ t "hello-subtitle" }}</p>
     </hgroup>
+    <p>
+        <button id="demo-dialog-open" class="btn-primary" style="width:auto">Open dialog</button>
+    </p>
 </section>
 
-<article>
-    <p>
-        <button id="demo-dialog-open">Open dialog</button>
-    </p>
-    <dialog id="demo-dialog">
-        <article>
-            <header>
-                <button aria-label="Close" rel="prev"></button>
-                <strong>Native &lt;dialog&gt;</strong>
-            </header>
-            <p>This dialog is styled by µCSS without any JavaScript framework.</p>
-        </article>
-    </dialog>
-    <script>
-        (function(){
-            var d=document.getElementById("demo-dialog");
-            document.getElementById("demo-dialog-open").addEventListener("click",function(){d.showModal()});
-            d.querySelector('[rel="prev"]').addEventListener("click",function(){d.close()});
-        })()
-    </script>
-</article>
+<dialog id="demo-dialog">
+    <article>
+        <header>
+            <button aria-label="Close" rel="prev"></button>
+            <strong>Native &lt;dialog&gt;</strong>
+        </header>
+        <p>This dialog is styled by µCSS without any JavaScript framework.</p>
+    </article>
+</dialog>
+
+<script>
+    (function(){
+        var d=document.getElementById("demo-dialog");
+        document.getElementById("demo-dialog-open").addEventListener("click",function(){d.showModal()});
+        d.querySelector('[rel="prev"]').addEventListener("click",function(){d.close()});
+    })()
+</script>
 {{- end }}
