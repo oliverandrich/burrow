@@ -175,3 +175,17 @@ update-pico version="2.1.1":
         curl -fsSL "$base/pico.${color}.min.css" -o "$out/pico.${color}.min.css"
     done
     echo "Done — PicoCSS v{{version}} updated (${#colors[@]} accents + default)"
+
+# Update µCSS (downloads latest release; default and 20 named accent variants)
+update-mucss version="1.4.7":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    base="https://cdn.jsdelivr.net/npm/@digicreon/mucss@{{version}}/dist"
+    out="contrib/mucss/static"
+    colors=(amber azure blue cyan fuchsia green grey indigo jade lime orange pink pumpkin purple red sand slate violet yellow zinc)
+    echo "Downloading µCSS v{{version}}..."
+    curl -fsSL "$base/mu.css" -o "$out/mu.css"
+    for color in "${colors[@]}"; do
+        curl -fsSL "$base/mu.${color}.css" -o "$out/mu.${color}.css"
+    done
+    echo "Done — µCSS v{{version}} updated (${#colors[@]} accents + default)"
