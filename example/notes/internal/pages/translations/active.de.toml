@@ -13,4 +13,4 @@ home-card-passkey-text = "WebAuthn-basierte Authentifizierung mit Wiederherstell
 home-card-contrib-title = "Contrib-Apps"
 home-card-contrib-text = "Session, CSRF, i18n, Admin-Panel, statische Dateien und Health-Checks — alles als modulare Apps."
 home-card-htmx-title = "htmx-fähig"
-home-card-htmx-text = "Bootstrap 5 und htmx über die Pipeline für statische Dateien mit inhaltsbasierten URLs."
+home-card-htmx-text = "µCSS und htmx über die Pipeline für statische Dateien mit inhaltsbasierten URLs."
