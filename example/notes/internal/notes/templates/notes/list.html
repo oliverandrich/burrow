@@ -1,9 +1,9 @@
 {{ define "notes/list_page" -}}
 <header class="notes-header">
     <h1>{{ t "notes-title" }}</h1>
-    <a href="/notes/new" role="button"
+    <a href="/notes/new" role="button" class="btn btn-primary"
        hx-get="/notes/new"
-       hx-target="#modal-body"
+       hx-target="#modal"
        hx-swap="innerHTML">
         {{ iconPlusLg }} {{ t "notes-add-button" }}
     </a>
@@ -16,7 +16,7 @@
     <fieldset role="group">
         <input type="search" name="q" value="{{ .SearchQuery }}"
                placeholder="{{ t "notes-search-placeholder" }}">
-        <button type="submit">{{ t "notes-search-button" }}</button>
+        <button type="submit" class="btn btn-primary">{{ t "notes-search-button" }}</button>
     </fieldset>
 </form>
 <div id="notes-list">
@@ -69,13 +69,13 @@
 <p>{{ .Content }}</p>
 {{- end }}
 <footer class="note-card-actions">
-    <a href="/notes/{{ .ID }}" role="button" class="secondary outline"
+    <a href="/notes/{{ .ID }}" role="button" class="btn btn-sm btn-outline btn-secondary"
        hx-get="/notes/{{ .ID }}"
-       hx-target="#modal-body"
+       hx-target="#modal"
        hx-swap="innerHTML">
         {{ iconPencil }} {{ t "notes-edit-button" }}
     </a>
-    <button class="contrast outline"
+    <button class="btn btn-sm btn-outline btn-error"
             hx-delete="/notes/{{ .ID }}"
             hx-target="#note-{{ .ID }}"
             hx-swap="outerHTML swap:0.3s"

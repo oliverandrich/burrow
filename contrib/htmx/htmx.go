@@ -104,11 +104,26 @@ func Location(w http.ResponseWriter, url string) {
 // layouts include automatically; if you build a custom layout, include the
 // template yourself.
 //
-//	htmx.OpenDialog(w, "modal")
+// An optional dialogClass replaces the dialog element's className before the
+// dialog is opened — useful for size variants like µCSS's "modal-lg" /
+// "modal-sm" / "modal-fullscreen", which target the dialog itself rather
+// than its inner content. Passing the empty string clears any previously
+// applied class.
 //
-// Sets HX-Trigger-After-Swap to {"openDialog":"<id>"}.
-func OpenDialog(w http.ResponseWriter, id string) {
-	setDialogTrigger(w, "openDialog", id)
+//	htmx.OpenDialog(w, "modal")
+//	htmx.OpenDialog(w, "modal", "modal-lg")
+//
+// Sets HX-Trigger-After-Swap to {"openDialog":"<id>"} or
+// {"openDialog":{"id":"<id>","class":"<class>"}} when a class is given.
+func OpenDialog(w http.ResponseWriter, id string, dialogClass ...string) {
+	if len(dialogClass) == 0 {
+		setDialogTrigger(w, "openDialog", id)
+		return
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"openDialog": map[string]string{"id": id, "class": dialogClass[0]},
+	})
+	w.Header().Set("HX-Trigger-After-Swap", string(payload))
 }
 
 // CloseDialog tells the client to close the <dialog> element with the given

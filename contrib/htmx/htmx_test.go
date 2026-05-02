@@ -143,6 +143,12 @@ func TestOpenDialog(t *testing.T) {
 	assert.JSONEq(t, `{"openDialog":"edit-note"}`, w.Header().Get("HX-Trigger-After-Swap"))
 }
 
+func TestOpenDialogWithClass(t *testing.T) {
+	w := httptest.NewRecorder()
+	OpenDialog(w, "edit-note", "modal-lg")
+	assert.JSONEq(t, `{"openDialog":{"id":"edit-note","class":"modal-lg"}}`, w.Header().Get("HX-Trigger-After-Swap"))
+}
+
 func TestCloseDialog(t *testing.T) {
 	w := httptest.NewRecorder()
 	CloseDialog(w, "edit-note")

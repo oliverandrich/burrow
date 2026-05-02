@@ -44,37 +44,53 @@ A standard pattern for opening forms (or any other content) inside a `<dialog>` 
 
 ### Setup
 
-The `mucss` and `bootstrap` `nav_layout` templates ship a permanent `<dialog id="modal"><div id="modal-body"></div></dialog>` container plus the `htmx/dialog_script` listener — no app-side wiring needed. If you build a custom layout, include both yourself:
+The `mucss` and `bootstrap` `nav_layout` templates ship a permanent empty `<dialog id="modal"></dialog>` container plus the `htmx/dialog_script` listener — no app-side wiring needed. If you build a custom layout, include both yourself:
 
 ```html
-<dialog id="modal"><div id="modal-body"></div></dialog>
+<dialog id="modal"></dialog>
 {{ template "htmx/dialog_script" . }}
 ```
 
+The dialog is a structural container only — each view that opens the dialog renders its own `<article>` (or framework-equivalent element) as the swapped content. This lets the view choose its own width class (e.g. µCSS's `modal-lg`), classes, or even bypass the card chrome entirely.
+
 ### Trigger buttons
 
-Point the trigger at `#modal-body` and let the server set the open header:
+Point the trigger at `#modal` with `innerHTML` swap. The handler returns the article element, the server sets the open header:
 
 ```html
 <a href="/notes/new" role="button"
    hx-get="/notes/new"
-   hx-target="#modal-body"
+   hx-target="#modal"
    hx-swap="innerHTML">
     Add note
 </a>
 ```
 
+```html
+{{ define "notes/form" -}}
+<article>
+    <header>
+        <button aria-label="Close" rel="prev"></button>
+        <strong>Add note</strong>
+    </header>
+    <form ... hx-target="#modal" hx-swap="innerHTML">...</form>
+</article>
+{{- end }}
+```
+
 ```go
 func (a *App) New(w http.ResponseWriter, r *http.Request) error {
     // ... build form data ...
-    htmx.OpenDialog(w, "modal")
+    htmx.OpenDialog(w, "modal", "modal-lg") // optional class on the dialog
     return burrow.Render(w, r, http.StatusOK, "notes/form", data)
 }
 ```
 
+The optional third argument to `OpenDialog` replaces the dialog element's `className` before opening — useful for µCSS's size variants (`modal-sm`, `modal-lg`, `modal-fullscreen`), which target the dialog itself rather than its content. Pass `""` to clear a previously applied class.
+
 ### Validation errors
 
-Forms inside the dialog post back to `#modal-body`. On a validation error, the handler returns the form with errors filled in — content swaps in place, dialog stays open:
+Forms inside the dialog post back to `#modal`. On a validation error, the handler returns the form (wrapped in its `<article>`) with errors filled in — content swaps in place, dialog stays open:
 
 ```go
 func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
@@ -91,14 +107,21 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
 
 ### Closing
 
-The server tells the client to close via `htmx.CloseDialog(w, id)`. Users can also close manually by clicking any element with `rel="prev"` inside the dialog (works without server roundtrip):
+The server tells the client to close via `htmx.CloseDialog(w, id)`. Users can also close manually by clicking any element with `rel="prev"` *or* `data-close-dialog` inside the dialog (works without server roundtrip):
 
 ```html
 <header>
     <button aria-label="Close" rel="prev"></button>
     <strong>Edit note</strong>
 </header>
+
+<footer class="form-actions">
+    <button type="submit">Save</button>
+    <button type="button" class="secondary outline" data-close-dialog>Cancel</button>
+</footer>
 ```
+
+**Why two attributes?** `rel="prev"` carries the visual side-effect that µCSS (and any other framework using the same selector) styles it as a 1rem X-icon close button. `data-close-dialog` is purely behavioral — use it on cancel buttons, "Not now" links, or any other element that should close the dialog without inheriting close-icon styling.
 
 ### How it works
 

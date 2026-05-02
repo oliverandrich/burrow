@@ -97,6 +97,8 @@ The full list is also available via `mucss.AllColors()`.
 A small `mu-extras.min.css` is always loaded alongside the main stylesheet (disabled when `WithCustomCSS` is set). It applies framework-level UX polish that isn't an upstream µCSS bug — currently:
 
 - **Navbar dropdowns: minimum width** — `nav details.dropdown[open] > ul { min-width: 8rem }`. Prevents single-word menus (theme switcher, user menu) from looking orphaned.
+- **Navbar SVG icons: vertical centering** — overrides `bsicons`' inline `vertical-align:-.125em` to `middle` inside `<nav>` so icon-and-text dropdown summaries align cleanly with sibling button heights.
+- **Dialog header: flex layout for clean centering** — upstream µCSS uses `float:right` on `[rel="prev"]` / `.close`, which never aligns cleanly with the heading text beside it. The override switches `dialog > article > header` to `display:flex; align-items:center` and uses `order:1` + `margin-left:auto` on the close button so it stays at the right end regardless of DOM order while staying vertically centered with the title.
 
 For right-anchored dropdowns (e.g. a theme switcher or user menu sitting on the right side of the navbar), use µCSS's intended pattern: `<ul dir="rtl">` to anchor the popup right, plus `<li dir="ltr">` on each item to keep the per-item text direction natural (icon-then-text, left-aligned). The `mucss/theme_switcher` template already does this.
 
@@ -165,11 +167,21 @@ The switcher uses Unicode glyphs (☀ ☾ ◐) and is JS-free at the framework l
 
 The inner `<ul dir="rtl">` makes the dropdown right-anchored — Pico's default `left: 0` would overflow to the right when the switcher sits at the right end of the navbar.
 
+## `<article>` is a card
+
+µCSS (inheriting from Pico) styles `<article>` as a card: padding, rounded corners, a subtle multi-layer drop shadow (`--mu-card-box-shadow`), and a sectioning background for `<header>`/`<footer>`. Use `<article>` when you actually want a card; for thematic grouping without the card look, use `<section>` or `<div>`. The mucss.org demos themselves avoid `<article>` for non-card content for this reason.
+
+If you nest `<article>` inside another card-like container (e.g. content inside `<dialog>`), the inner article keeps its own shadow — double shadows look heavy. Override with a scoped rule in your own CSS if needed:
+
+```css
+dialog article { box-shadow: none; background: transparent }
+```
+
 ## Native `<dialog>` and Modal
 
 µCSS styles native `<dialog>` elements via its modal component. No JavaScript framework needed — only the browser's `showModal()` / `close()` calls.
 
-The `mucss/nav_layout` ships a permanent `<dialog id="modal"><div id="modal-body"></div></dialog>` container plus the `htmx/dialog_script` listener, so HTMX-driven dialogs work out of the box. See [HTMX-driven dialogs](htmx.md#htmx-driven-dialogs) for the recommended pattern (open/close from the server via `htmx.OpenDialog` / `htmx.CloseDialog`).
+The `mucss/nav_layout` ships a permanent empty `<dialog id="modal"></dialog>` container plus the `htmx/dialog_script` listener, so HTMX-driven dialogs work out of the box. Each view renders its own `<article>` as the swapped content, so the view picks its width (e.g. `<article class="modal-lg">`) and any other classes. See [HTMX-driven dialogs](htmx.md#htmx-driven-dialogs) for the recommended pattern (open/close from the server via `htmx.OpenDialog` / `htmx.CloseDialog`).
 
 ## Pagination
 

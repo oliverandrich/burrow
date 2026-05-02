@@ -73,7 +73,7 @@ func (a *App) New(w http.ResponseWriter, r *http.Request) error {
 		"TitleKey": "notes-new-title",
 		"Action":   "/notes",
 	}
-	htmx.OpenDialog(w, "modal")
+	htmx.OpenDialog(w, "modal", "modal-lg")
 	return burrow.Render(w, r, http.StatusOK, "notes/form", data)
 }
 
@@ -129,7 +129,7 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) error {
 		"TitleKey": "notes-edit-title",
 		"Action":   "/notes/" + note.ID,
 	}
-	htmx.OpenDialog(w, "modal")
+	htmx.OpenDialog(w, "modal", "modal-lg")
 	return burrow.Render(w, r, http.StatusOK, "notes/form", data)
 }
 

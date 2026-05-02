@@ -2,15 +2,20 @@
 <script>
 (function(){
     document.body.addEventListener("openDialog", function(e){
-        var dlg = document.getElementById(e.detail.value);
-        if (dlg && !dlg.open) dlg.showModal();
+        // HX-Trigger payloads: a string value lands in e.detail.value;
+        // an object value gets its properties spread onto e.detail itself.
+        var id = e.detail.id || e.detail.value;
+        var dlg = document.getElementById(id);
+        if (!dlg) return;
+        if (typeof e.detail.class === "string") dlg.className = e.detail.class;
+        if (!dlg.open) dlg.showModal();
     });
     document.body.addEventListener("closeDialog", function(e){
         var dlg = document.getElementById(e.detail.value);
         if (dlg && dlg.open) dlg.close();
     });
     document.body.addEventListener("click", function(e){
-        var btn = e.target.closest('[rel="prev"]');
+        var btn = e.target.closest('[rel="prev"], [data-close-dialog]');
         if (!btn) return;
         var dlg = btn.closest("dialog");
         if (dlg && dlg.open) {

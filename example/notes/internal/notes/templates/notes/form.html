@@ -12,9 +12,9 @@
     </div>
     {{- end }}
     <form method="post" action="{{ .Action }}"
-        hx-post="{{ .Action }}"
-        hx-target="#modal-body"
-        hx-swap="innerHTML">
+          hx-post="{{ .Action }}"
+          hx-target="#modal"
+          hx-swap="innerHTML">
         {{ csrfField }}
         {{ range .Fields -}}
         <label for="{{ .FormName }}">
@@ -30,16 +30,11 @@
         {{- end }}
         {{- end }}
         <footer class="form-actions">
-            <button type="submit">{{ t "notes-save-button" }}</button>
-            <button type="button" class="secondary outline" rel="prev">
+            <button type="submit" class="btn btn-primary">{{ t "notes-save-button" }}</button>
+            <button type="button" class="btn btn-outline btn-secondary" data-close-dialog>
                 {{ t "notes-cancel-button" }}
             </button>
         </footer>
     </form>
 </article>
-<style>
-.form-actions { display: flex; gap: .5rem; flex-wrap: wrap }
-.form-actions button { width: auto }
-.field-error { color: var(--mu-del-color); display: block; margin-top: -.5rem; margin-bottom: .75rem }
-</style>
 {{- end }}
