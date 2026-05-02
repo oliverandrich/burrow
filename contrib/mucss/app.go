@@ -19,6 +19,8 @@ import (
 	"net/http"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/urfave/cli/v3"
 )
 
 //go:embed static
@@ -78,10 +80,10 @@ func WithColor(c Color) Option {
 }
 
 // WithCustomCSS sets a custom CSS file path (relative to staticfiles).
-// This overrides [WithColor] and disables [WithCompactType] — when set,
-// the custom file is the only stylesheet emitted. The CSS file must be
-// served by the staticfiles app — either embedded in your app's static
-// FS or in a contrib app.
+// This overrides [WithColor], disables [WithCompactType], and disables
+// the always-on Burrow extras — when set, the custom file is the only
+// stylesheet emitted. The CSS file must be served by the staticfiles
+// app — either embedded in your app's static FS or in a contrib app.
 //
 //	mucss.New(mucss.WithCustomCSS("myapp/overrides.css"))
 //
@@ -106,10 +108,11 @@ func WithCustomCSS(path string) Option {
 //   - --mu-typography-spacing-vertical: 0.75rem (default 1rem)
 //   - --mu-form-element-spacing-vertical: 0.5rem (default 0.75rem)
 //   - --mu-form-element-spacing-horizontal: 0.75rem (default 1rem)
-//   - --mu-nav-link-spacing-vertical: 0.5rem (default 1rem)
-//   - --mu-nav-element-spacing-vertical: 0.5rem (default 1rem)
 //   - --mu-grid-column-gap: 0.75rem (default 1rem)
 //   - --mu-grid-row-gap: 0.75rem (default 1rem)
+//
+// Navbar spacing is intentionally left at the µCSS default — compact
+// typography is meant to tighten content, not the chrome.
 //
 // Mobile/tablet defaults are unchanged so touch targets stay within
 // recommended sizes.
@@ -138,6 +141,16 @@ func New(opts ...Option) *App {
 func (a *App) Name() string           { return "mucss" }
 func (a *App) Dependencies() []string { return []string{"staticfiles", "htmx"} }
 
+// Configure registers the icon template functions used by the
+// theme_switcher template. Apps using their own templates with mucss
+// can rely on these names being registered.
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
+	cfg.RegisterIconFunc("iconSunFill", bsicons.SunFill)
+	cfg.RegisterIconFunc("iconMoonStarsFill", bsicons.MoonStarsFill)
+	cfg.RegisterIconFunc("iconCircleHalf", bsicons.CircleHalf)
+	return nil
+}
+
 // StaticFS returns the embedded static assets under the "mucss" prefix.
 func (a *App) StaticFS() (string, fs.FS) {
 	sub, _ := fs.Sub(staticFS, "static")
@@ -154,8 +167,8 @@ func (a *App) TemplateFS() fs.FS {
 // cssTemplate returns the mucss/css template content with the configured
 // stylesheet links baked in. When [WithCustomCSS] is set, only the custom
 // stylesheet is emitted. Otherwise: primary stylesheet (default or
-// [WithColor] variant) + optional compact-type override when
-// [WithCompactType] is set.
+// [WithColor] variant) + always-on Burrow extras (navbar-dropdown polish)
+// + optional compact-type override when [WithCompactType] is set.
 func (a *App) cssTemplate() string {
 	if a.customCSS != "" {
 		return fmt.Sprintf("{{ define \"mucss/css\" -}}\n<link rel=\"stylesheet\" href=\"{{ staticURL %q }}\">\n{{- end }}\n", a.customCSS)
@@ -167,6 +180,7 @@ func (a *App) cssTemplate() string {
 	}
 
 	links := fmt.Sprintf(`<link rel="stylesheet" href="{{ staticURL %q }}">`, primary)
+	links += "\n" + fmt.Sprintf(`<link rel="stylesheet" href="{{ staticURL %q }}">`, "mucss/mu-extras.min.css")
 	if a.compactType {
 		links += "\n" + fmt.Sprintf(`<link rel="stylesheet" href="{{ staticURL %q }}">`, "mucss/mu-compact.min.css")
 	}

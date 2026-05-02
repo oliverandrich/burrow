@@ -25,9 +25,9 @@
         <summary>{{ iconPersonCircle }} {{ .Username }}</summary>
         <ul dir="rtl">
             {{ if .IsAdmin -}}
-            <li><a href="/admin">{{ iconGear }} {{ t "layout-admin" }}</a></li>
+            <li dir="ltr"><a href="/admin">{{ iconGear }} {{ t "layout-admin" }}</a></li>
             {{- end }}
-            <li><a href="#" id="logout-link">{{ iconBoxArrowRight }} {{ t "layout-sign-out" }}</a></li>
+            <li dir="ltr"><a href="#" id="logout-link">{{ iconBoxArrowRight }} {{ t "layout-sign-out" }}</a></li>
         </ul>
     </details>
     <form method="post" action="/auth/logout" id="logout-form" hidden>

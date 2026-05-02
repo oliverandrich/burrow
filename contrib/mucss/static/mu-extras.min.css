@@ -1,0 +1,12 @@
+/* Burrow extras for µCSS — always loaded alongside mu.css unless WithCustomCSS is set.
+ * Conventions and tweaks that aren't framework bugs but improve the default UX. */
+
+/* Dropdowns inside <nav>: wider than fit-content, so single-word items don't look orphaned */
+nav details.dropdown[open]>ul{min-width:8rem}
+
+/* SVG icons inside nav dropdown summaries: bsicons applies an inline
+ * style="vertical-align:-.125em" for typographic alignment in body text. In
+ * navbar dropdown summaries, that 0.125em dip is enough to push the box
+ * misaligned vs sibling buttons. Override to `middle` so all summary content
+ * (icons, chevron pseudo, text) sits on the same midline. */
+nav details.dropdown>summary svg{vertical-align:middle}

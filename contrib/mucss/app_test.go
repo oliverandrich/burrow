@@ -20,6 +20,7 @@ func newGetRequest() *http.Request {
 // Compile-time interface assertions.
 var (
 	_ burrow.App             = (*App)(nil)
+	_ burrow.Configurable    = (*App)(nil)
 	_ burrow.HasStaticFiles  = (*App)(nil)
 	_ burrow.HasMiddleware   = (*App)(nil)
 	_ burrow.HasTemplates    = (*App)(nil)
@@ -28,6 +29,16 @@ var (
 
 func TestAppName(t *testing.T) {
 	assert.Equal(t, "mucss", New().Name())
+}
+
+func TestConfigureRegistersIcons(t *testing.T) {
+	cfg := &burrow.AppConfig{}
+	require.NoError(t, New().Configure(cfg, nil))
+
+	icons := cfg.IconFuncs()
+	assert.Contains(t, icons, "iconSunFill")
+	assert.Contains(t, icons, "iconMoonStarsFill")
+	assert.Contains(t, icons, "iconCircleHalf")
 }
 
 func TestDefaultColor(t *testing.T) {
@@ -57,9 +68,11 @@ func TestStaticFS(t *testing.T) {
 		_ = f.Close()
 	}
 
-	f, err := fsys.Open("mu-compact.min.css")
-	require.NoError(t, err, "expected mu-compact.min.css to exist in static FS")
-	_ = f.Close()
+	for _, name := range []string{"mu-compact.min.css", "mu-extras.min.css"} {
+		f, err := fsys.Open(name)
+		require.NoError(t, err, "expected %s to exist in static FS", name)
+		_ = f.Close()
+	}
 }
 
 func TestTemplateFS(t *testing.T) {
@@ -116,6 +129,20 @@ func TestWithColorClearsCustomCSS(t *testing.T) {
 
 func TestNoCompactByDefault(t *testing.T) {
 	assert.NotContains(t, New().cssTemplate(), "mu-compact.min.css")
+}
+
+func TestExtrasAlwaysLoaded(t *testing.T) {
+	tpl := New().cssTemplate()
+	assert.Contains(t, tpl, "mucss/mu-extras.min.css")
+	assert.Greater(t, strings.Index(tpl, "mucss/mu-extras.min.css"),
+		strings.Index(tpl, "mucss/mu.css"),
+		"extras must follow the main stylesheet so source-order cascade applies")
+}
+
+func TestExtrasIgnoredWithCustomCSS(t *testing.T) {
+	tpl := New(WithCustomCSS("myapp/custom.css")).cssTemplate()
+	assert.Contains(t, tpl, "myapp/custom.css")
+	assert.NotContains(t, tpl, "mu-extras.min.css")
 }
 
 func TestWithCompactType(t *testing.T) {

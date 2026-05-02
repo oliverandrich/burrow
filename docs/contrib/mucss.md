@@ -92,6 +92,16 @@ mucss.New(mucss.WithColor(mucss.Jade))
 
 The full list is also available via `mucss.AllColors()`.
 
+## Burrow extras (`mu-extras.min.css`)
+
+A small `mu-extras.min.css` is always loaded alongside the main stylesheet (disabled when `WithCustomCSS` is set). It applies framework-level UX polish that isn't an upstream µCSS bug — currently:
+
+- **Navbar dropdowns: minimum width** — `nav details.dropdown[open] > ul { min-width: 8rem }`. Prevents single-word menus (theme switcher, user menu) from looking orphaned.
+
+For right-anchored dropdowns (e.g. a theme switcher or user menu sitting on the right side of the navbar), use µCSS's intended pattern: `<ul dir="rtl">` to anchor the popup right, plus `<li dir="ltr">` on each item to keep the per-item text direction natural (icon-then-text, left-aligned). The `mucss/theme_switcher` template already does this.
+
+To opt out of the extras entirely, use `WithCustomCSS` and ship your own complete stylesheet.
+
 ## Compact Typography (`WithCompactType`)
 
 µCSS inherits Pico's blog-oriented defaults. On admin/app UIs at desktop widths, the default font-size grows up to ~21px and form padding feels generous. `WithCompactType()` ships an additional small stylesheet that tightens both.
@@ -109,10 +119,10 @@ The full list is also available via `mucss.AllColors()`.
 | `--mu-typography-spacing-vertical` | 1rem | 0.75rem |
 | `--mu-form-element-spacing-vertical` | 0.75rem | 0.5rem |
 | `--mu-form-element-spacing-horizontal` | 1rem | 0.75rem |
-| `--mu-nav-link-spacing-vertical` | 1rem | 0.5rem |
-| `--mu-nav-element-spacing-vertical` | 1rem | 0.5rem |
 | `--mu-grid-column-gap` | 1rem | 0.75rem |
 | `--mu-grid-row-gap` | 1rem | 0.75rem |
+
+Navbar spacing (`--mu-nav-link-spacing-*`, `--mu-nav-element-spacing-*`) intentionally stays at the µCSS defaults — compact is meant to tighten content, not the navbar chrome.
 
 µCSS's heading sizes and other rem-based metrics scale automatically with the base font-size, so they follow without further tweaks.
 

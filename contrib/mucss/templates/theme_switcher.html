@@ -1,14 +1,14 @@
 {{ define "mucss/theme_switcher" -}}
 <details class="dropdown" id="mucss-theme">
     <summary aria-label="Toggle theme">
-        <span class="theme-icon" data-theme-icon="light">&#9728;</span>
-        <span class="theme-icon" data-theme-icon="dark" hidden>&#9790;</span>
-        <span class="theme-icon" data-theme-icon="auto" hidden>&#9680;</span>
+        <span class="theme-icon" data-theme-icon="light">{{ iconSunFill }}</span>
+        <span class="theme-icon" data-theme-icon="dark" hidden>{{ iconMoonStarsFill }}</span>
+        <span class="theme-icon" data-theme-icon="auto" hidden>{{ iconCircleHalf }}</span>
     </summary>
     <ul dir="rtl">
-        <li><a href="#" data-theme-value="light">&#9728; Light</a></li>
-        <li><a href="#" data-theme-value="dark">&#9790; Dark</a></li>
-        <li><a href="#" data-theme-value="auto">&#9680; Auto</a></li>
+        <li dir="ltr"><a href="#" data-theme-value="light">{{ iconSunFill }} Light</a></li>
+        <li dir="ltr"><a href="#" data-theme-value="dark">{{ iconMoonStarsFill }} Dark</a></li>
+        <li dir="ltr"><a href="#" data-theme-value="auto">{{ iconCircleHalf }} Auto</a></li>
     </ul>
 </details>
 <script>
