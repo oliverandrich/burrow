@@ -1,10 +1,10 @@
 {{ define "pages/home" -}}
-<header class="hero">
+<section class="hero">
     <hgroup>
         <h1>{{ t "home-title" }}</h1>
         <p>{{ t "home-subtitle" }}</p>
     </hgroup>
-</header>
+</section>
 <div class="grid">
     <article>
         <header>{{ iconKey }} <strong>{{ t "home-card-passkey-title" }}</strong></header>
@@ -19,16 +19,4 @@
         {{ t "home-card-htmx-text" }}
     </article>
 </div>
-<style>
-.hero {
-    background: var(--pico-primary);
-    color: var(--pico-primary-inverse);
-    padding: 3rem 1rem;
-    margin: 0 calc(-1 * var(--pico-spacing)) 2rem;
-    text-align: center;
-}
-.hero hgroup { margin: 0 }
-.hero hgroup > * { color: inherit }
-.hero hgroup > p { opacity: 0.9 }
-</style>
 {{- end }}

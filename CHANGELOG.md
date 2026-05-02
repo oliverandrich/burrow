@@ -7,7 +7,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Changed
 
 - **`example/hello`** migrated from Bootstrap to µCSS with `WithCompactType`, a `.hero` component, and a native `<dialog>` demo. The previous evaluation example `example/hello-pico` has been removed; `example/hello` is now the canonical "Hello, World!" reference for new projects.
-- **`example/notes`** user-facing pages migrated from Bootstrap to PicoCSS. `bootstrap.New()` is still registered alongside `pico.New(pico.WithCompactType())` because `contrib/admin` and `contrib/auth` still ship Bootstrap-coupled templates; both contribs coexist transitionally until those migrate. The notes admin list (`admin_list.html`) stays on Bootstrap markup until the admin migration lands.
+- **`example/notes`** user-facing pages migrated from Bootstrap to µCSS. `bootstrap.New()` is still registered alongside `mucss.New(mucss.WithCompactType())` because `contrib/admin` and `contrib/auth` still ship Bootstrap-coupled templates; both contribs coexist transitionally until those migrate. The notes admin list (`admin_list.html`) stays on Bootstrap markup until the admin migration lands. Alerts use µCSS's `<div class="alert alert-{level}">` markup; the hero block uses µCSS's `.hero` component instead of inline CSS.
 
 ### Added
 

@@ -18,7 +18,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/jobs"
 	"github.com/oliverandrich/burrow/contrib/messages"
-	"github.com/oliverandrich/burrow/contrib/pico"
+	"github.com/oliverandrich/burrow/contrib/mucss"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	"github.com/oliverandrich/burrow/example/notes/internal/notes"
@@ -50,10 +50,10 @@ func main() {
 
 	// Create the server with apps in dependency order.
 	//
-	// Bootstrap is still registered alongside Pico because contrib/admin and
+	// Bootstrap is still registered alongside µCSS because contrib/admin and
 	// contrib/auth currently ship Bootstrap-coupled templates. They will
-	// migrate to Pico in their own beans; until then both contribs coexist
-	// and the user-facing pages use Pico via SetLayout below.
+	// migrate to µCSS in their own beans; until then both contribs coexist
+	// and the user-facing pages use µCSS via SetLayout below.
 	srv := burrow.NewServer(
 		session.New(),
 		csrf.New(),
@@ -67,13 +67,13 @@ func main() {
 		),
 		htmx.New(),
 		bootstrap.New(),
-		pico.New(pico.WithCompactType()),
+		mucss.New(mucss.WithCompactType()),
 		notes.New(),
 		admin.New(),
 	)
 
-	// User-facing pages render with Pico's nav layout.
-	srv.SetLayout(pico.NavLayout())
+	// User-facing pages render with µCSS's nav layout.
+	srv.SetLayout(mucss.NavLayout())
 
 	cmd := &cli.Command{
 		Name:     "example",

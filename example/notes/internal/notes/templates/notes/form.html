@@ -2,7 +2,7 @@
 <article>
     <header><strong>{{ t .TitleKey }}</strong></header>
     {{ if .NonFieldErrors -}}
-    <div role="alert" data-level="error" class="form-errors">
+    <div class="alert alert-error" role="alert">
         {{ range .NonFieldErrors -}}
         <p>{{ . }}</p>
         {{- end }}
@@ -38,6 +38,6 @@
 <style>
 .form-actions { display: flex; gap: .5rem; flex-wrap: wrap }
 .form-actions button { width: auto }
-.field-error { color: var(--pico-del-color); display: block; margin-top: -.5rem; margin-bottom: .75rem }
+.field-error { color: var(--mu-del-color); display: block; margin-top: -.5rem; margin-bottom: .75rem }
 </style>
 {{- end }}

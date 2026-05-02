@@ -1,4 +1,4 @@
-{{ define "pico/navbar" -}}
+{{ define "mucss/navbar" -}}
 <nav class="container-fluid">
     <ul>
         <li><a href="/" class="contrast"><strong>{{ t "layout-brand" }}</strong></a></li>
@@ -12,7 +12,7 @@
         {{- end }}
     </ul>
     <ul>
-        <li>{{ template "pico/theme_switcher" . }}</li>
+        <li>{{ template "mucss/theme_switcher" . }}</li>
         {{ template "app/user_menu" . }}
     </ul>
 </nav>
@@ -45,10 +45,10 @@
 {{- end }}
 {{- end }}
 
-{{ define "pico/alerts" -}}
+{{ define "mucss/alerts" -}}
 <div id="alerts">
     {{ range messages -}}
-    <article role="alert" data-level="{{ .Level }}">{{ .Text }}</article>
+    <div class="alert alert-{{ alertClass .Level }}" role="alert">{{ .Text }}</div>
     {{- end }}
 </div>
 {{- end }}
@@ -56,7 +56,7 @@
 {{ define "app/alerts_oob" -}}
 <div id="alerts" hx-swap-oob="innerHTML">
     {{ range messages -}}
-    <article role="alert" data-level="{{ .Level }}">{{ .Text }}</article>
+    <div class="alert alert-{{ alertClass .Level }}" role="alert">{{ .Text }}</div>
     {{- end }}
 </div>
 {{- end }}

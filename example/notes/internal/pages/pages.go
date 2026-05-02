@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/bsicons"
+	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/urfave/cli/v3"
 )
 
@@ -39,6 +40,17 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	return nil
 }
 func (a *App) TranslationFS() fs.FS { return translationFS }
+
+// FuncMap returns template functions used by the layout templates.
+func (a *App) FuncMap() template.FuncMap {
+	return template.FuncMap{
+		// alertClass maps a messages.Level to the µCSS alert variant suffix.
+		// µCSS classes: .alert-info / .alert-success / .alert-warning / .alert-error.
+		"alertClass": func(level messages.Level) string {
+			return string(level)
+		},
+	}
+}
 
 // TemplateFS returns the embedded HTML template files.
 func (a *App) TemplateFS() fs.FS {
