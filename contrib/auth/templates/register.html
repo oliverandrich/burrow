@@ -1,32 +1,36 @@
 {{ define "auth/register" -}}
 {{ template "auth/csrf_input" . }}
-<div
-    id="i18n-strings"
+<div id="i18n-strings" hidden
     data-register-waiting="{{ t "register-waiting" }}"
     data-register-button="{{ t "register-button" }}"
-    class="d-none"
 ></div>
-<div id="error-message" class="alert alert-danger d-none"></div>
+<div id="error-message" class="alert alert-error" role="alert" hidden></div>
 <form id="register-form">
     {{ if .UseEmail -}}
-    <label for="email" class="form-label">{{ t "register-email-label" }}</label>
-    {{ if and .Invite .Email -}}
-    <input type="email" id="email" name="email" class="form-control mb-3" value="{{ .Email }}" readonly required/>
+    <label for="email">
+        {{ t "register-email-label" }}
+        {{ if and .Invite .Email -}}
+        <input type="email" id="email" name="email" value="{{ .Email }}" readonly required/>
+        {{- else -}}
+        <input type="email" id="email" name="email" required/>
+        {{- end }}
+    </label>
     {{- else -}}
-    <input type="email" id="email" name="email" class="form-control mb-3" placeholder="you@example.com" required/>
+    <label for="username">
+        {{ t "register-username-label" }}
+        <input type="text" id="username" name="username" required autocomplete="username"/>
+    </label>
     {{- end }}
-    {{- else -}}
-    <label for="username" class="form-label">{{ t "register-username-label" }}</label>
-    <input type="text" id="username" name="username" class="form-control mb-3" placeholder="Username" required autocomplete="username"/>
-    {{- end }}
-    <label for="name" class="form-label">{{ t "register-display-name-label" }}</label>
-    <input type="text" id="name" name="name" class="form-control mb-3" placeholder="Display Name"/>
+    <label for="name">
+        {{ t "register-display-name-label" }}
+        <input type="text" id="name" name="name"/>
+    </label>
     {{ if and .InviteOnly .Invite -}}
     <input type="hidden" id="invite" name="invite" value="{{ .Invite }}"/>
     {{- end }}
-    <button id="register-btn" type="submit" class="btn btn-primary w-100">{{ t "register-button" }}</button>
+    <button id="register-btn" type="submit" class="btn btn-primary">{{ t "register-button" }}</button>
 </form>
-<p class="text-center mt-4">
+<p class="auth-links">
     <a href="/auth/login">{{ t "register-have-account" }}</a>
 </p>
 <script src="{{ staticURL "auth/webauthn.js" }}"></script>
@@ -36,7 +40,7 @@
         var btn = document.getElementById("register-btn");
         var errEl = document.getElementById("error-message");
         var strings = document.getElementById("i18n-strings").dataset;
-        errEl.classList.add("d-none");
+        errEl.hidden = true;
         btn.disabled = true;
         btn.textContent = strings.registerWaiting;
 
@@ -59,7 +63,7 @@
             }
         } catch(e) {
             errEl.textContent = e.message;
-            errEl.classList.remove("d-none");
+            errEl.hidden = false;
             btn.disabled = false;
             btn.textContent = strings.registerButton;
         }

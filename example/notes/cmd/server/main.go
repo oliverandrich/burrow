@@ -51,9 +51,9 @@ func main() {
 	// Create the server with apps in dependency order.
 	//
 	// Bootstrap is still registered alongside µCSS because contrib/admin and
-	// contrib/auth currently ship Bootstrap-coupled templates. They will
-	// migrate to µCSS in their own beans; until then both contribs coexist
-	// and the user-facing pages use µCSS via SetLayout below.
+	// the admin-area templates in contrib/auth (admin_users, admin_invites)
+	// currently ship Bootstrap-coupled templates. They will migrate to µCSS
+	// in their own beans; until then both contribs coexist.
 	srv := burrow.NewServer(
 		session.New(),
 		csrf.New(),

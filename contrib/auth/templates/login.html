@@ -1,14 +1,12 @@
 {{ define "auth/login" -}}
 {{ template "auth/csrf_input" . }}
-<div
-    id="i18n-strings"
+<div id="i18n-strings" hidden
     data-login-waiting="{{ t "login-waiting" }}"
     data-login-button="{{ t "login-button" }}"
-    class="d-none"
 ></div>
-<div id="error-message" class="alert alert-danger d-none"></div>
-<button id="login-btn" type="button" class="btn btn-primary btn-lg w-100">{{ t "login-button" }}</button>
-<p class="text-center mt-4">
+<div id="error-message" class="alert alert-error" role="alert" hidden></div>
+<button id="login-btn" type="button" class="btn btn-primary btn-lg" style="width:100%">{{ t "login-button" }}</button>
+<p class="auth-links">
     <a href="/auth/register">{{ t "login-create-account" }}</a>
     &middot;
     <a href="/auth/recovery">{{ t "login-lost-passkey" }}</a>
@@ -19,7 +17,7 @@
         var btn = this;
         var errEl = document.getElementById("error-message");
         var strings = document.getElementById("i18n-strings").dataset;
-        errEl.classList.add("d-none");
+        errEl.hidden = true;
         btn.disabled = true;
         btn.textContent = strings.loginWaiting;
         try {
@@ -29,7 +27,7 @@
             }
         } catch(e) {
             errEl.textContent = e.message;
-            errEl.classList.remove("d-none");
+            errEl.hidden = false;
             btn.disabled = false;
             btn.textContent = strings.loginButton;
         }

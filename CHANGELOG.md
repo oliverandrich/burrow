@@ -4,10 +4,14 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Breaking Changes
+
+- **`contrib/auth` user-facing templates migrated to µCSS** — `login.html`, `register.html`, `recovery.html`, `credentials.html`, and `shared.html` (auth/centered, auth/card, auth/logo, auth/csrf_input) no longer use Bootstrap classes. `auth.DefaultAuthLayout()` now returns `"mucss/layout"` (was `"bootstrap/layout"`). Apps that don't use `WithAuthLayout(...)` to override must now register `contrib/mucss` for auth pages to render correctly; apps still on Bootstrap should set `auth.New(auth.WithAuthLayout("bootstrap/layout"))` and provide a Bootstrap-themed `Renderer` via `auth.WithRenderer(...)`. Inline JS visibility toggles switched from `classList.add/remove("d-none")` to native `element.hidden = true/false`. Element IDs (`login-btn`, `register-btn`, `csrf-token`, `error-message`, `i18n-strings`, etc.) are unchanged so `webauthn.js` and any custom JS hooks still work. The 4 admin-area auth templates (`admin_users`, `admin_user_form`, `admin_invites`, `admin_invite_form`) remain on Bootstrap until the contrib/admin migration lands.
+
 ### Changed
 
 - **`example/hello`** migrated from Bootstrap to µCSS with `WithCompactType`, a `.hero` component, and a native `<dialog>` demo. The previous evaluation example `example/hello-pico` has been removed; `example/hello` is now the canonical "Hello, World!" reference for new projects.
-- **`example/notes`** user-facing pages migrated from Bootstrap to µCSS. `bootstrap.New()` is still registered alongside `mucss.New(mucss.WithCompactType())` because `contrib/admin` and `contrib/auth` still ship Bootstrap-coupled templates; both contribs coexist transitionally until those migrate. The notes admin list (`admin_list.html`) stays on Bootstrap markup until the admin migration lands. Alerts use µCSS's `<div class="alert alert-{level}">` markup; the hero block uses µCSS's `.hero` component instead of inline CSS.
+- **`example/notes`** user-facing pages migrated from Bootstrap to µCSS. `bootstrap.New()` is still registered alongside `mucss.New(mucss.WithCompactType())` because `contrib/admin` and the admin-area templates in `contrib/auth` still ship Bootstrap-coupled markup; both contribs coexist transitionally until those migrate. Alerts use µCSS's `<div class="alert alert-{level}">` markup; the hero block uses µCSS's `.hero` component instead of inline CSS.
 
 ### Added
 

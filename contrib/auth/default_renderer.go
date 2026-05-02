@@ -8,9 +8,9 @@ import (
 )
 
 // DefaultAuthLayout returns the template name for the built-in auth layout.
-// Uses the base bootstrap layout directly.
+// Uses the base µCSS layout directly.
 func DefaultAuthLayout() string {
-	return "bootstrap/layout"
+	return "mucss/layout"
 }
 
 // DefaultRenderer returns the default Renderer that uses the built-in HTML

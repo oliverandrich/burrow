@@ -1,31 +1,33 @@
 {{ define "auth/recovery_codes" -}}
 <p>{{ t "recovery-codes-description" }}</p>
-<pre class="bg-light p-3 rounded small">{{ range $i, $code := .Codes }}{{ if $i }}
-{{ end }}{{ $code }}{{ end }}</pre>
+<pre><code>{{ range $i, $code := .Codes }}{{ if $i }}
+{{ end }}{{ $code }}{{ end }}</code></pre>
 <form method="POST" action="/auth/recovery-codes/ack">
     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}"/>
-    <button type="submit" class="btn btn-primary w-100">{{ t "recovery-codes-ack" }}</button>
+    <button type="submit" class="btn btn-primary">{{ t "recovery-codes-ack" }}</button>
 </form>
 {{- end }}
 
 {{ define "auth/recovery" -}}
 {{ template "auth/csrf_input" . }}
-<div
-    id="i18n-strings"
+<div id="i18n-strings" hidden
     data-recovery-warning-prefix="{{ t "recovery-warning-prefix" }}"
     data-recovery-warning-suffix="{{ t "recovery-warning-suffix" }}"
-    class="d-none"
 ></div>
 <p>{{ t "recovery-description" }}</p>
-<div id="error-message" class="alert alert-danger d-none"></div>
+<div id="error-message" class="alert alert-error" role="alert" hidden></div>
 <form id="recovery-form">
-    <label for="username" class="form-label">{{ t "recovery-username-label" }}</label>
-    <input type="text" id="username" name="username" class="form-control mb-3" placeholder="Username" required autocomplete="username"/>
-    <label for="code" class="form-label">{{ t "recovery-code-label" }}</label>
-    <input type="text" id="code" name="code" class="form-control mb-3" placeholder="xxxx-xxxx-xxxx" required/>
-    <button type="submit" class="btn btn-primary w-100">{{ t "recovery-button" }}</button>
+    <label for="username">
+        {{ t "recovery-username-label" }}
+        <input type="text" id="username" name="username" required autocomplete="username"/>
+    </label>
+    <label for="code">
+        {{ t "recovery-code-label" }}
+        <input type="text" id="code" name="code" required/>
+    </label>
+    <button type="submit" class="btn btn-primary">{{ t "recovery-button" }}</button>
 </form>
-<p class="text-center mt-4">
+<p class="auth-links">
     <a href="/auth/login">{{ t "recovery-back-to-login" }}</a>
 </p>
 <script>
@@ -33,7 +35,7 @@
         e.preventDefault();
         var errEl = document.getElementById("error-message");
         var strings = document.getElementById("i18n-strings").dataset;
-        errEl.classList.add("d-none");
+        errEl.hidden = true;
         try {
             var csrfEl = document.getElementById("csrf-token");
             var csrfVal = csrfEl ? csrfEl.value : "";
@@ -53,7 +55,7 @@
             window.location.href = data.redirect || "/";
         } catch(e) {
             errEl.textContent = e.message;
-            errEl.classList.remove("d-none");
+            errEl.hidden = false;
         }
     });
 </script>
