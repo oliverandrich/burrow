@@ -1,2 +1,2 @@
 /* Burrow compact-type override for PicoCSS — see pico.WithCompactType */
-:root,:host{--pico-line-height:1.4}@media (min-width:1024px){:root,:host{--pico-font-size:106.25%}}
+:root,:host{--pico-line-height:1.4}@media (min-width:1024px){:root,:host{--pico-font-size:106.25%;--pico-spacing:0.85rem;--pico-typography-spacing-vertical:0.75rem;--pico-form-element-spacing-vertical:0.5rem;--pico-form-element-spacing-horizontal:0.75rem;--pico-nav-link-spacing-vertical:0.5rem;--pico-nav-element-spacing-vertical:0.5rem;--pico-grid-column-gap:0.75rem;--pico-grid-row-gap:0.75rem}}

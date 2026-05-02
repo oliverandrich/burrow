@@ -143,11 +143,27 @@ func TestCompactIgnoredWithCustomCSS(t *testing.T) {
 	assert.NotContains(t, tpl, "pico.min.css")
 }
 
-func TestStaticFSContainsCompact(t *testing.T) {
+func TestFixesAlwaysLoaded(t *testing.T) {
+	tpl := New().cssTemplate()
+	assert.Contains(t, tpl, "pico/pico-fixes.min.css")
+	assert.Greater(t, strings.Index(tpl, "pico/pico-fixes.min.css"),
+		strings.Index(tpl, "pico/pico.min.css"),
+		"fixes must follow the main stylesheet so source-order cascade applies")
+}
+
+func TestFixesIgnoredWithCustomCSS(t *testing.T) {
+	tpl := New(WithCustomCSS("myapp/custom.css")).cssTemplate()
+	assert.Contains(t, tpl, "myapp/custom.css")
+	assert.NotContains(t, tpl, "pico-fixes.min.css")
+}
+
+func TestStaticFSContainsCompactAndFixes(t *testing.T) {
 	_, fsys := New().StaticFS()
-	f, err := fsys.Open("pico-compact.min.css")
-	require.NoError(t, err)
-	_ = f.Close()
+	for _, name := range []string{"pico-compact.min.css", "pico-fixes.min.css"} {
+		f, err := fsys.Open(name)
+		require.NoError(t, err, "expected %s to exist in static FS", name)
+		_ = f.Close()
+	}
 }
 
 func TestMiddlewareInjectsLayout(t *testing.T) {

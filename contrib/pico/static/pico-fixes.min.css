@@ -1,0 +1,23 @@
+/* Burrow fixes for upstream PicoCSS v2.x
+ * Load alongside pico.min.css; source order matters so this file must come after.
+ * See contrib/pico documentation for the rationale of each fix below. */
+
+/* 1. Firefox dropdown positioning — picocss/pico#701
+ * Pico sets `nav details.dropdown { display: inline }`. Inline elements do not
+ * reliably establish a positioning context for absolute-positioned descendants
+ * in Firefox, so the dropdown submenu lands at the page's top-left instead of
+ * below the toggle. `inline-block` keeps the inline visual flow while giving
+ * a proper offset parent. */
+nav details.dropdown{display:inline-block}
+
+/* 2. Tooltip positioning near viewport edges — picocss/pico#694
+ * Same root cause as #1: `[data-tooltip]` is `display: inline` upstream, so the
+ * absolutely-positioned tooltip pseudo-element mis-positions, especially near
+ * the viewport edges. Same fix. */
+[data-tooltip]{display:inline-block}
+
+/* 3. <small> font-size never applied — picocss/pico#561
+ * Pico sets `--pico-font-size: 0.875em` on <small> but does not apply it as
+ * the actual font-size, so the user-agent's `smaller` keyword wins (slightly
+ * smaller than intended). Applying the var fixes the size to Pico's intent. */
+small{font-size:var(--pico-font-size)}

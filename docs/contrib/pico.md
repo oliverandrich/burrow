@@ -34,9 +34,18 @@ pico.New(pico.WithCompactType())
 // Combine
 pico.New(pico.WithColor(pico.Blue), pico.WithCompactType())
 
-// Provide your own CSS file (overrides WithColor and WithCompactType)
+// Provide your own CSS file (overrides WithColor, WithCompactType,
+// and the upstream-Pico fixes — your CSS owns everything)
 pico.New(pico.WithCustomCSS("myapp/overrides.css"))
 ```
+
+### Fixes for upstream Pico bugs
+
+A small `pico-fixes.min.css` is always loaded alongside the main stylesheet (unless `WithCustomCSS` is set). The same content is shared as a [public gist](https://gist.github.com/oliverandrich/de1c83ca7874e8162b07947e1b768b88) for Pico users outside Burrow. It currently contains:
+
+- **Firefox dropdown positioning** ([picocss/pico#701](https://github.com/picocss/pico/issues/701)) — `nav details.dropdown { display: inline-block }`. Pico defaults to `display: inline`, which breaks `<details>`-based dropdowns on Firefox: inline elements do not reliably establish a positioning context for the absolutely-positioned submenu, so the menu lands at the page's top-left instead of below the toggle. `inline-block` gives the same inline flow with a proper positioning context.
+- **Tooltip positioning near viewport edges** ([picocss/pico#694](https://github.com/picocss/pico/pull/694)) — `[data-tooltip] { display: inline-block }`. Same root cause: tooltips fail to position correctly near edges because the inline parent does not establish a positioning context for the absolutely-positioned tooltip pseudo-element.
+- **`<small>` font-size never applied** ([picocss/pico#561](https://github.com/picocss/pico/pull/561)) — `small { font-size: var(--pico-font-size) }`. Pico sets `--pico-font-size: 0.875em` on `<small>` but does not apply it as the actual `font-size`, so the user-agent's `smaller` keyword wins. Applying the var fixes the size to Pico's intended value.
 
 ## Layouts
 
@@ -94,14 +103,27 @@ The full list is also available via `pico.AllColors()`.
 
 ## Compact Typography (`WithCompactType`)
 
-PicoCSS's responsive font-size scales `--pico-font-size` from 100% on mobile up to 131.25% (~21px) on viewports ≥1536px. That suits long-form blog content but feels heavy on app/admin UIs on large displays.
+PicoCSS's defaults are tuned for long-form blog content. On admin/app UIs at desktop widths, the default font-size grows up to ~21px and form padding feels generous. `WithCompactType()` ships an additional small stylesheet that tightens both.
 
-`WithCompactType()` ships an additional small stylesheet that:
+**Globally:**
 
-- Caps `--pico-font-size` at 106.25% (~17px) on viewports ≥1024px (mobile/tablet defaults are kept as-is)
-- Tightens `--pico-line-height` from 1.5 to 1.4
+- `--pico-line-height: 1.4` (Pico default `1.5`)
 
-Pico's heading sizes, block spacing, and other rem-based metrics scale automatically with the base font-size, so they follow the change without further tweaks.
+**On viewports ≥1024px** (mobile/tablet defaults are kept so touch targets stay within recommended sizes):
+
+| Variable | Pico default | Compact |
+|---|---|---|
+| `--pico-font-size` | up to 131.25% at 1536px | 106.25% (~17px) |
+| `--pico-spacing` | 1rem | 0.85rem |
+| `--pico-typography-spacing-vertical` | 1rem | 0.75rem |
+| `--pico-form-element-spacing-vertical` | 0.75rem | 0.5rem |
+| `--pico-form-element-spacing-horizontal` | 1rem | 0.75rem |
+| `--pico-nav-link-spacing-vertical` | 1rem | 0.5rem |
+| `--pico-nav-element-spacing-vertical` | 1rem | 0.5rem |
+| `--pico-grid-column-gap` | 1rem | 0.75rem |
+| `--pico-grid-row-gap` | 1rem | 0.75rem |
+
+Pico's heading sizes and other rem-based metrics scale automatically with the base font-size, so they follow without further tweaks.
 
 The override is loaded as a second `<link>` after the main pico stylesheet, so source-order cascade gives the override priority over Pico's media queries at 1280px and 1536px.
 

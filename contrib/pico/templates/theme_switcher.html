@@ -6,9 +6,9 @@
         <span class="theme-icon" data-theme-icon="auto" hidden>&#9680;</span>
     </summary>
     <ul>
-        <li><button type="button" data-theme-value="light">&#9728; Light</button></li>
-        <li><button type="button" data-theme-value="dark">&#9790; Dark</button></li>
-        <li><button type="button" data-theme-value="auto">&#9680; Auto</button></li>
+        <li><a href="#" data-theme-value="light">&#9728; Light</a></li>
+        <li><a href="#" data-theme-value="dark">&#9790; Dark</a></li>
+        <li><a href="#" data-theme-value="auto">&#9680; Auto</a></li>
     </ul>
 </details>
 <script>
@@ -30,8 +30,11 @@
 
         apply(localStorage.getItem("theme")||"auto");
 
-        items.forEach(function(btn){
-            btn.addEventListener("click",function(){apply(btn.getAttribute("data-theme-value"))})
+        items.forEach(function(item){
+            item.addEventListener("click",function(e){
+                e.preventDefault();
+                apply(item.getAttribute("data-theme-value"));
+            });
         });
 
         mq.addEventListener("change",function(){

@@ -78,8 +78,9 @@ func WithColor(c Color) Option {
 }
 
 // WithCustomCSS sets a custom CSS file path (relative to staticfiles).
-// This overrides [WithColor] and disables [WithCompactType] — when set,
-// the custom file is the only stylesheet emitted. The CSS file must be
+// This overrides [WithColor], disables [WithCompactType], and disables
+// the always-on Burrow fixes for upstream Pico bugs — when set, the
+// custom file is the only stylesheet emitted. The CSS file must be
 // served by the staticfiles app — either embedded in your app's static
 // FS or in a contrib app.
 //
@@ -93,10 +94,26 @@ func WithCustomCSS(path string) Option {
 }
 
 // WithCompactType ships an additional small stylesheet that flattens
-// PicoCSS's responsive font-size scaling (capped at 106.25% on viewports
-// ≥1024px instead of growing to 131.25% at 1536px) and tightens
-// --pico-line-height to 1.4. Useful for admin/app UIs on large displays
-// where Pico's blog-oriented defaults feel too heavy.
+// PicoCSS's responsive font-size scaling and tightens spacing for
+// admin/app UIs on large displays where Pico's blog-oriented defaults
+// feel too heavy.
+//
+// Globally:
+//   - --pico-line-height: 1.4 (default 1.5)
+//
+// On viewports ≥1024px:
+//   - --pico-font-size: 106.25% (default grows to 131.25% at 1536px)
+//   - --pico-spacing: 0.85rem (default 1rem)
+//   - --pico-typography-spacing-vertical: 0.75rem (default 1rem)
+//   - --pico-form-element-spacing-vertical: 0.5rem (default 0.75rem)
+//   - --pico-form-element-spacing-horizontal: 0.75rem (default 1rem)
+//   - --pico-nav-link-spacing-vertical: 0.5rem (default 1rem)
+//   - --pico-nav-element-spacing-vertical: 0.5rem (default 1rem)
+//   - --pico-grid-column-gap: 0.75rem (default 1rem)
+//   - --pico-grid-row-gap: 0.75rem (default 1rem)
+//
+// Mobile/tablet defaults are unchanged so touch targets stay within
+// recommended sizes.
 //
 // Combines with [WithColor]. Ignored when [WithCustomCSS] is set.
 func WithCompactType() Option {
@@ -136,20 +153,23 @@ func (a *App) TemplateFS() fs.FS {
 }
 
 // cssTemplate returns the pico/css template content with the configured
-// stylesheet links baked in. Emits one <link> for the primary stylesheet
-// (custom CSS, color variant, or default), plus an additional <link> for
-// the compact-type override when [WithCompactType] is set.
+// stylesheet links baked in. When [WithCustomCSS] is set, only the custom
+// stylesheet is emitted. Otherwise: primary stylesheet (default or
+// [WithColor] variant) + always-on Burrow fixes for upstream Pico bugs +
+// optional compact-type override when [WithCompactType] is set.
 func (a *App) cssTemplate() string {
+	if a.customCSS != "" {
+		return fmt.Sprintf("{{ define \"pico/css\" -}}\n<link rel=\"stylesheet\" href=\"{{ staticURL %q }}\">\n{{- end }}\n", a.customCSS)
+	}
+
 	primary := "pico/pico.min.css"
-	switch {
-	case a.customCSS != "":
-		primary = a.customCSS
-	case a.color != Default:
+	if a.color != Default {
 		primary = "pico/pico." + string(a.color) + ".min.css"
 	}
 
 	links := fmt.Sprintf(`<link rel="stylesheet" href="{{ staticURL %q }}">`, primary)
-	if a.compactType && a.customCSS == "" {
+	links += "\n" + fmt.Sprintf(`<link rel="stylesheet" href="{{ staticURL %q }}">`, "pico/pico-fixes.min.css")
+	if a.compactType {
 		links += "\n" + fmt.Sprintf(`<link rel="stylesheet" href="{{ staticURL %q }}">`, "pico/pico-compact.min.css")
 	}
 
