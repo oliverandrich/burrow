@@ -147,4 +147,4 @@ There are no routes yet for the polls app — we'll add those with templates in 
 
 ## Next
 
-In [Part 3](part3.md), you'll add HTML templates, a layout with Bootstrap styling, and views to list and display questions.
+In [Part 3](part3.md), you'll add HTML templates, a layout with µCSS styling, and views to list and display questions.

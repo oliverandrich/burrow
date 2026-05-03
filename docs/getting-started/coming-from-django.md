@@ -35,7 +35,7 @@ Django discovers apps through `INSTALLED_APPS` in `settings.py` and uses `AppCon
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
-    bootstrap.New(),
+    mucss.New(),
     &notesApp{},
 )
 ```
@@ -352,7 +352,7 @@ Key philosophical differences from Django:
 - **Compile-time safety** — type errors are caught at build time, not at runtime when a user hits a page.
 - **Single binary deployment** — no virtualenv, no pip, no process manager, no external database server.
 - **SQLite or PostgreSQL** — two backends, same API. SQLite for single-binary deploys, PostgreSQL for scale. Switch with `--database-dsn`.
-- **No admin auto-generation** — Django introspects your models and auto-generates CRUD forms, list views, and search. Burrow's admin views are hand-written handlers with full control over layout and behavior — more work, but fully explicit. The `HasAdmin` interface provides the coordination layer (sidebar, auth middleware, routing).
+- **No admin auto-generation** — Django introspects your models and auto-generates CRUD forms, list views, and search. Burrow's admin views are hand-written handlers with full control over layout and behavior — more work, but fully explicit. The `HasAdmin` interface provides the coordination layer (top-nav layout, dashboard cards, auth middleware, routing).
 - **Context instead of thread-locals** — `context.Context` replaces Django's `request.user` magic and thread-local storage. Values flow explicitly through the call chain.
 - **No signals** — Django dispatches `post_save`, `pre_delete`, etc. automatically via the ORM. Burrow has no automatic lifecycle hooks — you call functions explicitly in your handlers or services. Use `Registry.Get()` for cross-app communication.
 - **No built-in permission system** — Django has model-level permissions and `@permission_required`. Burrow provides authentication middleware (`auth.RequireAuth()`) but authorization logic is your responsibility — write middleware or handler checks.

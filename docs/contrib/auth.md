@@ -4,7 +4,7 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 
 **Package:** `github.com/oliverandrich/burrow/contrib/auth`
 
-**Depends on:** `session`, `i18n`, `csrf`, `staticfiles`, `bootstrap` (for the default templates)
+**Depends on:** `session`, `i18n`, `csrf`, `staticfiles`, `mucss` (for the default user-facing templates)
 
 ## Setup
 
@@ -41,7 +41,7 @@ The auth app ships HTML templates via `HasTemplates`. These templates use the gl
 
 Public auth pages (login, register, recovery, email verification) use a separate layout — typically a minimal page without the full app navigation. This avoids showing the navbar to unauthenticated users. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
-By default, `auth.New()` uses a built-in layout template name (`DefaultAuthLayout()` returns `"auth/layout"`) that renders a minimal page with Bootstrap CSS. Override it with `auth.WithAuthLayout()`:
+By default, `auth.New()` uses a built-in layout template name (`DefaultAuthLayout()` returns `"mucss/layout"`) that renders a minimal page with µCSS. Override it with `auth.WithAuthLayout()`:
 
 ```go
 auth.New(

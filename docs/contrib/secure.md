@@ -113,7 +113,7 @@ secure.New(
 This allows:
 
 - **`default-src 'self'`** — Only load resources from your own origin (images, fonts, media, etc.)
-- **`style-src 'self' 'unsafe-inline'`** — Own stylesheets plus inline styles (needed by admin layout sidebar, Bootstrap Icons SVGs)
+- **`style-src 'self' 'unsafe-inline'`** — Own stylesheets plus inline styles (needed by per-page polish blocks, Bootstrap Icons SVGs)
 - **`script-src 'self' 'unsafe-inline'`** — Own scripts plus inline scripts (needed by theme switcher, admin history sync, auth WebAuthn flows)
 
 ### Stricter Setup (No Inline Content)

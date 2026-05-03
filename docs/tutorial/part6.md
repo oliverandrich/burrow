@@ -26,7 +26,7 @@ The admin app:
 
 - Provides routes under `/admin/` protected by `auth.RequireAdmin()` middleware
 - Collects nav items and routes from all `HasAdmin` apps
-- Applies its own layout with a sidebar navigation
+- Applies its own top-nav layout with a dashboard at `/admin/` that lists all admin sections as cards
 
 ## Add an Admin Link to the Navbar
 

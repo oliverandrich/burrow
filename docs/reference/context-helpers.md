@@ -92,7 +92,7 @@ Stores admin nav groups in the context. Used internally by the admin route middl
 func RequestPath(ctx context.Context) string
 ```
 
-Returns the current request path from the context. Used by admin templates to highlight the active sidebar link. Returns `""` if not set.
+Returns the current request path from the context. Apps can use this to compute active-link state in their own navigation templates. (The admin app no longer reads this — it dropped its sidebar in favor of dashboard cards — but the helper remains for app-side use.) Returns `""` if not set.
 
 > **Deprecated:** `RequestPathFromContext` will be removed in a future version. Use `RequestPath` instead.
 

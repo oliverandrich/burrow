@@ -52,6 +52,6 @@ myapp/
 
 **Schema is automatic** — apps declare their document types via `HasDocuments`. Den creates tables and indexes on startup. No SQL migration files needed.
 
-**Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Set them via `srv.SetLayout()` in `main.go`, or use the [`bootstrap` contrib app](../contrib/bootstrap.md) which provides a ready-made layout.
+**Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Set them via `srv.SetLayout()` in `main.go`, or use the [`mucss` contrib app](../contrib/mucss.md) (default design system) which provides a ready-made layout. The [`bootstrap` contrib](../contrib/bootstrap.md) is maintained as an alternative.
 
 **Static files are optional** — use the [staticfiles contrib app](../contrib/staticfiles.md) if you need content-hashed URLs and cache headers.

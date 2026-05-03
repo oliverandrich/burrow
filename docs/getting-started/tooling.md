@@ -15,7 +15,7 @@ command. It ships with:
 
 - `cmd/<name>/main.go` wiring up a typical contrib stack (`session`,
   `csrf`, `staticfiles`, `healthcheck`, `messages`, `htmx`,
-  `bootstrap`) with a `pages` app providing the homepage and layout
+  `mucss`) with a `pages` app providing the homepage and layout
   overrides.
 - A `justfile` with recipes for `run`, `run-once`, `test`, `coverage`,
   `lint`, `fmt`, `tidy`, `install`, and `setup` (checks your dev

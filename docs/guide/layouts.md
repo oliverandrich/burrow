@@ -96,7 +96,7 @@ srv := burrow.NewServer(
 )
 ```
 
-The `bootstrap` app injects its layout via middleware only when no layout is already set. This is batteries-included by default.
+Both the `mucss` and `bootstrap` apps inject their default layout via middleware only when no layout is already set. This is batteries-included by default — `mucss` is the recommended choice for new projects, `bootstrap` is maintained as an alternative.
 
 **Using `SetLayout()` explicitly:**
 
@@ -104,13 +104,13 @@ The `bootstrap` app injects its layout via middleware only when no layout is alr
 srv.SetLayout("myapp/layout")
 ```
 
-When `SetLayout()` is called, it takes precedence over design system middleware like `bootstrap`.
+When `SetLayout()` is called, it takes precedence over design system middleware like `mucss` or `bootstrap`.
 
 If neither approach is used, content renders unwrapped.
 
 ## Setting the Auth Layout
 
-Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. By default, `auth.New()` uses a built-in layout template name (`DefaultAuthLayout()` returns `"auth/layout"`) that renders a minimal HTML shell with Bootstrap CSS but no navigation. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. By default, `auth.New()` uses a built-in layout template name (`DefaultAuthLayout()` returns `"mucss/layout"`) that renders a minimal HTML shell with µCSS but no navigation. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
 To override the auth layout with a custom template name, use `auth.WithAuthLayout()`:
 
