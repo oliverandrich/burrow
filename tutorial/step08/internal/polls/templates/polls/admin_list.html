@@ -1,0 +1,50 @@
+{{ define "polls/admin_list" -}}
+<nav>
+    <ul class="breadcrumb" aria-label="breadcrumb">
+        <li><a href="/admin/">Admin</a></li>
+        <li aria-current="page">Polls</li>
+    </ul>
+    <ul>
+        <li>
+            <form action="/admin/polls" method="GET">
+                <input type="search" class="input-sm" name="q" value="{{ .SearchTerm }}" placeholder="Search…" aria-label="Search">
+            </form>
+        </li>
+    </ul>
+</nav>
+<header>
+    <h2>Polls</h2>
+    <a href="/admin/polls/new" role="button" class="btn btn-primary">New poll</a>
+</header>
+{{- if .Questions }}
+<figure>
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">Question</th>
+                <th scope="col">Published</th>
+                <th scope="col" class="admin-row-actions">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{- range .Questions }}
+            <tr>
+                <td><a href="/admin/polls/{{ .ID }}">{{ .Text }}</a></td>
+                <td>{{ .PublishedAt.Format "2006-01-02 15:04" }}</td>
+                <td class="admin-row-actions">
+                    <a href="/admin/polls/{{ .ID }}" role="button" class="btn btn-sm btn-outline btn-secondary">Edit</a>
+                    <button type="button" class="btn btn-sm btn-outline btn-error"
+                        hx-delete="/admin/polls/{{ .ID }}"
+                        hx-swap="none"
+                        hx-confirm="Delete this poll and all its choices?">Delete</button>
+                </td>
+            </tr>
+            {{- end }}
+        </tbody>
+    </table>
+</figure>
+{{ template "mucss/pagination" (dict "Page" .Page "BasePath" "/admin/polls" "RawQuery" .RawQuery) }}
+{{- else }}
+<p>No polls yet.</p>
+{{- end }}
+{{- end }}

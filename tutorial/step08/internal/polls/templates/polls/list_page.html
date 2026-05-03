@@ -1,0 +1,13 @@
+{{ define "polls/list_page" -}}
+{{ range .Questions -}}
+{{ template "polls/question_item" . }}
+{{ end -}}
+{{ if .Page.HasMore -}}
+<div hx-get="/polls?page={{ add .Page.Page 1 }}&limit=20"
+     hx-trigger="revealed"
+     hx-target="#polls-list"
+     hx-swap="beforeend">
+    <p aria-busy="true">Loading…</p>
+</div>
+{{ end -}}
+{{- end }}

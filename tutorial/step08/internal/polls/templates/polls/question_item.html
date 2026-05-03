@@ -1,0 +1,8 @@
+{{ define "polls/question_item" -}}
+<a href="/polls/{{ .ID }}" class="polls-list-item">
+    <article>
+        <strong>{{ .Text }}</strong>
+        <small>{{ .PublishedAt.Format "2 Jan 2006" }}</small>
+    </article>
+</a>
+{{- end }}

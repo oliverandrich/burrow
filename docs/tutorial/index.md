@@ -28,6 +28,7 @@ A survey/voting application where users can:
 | [Part 5](part5.md) | Authentication | Auth system, middleware, user context |
 | [Part 6](part6.md) | Admin Panel | HasAdmin interface, admin routes |
 | [Part 7](part7.md) | HTMX, Charts & Polish | htmx helpers, i18n, pagination |
+| [Part 8](part8.md) | Custom Admin Views | Implement HasAdmin on your own app |
 
 Each part builds on the previous one. The complete source code for each step lives in the [`tutorial/`](https://github.com/oliverandrich/burrow/tree/main/tutorial) directory.
 

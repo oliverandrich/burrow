@@ -1,0 +1,28 @@
+{{ define "polls/list" -}}
+<header>
+    <h1>Polls</h1>
+</header>
+{{ if .Questions -}}
+<div class="polls-list" id="polls-list">
+    {{ range .Questions -}}
+    {{ template "polls/question_item" . }}
+    {{ end -}}
+</div>
+{{ if .Page.HasMore -}}
+<div hx-get="/polls?page={{ add .Page.Page 1 }}&limit=20"
+     hx-trigger="revealed"
+     hx-target="#polls-list"
+     hx-swap="beforeend"
+     hx-select="template">
+    <p aria-busy="true">Loading…</p>
+</div>
+{{ end -}}
+{{ else -}}
+<div class="alert alert-info" role="alert">No polls available yet.</div>
+{{ end -}}
+<style>
+.polls-list{display:flex;flex-direction:column;gap:.5rem}
+.polls-list-item{color:inherit;text-decoration:none}
+.polls-list-item article{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin:0}
+</style>
+{{- end }}

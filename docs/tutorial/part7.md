@@ -289,13 +289,6 @@ The application now has:
 - **Offset-based pagination** — `.Limit()`, `.Skip()`, `OffsetResult()`
 - **Infinite scroll** — `hx-trigger="revealed"` loads more items when scrolled into view
 
-## What's Next
+## Next
 
-Congratulations — you've built a complete web application with Burrow! Here are some ideas for extending it further:
-
-- Add i18n translations (see [i18n](../guide/i18n.md))
-- Upload images for questions (see [Uploader](../guide/uploader.md))
-- Add background jobs for vote tallying (see [Jobs](../contrib/jobs.md))
-- Deploy with zero-downtime restarts (see [Deployment](../guide/deployment.md))
-
-Explore the [Contrib Apps](../contrib/session.md) documentation for the full list of available features.
+In [Part 8](part8.md) you'll add custom admin views for managing polls — implementing `HasAdmin` on the polls app itself so administrators can create, edit, and delete questions and choices from the admin panel.

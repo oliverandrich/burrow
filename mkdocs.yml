@@ -99,6 +99,7 @@ nav:
       - "Part 5: Authentication": tutorial/part5.md
       - "Part 6: Admin Panel": tutorial/part6.md
       - "Part 7: HTMX, Charts & Pagination": tutorial/part7.md
+      - "Part 8: Custom Admin Views": tutorial/part8.md
   - Contrib Apps:
       - Core:
           - CSRF: contrib/csrf.md

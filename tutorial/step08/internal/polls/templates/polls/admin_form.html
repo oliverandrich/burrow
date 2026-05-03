@@ -1,0 +1,76 @@
+{{ define "polls/admin_form" -}}
+<nav>
+    <ul class="breadcrumb" aria-label="breadcrumb">
+        <li><a href="/admin/">Admin</a></li>
+        <li><a href="/admin/polls">Polls</a></li>
+        <li aria-current="page">{{ if .IsNew }}New{{ else }}{{ .Question.Text }}{{ end }}</li>
+    </ul>
+</nav>
+<header>
+    <h2>{{ if .IsNew }}New poll{{ else }}Edit poll{{ end }}</h2>
+</header>
+
+<form method="post" action="{{ if .IsNew }}/admin/polls{{ else }}/admin/polls/{{ .Question.ID }}{{ end }}">
+    {{ csrfField }}
+    <label>
+        Question text *
+        <input type="text" name="text" value="{{ .Question.Text }}" required autofocus>
+    </label>
+    {{- if .IsNew }}
+    <fieldset>
+        <legend>Initial choices</legend>
+        <p><small>Leave blank to skip. You can add and edit choices after creating the poll.</small></p>
+        <input type="text" name="choice" placeholder="Choice 1">
+        <input type="text" name="choice" placeholder="Choice 2">
+        <input type="text" name="choice" placeholder="Choice 3">
+        <input type="text" name="choice" placeholder="Choice 4">
+    </fieldset>
+    {{- end }}
+    <footer class="admin-row-actions">
+        <button type="submit" class="btn btn-primary">{{ if .IsNew }}Create{{ else }}Save{{ end }}</button>
+        <a href="/admin/polls" role="button" class="btn btn-outline btn-secondary">Back</a>
+    </footer>
+</form>
+
+{{- if not .IsNew }}
+<header>
+    <h3>Choices</h3>
+</header>
+{{- if .Question.Choices }}
+<ul class="poll-admin-choices">
+    {{- range .Question.Choices }}
+    <li>
+        <form method="post" action="/admin/polls/{{ $.Question.ID }}/choices/{{ .ID }}">
+            {{ csrfField }}
+            <fieldset role="group">
+                <input type="text" name="text" value="{{ .Text }}" required>
+                <span class="badge badge-secondary">{{ .Votes }} votes</span>
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-outline btn-error"
+                    hx-delete="/admin/polls/{{ $.Question.ID }}/choices/{{ .ID }}"
+                    hx-swap="none"
+                    hx-confirm="Delete this choice?">Delete</button>
+            </fieldset>
+        </form>
+    </li>
+    {{- end }}
+</ul>
+{{- else }}
+<p>No choices yet.</p>
+{{- end }}
+
+<form method="post" action="/admin/polls/{{ .Question.ID }}/choices">
+    {{ csrfField }}
+    <label>
+        Add choice
+        <input type="text" name="text" placeholder="New choice text" required>
+    </label>
+    <button type="submit" class="btn btn-primary">Add choice</button>
+</form>
+<style>
+.poll-admin-choices{list-style:none;padding:0;display:flex;flex-direction:column;gap:.5rem}
+.poll-admin-choices > li{margin:0}
+.poll-admin-choices form{margin:0}
+</style>
+{{- end }}
+{{- end }}
