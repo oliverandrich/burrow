@@ -31,3 +31,7 @@ dialog form footer button[type]{width:auto;margin-bottom:0}
 
 /* Inline form-field errors — Burrow convention: <small class="field-error">. */
 .field-error{color:var(--mu-del-color);display:block;margin-top:-.5rem;margin-bottom:.75rem}
+
+/* Dropdown items with aria-current="true" rendered bold — used by the
+ * mucss theme switcher to mark the currently active option. */
+details.dropdown ul a[aria-current=true]{font-weight:bold}

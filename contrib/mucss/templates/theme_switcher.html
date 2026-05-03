@@ -25,6 +25,7 @@
             localStorage.setItem("theme",s);
             root.setAttribute("data-theme",resolve(s));
             icons.forEach(function(el){el.hidden=el.getAttribute("data-theme-icon")!==s});
+            items.forEach(function(el){el.getAttribute("data-theme-value")===s?el.setAttribute("aria-current","true"):el.removeAttribute("aria-current")});
             container.removeAttribute("open");
         }
 

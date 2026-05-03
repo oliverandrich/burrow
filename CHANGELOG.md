@@ -27,6 +27,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **HTMX-driven dialog pattern.** `htmx.OpenDialog(w, id [, class])` and `htmx.CloseDialog(w, id)` emit events that the `htmx/dialog_script` template turns into `dialog.showModal()` / `close()` calls. The `mucss` and `bootstrap` nav layouts ship a permanent `<dialog id="modal">` container and include the script. The optional class arg switches the µCSS modal size variant. See `example/notes` for the full create + edit flow.
 - **`contrib/mucss`** — new default design contrib providing [µCSS v1.x](https://mucss.org/) (PicoCSS v2 derivative with upstream bugs fixed and richer components: Hero, Alert, Toast, Modal, Pagination, Badge, Tabs). 20 named accent variants (`WithColor`), `WithCompactType()` for app/admin UIs, customisable via CSS custom properties (`WithCustomCSS`).
 
+### Fixed
+
+- **`mucss/theme_switcher`** marks the currently active option with `aria-current="true"` (rendered bold via `mu-extras.min.css`). Previously all three options looked identical when the dropdown was open.
+
 ## 0.17.0 — 2026-04-28
 
 ### Breaking Changes
