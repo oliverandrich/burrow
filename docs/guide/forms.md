@@ -299,7 +299,9 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
 
 There are four ways to provide choices for a select field.
 
-**Static choices via struct tag** — works on both models and form structs:
+### Static choices via struct tag
+
+Works on both models and form structs:
 
 ```go
 type ArticleForm struct {
@@ -307,7 +309,9 @@ type ArticleForm struct {
 }
 ```
 
-**Static choices via option** — when you need separate values and labels, or choices defined outside the struct:
+### Static choices via option
+
+When you need separate values and labels, or choices defined outside the struct:
 
 ```go
 statuses := []forms.Choice{
@@ -318,7 +322,9 @@ statuses := []forms.Choice{
 f := forms.New[ArticleForm](forms.WithChoices[ArticleForm]("Status", statuses))
 ```
 
-**Dynamic choices via option function** — when choices come from a database or service:
+### Dynamic choices via option function
+
+When choices come from a database or service:
 
 ```go
 f := forms.New[ArticleForm](
@@ -336,7 +342,9 @@ f := forms.New[ArticleForm](
 )
 ```
 
-**Dynamic choices via `ChoiceProvider` interface** — when you want the choice logic on the struct itself. The struct that implements the interface is whatever you pass as the type parameter to `New` or `FromModel` — a model or a dedicated form struct:
+### Dynamic choices via ChoiceProvider interface
+
+When you want the choice logic on the struct itself. The struct that implements the interface is whatever you pass as the type parameter to `New` or `FromModel` — a model or a dedicated form struct:
 
 ```go
 // ArticleForm is a dedicated form struct with dynamic choices.

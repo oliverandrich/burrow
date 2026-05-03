@@ -94,7 +94,7 @@ func (r *Repository) GetChoice(ctx context.Context, id string) (*Choice, error) 
 }
 ```
 
-`DeleteQuestion` deletes the choices first (Den has no automatic cascade), then the question itself. `where.Field("text").StringContains(query)` does a case-insensitive substring match on the JSON document. `GetQuestionByID` is a deliberately slim variant of the existing `GetQuestion`: handlers that only need to verify existence or update the question text shouldn't pay for the second query that loads all choices.
+`DeleteQuestion` deletes the choices first, then the question itself. Den's `WithLinkRule(LinkDelete)` cascade only follows typed `Link[T]` fields on the parent — our `Question` and `Choice` are joined by a plain foreign-key field (`Choice.QuestionID`), which is the back-link / one-to-many pattern, so the cascade has to be manual via `DeleteMany[Choice]`. (If `Question` instead held a `Choices []Link[Choice]` field, `WithLinkRule(LinkDelete)` would cascade automatically.) `where.Field("text").StringContains(query)` does a case-insensitive substring match on the JSON document. `GetQuestionByID` is a deliberately slim variant of the existing `GetQuestion`: handlers that only need to verify existence or update the question text shouldn't pay for the second query that loads all choices.
 
 ## Implement `HasAdmin`
 
@@ -475,7 +475,7 @@ Sign in as your admin user and visit `/admin/`. The dashboard now shows a **Poll
 - **`burrow.HasAdmin`** — two-method interface for contributing admin routes and nav items
 - **Admin routes are pre-wrapped** — the `/admin` prefix and auth middleware are applied for you
 - **Repository methods for admin** — search, update, and delete operations to round out the read-mostly public surface
-- **Cascade delete** — manual two-step delete since Den doesn't enforce foreign keys
+- **Cascade delete for back-link relationships** — manual two-step delete (`DeleteMany` children, then delete parent), because Den's `WithLinkRule(LinkDelete)` cascade only follows typed `Link[T]` fields on the parent, not foreign-key fields on the children
 - **`htmx.SmartRedirect`** — single helper that picks `HX-Redirect` or `Location` based on the request type
 - **One form per row** — a clean pattern for editable lists without dedicated edit pages
 

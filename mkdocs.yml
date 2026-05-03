@@ -1,6 +1,6 @@
 site_name: Burrow
 site_description: A modular Go web framework built on Chi, Den, and html/template
-site_url: https://burrow.someonewho.codes/
+site_url: https://burrow.readthedocs.io/
 repo_url: https://github.com/oliverandrich/burrow
 repo_name: oliverandrich/burrow
 copyright: "&copy; 2026 Oliver Andrich. All rights reserved."
