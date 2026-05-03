@@ -11,13 +11,15 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
+- **`uploader.ServeHandler` supports Range and conditional GET** when the underlying Storage implements `den.SeekableStorage` (file backend). Browsers can now stream video Range-by-Range, and clients with cached copies get 304 Not Modified instead of a full re-download. ETag is the storage path (content-addressed, so stable). Non-seekable backends (S3) keep the existing `io.Copy` fallback — Range support there belongs at the URL layer (pre-signed URLs).
+
 - **`contrib/mucss` ships Burrow UX extras** (`mu-extras.min.css`, always loaded unless `WithCustomCSS` is set): navbar-dropdown min-width, navbar-icon vertical centering, dialog header flex layout, dialog form-footer button layout, and a `.field-error` rule for inline form errors.
 - **HTMX-driven dialog pattern.** `htmx.OpenDialog(w, id [, class])` and `htmx.CloseDialog(w, id)` emit events that the `htmx/dialog_script` template turns into `dialog.showModal()` / `close()` calls. The `mucss` and `bootstrap` nav layouts ship a permanent `<dialog id="modal">` container and include the script. The optional class arg switches the µCSS modal size variant. See `example/notes` for the full create + edit flow.
 - **`contrib/mucss`** — new default design contrib providing [µCSS v1.x](https://mucss.org/) (PicoCSS v2 derivative with upstream bugs fixed and richer components: Hero, Alert, Toast, Modal, Pagination, Badge, Tabs). 20 named accent variants (`WithColor`), `WithCompactType()` for app/admin UIs, customisable via CSS custom properties (`WithCustomCSS`).
 
 ### Changed
 
-- **Den bumped to v0.11.1.** `OpenDB` and `OpenDBWithoutValidation` now wrap the typed `den.ErrUnsupportedScheme` sentinel, so callers can match unsupported-scheme errors via `errors.Is` instead of substring-matching the message.
+- **Den bumped to v0.11.2.** `OpenDB` and `OpenDBWithoutValidation` now wrap the typed `den.ErrUnsupportedScheme` sentinel, so callers can match unsupported-scheme errors via `errors.Is` instead of substring-matching the message. `uploader.ServeHandler` consumes the new `den.SeekableStorage` capability for Range / conditional-GET support (see Added).
 - **`example/hello` ported to µCSS** with `WithCompactType`, a `.hero` block, and a native `<dialog>` demo. The `example/hello-pico` evaluation example was removed.
 - **`example/notes` user-facing pages ported to µCSS.** `bootstrap.New()` stays alongside `mucss.New(WithCompactType())` until the admin-area auth templates migrate.
 - **Docs lead with µCSS as the default design contrib.** README, getting-started, contrib/admin, tutorial part 6, and reference docs updated; the "CSS framework default" Open Question is resolved (µCSS default, Bootstrap deprecated).

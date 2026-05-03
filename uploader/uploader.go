@@ -32,7 +32,9 @@ import (
 	"mime"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/den"
@@ -213,19 +215,50 @@ func ServeHandler(s den.Storage) http.Handler {
 		}
 
 		att := document.Attachment{StoragePath: key}
+
+		// Seekable backends (filesystem) get full Range / If-None-Match
+		// support via http.ServeContent. The ETag is derived from the
+		// storage path — since uploads are content-addressed, the path
+		// is stable for the same bytes. strconv.Quote produces a properly
+		// escaped quoted-string even if a third-party SeekableStorage
+		// returns a path with characters that would break the bare quote.
+		if seekable, ok := s.(den.SeekableStorage); ok {
+			f, err := seekable.OpenSeekable(r.Context(), att)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			defer f.Close() //nolint:errcheck // best-effort close on serve
+			setServeHeaders(w, key)
+			w.Header().Set("ETag", strconv.Quote(key))
+			http.ServeContent(w, r, key, time.Time{}, f)
+			return
+		}
+
+		// Non-seekable backends (S3 streaming GetObject etc.) fall back to
+		// a plain stream — Range support for those backends belongs at
+		// the URL layer (pre-signed URLs).
 		f, err := s.Open(r.Context(), att)
 		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
 		defer f.Close() //nolint:errcheck // best-effort close on serve
-
-		if mimeType := mime.TypeByExtension(path.Ext(key)); mimeType != "" {
-			w.Header().Set("Content-Type", mimeType)
-		}
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		setServeHeaders(w, key)
 		_, _ = io.Copy(w, f)
 	})
+}
+
+// setServeHeaders applies the Content-Type and immutable Cache-Control
+// headers shared by both the seekable and fallback branches. Set only
+// after a successful open so 404 responses don't get poisoned with a
+// year-long Cache-Control (http.NotFound resets Content-Type but not
+// Cache-Control).
+func setServeHeaders(w http.ResponseWriter, key string) {
+	if mimeType := mime.TypeByExtension(path.Ext(key)); mimeType != "" {
+		w.Header().Set("Content-Type", mimeType)
+	}
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 }
 
 // maxBytesReader returns ErrFileTooLarge as soon as more than max bytes

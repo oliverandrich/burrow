@@ -197,6 +197,9 @@ func TestMount_NotFound(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+	// Regression: a 404 must not carry the year-long immutable Cache-Control,
+	// which would poison browser/CDN caches for the missing path.
+	assert.Empty(t, rec.Header().Get("Cache-Control"), "404 must not be cached")
 }
 
 // remoteOnlyStorage satisfies den.Storage but not urlPrefixer — Mount
@@ -251,6 +254,52 @@ func TestServeHandler_HandMounted(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "body", rec.Body.String())
+}
+
+// TestServeHandler_Range exercises the SeekableStorage fast path: the
+// file backend implements den.SeekableStorage, so http.ServeContent is
+// used and a Range request returns 206 Partial Content with the right
+// byte slice.
+func TestServeHandler_Range(t *testing.T) {
+	fs := newTestStorage(t)
+
+	body := []byte("the quick brown fox jumps over the lazy dog")
+	att, err := fs.Store(t.Context(), bytes.NewReader(body), ".txt", "text/plain")
+	require.NoError(t, err)
+
+	r := chi.NewRouter()
+	uploader.Mount(r, fs)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/media/"+att.StoragePath, nil)
+	req.Header.Set("Range", "bytes=20-24")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusPartialContent, rec.Code, "ServeContent should respond with 206 for a valid Range")
+	assert.Equal(t, "jumps", rec.Body.String(), "Range bytes=20-24 should be 'jumps'")
+	assert.NotEmpty(t, rec.Header().Get("ETag"), "ETag must be present on the response")
+}
+
+// TestServeHandler_IfNoneMatch exercises conditional GET: a client that
+// already has the bytes (matching ETag) gets 304 Not Modified with no
+// body re-transmission.
+func TestServeHandler_IfNoneMatch(t *testing.T) {
+	fs := newTestStorage(t)
+
+	body := []byte("immutable bytes")
+	att, err := fs.Store(t.Context(), bytes.NewReader(body), ".txt", "text/plain")
+	require.NoError(t, err)
+
+	r := chi.NewRouter()
+	uploader.Mount(r, fs)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/media/"+att.StoragePath, nil)
+	req.Header.Set("If-None-Match", `"`+att.StoragePath+`"`)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotModified, rec.Code, "matching If-None-Match should return 304")
+	assert.Empty(t, rec.Body.String(), "304 must not re-send the body")
 }
 
 // --- End-to-end ---
