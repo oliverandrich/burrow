@@ -129,6 +129,19 @@ type App struct {
 	compactType bool
 }
 
+// Compile-time guarantees that App satisfies the burrow optional
+// interfaces it claims to implement. Renaming or removing any of these
+// from the framework would surface here as a build error rather than
+// at runtime when Burrow's registry walks the app.
+var (
+	_ burrow.App             = (*App)(nil)
+	_ burrow.HasDependencies = (*App)(nil)
+	_ burrow.Configurable    = (*App)(nil)
+	_ burrow.HasStaticFiles  = (*App)(nil)
+	_ burrow.HasTemplates    = (*App)(nil)
+	_ burrow.HasMiddleware   = (*App)(nil)
+)
+
 // New creates a new mucss design app with the given options.
 func New(opts ...Option) *App {
 	a := &App{color: Default}

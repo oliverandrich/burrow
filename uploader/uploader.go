@@ -207,6 +207,12 @@ func Mount(r chi.Router, s den.Storage) {
 // so callers must strip any mount prefix first. [Mount] does this
 // automatically via chi.Router.Mount; hand-routed callers wrap with
 // [http.StripPrefix] (or chi's Mount) themselves.
+//
+// 404s use [http.NotFound] (stdlib) rather than burrow's HTTPError +
+// RenderError chain — asset 404s reach the user as a broken image or
+// a failed XHR, not as a navigated page, so the framework's HTML error
+// page doesn't apply. Apps that need custom asset-404 behaviour should
+// wrap this handler in their own middleware.
 func ServeHandler(s den.Storage) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := strings.TrimPrefix(r.URL.Path, "/")
