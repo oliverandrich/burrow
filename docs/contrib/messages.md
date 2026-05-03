@@ -68,7 +68,17 @@ for _, msg := range msgs {
 
 ### In Layout Templates
 
-Messages are available in layout templates via the `messages` template function (provided by the messages contrib app via `HasRequestFuncMap`). Note that the `error` level must be mapped to Bootstrap's `danger` class:
+Messages are available in layout templates via the `messages` template function (provided by the messages contrib app via `HasRequestFuncMap`). With µCSS the level names map directly to alert classes:
+
+```html
+{{ range messages -}}
+<div class="alert alert-{{ .Level }}" role="alert">
+    {{ .Text }}
+</div>
+{{ end -}}
+```
+
+For the deprecated Bootstrap contrib, map `error` → `danger` (Bootstrap's class name) and use the dismissible markup:
 
 ```html
 {{ range messages -}}

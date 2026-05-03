@@ -1,53 +1,55 @@
 # Burrow
 
-> Burrow is a modular Go web framework for server-rendered web applications. Built on Chi, Bun/SQLite, and Go's html/template. Deploy as a single binary.
+> Burrow is a modular Go web framework for server-rendered web applications. Built on Chi, Den (object-document mapper with SQLite + PostgreSQL backends), and Go's html/template. Deploy as a single binary.
 
-Burrow follows the Django/Rails philosophy: composable apps with their own routes, migrations, middleware, and templates — but with Go's performance and single-binary deployment. It uses embedded SQLite (pure Go, no CGO) so applications need zero external dependencies at runtime.
+Burrow follows the Django/Rails philosophy: composable apps with their own routes, middleware, and templates — but with Go's performance and single-binary deployment. Pure-Go SQLite via Den (`modernc.org/sqlite`) means zero external runtime dependencies; switch to PostgreSQL via DSN with no code changes.
 
 Burrow is designed for server-rendered web applications, not API-only services.
 
 ## Core Concepts
 
-- [Quick Start](https://burrow.someonewho.codes/getting-started/quickstart/): Minimal app setup
-- [Creating an App](https://burrow.someonewho.codes/guide/creating-an-app/): Build a custom app with routes, templates, and migrations
-- [Core Interfaces](https://burrow.someonewho.codes/reference/interfaces/): App, Migratable, HasRoutes, HasMiddleware, HasTemplates, Configurable, and more
-- [Core Functions](https://burrow.someonewho.codes/reference/core-functions/): HandlerFunc, Handle, Render, Bind, Validate, JSON, Text, HTML
-- [Routing](https://burrow.someonewho.codes/guide/routing/): Handlers, error handling, URL parameters, middleware
-- [Database](https://burrow.someonewho.codes/guide/database/): SQLite setup, PRAGMAs, Bun ORM usage, repository pattern
-- [Layouts & Rendering](https://burrow.someonewho.codes/guide/layouts/): Template rendering, layout wrapping, HTMX support
-- [Configuration](https://burrow.someonewho.codes/guide/configuration/): CLI flags, environment variables, TOML config
-- [Migrations](https://burrow.someonewho.codes/guide/migrations/): Per-app SQL migrations with tracking
-- [Internationalization](https://burrow.someonewho.codes/guide/i18n/): Built-in i18n with Accept-Language detection and go-i18n translations
+- [Quick Start](https://burrow.readthedocs.io/getting-started/quickstart/): Minimal app setup
+- [Creating an App](https://burrow.readthedocs.io/guide/creating-an-app/): Build a custom app with routes, templates, and documents
+- [Core Interfaces](https://burrow.readthedocs.io/reference/interfaces/): App, HasDocuments, HasRoutes, HasMiddleware, HasTemplates, Configurable, HasAdmin, and more
+- [Core Functions](https://burrow.readthedocs.io/reference/core-functions/): HandlerFunc, Handle, Render, Bind, Validate, JSON, Text, HTML
+- [Routing](https://burrow.readthedocs.io/guide/routing/): Handlers, error handling, URL parameters, middleware
+- [Database](https://burrow.readthedocs.io/guide/database/): Den ODM, SQLite + PostgreSQL backends, repository pattern
+- [Layouts & Rendering](https://burrow.readthedocs.io/guide/layouts/): Template rendering, layout wrapping, HTMX support
+- [Configuration](https://burrow.readthedocs.io/guide/configuration/): CLI flags, environment variables, TOML config
+- [Internationalization](https://burrow.readthedocs.io/guide/i18n/): Built-in i18n with Accept-Language detection and go-i18n translations
 
 ## Contrib Apps
 
-- [Admin](https://burrow.someonewho.codes/contrib/admin/): Admin panel coordinator (layout, sidebar nav, auth middleware)
-- [Alpine.js](https://burrow.someonewho.codes/contrib/alpine/): Alpine.js asset serving with content-hashed URLs
-- [Auth](https://burrow.someonewho.codes/contrib/auth/): WebAuthn/passkey authentication with recovery codes
-- [Auth Mail](https://burrow.someonewho.codes/contrib/authmail/): Pluggable email rendering with SMTP backend
-- [Bootstrap](https://burrow.someonewho.codes/contrib/bootstrap/): Bootstrap 5 CSS/JS, dark mode, layout
-- [Bootstrap Icons](https://burrow.someonewho.codes/contrib/bsicons/): Bootstrap Icons as inline SVG template functions
-- [CSRF](https://burrow.someonewho.codes/contrib/csrf/): CSRF protection via gorilla/csrf
-- [Healthcheck](https://burrow.someonewho.codes/contrib/healthcheck/): Liveness and readiness probes
-- [htmx](https://burrow.someonewho.codes/contrib/htmx/): HTMX integration with request/response helpers
-- [Jobs](https://burrow.someonewho.codes/contrib/jobs/): SQLite-backed background job queue
-- [Messages](https://burrow.someonewho.codes/contrib/messages/): Flash messages
-- [Rate Limiting](https://burrow.someonewho.codes/contrib/ratelimit/): Per-client token bucket rate limiting
-- [Security Headers](https://burrow.someonewho.codes/contrib/secure/): Security response headers (X-Content-Type-Options, HSTS, CSP)
-- [Session](https://burrow.someonewho.codes/contrib/session/): Cookie-based sessions via gorilla/sessions
-- [SSE](https://burrow.someonewho.codes/contrib/sse/): Server-Sent Events with in-memory pub/sub broker
-- [Static Files](https://burrow.someonewho.codes/contrib/staticfiles/): Content-hashed static file serving
+- [Admin](https://burrow.readthedocs.io/contrib/admin/): Admin panel coordinator (top-nav layout, dashboard cards, route mounting)
+- [Alpine.js](https://burrow.readthedocs.io/contrib/alpine/): Alpine.js asset serving
+- [Auth](https://burrow.readthedocs.io/contrib/auth/): WebAuthn/passkey authentication with recovery codes
+- [Auth Mail](https://burrow.readthedocs.io/contrib/authmail/): Pluggable email rendering with SMTP backend
+- [Bootstrap](https://burrow.readthedocs.io/contrib/bootstrap/): **Deprecated, removed in v0.20** — use `mucss` for new projects
+- [Bootstrap Icons](https://burrow.readthedocs.io/contrib/bsicons/): Bootstrap Icons as inline SVG template functions
+- [CSRF](https://burrow.readthedocs.io/contrib/csrf/): CSRF protection via gorilla/csrf
+- [Healthcheck](https://burrow.readthedocs.io/contrib/healthcheck/): Liveness and readiness probes
+- [htmx](https://burrow.readthedocs.io/contrib/htmx/): HTMX integration with request/response helpers + dialog pattern
+- [Humanize](https://burrow.readthedocs.io/contrib/humanize/): i18n-aware template functions (naturaltime, intcomma, filesizeformat)
+- [Jobs](https://burrow.readthedocs.io/contrib/jobs/): SQLite-backed background job queue
+- [Messages](https://burrow.readthedocs.io/contrib/messages/): Flash messages
+- [µCSS](https://burrow.readthedocs.io/contrib/mucss/): **Default design contrib** — class-light semantic CSS, JS-free dark mode, 20 accent variants, components (Hero, Alert, Toast, Modal, Pagination, Badge, Tabs)
+- [Rate Limiting](https://burrow.readthedocs.io/contrib/ratelimit/): Per-client token bucket rate limiting
+- [Security Headers](https://burrow.readthedocs.io/contrib/secure/): Security response headers (X-Content-Type-Options, HSTS, CSP)
+- [Session](https://burrow.readthedocs.io/contrib/session/): Cookie-based sessions via gorilla/sessions
+- [SSE](https://burrow.readthedocs.io/contrib/sse/): Server-Sent Events with in-memory pub/sub broker
+- [Static Files](https://burrow.readthedocs.io/contrib/staticfiles/): Content-hashed static file serving
 
 ## Other Packages
 
-- [Uploader](https://burrow.someonewho.codes/guide/uploader/): HTTP file-upload helpers built on den.Storage (not a contrib app)
+- [Uploader](https://burrow.readthedocs.io/guide/uploader/): HTTP file-upload helpers built on `den.Storage`. Supports Range/conditional GET when the storage implements `den.SeekableStorage` (file backend); falls back to plain streaming for remote backends (S3 etc.) where Range belongs at the URL layer (pre-signed URLs).
 
 ## Reference
 
-- [Server & Registry](https://burrow.someonewho.codes/reference/server/): Server boot sequence, registry API
-- [Configuration Reference](https://burrow.someonewho.codes/reference/configuration/): All flags, env vars, TOML keys
-- [Template Functions](https://burrow.someonewho.codes/reference/template-functions/): Built-in template functions
-- [Context Helpers](https://burrow.someonewho.codes/reference/context-helpers/): Request context accessors
+- [Server & Registry](https://burrow.readthedocs.io/reference/server/): Server boot sequence, registry API
+- [Configuration Reference](https://burrow.readthedocs.io/reference/configuration/): All flags, env vars, TOML keys
+- [Template Functions](https://burrow.readthedocs.io/reference/template-functions/): Built-in template functions
+- [Context Helpers](https://burrow.readthedocs.io/reference/context-helpers/): Request context accessors
+- [Reusable Templates](https://burrow.readthedocs.io/reference/reusable-templates/): Named templates from contrib apps (mucss/css, htmx/js, mucss/pagination, etc.)
 
 ## Quick Conventions for Coding Agents
 
@@ -61,13 +63,16 @@ Handlers return `error` — never call `http.Error()` directly:
 r.Get("/notes", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
     notes, err := repo.List(r.Context())
     if err != nil {
+        if errors.Is(err, den.ErrNotFound) {
+            return burrow.NewHTTPError(http.StatusNotFound, "not found")
+        }
         return err // 500, logged automatically
     }
     return burrow.Render(w, r, http.StatusOK, "notes/list", notes)
 }))
 ```
 
-Return `burrow.NewHTTPError(code, msg)` for client errors (404, 403, etc.). Any other error becomes a 500.
+Return `burrow.NewHTTPError(code, msg)` for client errors (404, 403, etc.). Any other error becomes a 500. **Always `errors.Is`-check for `den.ErrNotFound` before mapping repository errors to 404** — otherwise a transient DB outage silently surfaces as 404.
 
 ### App Structure
 
@@ -78,38 +83,39 @@ func (a *myApp) Name() string { return "notes" }
 func (a *myApp) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error { /* init repos, services */ }
 ```
 
-Optional interfaces add capabilities: `HasRoutes`, `HasMiddleware`, `HasTemplates`, `Migratable`, `HasFlags`, `Configurable`, `PostConfigurable`, `Startable`, `HasFuncMap`, `HasRequestFuncMap`, `HasNavItems`, `HasAdmin`, `HasTranslations`, `HasDependencies`, `HasJobs`, `HasStaticFiles`, `HasShutdown`.
+Optional interfaces add capabilities: `HasRoutes`, `HasMiddleware`, `HasTemplates`, `HasDocuments`, `HasFlags`, `Configurable`, `PostConfigurable`, `Startable`, `HasFuncMap`, `HasRequestFuncMap`, `HasNavItems`, `HasAdmin`, `HasTranslations`, `HasDependencies`, `HasJobs`, `HasStaticFiles`, `HasShutdown`.
 
-File layout: `app.go`, `context.go`, `handlers.go`, `middleware.go`, `models.go`, `repository.go`, `templates/*.html`, `migrations/*.sql`.
+File layout: `app.go`, `context.go`, `handlers.go`, `middleware.go`, `models.go`, `repository.go`, `templates/*.html`.
 
 ### Models & Database
 
-SQLite via Bun ORM — pure Go, no CGO required:
+Den is an ODM (object-document mapper) over SQLite or PostgreSQL. Pure Go, no CGO required for the SQLite backend.
 
 ```go
+import (
+    "github.com/oliverandrich/den"
+    "github.com/oliverandrich/den/document"
+)
+
 type Note struct {
-    bun.BaseModel `bun:"table:notes,alias:n"`
-    ID    int64  `bun:",pk,autoincrement"`
-    Title string `bun:",notnull"`
+    document.Base
+    Title string `json:"title" verbose:"Title"`
+    Body  string `json:"body" verbose:"Body"`
 }
 ```
 
-Always set a table alias. Always qualify column names with `?TableAlias` in queries that use `.Relation()` JOINs:
+Document IDs are ULIDs (string). Schema is created automatically on startup via `den.Register()` driven by the `HasDocuments` interface — no SQL migration files. Index hints come from struct tags (`den:"index"`, `den:"unique"`).
+
+**Backend selection — opt-in via blank-import**: every binary using `burrow.OpenDB` must blank-import the Den backend that matches its DSN in its own `main.go`:
 
 ```go
-q.Where("?TableAlias.user_id = ?", userID)
+import (
+    _ "github.com/oliverandrich/den/backend/sqlite"   // for sqlite:// DSNs
+    _ "github.com/oliverandrich/den/backend/postgres" // for postgres:// DSNs
+)
 ```
 
-### Migrations
-
-Embedded SQL files per app, tracked in `_migrations` table:
-
-```go
-//go:embed migrations
-var migrationFS embed.FS
-```
-
-Files are named `001_create_notes.up.sql`, `002_add_index.up.sql`, etc.
+Burrow does not pull either backend in by default, so production binaries only link the engine they actually use.
 
 ### Templates
 
@@ -148,16 +154,17 @@ Context helpers never live in the root `burrow` package unless they are core fra
 - `burrow.JSON(w, code, v)` — JSON response
 - `burrow.Text(w, code, s)` — plain text
 - `burrow.HTML(w, code, s)` — raw HTML
+- `htmx.SmartRedirect(w, r, url)` — `HX-Redirect` header for HTMX requests, plain HTTP redirect otherwise (always prefer over manual `if IsHTMX else http.Redirect`)
 
 ### Request Binding & Validation
 
 ```go
 var input CreateNoteInput
-if err := burrow.Bind(r, &input); err != nil { return err }
+if err := burrow.Bind(r, &input); err != nil { return err } // body only (JSON / form)
 if err := burrow.Validate(input); err != nil { return err }
 ```
 
-Use `validate` struct tags. `*ValidationError` has `[]FieldError` and `HasField()`.
+Use `validate` struct tags. `*ValidationError` has `[]FieldError` and `HasField()`. `Bind` reads only the request body — combine with `chi.URLParam(r, "id")` and `r.URL.Query().Get(...)` for other input sources.
 
 ### Routing
 
@@ -167,15 +174,16 @@ Uses chi directly — `chi.URLParam(r, "id")` for path params. Middleware is std
 
 ```go
 pr := burrow.ParsePageRequest(r)
-q := burrow.ApplyOffset(q, pr)
 result := burrow.OffsetResult(pr, totalCount)
 url := burrow.PageURL(basePath, r.URL.RawQuery, page) // preserves existing query params
 ```
 
+Use the `mucss/pagination` template for ready-made `<nav>` rendering.
+
 ## Optional
 
-- [Tutorial](https://burrow.someonewho.codes/tutorial/): Build a complete polls app step by step (7 parts)
-- [TLS](https://burrow.someonewho.codes/guide/tls/): TLS modes, ACME/Let's Encrypt, self-signed certs
-- [Deployment](https://burrow.someonewho.codes/guide/deployment/): Production deployment guide
-- [Contributing](https://burrow.someonewho.codes/contributing/): Development setup and contribution workflow
-- [Changelog](https://burrow.someonewho.codes/changelog/): Version history
+- [Tutorial](https://burrow.readthedocs.io/tutorial/): Build a complete polls app step by step (8 parts)
+- [TLS](https://burrow.readthedocs.io/guide/tls/): TLS modes, ACME/Let's Encrypt, self-signed certs
+- [Deployment](https://burrow.readthedocs.io/guide/deployment/): Production deployment guide
+- [Contributing](https://burrow.readthedocs.io/contributing/): Development setup and contribution workflow
+- [Changelog](https://burrow.readthedocs.io/changelog/): Version history

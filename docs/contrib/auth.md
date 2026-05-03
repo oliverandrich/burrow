@@ -13,7 +13,7 @@ srv := burrow.NewServer(
     session.New(),
     csrf.New(),
     auth.New(),
-    bootstrap.New(),
+    mucss.New(),
     htmx.New(),
     admin.New(),
     staticApp, // staticfiles.New(emptyFS) — returns (*App, error)
@@ -58,12 +58,12 @@ An auth layout is simply a template name string referring to a template in the g
 <head>
     <meta charset="utf-8">
     <title>{{ .Title }}</title>
-    {{ template "bootstrap/css" . }}
+    {{ template "mucss/css" . }}
 </head>
-<body class="d-flex align-items-center min-vh-100">
-    <div class="container" style="max-width: 480px;">
+<body>
+    <main class="container" style="max-width: 480px;">
         {{ .Content }}
-    </div>
+    </main>
 </body>
 </html>
 {{- end }}
@@ -239,7 +239,7 @@ The auth app uses a `Renderer` interface to render all user-facing HTML pages. E
 
 ### Default Renderer
 
-By default, `auth.New()` uses a built-in renderer that calls `burrow.Render()` with the shipped `auth/*` templates. These templates use Bootstrap CSS and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.).
+By default, `auth.New()` uses a built-in renderer that calls `burrow.Render()` with the shipped `auth/*` templates. These templates use µCSS markup and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.). `auth.DefaultAuthLayout()` returns `"mucss/layout"` — apps still on the deprecated `contrib/bootstrap` need to override via `auth.WithAuthLayout("bootstrap/layout")` and supply a Bootstrap-themed `Renderer` via `auth.WithRenderer(...)`.
 
 For most applications, the default renderer works out of the box — you only need to override it if you want to fundamentally change how auth pages are rendered.
 
@@ -283,7 +283,7 @@ func (r *myRenderer) LoginPage(w http.ResponseWriter, req *http.Request, loginRe
 ```
 
 !!! tip
-    You don't need a custom renderer just to change styles. The default templates use Bootstrap classes and are wrapped in the [auth layout](#auth-layout), which you can override separately via `auth.WithAuthLayout()`.
+    You don't need a custom renderer just to change styles. The default templates use µCSS markup and are wrapped in the [auth layout](#auth-layout), which you can override separately via `auth.WithAuthLayout()`.
 
 ## Admin Integration
 

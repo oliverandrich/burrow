@@ -91,7 +91,7 @@ There are two ways to set the app layout:
 
 ```go
 srv := burrow.NewServer(
-    bootstrap.New(),  // provides base layout + CSS/JS assets
+    mucss.New(),  // provides base layout + CSS assets
     // ... other apps
 )
 ```
@@ -178,42 +178,20 @@ Your app must implement `HasTemplates` so that `myapp/layout` is part of the glo
 
 Note how dynamic data like navigation items is accessed via the `navLinks` template function (provided by the framework) rather than through data map entries. The `navLinks` function automatically filters items by auth state and computes active-link highlighting. The `.Content` key is the only data injected automatically by `Render` — it contains the rendered page fragment.
 
-### How the Bootstrap App Does It
+### How the µCSS App Does It
 
-The built-in Bootstrap app simply returns a template name:
+The built-in µCSS app simply returns a template name:
 
 ```go
 func Layout() string {
-    return "bootstrap/layout"
+    return "mucss/layout"
 }
 ```
 
-The corresponding template file (`bootstrap/layout`):
-
-```html
-{{ define "bootstrap/layout" -}}
-<!doctype html>
-<html lang="{{ lang }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ .Title }}</title>
-    {{ template "bootstrap/css" . }}
-    {{ template "bootstrap/theme_script" . }}
-    {{ template "bootstrap/js" . }}
-    {{ template "htmx/js" . }}
-</head>
-<body>
-    <main class="container py-4">
-        {{ .Content }}
-    </main>
-</body>
-</html>
-{{- end }}
-```
+The corresponding template file (`mucss/layout`) is a minimal HTML shell with themed CSS, the dark-mode-before-paint script, htmx, and the page content rendered directly in `<body>`. Apps control their own `<main>` / containers. µCSS also ships a `mucss/nav_layout` that wraps content in `<main class="container">` and exposes overridable `mucss/navbar` and `mucss/alerts` slots — see the [`mucss` contrib docs](../contrib/mucss.md#layouts) for the full template.
 
 !!! note "No navigation in the base layout"
-    The built-in `bootstrap/layout` is intentionally minimal — it provides the HTML shell, CSS/JS assets, and theme switching. If you need a navbar with navigation items, write a custom layout that wraps this one or replaces it entirely. The [tutorial](../tutorial/part3.md) shows how to build a layout with navigation.
+    The built-in `mucss/layout` is intentionally minimal — it provides the HTML shell, CSS assets, and theme switching. If you need a navbar with navigation items, either set `srv.SetLayout(mucss.NavLayout())` (which gives you `mucss/navbar` and `mucss/alerts` slots) or write a custom layout that replaces the default. The [tutorial](../tutorial/part3.md) shows how to build a layout with navigation.
 
 ## Data Flow in Layout Templates
 

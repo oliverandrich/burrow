@@ -99,7 +99,7 @@ See [`example/hello/`](example/hello/) for a minimal hello world app, or [`examp
 
 ```
 contrib/        Reusable apps
-  admin/        Admin panel coordinator + ModelAdmin
+  admin/        Admin panel coordinator (top-nav layout, dashboard cards, route mounting)
   auth/         WebAuthn passkeys, recovery codes, email verification
   authmail/     Pluggable email renderer + SMTP implementation
   bootstrap/    Bootstrap 5 CSS/JS, theme switcher, layout (deprecated, removed in v0.20)

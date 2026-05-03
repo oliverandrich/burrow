@@ -118,10 +118,10 @@ Since error pages go through the standard `Render` pipeline, they are wrapped in
 
 ## Design System Integration
 
-A design system app like `contrib/bootstrap` can override error templates to provide styled pages that match the rest of your application. The override chain is:
+A design system app like `contrib/mucss` can override error templates to provide styled pages that match the rest of your application. The override chain is:
 
 1. **Burrow core** — minimal HTML (always present)
-2. **Design system app** — styled with CSS framework (e.g. Bootstrap)
+2. **Design system app** — styled with CSS framework (e.g. µCSS)
 3. **Your app** — fully custom (if you need per-app error pages)
 
 Each layer overrides the previous one simply by defining the same template name.
