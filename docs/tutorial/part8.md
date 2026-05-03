@@ -161,6 +161,24 @@ func (a *App) adminList(w http.ResponseWriter, r *http.Request) error {
 
 `RawQuery` is passed to the pagination template so search and filter parameters are preserved across page links.
 
+## Distinguishing Not-Found from Server Errors
+
+Several admin handlers below need to surface 404 only when the requested document doesn't exist, and 500 on any other repository error (DB outage, disk error, …). Without that split, a transient infrastructure failure would silently appear as 404 to the user. Add a small helper at the top of `polls.go`:
+
+```go
+import "errors"
+
+// notFoundOrServerError discriminates between "no such row" (HTTP 404)
+// and any other repository error (HTTP 500). The repository wraps
+// den.ErrNotFound via %w so errors.Is traverses the chain to find it.
+func notFoundOrServerError(err error, notFoundMsg, serverMsg string) error {
+    if errors.Is(err, den.ErrNotFound) {
+        return burrow.NewHTTPError(http.StatusNotFound, notFoundMsg)
+    }
+    return burrow.NewHTTPError(http.StatusInternalServerError, serverMsg)
+}
+```
+
 ## Create / Edit / Delete Handlers
 
 ```go
@@ -208,7 +226,7 @@ func (a *App) adminEdit(w http.ResponseWriter, r *http.Request) error {
     id := chi.URLParam(r, "id")
     question, err := a.repo.GetQuestion(r.Context(), id)
     if err != nil {
-        return burrow.NewHTTPError(http.StatusNotFound, "question not found")
+        return notFoundOrServerError(err, "question not found", "failed to load question")
     }
     return burrow.Render(w, r, http.StatusOK, "polls/admin_form", map[string]any{
         "Title":    "Edit Poll",
@@ -223,7 +241,7 @@ func (a *App) adminUpdate(w http.ResponseWriter, r *http.Request) error {
     id := chi.URLParam(r, "id")
     question, err := a.repo.GetQuestionByID(r.Context(), id)
     if err != nil {
-        return burrow.NewHTTPError(http.StatusNotFound, "question not found")
+        return notFoundOrServerError(err, "question not found", "failed to load question")
     }
 
     text := strings.TrimSpace(r.FormValue("text"))
@@ -263,7 +281,7 @@ func (a *App) adminAddChoice(w http.ResponseWriter, r *http.Request) error {
 
     id := chi.URLParam(r, "id")
     if _, err := a.repo.GetQuestionByID(r.Context(), id); err != nil {
-        return burrow.NewHTTPError(http.StatusNotFound, "question not found")
+        return notFoundOrServerError(err, "question not found", "failed to load question")
     }
 
     text := strings.TrimSpace(r.FormValue("text"))
@@ -285,7 +303,7 @@ func (a *App) adminUpdateChoice(w http.ResponseWriter, r *http.Request) error {
     choiceID := chi.URLParam(r, "choiceID")
     choice, err := a.repo.GetChoice(r.Context(), choiceID)
     if err != nil {
-        return burrow.NewHTTPError(http.StatusNotFound, "choice not found")
+        return notFoundOrServerError(err, "choice not found", "failed to load choice")
     }
 
     text := strings.TrimSpace(r.FormValue("text"))

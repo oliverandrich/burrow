@@ -7,7 +7,7 @@ replace github.com/oliverandrich/burrow => ../..
 require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/oliverandrich/burrow v0.0.0
-	github.com/oliverandrich/den v0.11.0
+	github.com/oliverandrich/den v0.11.2
 	github.com/urfave/cli/v3 v3.8.0
 )
 

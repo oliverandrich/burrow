@@ -5,6 +5,7 @@ package polls
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -21,6 +22,18 @@ import (
 	"github.com/oliverandrich/den/where"
 	"github.com/urfave/cli/v3"
 )
+
+// notFoundOrServerError discriminates between "no such row" (HTTP 404)
+// and any other repository error (HTTP 500 — DB connection failure,
+// disk error, etc.). The repository wraps `den.ErrNotFound` via `%w`,
+// so `errors.Is` traverses the chain to find it. Without this check a
+// transient DB outage would silently surface as 404 to the user.
+func notFoundOrServerError(err error, notFoundMsg, serverMsg string) error {
+	if errors.Is(err, den.ErrNotFound) {
+		return burrow.NewHTTPError(http.StatusNotFound, notFoundMsg)
+	}
+	return burrow.NewHTTPError(http.StatusInternalServerError, serverMsg)
+}
 
 // --------------------------------------------------------------------------
 // Models
@@ -203,7 +216,7 @@ func (a *App) Detail(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	question, err := a.repo.GetQuestion(r.Context(), id)
 	if err != nil {
-		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
+		return notFoundOrServerError(err, "question not found", "failed to load question")
 	}
 	return burrow.Render(w, r, http.StatusOK, "polls/detail", map[string]any{
 		"Title":    question.Text,
@@ -221,11 +234,7 @@ func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
 		if addErr := messages.AddError(w, r, "You didn't select a choice."); addErr != nil {
 			return addErr
 		}
-		if htmx.Request(r).IsHTMX() {
-			htmx.Redirect(w, fmt.Sprintf("/polls/%s", questionID))
-			return nil
-		}
-		http.Redirect(w, r, fmt.Sprintf("/polls/%s", questionID), http.StatusSeeOther) //nolint:gosec // questionID comes from chi URLParam, path-routed and safe
+		htmx.SmartRedirect(w, r, fmt.Sprintf("/polls/%s", questionID))
 		return nil
 	}
 
@@ -236,12 +245,7 @@ func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
 	if err := messages.AddSuccess(w, r, "Your vote has been recorded!"); err != nil {
 		return err
 	}
-	resultsURL := fmt.Sprintf("/polls/%s/results", questionID)
-	if htmx.Request(r).IsHTMX() {
-		htmx.Redirect(w, resultsURL)
-		return nil
-	}
-	http.Redirect(w, r, resultsURL, http.StatusSeeOther) //nolint:gosec // questionID comes from chi URLParam, path-routed and safe
+	htmx.SmartRedirect(w, r, fmt.Sprintf("/polls/%s/results", questionID))
 	return nil
 }
 
@@ -249,7 +253,7 @@ func (a *App) Results(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	question, err := a.repo.GetQuestion(r.Context(), id)
 	if err != nil {
-		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
+		return notFoundOrServerError(err, "question not found", "failed to load question")
 	}
 	return burrow.Render(w, r, http.StatusOK, "polls/results", map[string]any{
 		"Title":    fmt.Sprintf("Results: %s", question.Text),
@@ -407,7 +411,7 @@ func (a *App) adminEdit(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	question, err := a.repo.GetQuestion(r.Context(), id)
 	if err != nil {
-		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
+		return notFoundOrServerError(err, "question not found", "failed to load question")
 	}
 	return burrow.Render(w, r, http.StatusOK, "polls/admin_form", map[string]any{
 		"Title":    "Edit Poll",
@@ -422,7 +426,7 @@ func (a *App) adminUpdate(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	question, err := a.repo.GetQuestionByID(r.Context(), id)
 	if err != nil {
-		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
+		return notFoundOrServerError(err, "question not found", "failed to load question")
 	}
 
 	text := strings.TrimSpace(r.FormValue("text"))
@@ -458,7 +462,7 @@ func (a *App) adminAddChoice(w http.ResponseWriter, r *http.Request) error {
 
 	id := chi.URLParam(r, "id")
 	if _, err := a.repo.GetQuestionByID(r.Context(), id); err != nil {
-		return burrow.NewHTTPError(http.StatusNotFound, "question not found")
+		return notFoundOrServerError(err, "question not found", "failed to load question")
 	}
 
 	text := strings.TrimSpace(r.FormValue("text"))
@@ -480,7 +484,7 @@ func (a *App) adminUpdateChoice(w http.ResponseWriter, r *http.Request) error {
 	choiceID := chi.URLParam(r, "choiceID")
 	choice, err := a.repo.GetChoice(r.Context(), choiceID)
 	if err != nil {
-		return burrow.NewHTTPError(http.StatusNotFound, "choice not found")
+		return notFoundOrServerError(err, "choice not found", "failed to load choice")
 	}
 
 	text := strings.TrimSpace(r.FormValue("text"))
