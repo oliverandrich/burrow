@@ -8,19 +8,43 @@ In this final part you'll add the `htmx` contrib app for SPA-like navigation, HT
 
 The `htmx` contrib app (registered since Part 3) provides Go helpers for detecting HTMX requests and setting response headers. To use htmx on the client side, add the script to your layout.
 
-In `internal/pages/templates/app/layout.html`, add the htmx script before the closing `</body>` tag (after the Bootstrap script) and add `hx-boost="true"` to the `<body>` tag:
+In `internal/pages/templates/app/layout.html`, add the htmx script in the `<head>` alongside the existing `mucss/css` and `mucss/theme_script` templates, and add `hx-boost="true"` plus the CSRF-headers helper to the `<body>` tag:
 
 ```html
-<body hx-boost="true">
+{{ template "htmx/js" . }}
 ```
 
 ```html
-    {{ template "htmx/js" . }}
+<body hx-boost="true" {{- csrfHxHeaders }}>
 ```
 
-Add it in the `<head>` alongside the existing `bootstrap/css` and `bootstrap/js` templates.
+`hx-boost` makes all links and forms use HTMX automatically — navigating via AJAX and swapping just the `<body>` content. Burrow's `Render()` detects the `HX-Request` header and returns only the fragment (no layout wrapping), making this work seamlessly. `csrfHxHeaders` (provided by the `csrf` contrib) renders the htmx config attribute that injects the CSRF token into every HTMX request — so we no longer need to embed `{{ csrfField }}` inside every form.
 
-This makes all links and forms use HTMX automatically — navigating via AJAX and swapping just the `<body>` content. Burrow's `Render()` detects the `HX-Request` header and returns only the fragment (no layout wrapping), making this work seamlessly.
+## Polish the User Menu
+
+Now that htmx is loaded, the inline-`<form>` logout button from Part 5 can become a proper dropdown menu with a `hx-post` link. **Replace** the entire `{{ if currentUser -}} … {{ end -}}` block in the right `<ul>` of the navbar (the inline form + `<style>` block in `<head>` for `nav .logout-form`) with this:
+
+```html
+<ul>
+    {{ if currentUser -}}
+    <li>
+        <details class="dropdown">
+            <summary>{{ (currentUser).Username }}</summary>
+            <ul dir="rtl">
+                <li dir="ltr"><a href="#" hx-post="/auth/logout">Sign out</a></li>
+            </ul>
+        </details>
+    </li>
+    {{ else -}}
+    <li><a href="/auth/login">Sign in</a></li>
+    {{ end -}}
+    <li>{{ template "mucss/theme_switcher" . }}</li>
+</ul>
+```
+
+The `<details class="dropdown">` is a native HTML5 disclosure widget that µCSS styles as a menu. The "Sign out" link triggers a POST via `hx-post` — htmx serializes no body, but the CSRF token comes through via the `csrfHxHeaders` we added to the `<body>`. `<ul dir="rtl">` right-anchors the popup; `<li dir="ltr">` keeps each item's text in normal reading order.
+
+You can now drop the `<style>` block with `nav .logout-form` rules — the dropdown doesn't need it.
 
 ## HTMX-Aware Voting
 
@@ -61,35 +85,34 @@ Update `internal/polls/templates/polls/results.html`:
 
 ```html
 {{ define "polls/results" -}}
-<div class="container py-4">
+<header>
     <h1>Results: {{ .Question.Text }}</h1>
+</header>
 
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <canvas id="results-chart" height="300"></canvas>
-        </div>
-        <div class="col-md-4">
-            <ul class="list-group">
-                {{ range .Question.Choices -}}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    {{ .Text }}
-                    <span class="badge text-bg-primary rounded-pill">
-                        {{ .Votes }} vote{{ if ne .Votes 1 }}s{{ end }}
-                    </span>
-                </li>
-                {{ end -}}
-            </ul>
-        </div>
+<div class="grid">
+    <div>
+        <canvas id="results-chart" height="300"></canvas>
     </div>
-
-    <!-- ... navigation links ... -->
+    <div>
+        <ul class="poll-results">
+            {{ range .Question.Choices -}}
+            <li>
+                <span>{{ .Text }}</span>
+                <span class="badge badge-primary">{{ .Votes }} vote{{ if ne .Votes 1 }}s{{ end }}</span>
+            </li>
+            {{ end -}}
+        </ul>
+    </div>
 </div>
+
+<!-- ... navigation links ... -->
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     const ctx = document.getElementById("results-chart");
     if (!ctx) return;
+    const primary = getComputedStyle(document.documentElement).getPropertyValue("--mu-primary").trim() || "#1095c1";
     new Chart(ctx, {
         type: "bar",
         data: {
@@ -97,8 +120,8 @@ document.addEventListener("DOMContentLoaded", function() {
             datasets: [{
                 label: "Votes",
                 data: [{{ range $i, $c := .Question.Choices }}{{ if $i }}, {{ end }}{{ $c.Votes }}{{ end }}],
-                backgroundColor: "rgba(13, 110, 253, 0.7)",
-                borderColor: "rgb(13, 110, 253)",
+                backgroundColor: primary,
+                borderColor: primary,
                 borderWidth: 1,
                 borderRadius: 4
             }]
@@ -176,41 +199,49 @@ func (a *App) List(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
-Update `internal/polls/templates/polls/list.html` to add an `id` to the list group and append the scroll trigger:
+Extract the question item into its own template so both the initial list and the scroll-loaded chunks can render it identically. Create `internal/polls/templates/polls/question_item.html`:
+
+```html
+{{ define "polls/question_item" -}}
+<a href="/polls/{{ .ID }}" class="polls-list-item">
+    <article>
+        <strong>{{ .Text }}</strong>
+        <small>{{ .PublishedAt.Format "2 Jan 2006" }}</small>
+    </article>
+</a>
+{{- end }}
+```
+
+Update `internal/polls/templates/polls/list.html` to add an `id` to the list container and append the scroll trigger:
 
 ```html
 {{ define "polls/list" -}}
-<div class="container py-4">
+<header>
     <h1>Polls</h1>
-    {{ if .Questions -}}
-    <div id="polls-list" class="list-group">
-        {{ range .Questions -}}
-        <a href="/polls/{{ .ID }}" class="list-group-item list-group-item-action">
-            <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">{{ .Text }}</h5>
-                <small class="text-body-secondary">
-                    {{ .PublishedAt.Format "2 Jan 2006" }}
-                </small>
-            </div>
-        </a>
-        {{ end -}}
-    </div>
-    {{ if .Page.HasMore -}}
-    <div hx-get="/polls?page={{ add .Page.Page 1 }}&limit=20"
-         hx-trigger="revealed"
-         hx-target="#polls-list"
-         hx-swap="beforeend">
-        <div class="text-center py-3">
-            <div class="spinner-border spinner-border-sm" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
-    </div>
-    {{ end -}}
-    {{ else -}}
-    <div class="alert alert-info">No polls available yet.</div>
+</header>
+{{ if .Questions -}}
+<div class="polls-list" id="polls-list">
+    {{ range .Questions -}}
+    {{ template "polls/question_item" . }}
     {{ end -}}
 </div>
+{{ if .Page.HasMore -}}
+<div hx-get="/polls?page={{ add .Page.Page 1 }}&limit=20"
+     hx-trigger="revealed"
+     hx-target="#polls-list"
+     hx-swap="beforeend"
+     hx-select="template">
+    <p aria-busy="true">Loading…</p>
+</div>
+{{ end -}}
+{{ else -}}
+<div class="alert alert-info" role="alert">No polls available yet.</div>
+{{ end -}}
+<style>
+.polls-list{display:flex;flex-direction:column;gap:.5rem}
+.polls-list-item{color:inherit;text-decoration:none}
+.polls-list-item article{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin:0}
+</style>
 {{- end }}
 ```
 
@@ -219,25 +250,14 @@ Create a new file `internal/polls/templates/polls/list_page.html` — it returns
 ```html
 {{ define "polls/list_page" -}}
 {{ range .Questions -}}
-<a href="/polls/{{ .ID }}" class="list-group-item list-group-item-action">
-    <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">{{ .Text }}</h5>
-        <small class="text-body-secondary">
-            {{ .PublishedAt.Format "2 Jan 2006" }}
-        </small>
-    </div>
-</a>
+{{ template "polls/question_item" . }}
 {{ end -}}
 {{ if .Page.HasMore -}}
-<div hx-get="/polls?cursor={{ .Page.NextCursor }}&limit=20"
+<div hx-get="/polls?page={{ add .Page.Page 1 }}&limit=20"
      hx-trigger="revealed"
      hx-target="#polls-list"
      hx-swap="beforeend">
-    <div class="text-center py-3">
-        <div class="spinner-border spinner-border-sm" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
+    <p aria-busy="true">Loading…</p>
 </div>
 {{ end -}}
 {{- end }}

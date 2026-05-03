@@ -23,7 +23,7 @@ type Question struct {
 	document.Base
 	PublishedAt time.Time `json:"published_at" den:"index"`
 	Text        string    `json:"text"`
-	Choices     []Choice  `json:"choices,omitempty" den:"-"`
+	Choices     []Choice  `json:"-"`
 }
 
 // Choice represents a possible answer to a question.

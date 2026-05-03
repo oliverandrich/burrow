@@ -30,7 +30,7 @@ srv := burrow.NewServer(
     staticApp,
     htmx.New(),
     messages.New(),      // new
-    bootstrap.New(),
+    mucss.New(),
     pages.New(),
     polls.New(),
 )
@@ -42,23 +42,28 @@ Update `internal/polls/templates/polls/detail.html` to include a form with radio
 
 ```html
 {{ define "polls/detail" -}}
-<div class="container py-4">
+<header>
     <h1>{{ .Question.Text }}</h1>
-    <form method="post" action="/polls/{{ .Question.ID }}/vote">
-        {{ csrfField }}
-        <div class="list-group mb-3">
-            {{ range .Question.Choices -}}
-            <label class="list-group-item">
-                <input class="form-check-input me-2" type="radio"
-                       name="choice" value="{{ .ID }}">
-                {{ .Text }}
-            </label>
-            {{ end -}}
-        </div>
+</header>
+<form method="post" action="/polls/{{ .Question.ID }}/vote">
+    {{ csrfField }}
+    <fieldset class="poll-choices">
+        {{ range .Question.Choices -}}
+        <label>
+            <input type="radio" name="choice" value="{{ .ID }}">
+            {{ .Text }}
+        </label>
+        {{ end -}}
+    </fieldset>
+    <div role="group">
         <button type="submit" class="btn btn-primary">Vote</button>
-        <a href="/polls" class="btn btn-secondary">&laquo; Back to polls</a>
-    </form>
-</div>
+        <a href="/polls" role="button" class="btn btn-outline btn-secondary">&laquo; Back to polls</a>
+    </div>
+</form>
+<style>
+.poll-choices{border:none;padding:0;margin-bottom:1rem}
+.poll-choices label{display:flex;align-items:center;gap:.5rem;padding:.5rem 0}
+</style>
 {{- end }}
 ```
 
@@ -146,35 +151,16 @@ Update the layout template in `internal/pages/templates/app/layout.html` to show
 
 ```html
 <main class="container">
-    {{ if .Messages -}}
-    {{ range .Messages -}}
-    <div class="alert alert-{{ .Level }} alert-dismissible fade show" role="alert">
-        {{ .Text }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {{ end -}}
+    {{ range messages -}}
+    <div class="alert alert-{{ .Level }}" role="alert">{{ .Text }}</div>
     {{ end -}}
     {{ .Content }}
 </main>
 ```
 
-In `internal/pages/pages.go`, add the `messages` import:
+`messages` is a template function provided by the `messages` contrib app via `HasRequestFuncMap` — it returns the flash messages for the current request without you having to plumb them through the template data manually.
 
-```go
-"github.com/oliverandrich/burrow/contrib/messages"
-```
-
-Then update the layout function to pass messages to the template:
-
-```go
-layoutData := map[string]any{
-    "Content":  content,
-    "NavItems": burrow.NavItems(r.Context()),
-    "Messages": messages.Get(r.Context()),  // new
-}
-```
-
-Messages have a `Level` (success, error, warning, info) and `Text`. Each level maps naturally to a Bootstrap alert class.
+Each `Message` has a `Level` (success, error, warning, info) and `Text`. The level maps naturally to a µCSS alert class — `alert-success`, `alert-error`, `alert-warning`, `alert-info`.
 
 ## Run It
 

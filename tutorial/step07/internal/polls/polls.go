@@ -29,7 +29,7 @@ type Question struct {
 	document.Base
 	PublishedAt time.Time `json:"published_at" den:"index" verbose:"Published"`
 	Text        string    `json:"text" verbose:"Question"`
-	Choices     []Choice  `json:"choices,omitempty" den:"-"`
+	Choices     []Choice  `json:"-"`
 }
 
 type Choice struct {
@@ -83,6 +83,16 @@ func (r *Repository) GetQuestion(ctx context.Context, id string) (*Question, err
 	}
 	question.Choices = choices
 	return question, nil
+}
+
+// CreateQuestion inserts a new question.
+func (r *Repository) CreateQuestion(ctx context.Context, q *Question) error {
+	return den.Insert(ctx, r.db, q)
+}
+
+// CreateChoice inserts a new choice for a question.
+func (r *Repository) CreateChoice(ctx context.Context, c *Choice) error {
+	return den.Insert(ctx, r.db, c)
 }
 
 func (r *Repository) IncrementVotes(ctx context.Context, choiceID string) error {
@@ -145,7 +155,7 @@ func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
 			htmx.Redirect(w, fmt.Sprintf("/polls/%s", questionID))
 			return nil
 		}
-		http.Redirect(w, r, fmt.Sprintf("/polls/%s", questionID), http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("/polls/%s", questionID), http.StatusSeeOther) //nolint:gosec // questionID comes from chi URLParam, path-routed and safe
 		return nil
 	}
 
@@ -161,7 +171,7 @@ func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
 		htmx.Redirect(w, resultsURL)
 		return nil
 	}
-	http.Redirect(w, r, resultsURL, http.StatusSeeOther)
+	http.Redirect(w, r, resultsURL, http.StatusSeeOther) //nolint:gosec // questionID comes from chi URLParam, path-routed and safe
 	return nil
 }
 
@@ -226,4 +236,29 @@ func (a *App) Routes(r chi.Router) {
 			r.Post("/{id}/vote", burrow.Handle(a.Vote))
 		})
 	})
+}
+
+// Seed inserts a few example questions when the server is started with --seed.
+// Implements [burrow.Seedable].
+func (a *App) Seed(ctx context.Context) error {
+	samples := []struct {
+		text    string
+		choices []string
+	}{
+		{"What's your favourite Go web framework?", []string{"Burrow", "Gin", "Echo", "net/http alone"}},
+		{"How long have you been writing Go?", []string{"<1 year", "1–3 years", "3–5 years", "5+ years"}},
+		{"Which IDE do you prefer for Go?", []string{"VS Code", "GoLand", "Vim/Neovim", "Cursor"}},
+	}
+	for _, s := range samples {
+		q := &Question{Text: s.text, PublishedAt: time.Now()}
+		if err := a.repo.CreateQuestion(ctx, q); err != nil {
+			return fmt.Errorf("seed question %q: %w", s.text, err)
+		}
+		for _, ct := range s.choices {
+			if err := a.repo.CreateChoice(ctx, &Choice{QuestionID: q.ID, Text: ct}); err != nil {
+				return fmt.Errorf("seed choice %q: %w", ct, err)
+			}
+		}
+	}
+	return nil
 }

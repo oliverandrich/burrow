@@ -10,11 +10,11 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/admin"
 	"github.com/oliverandrich/burrow/contrib/auth"
-	"github.com/oliverandrich/burrow/contrib/bootstrap"
 	"github.com/oliverandrich/burrow/contrib/csrf"
 	"github.com/oliverandrich/burrow/contrib/healthcheck"
 	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow/contrib/mucss"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
@@ -39,7 +39,7 @@ func main() {
 		healthcheck.New(),
 		messages.New(),
 		htmx.New(),
-		bootstrap.New(),
+		mucss.New(),
 		pages.New(),
 		auth.New(),
 		polls.New(),

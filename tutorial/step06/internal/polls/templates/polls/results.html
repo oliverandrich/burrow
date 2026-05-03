@@ -1,15 +1,21 @@
 {{ define "polls/results" -}}
-<div class="container py-4">
+<header>
     <h1>Results: {{ .Question.Text }}</h1>
-    <ul class="list-group mb-3">
-        {{ range .Question.Choices -}}
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            {{ .Text }}
-            <span class="badge text-bg-primary rounded-pill">{{ .Votes }} vote{{ if ne .Votes 1 }}s{{ end }}</span>
-        </li>
-        {{ end -}}
-    </ul>
-    <a href="/polls/{{ .Question.ID }}" class="btn btn-primary">Vote again</a>
-    <a href="/polls" class="btn btn-secondary">&laquo; Back to polls</a>
+</header>
+<ul class="poll-results">
+    {{ range .Question.Choices -}}
+    <li>
+        <span>{{ .Text }}</span>
+        <span class="badge badge-primary">{{ .Votes }} vote{{ if ne .Votes 1 }}s{{ end }}</span>
+    </li>
+    {{ end -}}
+</ul>
+<div role="group">
+    <a href="/polls/{{ .Question.ID }}" role="button" class="btn btn-primary">Vote again</a>
+    <a href="/polls" role="button" class="btn btn-outline btn-secondary">&laquo; Back to polls</a>
 </div>
+<style>
+.poll-results{list-style:none;padding:0}
+.poll-results li{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--mu-muted-border-color)}
+</style>
 {{- end }}

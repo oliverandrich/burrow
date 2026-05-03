@@ -1,6 +1,6 @@
 # Part 3: Templates & Layouts
 
-In this part you'll add HTML templates, a Bootstrap-styled layout, and views that render question lists and detail pages.
+In this part you'll add HTML templates, a µCSS-styled layout, and views that render question lists and detail pages.
 
 **Source code:** [`tutorial/step03/`](https://github.com/oliverandrich/burrow/tree/main/tutorial/step03)
 
@@ -56,25 +56,28 @@ Create `internal/polls/templates/polls/list.html`:
 
 ```html
 {{ define "polls/list" -}}
-<div class="container py-4">
+<header>
     <h1>Polls</h1>
-    {{ if .Questions -}}
-    <div class="list-group">
-        {{ range .Questions -}}
-        <a href="/polls/{{ .ID }}" class="list-group-item list-group-item-action">
-            <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">{{ .Text }}</h5>
-                <small class="text-body-secondary">
-                    {{ .PublishedAt.Format "2 Jan 2006" }}
-                </small>
-            </div>
-        </a>
-        {{ end -}}
-    </div>
-    {{ else -}}
-    <div class="alert alert-info">No polls available yet.</div>
+</header>
+{{ if .Questions -}}
+<div class="polls-list">
+    {{ range .Questions -}}
+    <a href="/polls/{{ .ID }}" class="polls-list-item">
+        <article>
+            <strong>{{ .Text }}</strong>
+            <small>{{ .PublishedAt.Format "2 Jan 2006" }}</small>
+        </article>
+    </a>
     {{ end -}}
 </div>
+{{ else -}}
+<div class="alert alert-info" role="alert">No polls available yet.</div>
+{{ end -}}
+<style>
+.polls-list{display:flex;flex-direction:column;gap:.5rem}
+.polls-list-item{color:inherit;text-decoration:none}
+.polls-list-item article{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin:0}
+</style>
 {{- end }}
 ```
 
@@ -82,15 +85,15 @@ Create `internal/polls/templates/polls/detail.html`:
 
 ```html
 {{ define "polls/detail" -}}
-<div class="container py-4">
+<header>
     <h1>{{ .Question.Text }}</h1>
-    <ul class="list-group mb-3">
-        {{ range .Question.Choices -}}
-        <li class="list-group-item">{{ .Text }}</li>
-        {{ end -}}
-    </ul>
-    <a href="/polls" class="btn btn-secondary">&laquo; Back to polls</a>
-</div>
+</header>
+<ul>
+    {{ range .Question.Choices -}}
+    <li>{{ .Text }}</li>
+    {{ end -}}
+</ul>
+<a href="/polls" role="button" class="btn btn-outline btn-secondary">&laquo; Back to polls</a>
 {{- end }}
 ```
 
@@ -98,21 +101,25 @@ And `internal/polls/templates/polls/results.html`:
 
 ```html
 {{ define "polls/results" -}}
-<div class="container py-4">
+<header>
     <h1>Results: {{ .Question.Text }}</h1>
-    <ul class="list-group mb-3">
-        {{ range .Question.Choices -}}
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            {{ .Text }}
-            <span class="badge text-bg-primary rounded-pill">
-                {{ .Votes }} vote{{ if ne .Votes 1 }}s{{ end }}
-            </span>
-        </li>
-        {{ end -}}
-    </ul>
-    <a href="/polls/{{ .Question.ID }}" class="btn btn-primary">Vote again</a>
-    <a href="/polls" class="btn btn-secondary">&laquo; Back to polls</a>
+</header>
+<ul class="poll-results">
+    {{ range .Question.Choices -}}
+    <li>
+        <span>{{ .Text }}</span>
+        <span class="badge badge-primary">{{ .Votes }} vote{{ if ne .Votes 1 }}s{{ end }}</span>
+    </li>
+    {{ end -}}
+</ul>
+<div role="group">
+    <a href="/polls/{{ .Question.ID }}" role="button" class="btn btn-primary">Vote again</a>
+    <a href="/polls" role="button" class="btn btn-outline btn-secondary">&laquo; Back to polls</a>
 </div>
+<style>
+.poll-results{list-style:none;padding:0}
+.poll-results li{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--mu-muted-border-color)}
+</style>
 {{- end }}
 ```
 
@@ -240,28 +247,25 @@ Create `internal/pages/templates/app/layout.html`:
 ```html
 {{ define "app/layout" -}}
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ if .Title }}{{ .Title }} — {{ end }}Polls</title>
-    {{ template "bootstrap/css" . }}
-    {{ template "bootstrap/js" . }}
+    {{ template "mucss/css" . }}
+    {{ template "mucss/theme_script" . }}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg bg-body-tertiary mb-4">
-        <div class="container">
-            <a class="navbar-brand" href="/">Polls</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav">
-                    {{ range navLinks -}}
-                    <li class="nav-item">
-                        <a class="nav-link{{ if .IsActive }} active{{ end }}" href="{{ .URL }}">{{ .Label }}</a>
-                    </li>
-                    {{ end -}}
-                </ul>
-            </div>
-        </div>
+    <nav class="container-fluid">
+        <ul>
+            <li><a href="/"><strong>Polls</strong></a></li>
+            {{ range navLinks -}}
+            <li><a href="{{ .URL }}"{{ if .IsActive }} aria-current="page"{{ end }}>{{ .Label }}</a></li>
+            {{ end -}}
+        </ul>
+        <ul>
+            <li>{{ template "mucss/theme_switcher" . }}</li>
+        </ul>
     </nav>
     <main class="container">
         {{ .Content }}
@@ -271,9 +275,9 @@ Create `internal/pages/templates/app/layout.html`:
 {{- end }}
 ```
 
-`navLinks` is a built-in template function that returns the navigation items registered by all apps (via `HasNavItems`), with `IsActive` pre-computed based on the current request path. Each item has `.Label`, `.URL`, `.Icon`, and `.IsActive` fields.
+`navLinks` is a built-in template function that returns the navigation items registered by all apps (via `HasNavItems`), with `IsActive` pre-computed based on the current request path. Each item has `.Label`, `.URL`, `.Icon`, and `.IsActive` fields. We mark the current page with `aria-current="page"`, which µCSS styles natively as the active link.
 
-The `{{ template "bootstrap/css" }}` and `{{ template "bootstrap/js" }}` calls include the Bootstrap stylesheet and JavaScript bundle. These are reusable templates provided by the `bootstrap` contrib app — internally they use `staticURL` to generate content-hashed URLs for cache busting.
+The `{{ template "mucss/css" }}` call includes the µCSS stylesheet, `{{ template "mucss/theme_script" }}` adds the dark/light theme switcher script (and a snippet that applies the saved theme before paint to avoid a flash of unstyled content), and `{{ template "mucss/theme_switcher" }}` renders a small dropdown the user can use to toggle the theme. These templates are provided by the `mucss` contrib app — internally they use `staticURL` for content-hashed URLs.
 
 ### The Homepage Template
 
@@ -281,17 +285,17 @@ Create `internal/pages/templates/pages/home.html`:
 
 ```html
 {{ define "pages/home" -}}
-<div class="px-4 py-5 text-center">
-    <h1 class="display-5 fw-bold">Welcome to Polls</h1>
-    <div class="col-lg-6 mx-auto">
-        <p class="lead mb-4">
-            A simple polling application built with the burrow framework.
-        </p>
-        <a href="/polls" class="btn btn-primary btn-lg">View Polls &raquo;</a>
-    </div>
-</div>
+<section class="hero">
+    <hgroup>
+        <h1>Welcome to Polls</h1>
+        <p>A simple polling application built with the burrow framework.</p>
+    </hgroup>
+    <p><a href="/polls" role="button" class="btn btn-primary btn-lg">View Polls &raquo;</a></p>
+</section>
 {{- end }}
 ```
+
+`<section class="hero">` is one of µCSS's component classes — it gives you a centered title block with subtle styling, perfect for a landing-page header.
 
 ## Update main.go
 
@@ -307,8 +311,8 @@ import (
     "os"
 
     "github.com/oliverandrich/burrow"
-    "github.com/oliverandrich/burrow/contrib/bootstrap"
     "github.com/oliverandrich/burrow/contrib/htmx"
+    "github.com/oliverandrich/burrow/contrib/mucss"
     "github.com/oliverandrich/burrow/contrib/staticfiles"
     "github.com/urfave/cli/v3"
 
@@ -317,7 +321,7 @@ import (
 )
 
 // emptyFS is a placeholder — our app has no static files of its own yet.
-// Contrib apps (bootstrap, htmx) contribute their own assets via HasStaticFiles.
+// Contrib apps (mucss, htmx) contribute their own assets via HasStaticFiles.
 // When you add your own CSS/JS later, replace this with //go:embed static.
 var emptyFS embed.FS
 
@@ -330,7 +334,7 @@ func main() {
     srv := burrow.NewServer(
         staticApp,
         htmx.New(),
-        bootstrap.New(),
+        mucss.New(),
         pages.New(),
         polls.New(),
     )
@@ -354,8 +358,8 @@ func main() {
 This replaces the `homepageApp` from Part 1 with proper apps:
 
 - **`staticfiles`** — serves static files with content-hashed URLs
-- **`htmx`** — provides the htmx JavaScript library (required by Bootstrap app)
-- **`bootstrap`** — provides Bootstrap 5 CSS/JS as static assets
+- **`htmx`** — provides the htmx JavaScript library
+- **`mucss`** — provides the µCSS stylesheet, theme switcher, and dark/light mode script
 - **`pages`** — homepage and layout
 - **`polls`** — now with templates and routes
 
@@ -366,17 +370,17 @@ go mod tidy
 go run .
 ```
 
-Open `http://localhost:8080` — you'll see the Bootstrap-styled homepage. Click "View Polls" to see the (empty) polls list. There are no questions yet because we haven't added a way to create them.
+Open `http://localhost:8080` — you'll see the µCSS-styled homepage. Click "View Polls" to see the (empty) polls list. There are no questions yet because we haven't added a way to create them.
 
 !!! tip "Seeding test data"
-    You can add a `Seed()` method to your app (implementing the `Seedable` interface) to insert test data on demand. Start the server with `--seed` to run all seed functions: `go run . --seed`. See [Part 2](part2.md) for the app setup pattern — you'd add questions and choices using `den.Insert()` in your `Seed()` method.
+    The polls app implements `Seedable` with a `Seed(ctx)` method that inserts a few example questions. Start the server with `--seed` once to populate the database: `go run . --seed`. The seed runs every time `--seed` is passed, so re-running it duplicates the questions — drop `data/app.db` between runs if you want a clean reset.
 
 ## What You've Learnt
 
 - **`HasTemplates`** — apps contribute `.html` template files to the global template set
 - **`Render()`** — renders a named template, automatically wrapping in a layout for normal requests and returning fragments for HTMX requests
 - **Layout templates** — wrap page content in a full HTML document with navigation (via `navLinks` template function), scripts, and styles
-- **`staticfiles`** and **`bootstrap`** — contrib apps handle CSS/JS assets with cache busting
+- **`staticfiles`** and **`mucss`** — contrib apps handle CSS/JS assets with cache busting
 
 ## Next
 

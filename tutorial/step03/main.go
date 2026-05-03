@@ -1,4 +1,4 @@
-// Command step03 adds templates, layouts, and Bootstrap styling.
+// Command step03 adds templates, layouts, and µCSS styling.
 package main
 
 import (
@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/bootstrap"
 	"github.com/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/burrow/contrib/mucss"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
@@ -19,7 +19,7 @@ import (
 )
 
 // emptyFS is used when the application has no custom static assets.
-// Contrib apps like bootstrap contribute their own assets automatically.
+// Contrib apps like mucss contribute their own assets automatically.
 var emptyFS embed.FS
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 	srv := burrow.NewServer(
 		staticApp,
 		htmx.New(),
-		bootstrap.New(),
+		mucss.New(),
 		pages.New(),
 		polls.New(),
 	)

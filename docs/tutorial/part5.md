@@ -21,7 +21,7 @@ srv := burrow.NewServer(
     staticApp,
     htmx.New(),
     messages.New(),
-    bootstrap.New(),
+    mucss.New(),
     pages.New(),
     auth.New(),           // new
     polls.New(),
@@ -93,41 +93,47 @@ layoutData := map[string]any{
 }
 ```
 
-Update the navbar in `internal/pages/templates/app/layout.html`. The user controls go into a second `<ul>` with `ms-auto` to push them to the right, while the existing navigation links stay on the left:
+Update the navbar in `internal/pages/templates/app/layout.html`. The brand and nav items stay in the left `<ul>`; the username, sign-out form, and theme switcher go into a second `<ul>` (µCSS's `<nav>` flex layout pushes them to the right automatically). Logout has to be a POST to defend against CSRF, so we use a small inline `<form>` with the submit button styled as a link:
 
 ```html
-<nav class="navbar navbar-expand-lg bg-body-tertiary mb-4">
-    <div class="container">
-        <a class="navbar-brand" href="/">Polls</a>
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav">
-                {{ range .NavItems -}}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ .URL }}">{{ .Label }}</a>
-                </li>
-                {{ end -}}
-            </ul>
-            <ul class="navbar-nav ms-auto">
-                {{ if .User -}}
-                <li class="nav-item">
-                    <span class="nav-link text-body-secondary">{{ .User.Username }}</span>
-                </li>
-                <li class="nav-item">
-                    <form method="post" action="/auth/logout">
-                        {{ csrfField }}
-                        <button type="submit" class="btn btn-link nav-link">Sign out</button>
-                    </form>
-                </li>
-                {{ else -}}
-                <li class="nav-item">
-                    <a class="nav-link" href="/auth/login">Sign in</a>
-                </li>
-                {{ end -}}
-            </ul>
-        </div>
-    </div>
+<nav class="container-fluid">
+    <ul>
+        <li><a href="/"><strong>Polls</strong></a></li>
+        {{ range navLinks -}}
+        <li><a href="{{ .URL }}"{{ if .IsActive }} aria-current="page"{{ end }}>{{ .Label }}</a></li>
+        {{ end -}}
+    </ul>
+    <ul>
+        {{ if currentUser -}}
+        <li><small>{{ (currentUser).Username }}</small></li>
+        <li>
+            <form method="post" action="/auth/logout" class="logout-form">
+                {{ csrfField }}
+                <button type="submit" class="btn btn-link">Sign out</button>
+            </form>
+        </li>
+        {{ else -}}
+        <li><a href="/auth/login">Sign in</a></li>
+        {{ end -}}
+        <li>{{ template "mucss/theme_switcher" . }}</li>
+    </ul>
 </nav>
 ```
+
+The logout form needs two small style tweaks so the submit button reads as a regular nav link instead of a stacked block element. Add this `<style>` block in the `<head>` (alongside the µCSS templates):
+
+```html
+<style>
+nav .logout-form{display:inline;margin:0}
+nav .logout-form button{margin:0}
+</style>
+```
+
+`currentUser` is a template function provided by the auth app via `HasRequestFuncMap` — it returns the logged-in user (or nil) for the current request, so you don't need to plumb it through the layout data manually.
+
+The parentheses around `currentUser` are required because it's a function — `currentUser.Username` would try to look up a `Username` field on the function value itself. `(currentUser).Username` calls the function first, then accesses the field on the returned `*auth.User`.
+
+We'll polish this navbar into a proper dropdown menu in [Part 7](part7.md) once we have htmx loaded — the inline `<form>` is a clean fallback that works without any client-side JavaScript.
 
 ## Run It
 
