@@ -25,8 +25,8 @@ The htmx app embeds `htmx.min.js` and the [SSE extension](https://htmx.org/exten
 
 The `htmx/config` template renders a `<meta>` tag that configures htmx to swap `422 Unprocessable Entity` responses. This is the correct HTTP status for form validation errors, and allows handlers to return 422 consistently for both htmx and non-htmx requests.
 
-!!! note "Included in the µCSS and Bootstrap layouts"
-    If you use the `mucss` or `bootstrap` app, `htmx/config` is already included in the default layout.
+!!! note "Included in the µCSS layout"
+    If you use the `mucss` app, `htmx/config` is already included in the default layout. (The deprecated `bootstrap` contrib also includes it.)
 
 ## Templates
 

@@ -209,4 +209,4 @@ just update-mucss 1.4.7      # specific version
 
 ## Relationship to `contrib/bootstrap`
 
-`contrib/mucss` is the default design contrib for Burrow. `contrib/bootstrap` remains as a maintained alternative for users who prefer Bootstrap. Pick one design contrib per server.
+`contrib/mucss` is the default design contrib for Burrow. `contrib/bootstrap` is deprecated and scheduled for removal in v0.20 — only critical fixes are accepted in the meantime. New projects should use `mucss`; existing Bootstrap-based projects have one or two minor releases of runway to migrate.

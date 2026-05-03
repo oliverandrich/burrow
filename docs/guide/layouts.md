@@ -96,7 +96,7 @@ srv := burrow.NewServer(
 )
 ```
 
-Both the `mucss` and `bootstrap` apps inject their default layout via middleware only when no layout is already set. This is batteries-included by default — `mucss` is the recommended choice for new projects, `bootstrap` is maintained as an alternative.
+The `mucss` app injects its default layout via middleware only when no layout is already set. This is batteries-included by default. (The legacy `bootstrap` contrib does the same but is deprecated and scheduled for removal in v0.20 — use `mucss` for new projects.)
 
 **Using `SetLayout()` explicitly:**
 

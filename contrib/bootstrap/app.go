@@ -6,6 +6,12 @@
 //
 // The app ships three color themes (blue, purple, gray) selectable via
 // [WithColor].
+//
+// Deprecated: contrib/bootstrap is scheduled for removal in v0.20.
+// Use [github.com/oliverandrich/burrow/contrib/mucss] instead — the µCSS
+// design system is now Burrow's default. The mucss layout, theme switcher,
+// pagination template, and component classes (Hero, Alert, Toast, Modal,
+// Pagination, Badge, Tabs) cover the same surface area.
 package bootstrap
 
 import (
@@ -59,6 +65,9 @@ type App struct {
 }
 
 // New creates a new bootstrap design app with the given options.
+//
+// Deprecated: contrib/bootstrap is scheduled for removal in v0.20.
+// Use [github.com/oliverandrich/burrow/contrib/mucss] instead.
 func New(opts ...Option) *App {
 	a := &App{
 		color: Purple,

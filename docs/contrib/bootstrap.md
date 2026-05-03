@@ -1,5 +1,8 @@
 # Bootstrap
 
+!!! warning "Deprecated — scheduled for removal in v0.20"
+    `contrib/bootstrap` is deprecated. The default design contrib is now [`mucss`](mucss.md), and all in-tree apps (admin, auth, examples, tutorial) ship µCSS markup. Bootstrap remains available for one or two more minor releases for backward compatibility, but no new features will land and only critical bug fixes will be accepted. **Migrate to `mucss` for new projects.** See [the µCSS docs](mucss.md) for the migration patterns; the conversion is mostly mechanical (`<div class="card">` → `<article>`, `<button class="btn btn-primary">` keeps the same class names, `alert-danger` → `alert-error`, etc.).
+
 Design system using [Bootstrap 5](https://getbootstrap.com/) and [htmx](https://htmx.org/). Ships three color themes (blue, purple, gray) compiled from Sass, a base layout, a navbar layout with overridable slots, and a dark mode theme switcher. For icons, see [`bsicons`](bsicons.md). For htmx helpers, see [`htmx`](htmx.md).
 
 **Package:** `github.com/oliverandrich/burrow/contrib/bootstrap`

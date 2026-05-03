@@ -31,7 +31,7 @@ Built on [Chi](https://go-chi.io/), [Den](https://github.com/oliverandrich/den) 
 - **SQLite or PostgreSQL** — embedded SQLite (pure Go, no CGO) for single-binary deploys, or PostgreSQL for scale — switch with one flag
 - **Automatic schema** — document types declared in code, tables and indexes created on startup
 - **Standard templates** — Go's `html/template` with a global template set, per-app FuncMaps, and automatic layout wrapping
-- **CSS-agnostic** — the framework itself ships no CSS. The default design contrib is [µCSS](https://mucss.org/) (a polished PicoCSS v2 derivative); Bootstrap 5 is maintained as an alternative.
+- **CSS-agnostic** — the framework itself ships no CSS. The default design contrib is [µCSS](https://mucss.org/) (a polished PicoCSS v2 derivative). The legacy Bootstrap 5 contrib is deprecated and scheduled for removal in v0.20.
 - **Layout system** — app layout via server, admin layout via admin package
 - **CLI configuration** — flags, environment variables, and TOML config via [urfave/cli](https://github.com/urfave/cli)
 - **CSRF protection** — automatic token generation and validation
@@ -102,7 +102,7 @@ contrib/        Reusable apps
   admin/        Admin panel coordinator + ModelAdmin
   auth/         WebAuthn passkeys, recovery codes, email verification
   authmail/     Pluggable email renderer + SMTP implementation
-  bootstrap/    Bootstrap 5 CSS/JS, theme switcher, layout (alternative to mucss)
+  bootstrap/    Bootstrap 5 CSS/JS, theme switcher, layout (deprecated, removed in v0.20)
   bsicons/      Bootstrap Icons as inline SVG template functions
   csrf/         CSRF protection
   healthcheck/  Liveness and readiness probes
