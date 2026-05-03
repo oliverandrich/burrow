@@ -111,7 +111,7 @@ func (a *App) cacheHeadersMiddleware(next http.Handler) http.Handler {
 		path := r.URL.Path
 		if strings.HasPrefix(path, a.prefix) {
 			if isHashedAsset(path) {
-				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				w.Header().Set("Cache-Control", burrow.CacheControlImmutable)
 			} else {
 				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 			}

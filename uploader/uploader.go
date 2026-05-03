@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/oliverandrich/den/storage"
@@ -258,7 +259,7 @@ func setServeHeaders(w http.ResponseWriter, key string) {
 	if mimeType := mime.TypeByExtension(path.Ext(key)); mimeType != "" {
 		w.Header().Set("Content-Type", mimeType)
 	}
-	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	w.Header().Set("Cache-Control", burrow.CacheControlImmutable)
 }
 
 // maxBytesReader returns ErrFileTooLarge as soon as more than max bytes

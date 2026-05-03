@@ -9,6 +9,13 @@ import (
 	"strings"
 )
 
+// CacheControlImmutable is the Cache-Control header value for
+// content-addressed responses where the same URL is guaranteed to
+// always return the same bytes — content-hashed static assets,
+// content-hashed upload paths, etc. Browsers and CDNs may cache
+// the response for a year and skip revalidation entirely.
+const CacheControlImmutable = "public, max-age=31536000, immutable"
+
 // HandlerFunc is an HTTP handler that returns an error.
 // Use Handle() to convert it to a standard http.HandlerFunc.
 type HandlerFunc func(w http.ResponseWriter, r *http.Request) error
