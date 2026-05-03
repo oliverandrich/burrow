@@ -33,7 +33,10 @@ func TestOpenDB_SQLiteMemory(t *testing.T) {
 func TestOpenDB_UnsupportedScheme(t *testing.T) {
 	_, err := OpenDB(t.Context(), "mysql://localhost/test")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported")
+	require.ErrorIs(t, err, den.ErrUnsupportedScheme,
+		"OpenDB must wrap den.ErrUnsupportedScheme so callers can match via errors.Is")
+	assert.Contains(t, err.Error(), `add `+"`"+`_ "github.com/oliverandrich/den/backend/mysql"`+"`",
+		"OpenDB must append the Burrow-specific blank-import hint")
 }
 
 func TestOpenDB_EmptyDSN(t *testing.T) {

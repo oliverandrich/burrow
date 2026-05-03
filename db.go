@@ -2,6 +2,7 @@ package burrow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -54,10 +55,10 @@ func OpenDBWithoutValidation(ctx context.Context, dsn string, opts ...den.Option
 }
 
 // wrapUnregisteredBackend appends a Burrow-specific hint to Den's
-// "unsupported database scheme" error pointing at the missing
-// blank-import. Returns err unchanged for nil and for any other error.
+// ErrUnsupportedScheme error pointing at the missing blank-import.
+// Returns err unchanged for nil and for any other error.
 func wrapUnregisteredBackend(dsn string, err error) error {
-	if err == nil || !strings.Contains(err.Error(), "unsupported database scheme") {
+	if !errors.Is(err, den.ErrUnsupportedScheme) {
 		return err
 	}
 	scheme, _, ok := strings.Cut(dsn, "://")
