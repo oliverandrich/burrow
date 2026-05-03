@@ -9,6 +9,12 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **`contrib/admin` ported to µCSS, sidebar dropped.** Admin uses a top-nav layout with a card-grid dashboard at `/admin/`; per-page breadcrumbs replace the sidebar, and the admin-area templates in `contrib/auth`, `contrib/jobs`, and `example/notes` were rewritten in µCSS. **Public-API:** `SidebarGroup`/`SidebarItem`/`PrepareSidebar` → `DashboardGroup`/`DashboardItem`/`PrepareDashboard`; the `Active` field, `sidebarLinkClass`, `isActivePath`, and the `adminSidebar` template func are gone (now `adminDashboard`). `contrib/admin` now declares `staticfiles`, `htmx`, `mucss`, `messages` as Dependencies. Apps with custom admin extensions emitting Bootstrap markup must port to µCSS.
 - **`contrib/auth` user-facing templates ported to µCSS.** `auth.DefaultAuthLayout()` now returns `"mucss/layout"`; element IDs unchanged so `webauthn.js` keeps working. Inline JS visibility toggles switched from `classList.add/remove("d-none")` to native `element.hidden = true/false` — custom auth templates copying that pattern must follow. Apps still on Bootstrap must set `auth.New(auth.WithAuthLayout("bootstrap/layout"), auth.WithRenderer(...))`.
 
+### Added
+
+- **`contrib/mucss` ships Burrow UX extras** (`mu-extras.min.css`, always loaded unless `WithCustomCSS` is set): navbar-dropdown min-width, navbar-icon vertical centering, dialog header flex layout, dialog form-footer button layout, and a `.field-error` rule for inline form errors.
+- **HTMX-driven dialog pattern.** `htmx.OpenDialog(w, id [, class])` and `htmx.CloseDialog(w, id)` emit events that the `htmx/dialog_script` template turns into `dialog.showModal()` / `close()` calls. The `mucss` and `bootstrap` nav layouts ship a permanent `<dialog id="modal">` container and include the script. The optional class arg switches the µCSS modal size variant. See `example/notes` for the full create + edit flow.
+- **`contrib/mucss`** — new default design contrib providing [µCSS v1.x](https://mucss.org/) (PicoCSS v2 derivative with upstream bugs fixed and richer components: Hero, Alert, Toast, Modal, Pagination, Badge, Tabs). 20 named accent variants (`WithColor`), `WithCompactType()` for app/admin UIs, customisable via CSS custom properties (`WithCustomCSS`).
+
 ### Changed
 
 - **`example/hello` ported to µCSS** with `WithCompactType`, a `.hero` block, and a native `<dialog>` demo. The `example/hello-pico` evaluation example was removed.
@@ -20,12 +26,6 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Deprecated
 
 - **`contrib/bootstrap`** is deprecated, removal in v0.20. Critical fixes only. New projects should use [`contrib/mucss`](contrib/mucss.md) — the port is mostly mechanical (`<div class="card">` → `<article>`, `alert-danger` → `alert-error`). `contrib/bsicons` (not Bootstrap-coupled) stays.
-
-### Added
-
-- **`contrib/mucss` ships Burrow UX extras** (`mu-extras.min.css`, always loaded unless `WithCustomCSS` is set): navbar-dropdown min-width, navbar-icon vertical centering, dialog header flex layout, dialog form-footer button layout, and a `.field-error` rule for inline form errors.
-- **HTMX-driven dialog pattern.** `htmx.OpenDialog(w, id [, class])` and `htmx.CloseDialog(w, id)` emit events that the `htmx/dialog_script` template turns into `dialog.showModal()` / `close()` calls. The `mucss` and `bootstrap` nav layouts ship a permanent `<dialog id="modal">` container and include the script. The optional class arg switches the µCSS modal size variant. See `example/notes` for the full create + edit flow.
-- **`contrib/mucss`** — new default design contrib providing [µCSS v1.x](https://mucss.org/) (PicoCSS v2 derivative with upstream bugs fixed and richer components: Hero, Alert, Toast, Modal, Pagination, Badge, Tabs). 20 named accent variants (`WithColor`), `WithCompactType()` for app/admin UIs, customisable via CSS custom properties (`WithCustomCSS`).
 
 ### Fixed
 
