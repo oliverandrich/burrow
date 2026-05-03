@@ -47,6 +47,15 @@ func testBaseFuncMap() template.FuncMap {
 		"pageNumbers":     func(current, total int) []int { return nil },
 		"add":             func(a, b int) int { return a + b },
 		"sub":             func(a, b int) int { return a - b },
+		"dict": func(pairs ...any) map[string]any {
+			m := make(map[string]any, len(pairs)/2)
+			for i := 0; i+1 < len(pairs); i += 2 {
+				if key, ok := pairs[i].(string); ok {
+					m[key] = pairs[i+1]
+				}
+			}
+			return m
+		},
 	}
 }
 

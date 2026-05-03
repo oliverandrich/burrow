@@ -82,42 +82,8 @@ func TestItemLabelWithoutKey(t *testing.T) {
 	assert.Equal(t, "Dashboard", itemLabel(ctx, item))
 }
 
-func TestIsActivePath(t *testing.T) {
-	tests := []struct {
-		name    string
-		path    string
-		itemURL string
-		want    bool
-	}{
-		{"exact match", "/admin/users", "/admin/users", true},
-		{"sub-path match", "/admin/users/1", "/admin/users", true},
-		{"no match", "/admin/invites", "/admin/users", false},
-		{"admin root exact", "/admin", "/admin", true},
-		{"admin root no false positive", "/admin/users", "/admin", false},
-		{"empty path", "", "/admin/users", false},
-		{"empty item URL", "/admin/users", "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := burrow.WithRequestPath(context.Background(), tt.path)
-			assert.Equal(t, tt.want, isActivePath(ctx, tt.itemURL))
-		})
-	}
-}
-
-func TestSidebarLinkClass(t *testing.T) {
-	ctx := burrow.WithRequestPath(context.Background(), "/admin/users")
-
-	active := sidebarLinkClass(ctx, "/admin/users")
-	assert.Equal(t, "nav-link active", active)
-
-	inactive := sidebarLinkClass(ctx, "/admin/invites")
-	assert.Equal(t, "nav-link text-body-emphasis", inactive)
-}
-
-func TestPrepareSidebar(t *testing.T) {
-	ctx := burrow.WithRequestPath(context.Background(), "/admin/users")
+func TestPrepareDashboard(t *testing.T) {
+	ctx := context.Background()
 
 	groups := []NavGroup{
 		{AppName: "auth", Items: []burrow.NavItem{
@@ -126,23 +92,22 @@ func TestPrepareSidebar(t *testing.T) {
 		}},
 	}
 
-	sidebar := PrepareSidebar(ctx, groups)
+	dash := PrepareDashboard(ctx, groups)
 
-	require.Len(t, sidebar, 1)
-	assert.Equal(t, "Auth", sidebar[0].Label)
-	assert.Equal(t, "auth", sidebar[0].AppName)
+	require.Len(t, dash, 1)
+	assert.Equal(t, "Auth", dash[0].Label)
+	assert.Equal(t, "auth", dash[0].AppName)
 
-	require.Len(t, sidebar[0].Items, 2)
-	assert.Equal(t, "Users", sidebar[0].Items[0].Label)
-	assert.Equal(t, "nav-link active", sidebar[0].Items[0].LinkClass)
-	assert.Equal(t, template.HTML("<svg>users</svg>"), sidebar[0].Items[0].Icon)
+	require.Len(t, dash[0].Items, 2)
+	assert.Equal(t, "Users", dash[0].Items[0].Label)
+	assert.Equal(t, "/admin/users", dash[0].Items[0].URL)
+	assert.Equal(t, template.HTML("<svg>users</svg>"), dash[0].Items[0].Icon)
 
-	assert.Equal(t, "Invites", sidebar[0].Items[1].Label)
-	assert.Equal(t, "nav-link text-body-emphasis", sidebar[0].Items[1].LinkClass)
+	assert.Equal(t, "Invites", dash[0].Items[1].Label)
 }
 
-func TestPrepareSidebarEmpty(t *testing.T) {
+func TestPrepareDashboardEmpty(t *testing.T) {
 	ctx := context.Background()
-	sidebar := PrepareSidebar(ctx, nil)
-	assert.Nil(t, sidebar)
+	dash := PrepareDashboard(ctx, nil)
+	assert.Nil(t, dash)
 }

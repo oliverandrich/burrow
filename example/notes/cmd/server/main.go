@@ -12,10 +12,10 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/admin"
 	"github.com/oliverandrich/burrow/contrib/auth"
-	"github.com/oliverandrich/burrow/contrib/bootstrap"
 	"github.com/oliverandrich/burrow/contrib/csrf"
 	"github.com/oliverandrich/burrow/contrib/healthcheck"
 	"github.com/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/burrow/contrib/humanize"
 	"github.com/oliverandrich/burrow/contrib/jobs"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/mucss"
@@ -49,11 +49,6 @@ func main() {
 	}
 
 	// Create the server with apps in dependency order.
-	//
-	// Bootstrap is still registered alongside µCSS because contrib/admin and
-	// the admin-area templates in contrib/auth (admin_users, admin_invites)
-	// currently ship Bootstrap-coupled templates. They will migrate to µCSS
-	// in their own beans; until then both contribs coexist.
 	srv := burrow.NewServer(
 		session.New(),
 		csrf.New(),
@@ -66,7 +61,7 @@ func main() {
 			auth.WithLogoComponent(pages.Logo()),
 		),
 		htmx.New(),
-		bootstrap.New(),
+		humanize.New(),
 		mucss.New(mucss.WithCompactType()),
 		notes.New(),
 		admin.New(),

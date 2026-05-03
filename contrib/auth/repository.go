@@ -307,6 +307,30 @@ func (r *Repository) GetInviteByID(ctx context.Context, id string) (*Invite, err
 	return invite, nil
 }
 
+// SearchInvitesPaged searches invites by label or email with pagination,
+// ordered by created_at desc.
+func (r *Repository) SearchInvitesPaged(ctx context.Context, query string, pr burrow.PageRequest) ([]Invite, burrow.PageResult, error) {
+	cond := where.Or(
+		where.Field("label").StringContains(query),
+		where.Field("email").StringContains(query),
+	)
+
+	ptrs, count, err := den.NewQuery[Invite](r.db, cond).
+		Sort("_created_at", den.Desc).
+		Limit(pr.Limit).
+		Skip(pr.Offset()).
+		AllWithCount(ctx)
+	if err != nil {
+		return nil, burrow.PageResult{}, fmt.Errorf("search invites: %w", err)
+	}
+
+	invites := make([]Invite, len(ptrs))
+	for i, p := range ptrs {
+		invites[i] = *p
+	}
+	return invites, burrow.OffsetResult(pr, int(count)), nil
+}
+
 // ListInvitesPaged returns invites with pagination, ordered by created_at desc.
 func (r *Repository) ListInvitesPaged(ctx context.Context, pr burrow.PageRequest) ([]Invite, burrow.PageResult, error) {
 	ptrs, count, err := den.NewQuery[Invite](r.db).

@@ -1,36 +1,29 @@
 {{ define "auth/admin_invite_form" -}}
-<div class="card border-primary mb-3">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <span>{{ t "admin-invites-new" }}</span>
-        <button type="button" class="btn-close btn-close-white" aria-label="Close"
-            hx-get="/admin/invites"
-            hx-target="#invite-form"
-            hx-swap="innerHTML"
-            onclick="this.closest('#invite-form').innerHTML=''"></button>
-    </div>
-    <div class="card-body">
-        <form hx-post="/admin/invites" hx-target="body">
-            <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label for="invite-label" class="form-label">Label</label>
-                    <input type="text" class="form-control" id="invite-label" name="label"
-                        placeholder="{{ t "admin-invites-label-placeholder" }}">
-                </div>
-                {{- if .UseEmail }}
-                <div class="col-md-4">
-                    <label for="invite-email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="invite-email" name="email"
-                        placeholder="{{ t "admin-invites-email-placeholder" }}" required>
-                </div>
-                {{- end }}
-                <div class="col-md-auto">
-                    <button type="submit" class="btn btn-primary">
-                        {{ iconPlus }} {{ t "admin-invites-create" }}
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
+<article>
+    <header>
+        <strong>{{ t "admin-invites-create-title" }}</strong>
+    </header>
+    <form hx-post="/admin/invites" hx-target="body">
+        <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+        <label>
+            {{ t "admin-invites-label" }}
+            <input type="text" name="label" placeholder="{{ t "admin-invites-label-placeholder" }}">
+        </label>
+        {{- if .UseEmail }}
+        <label>
+            {{ t "admin-invites-email-label" }}
+            <input type="email" name="email" placeholder="{{ t "admin-invites-email-placeholder" }}" required>
+        </label>
+        {{- end }}
+        <footer class="admin-row-actions">
+            <button type="submit" class="btn btn-primary">
+                {{ iconPlus }} {{ t "admin-invites-create-button" }}
+            </button>
+            <button type="button" class="btn btn-outline btn-secondary"
+                onclick="this.closest('#invite-form').innerHTML=''">
+                {{ t "admin-invites-cancel" }}
+            </button>
+        </footer>
+    </form>
+</article>
 {{- end }}

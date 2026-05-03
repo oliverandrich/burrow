@@ -10,41 +10,39 @@ import (
 	"github.com/oliverandrich/burrow/i18n"
 )
 
-// SidebarGroup holds pre-computed sidebar data for template rendering.
-type SidebarGroup struct {
+// DashboardGroup holds pre-computed dashboard data for template rendering.
+type DashboardGroup struct {
 	AppName string
 	Label   string
-	Items   []SidebarItem
+	Items   []DashboardItem
 }
 
-// SidebarItem holds pre-computed data for a single sidebar nav link.
-type SidebarItem struct {
-	Label     string
-	URL       string
-	Icon      template.HTML
-	LinkClass string
+// DashboardItem holds pre-computed data for a single dashboard nav link.
+type DashboardItem struct {
+	Label string
+	URL   string
+	Icon  template.HTML
 }
 
-// PrepareSidebar pre-computes sidebar groups with translated labels and
-// active-state CSS classes, ready for template rendering.
-func PrepareSidebar(ctx context.Context, groups []NavGroup) []SidebarGroup {
+// PrepareDashboard pre-computes dashboard groups with translated labels,
+// sorted alphabetically by group name, ready for template rendering.
+func PrepareDashboard(ctx context.Context, groups []NavGroup) []DashboardGroup {
 	sorted := sortNavGroups(ctx, groups)
 	if len(sorted) == 0 {
 		return nil
 	}
 
-	result := make([]SidebarGroup, len(sorted))
+	result := make([]DashboardGroup, len(sorted))
 	for i, g := range sorted {
-		items := make([]SidebarItem, len(g.Items))
+		items := make([]DashboardItem, len(g.Items))
 		for j, item := range g.Items {
-			items[j] = SidebarItem{
-				Label:     itemLabel(ctx, item),
-				URL:       item.URL,
-				Icon:      item.Icon,
-				LinkClass: sidebarLinkClass(ctx, item.URL),
+			items[j] = DashboardItem{
+				Label: itemLabel(ctx, item),
+				URL:   item.URL,
+				Icon:  item.Icon,
 			}
 		}
-		result[i] = SidebarGroup{
+		result[i] = DashboardGroup{
 			AppName: g.AppName,
 			Label:   groupLabel(ctx, g.AppName),
 			Items:   items,
@@ -90,28 +88,4 @@ func itemLabel(ctx context.Context, item burrow.NavItem) string {
 		}
 	}
 	return item.Label
-}
-
-// sidebarLinkClass returns the CSS classes for a sidebar nav-pill link,
-// adding "active" when the link matches the current request path.
-func sidebarLinkClass(ctx context.Context, itemURL string) string {
-	if isActivePath(ctx, itemURL) {
-		return "nav-link active"
-	}
-	return "nav-link text-body-emphasis"
-}
-
-// isActivePath checks whether the current request path matches a nav item URL.
-// It uses prefix matching so that sub-pages (e.g. /admin/users/1) highlight
-// the parent nav item (/admin/users). The admin root (/admin) only matches exactly.
-func isActivePath(ctx context.Context, itemURL string) bool {
-	current := burrow.RequestPath(ctx)
-	if current == "" || itemURL == "" {
-		return false
-	}
-	// Exact match for the admin root to avoid highlighting it for every page.
-	if itemURL == "/admin" || itemURL == "/admin/" {
-		return current == "/admin" || current == "/admin/"
-	}
-	return strings.HasPrefix(current, itemURL)
 }

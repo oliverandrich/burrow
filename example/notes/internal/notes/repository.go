@@ -102,6 +102,31 @@ func (r *Repository) SearchByUserID(ctx context.Context, userID string, query st
 	return notes, burrow.OffsetResult(pr, count), nil
 }
 
+// SearchAllPaged returns all notes matching a query string across users,
+// ordered by created_at descending. Returns empty results for empty queries.
+func (r *Repository) SearchAllPaged(ctx context.Context, query string, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, burrow.PageResult{}, nil
+	}
+
+	allPtrs, err := den.NewQuery[Note](r.db).Search(ctx, query)
+	if err != nil {
+		return nil, burrow.PageResult{}, nil //nolint:nilerr // intentional: treat FTS errors as empty results
+	}
+
+	count := len(allPtrs)
+	offset := min(pr.Offset(), count)
+	end := min(offset+pr.Limit, count)
+	page := allPtrs[offset:end]
+
+	notes := make([]Note, len(page))
+	for i, p := range page {
+		notes[i] = *p
+	}
+	return notes, burrow.OffsetResult(pr, count), nil
+}
+
 // ListAllPaged returns all notes with pagination (no user scope, for admin).
 func (r *Repository) ListAllPaged(ctx context.Context, pr burrow.PageRequest) ([]Note, burrow.PageResult, error) {
 	ptrs, count, err := den.NewQuery[Note](r.db).

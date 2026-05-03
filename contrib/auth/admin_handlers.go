@@ -37,6 +37,7 @@ func (a *App) adminListUsers(w http.ResponseWriter, r *http.Request) error {
 		"Page":       page,
 		"Role":       role,
 		"SearchTerm": searchTerm,
+		"RawQuery":   r.URL.RawQuery,
 	})
 }
 

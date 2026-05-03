@@ -21,6 +21,12 @@ modeladmin-bulk-choose-action = "Aktion wählen"
 modeladmin-bulk-apply = "Ausführen"
 modeladmin-bulk-delete = "Ausgewählte löschen"
 
+# Admin: Alert-Titel je Message-Level
+admin-alert-success = "Erfolg"
+admin-alert-info = "Information"
+admin-alert-warning = "Warnung"
+admin-alert-error = "Fehler"
+
 [modeladmin-delete-confirm]
 one = "Möchten Sie diesen Eintrag wirklich löschen?"
 other = "Möchten Sie wirklich {{.Count}} Einträge löschen?"

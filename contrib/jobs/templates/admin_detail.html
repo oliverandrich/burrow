@@ -1,133 +1,103 @@
 {{ define "jobs/admin_detail" -}}
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h2 class="mb-0">{{ .Job.Type }} <small class="text-body-secondary">#{{ .Job.ID }}</small></h2>
-</div>
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/" hx-get="/admin/" hx-target="main" hx-push-url="true">{{ t "admin-jobs-breadcrumb-admin" }}</a></li>
-        <li class="breadcrumb-item"><a href="/admin/jobs" hx-get="/admin/jobs" hx-target="main" hx-push-url="true">{{ t "admin-jobs-breadcrumb-jobs" }}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{{ t "admin-job-detail-breadcrumb-job" }}{{ .Job.ID }}</li>
-    </ol>
+<nav>
+    <ul class="breadcrumb" aria-label="breadcrumb">
+        <li><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
+        <li><a href="/admin/jobs">{{ t "admin-nav-jobs" }}</a></li>
+        <li aria-current="page">{{ t "admin-job-detail-breadcrumb-job" }}{{ .Job.ID }}</li>
+    </ul>
 </nav>
-<!-- Job information card -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="card-title mb-0">{{ t "admin-job-detail-info" }}</h5>
-    </div>
-    <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-3">{{ t "admin-job-detail-id" }}</dt>
-            <dd class="col-sm-9">{{ .Job.ID }}</dd>
-            <dt class="col-sm-3">{{ t "admin-job-detail-type" }}</dt>
-            <dd class="col-sm-9">{{ .Job.Type }}</dd>
-            <dt class="col-sm-3">{{ t "admin-job-detail-status" }}</dt>
-            <dd class="col-sm-9">{{ template "jobs/status_badge" .Job.Status }}</dd>
-            <dt class="col-sm-3">{{ t "admin-job-detail-priority" }}</dt>
-            <dd class="col-sm-9">{{ .Job.Priority }}</dd>
-            <dt class="col-sm-3">{{ t "admin-job-detail-attempts" }}</dt>
-            <dd class="col-sm-9">{{ printf "%d/%d" .Job.Attempts .Job.MaxRetries }}</dd>
-            <dt class="col-sm-3">{{ t "admin-job-detail-run-at" }}</dt>
-            <dd class="col-sm-9">{{ .Job.RunAt.Format "2006-01-02 15:04:05" }}</dd>
-            {{ if .Job.LockedAt -}}
-            <dt class="col-sm-3">{{ t "admin-job-detail-locked-at" }}</dt>
-            <dd class="col-sm-9">{{ .Job.LockedAt.Format "2006-01-02 15:04:05" }}</dd>
-            {{- end }}
-            {{ if .Job.CompletedAt -}}
-            <dt class="col-sm-3">{{ t "admin-job-detail-completed-at" }}</dt>
-            <dd class="col-sm-9">{{ .Job.CompletedAt.Format "2006-01-02 15:04:05" }}</dd>
-            {{- end }}
-            {{ if .Job.FailedAt -}}
-            <dt class="col-sm-3">{{ t "admin-job-detail-failed-at" }}</dt>
-            <dd class="col-sm-9">{{ .Job.FailedAt.Format "2006-01-02 15:04:05" }}</dd>
-            {{- end }}
-            {{ if .Job.LastAttemptedAt -}}
-            <dt class="col-sm-3">{{ t "admin-job-detail-last-attempted-at" }}</dt>
-            <dd class="col-sm-9">{{ .Job.LastAttemptedAt.Format "2006-01-02 15:04:05" }}</dd>
-            {{- end }}
-            <dt class="col-sm-3">{{ t "admin-job-detail-created-at" }}</dt>
-            <dd class="col-sm-9">{{ .Job.CreatedAt.Format "2006-01-02 15:04:05" }}</dd>
-            {{ if .Job.UpdatedAt -}}
-            <dt class="col-sm-3">{{ t "admin-job-detail-updated-at" }}</dt>
-            <dd class="col-sm-9">{{ .Job.UpdatedAt.Format "2006-01-02 15:04:05" }}</dd>
-            {{- end }}
-        </dl>
-    </div>
-</div>
-<!-- Payload card -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="card-title mb-0">{{ t "admin-job-detail-payload" }}</h5>
-    </div>
-    <div class="card-body">
-        <pre class="mb-0"><code>{{ prettyJSON .Job.Payload }}</code></pre>
-    </div>
-</div>
-<!-- Result card (conditional) -->
+<header>
+    <h2>{{ .Job.Type }} <small>#{{ .Job.ID }}</small></h2>
+</header>
+<article>
+    <header><strong>{{ t "admin-job-detail-info" }}</strong></header>
+    <dl>
+        <dt>{{ t "admin-job-detail-id" }}</dt>
+        <dd>{{ .Job.ID }}</dd>
+        <dt>{{ t "admin-job-detail-type" }}</dt>
+        <dd>{{ .Job.Type }}</dd>
+        <dt>{{ t "admin-job-detail-status" }}</dt>
+        <dd>{{ template "jobs/status_badge" .Job.Status }}</dd>
+        <dt>{{ t "admin-job-detail-priority" }}</dt>
+        <dd>{{ .Job.Priority }}</dd>
+        <dt>{{ t "admin-job-detail-attempts" }}</dt>
+        <dd>{{ printf "%d/%d" .Job.Attempts .Job.MaxRetries }}</dd>
+        <dt>{{ t "admin-job-detail-run-at" }}</dt>
+        <dd>{{ .Job.RunAt.Format "2006-01-02 15:04:05" }}</dd>
+        {{ if .Job.LockedAt -}}
+        <dt>{{ t "admin-job-detail-locked-at" }}</dt>
+        <dd>{{ .Job.LockedAt.Format "2006-01-02 15:04:05" }}</dd>
+        {{- end }}
+        {{ if .Job.CompletedAt -}}
+        <dt>{{ t "admin-job-detail-completed-at" }}</dt>
+        <dd>{{ .Job.CompletedAt.Format "2006-01-02 15:04:05" }}</dd>
+        {{- end }}
+        {{ if .Job.FailedAt -}}
+        <dt>{{ t "admin-job-detail-failed-at" }}</dt>
+        <dd>{{ .Job.FailedAt.Format "2006-01-02 15:04:05" }}</dd>
+        {{- end }}
+        {{ if .Job.LastAttemptedAt -}}
+        <dt>{{ t "admin-job-detail-last-attempted-at" }}</dt>
+        <dd>{{ .Job.LastAttemptedAt.Format "2006-01-02 15:04:05" }}</dd>
+        {{- end }}
+        <dt>{{ t "admin-job-detail-created-at" }}</dt>
+        <dd>{{ .Job.CreatedAt.Format "2006-01-02 15:04:05" }}</dd>
+        {{ if .Job.UpdatedAt -}}
+        <dt>{{ t "admin-job-detail-updated-at" }}</dt>
+        <dd>{{ .Job.UpdatedAt.Format "2006-01-02 15:04:05" }}</dd>
+        {{- end }}
+    </dl>
+</article>
+<article>
+    <header><strong>{{ t "admin-job-detail-payload" }}</strong></header>
+    <pre><code>{{ prettyJSON .Job.Payload }}</code></pre>
+</article>
 {{ if .Job.Result -}}
-<div class="card mb-4 border-success">
-    <div class="card-header text-bg-success">
-        <h5 class="card-title mb-0">{{ t "admin-job-detail-result" }}</h5>
-    </div>
-    <div class="card-body">
-        <pre class="mb-0"><code>{{ prettyJSON .Job.Result }}</code></pre>
-    </div>
-</div>
+<article>
+    <header><strong>{{ t "admin-job-detail-result" }}</strong></header>
+    <pre><code>{{ prettyJSON .Job.Result }}</code></pre>
+</article>
 {{- end }}
-<!-- Last error card (conditional) -->
 {{ if .Job.LastError -}}
-<div class="card mb-4 border-danger">
-    <div class="card-header text-bg-danger">
-        <h5 class="card-title mb-0">{{ t "admin-job-detail-last-error" }}{{ if .Job.ErrorClass }} <span class="badge text-bg-light ms-2">{{ .Job.ErrorClass }}</span>{{ end }}</h5>
-    </div>
-    <div class="card-body">
-        <pre class="mb-0 text-danger">{{ .Job.LastError }}</pre>
-    </div>
-</div>
+<article>
+    <header><strong>{{ t "admin-job-detail-last-error" }}{{ if .Job.ErrorClass }} <span class="badge badge-secondary">{{ .Job.ErrorClass }}</span>{{ end }}</strong></header>
+    <pre>{{ .Job.LastError }}</pre>
+</article>
 {{- end }}
-<!-- Action buttons -->
-<div class="d-flex gap-2">
+<div class="grid">
     {{ if or (eq (jobStatus .Job) "failed") (eq (jobStatus .Job) "dead") -}}
-    <button
-        class="btn btn-success"
-        hx-post="/admin/jobs/{{ .Job.ID }}/retry"
-    >
-        {{ iconArrowCounterclockwise }}
-        {{ t "admin-job-detail-action-retry" }}
+    <button class="btn btn-success"
+        hx-post="/admin/jobs/{{ .Job.ID }}/retry">
+        {{ iconArrowCounterclockwise }} {{ t "admin-job-detail-action-retry" }}
     </button>
     {{- end }}
     {{ if or (eq (jobStatus .Job) "pending") (or (eq (jobStatus .Job) "running") (eq (jobStatus .Job) "failed")) -}}
-    <button
-        class="btn btn-warning"
+    <button class="btn btn-warning"
         hx-post="/admin/jobs/{{ .Job.ID }}/cancel"
-        hx-confirm="{{ t "admin-job-detail-cancel-confirm" }}"
-    >
-        {{ iconXCircle }}
-        {{ t "admin-job-detail-action-cancel" }}
+        hx-confirm="{{ t "admin-job-detail-cancel-confirm" }}">
+        {{ iconXCircle }} {{ t "admin-job-detail-action-cancel" }}
     </button>
     {{- end }}
-    <button
-        class="btn btn-outline-danger ms-auto"
+    <button class="btn btn-outline btn-error"
         hx-delete="/admin/jobs/{{ .Job.ID }}"
-        hx-confirm="{{ t "admin-job-detail-delete-confirm" }}"
-    >
-        {{ iconTrash }}
-        {{ t "admin-job-detail-action-delete" }}
+        hx-confirm="{{ t "admin-job-detail-delete-confirm" }}">
+        {{ iconTrash }} {{ t "admin-job-detail-action-delete" }}
     </button>
 </div>
 {{- end }}
 
 {{ define "jobs/status_badge" -}}
 {{ if eq (string .) "pending" -}}
-<span class="badge text-bg-warning">{{ . }}</span>
+<span class="badge badge-warning">{{ . }}</span>
 {{- else if eq (string .) "running" -}}
-<span class="badge text-bg-info">{{ . }}</span>
+<span class="badge badge-info">{{ . }}</span>
 {{- else if eq (string .) "completed" -}}
-<span class="badge text-bg-success">{{ . }}</span>
+<span class="badge badge-success">{{ . }}</span>
 {{- else if eq (string .) "failed" -}}
-<span class="badge text-bg-danger">{{ . }}</span>
+<span class="badge badge-error">{{ . }}</span>
 {{- else if eq (string .) "dead" -}}
-<span class="badge text-bg-secondary">{{ . }}</span>
+<span class="badge badge-secondary">{{ . }}</span>
 {{- else -}}
-<span class="badge text-bg-light">{{ . }}</span>
+<span class="badge">{{ . }}</span>
 {{- end }}
 {{- end }}

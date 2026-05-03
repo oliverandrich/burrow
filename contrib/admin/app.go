@@ -23,6 +23,9 @@ var templateFS embed.FS
 //go:embed translations
 var translationFS embed.FS
 
+//go:embed static
+var staticFS embed.FS
+
 // DashboardRenderer renders the admin dashboard page.
 type DashboardRenderer interface {
 	DashboardPage(w http.ResponseWriter, r *http.Request) error
@@ -65,10 +68,17 @@ func New(opts ...Option) *App {
 
 func (a *App) Name() string { return "admin" }
 
+// Dependencies declares contribs the admin app's templates assume are present:
+// staticfiles serves admin.css, htmx powers the boosted nav, mucss provides
+// the css / theme switcher / pagination templates referenced from admin/layout,
+// and messages provides the flash-message template function used at the top
+// of every admin page.
+func (a *App) Dependencies() []string {
+	return []string{"staticfiles", "htmx", "mucss", "messages"}
+}
+
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.registry = cfg.Registry
-	cfg.RegisterIconFunc("iconGearFill", bsicons.GearFill)
-	cfg.RegisterIconFunc("iconChevronRight", bsicons.ChevronRight)
 	cfg.RegisterIconFunc("iconPersonCircle", bsicons.PersonCircle)
 
 	// Discover the AdminAuth provider from the registry.
@@ -121,11 +131,18 @@ func (a *App) TemplateFS() fs.FS {
 	return sub
 }
 
-// RequestFuncMap returns request-scoped template functions for the admin sidebar.
+// StaticFS returns the embedded admin static assets under the "admin" prefix.
+func (a *App) StaticFS() (string, fs.FS) {
+	sub, _ := fs.Sub(staticFS, "static")
+	return "admin", sub
+}
+
+// RequestFuncMap returns request-scoped template functions for the admin
+// dashboard.
 func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
 	return template.FuncMap{
-		"adminSidebar": func() []SidebarGroup {
-			return PrepareSidebar(ctx, NavGroups(ctx))
+		"adminDashboard": func() []DashboardGroup {
+			return PrepareDashboard(ctx, NavGroups(ctx))
 		},
 	}
 }
@@ -149,7 +166,6 @@ func (a *App) Routes(r chi.Router) {
 					ctx = burrow.WithLayout(ctx, a.layout)
 				}
 				ctx = WithNavGroups(ctx, groups)
-				ctx = burrow.WithRequestPath(ctx, r.URL.Path)
 				next.ServeHTTP(w, r.WithContext(ctx))
 			})
 		})

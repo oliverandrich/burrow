@@ -20,9 +20,10 @@ func (a *App) adminListJobs(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	return burrow.Render(w, r, http.StatusOK, "jobs/admin_list", map[string]any{
-		"Jobs":   jobs,
-		"Page":   page,
-		"Status": string(status),
+		"Jobs":     jobs,
+		"Page":     page,
+		"Status":   string(status),
+		"RawQuery": r.URL.RawQuery,
 	})
 }
 

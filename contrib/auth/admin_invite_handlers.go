@@ -9,6 +9,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/messages"
+	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
@@ -21,16 +22,41 @@ type CreateInviteRequest struct {
 // adminListInvites handles GET /admin/invites — paginated invite list.
 func (a *App) adminListInvites(w http.ResponseWriter, r *http.Request) error {
 	pr := burrow.ParsePageRequest(r)
+	searchTerm := r.URL.Query().Get("q")
 
-	invites, page, err := a.repo.ListInvitesPaged(r.Context(), pr)
+	var (
+		invites []Invite
+		page    burrow.PageResult
+		err     error
+	)
+	if searchTerm != "" {
+		invites, page, err = a.repo.SearchInvitesPaged(r.Context(), searchTerm, pr)
+	} else {
+		invites, page, err = a.repo.ListInvitesPaged(r.Context(), pr)
+	}
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list invites")
 	}
 
+	// One-shot pickup of an invite URL stashed by handleCreateInvite for the
+	// no-email path. Cleared immediately so a refresh doesn't re-show it.
+	var createdURL string
+	if values := session.GetValues(r); values != nil {
+		if raw, ok := values[sessionKeyInviteCreatedURL]; ok {
+			if u, ok := raw.(string); ok && u != "" {
+				createdURL = u
+				_ = session.Delete(w, r, sessionKeyInviteCreatedURL)
+			}
+		}
+	}
+
 	return burrow.Render(w, r, http.StatusOK, "auth/admin_invites", map[string]any{
-		"Invites":  invites,
-		"Page":     page,
-		"UseEmail": a.config != nil && a.config.UseEmail,
+		"Invites":    invites,
+		"Page":       page,
+		"SearchTerm": searchTerm,
+		"UseEmail":   a.config != nil && a.config.UseEmail,
+		"RawQuery":   r.URL.RawQuery,
+		"CreatedURL": createdURL,
 	})
 }
 
@@ -80,24 +106,30 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 	}
 	createdURL := baseURL + "/auth/register?invite=" + plainToken
 
-	var flashMsg string
 	if a.emailService != nil && req.Email != "" {
 		if err := a.enqueueEmail(r.Context(), "invite", req.Email, createdURL); err != nil {
 			slog.Error("failed to enqueue invite email", "error", err, "email", req.Email)
 		}
-		flashMsg = i18n.T(r.Context(), "admin-invites-sent")
+		if err := messages.AddSuccess(w, r, i18n.T(r.Context(), "admin-invites-sent")); err != nil {
+			slog.Warn("failed to add invite flash message", "error", err)
+		}
 	} else {
-		flashMsg = i18n.T(r.Context(), "admin-invites-copy-url") + " " + createdURL
-	}
-
-	if err := messages.AddSuccess(w, r, flashMsg); err != nil {
-		slog.Warn("failed to add invite flash message", "error", err)
+		// No email sent — stash the URL in the session so the list page can
+		// render it in a copyable input + button next to the alert.
+		if err := session.Set(w, r, sessionKeyInviteCreatedURL, createdURL); err != nil {
+			slog.Warn("failed to store invite URL in session", "error", err)
+		}
 	}
 
 	slog.Info("invite created", "invite_id", invite.ID, "created_by", user.ID)
 	htmx.SmartRedirect(w, r, "/admin/invites")
 	return nil
 }
+
+// sessionKeyInviteCreatedURL holds a freshly-created invite URL passed
+// through the session so [adminListInvites] can show a copyable URL on
+// the next page render. Cleared after one use.
+const sessionKeyInviteCreatedURL = "admin-invite-created-url"
 
 // revokeInviteHandler returns a handler that revokes (hard-deletes) an invite.
 func revokeInviteHandler(repo *Repository) burrow.HandlerFunc {

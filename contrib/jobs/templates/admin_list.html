@@ -1,123 +1,72 @@
 {{ define "jobs/admin_list" -}}
-<div class="flex-shrink-0">
-    <nav aria-label="breadcrumb" class="mb-2">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="/admin/">{{ t "admin-jobs-breadcrumb-admin" }}</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{{ t "admin-nav-jobs" }}</li>
-        </ol>
-    </nav>
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">{{ t "admin-nav-jobs" }}</h2>
-    </div>
-    <div class="d-flex align-items-center mb-3">
-        <div class="d-flex align-items-center">
-            <span class="fw-semibold me-2 small text-body-secondary">Status:</span>
-            <ul class="nav nav-pills nav-pills-sm">
-                <li class="nav-item">
-                    <a class="nav-link py-1 px-2{{ if eq .Status "" }} active{{ end }}" href="/admin/jobs">{{ t "admin-jobs-filter-all" }}</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link py-1 px-2{{ if eq .Status "pending" }} active{{ end }}" href="/admin/jobs?status=pending">{{ t "admin-jobs-filter-pending" }}</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link py-1 px-2{{ if eq .Status "running" }} active{{ end }}" href="/admin/jobs?status=running">{{ t "admin-jobs-filter-running" }}</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link py-1 px-2{{ if eq .Status "failed" }} active{{ end }}" href="/admin/jobs?status=failed">{{ t "admin-jobs-filter-failed" }}</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link py-1 px-2{{ if eq .Status "dead" }} active{{ end }}" href="/admin/jobs?status=dead">{{ t "admin-jobs-filter-dead" }}</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link py-1 px-2{{ if eq .Status "completed" }} active{{ end }}" href="/admin/jobs?status=completed">{{ t "admin-jobs-filter-completed" }}</a>
-                </li>
-            </ul>
-        </div>
-    </div>
-</div>
+<nav>
+    <ul class="breadcrumb" aria-label="breadcrumb">
+        <li><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
+        <li aria-current="page">{{ t "admin-nav-jobs" }}</li>
+    </ul>
+</nav>
+<header>
+    <h2>{{ t "admin-nav-jobs" }}</h2>
+</header>
+<ul class="tabs tabs-end" role="tablist">
+    <li><a href="/admin/jobs" role="tab"{{ if eq .Status "" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-all" }}</a></li>
+    <li><a href="/admin/jobs?status=pending" role="tab"{{ if eq .Status "pending" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-pending" }}</a></li>
+    <li><a href="/admin/jobs?status=running" role="tab"{{ if eq .Status "running" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-running" }}</a></li>
+    <li><a href="/admin/jobs?status=failed" role="tab"{{ if eq .Status "failed" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-failed" }}</a></li>
+    <li><a href="/admin/jobs?status=dead" role="tab"{{ if eq .Status "dead" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-dead" }}</a></li>
+    <li><a href="/admin/jobs?status=completed" role="tab"{{ if eq .Status "completed" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-completed" }}</a></li>
+</ul>
 {{- if .Jobs }}
-<div class="flex-grow-1 overflow-auto">
-    <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle">
-            <thead>
-                <tr>
-                    <th scope="col">Type</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">{{ t "admin-job-detail-priority" }}</th>
-                    <th scope="col">Attempts</th>
-                    <th scope="col">Created</th>
-                    <th scope="col" class="text-end">{{ t "modeladmin-actions" }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{- range .Jobs }}
-                <tr>
-                    <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ .Type }}</a></td>
-                    <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ template "jobs/status_badge" .Status }}</a></td>
-                    <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ if .Priority }}<span class="badge text-bg-info">{{ .Priority }}</span>{{ else }}<span class="text-body-secondary">0</span>{{ end }}</a></td>
-                    <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ printf "%d/%d" .Attempts .MaxRetries }}</a></td>
-                    <td class="p-0"><a href="/admin/jobs/{{ .ID }}" class="text-decoration-none text-reset d-block p-2">{{ .CreatedAt.Format "2006-01-02 15:04" }}</a></td>
-                    <td class="text-end">
-                        <div class="d-flex gap-1 justify-content-end">
-                            {{- if or (eq (jobStatus .) "failed") (eq (jobStatus .) "dead") }}
-                            <button type="button" class="btn btn-sm btn-outline-success"
-                                hx-post="/admin/jobs/{{ .ID }}/retry"
-                                hx-swap="none">
-                                {{ iconArrowCounterclockwise }} {{ t "admin-jobs-action-retry" }}
-                            </button>
-                            {{- end }}
-                            {{- if or (eq (jobStatus .) "pending") (or (eq (jobStatus .) "running") (eq (jobStatus .) "failed")) }}
-                            <button type="button" class="btn btn-sm btn-outline-warning"
-                                hx-post="/admin/jobs/{{ .ID }}/cancel"
-                                hx-swap="none"
-                                hx-confirm="{{ t "admin-jobs-cancel-confirm" }}">
-                                {{ iconXCircle }} {{ t "admin-jobs-action-cancel" }}
-                            </button>
-                            {{- end }}
-                            <button type="button" class="btn btn-sm btn-outline-danger"
-                                hx-delete="/admin/jobs/{{ .ID }}"
-                                hx-swap="none"
-                                hx-confirm="{{ t "admin-job-detail-delete-confirm" }}">
-                                {{ iconTrash }}
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {{- end }}
-            </tbody>
-        </table>
-    </div>
-</div>
-{{- if gt .Page.TotalPages 1 }}
-<div class="flex-shrink-0 pt-3">
-    <nav aria-label="Page navigation">
-        <ul class="pagination justify-content-center mb-0">
-            <li class="page-item{{ if le .Page.Page 1 }} disabled{{ end }}">
-                <a class="page-link" href="{{ pageURL "/admin/jobs" "" (sub .Page.Page 1) }}">
-                    {{ t "modeladmin-previous" }}
-                </a>
-            </li>
-            {{- range pageNumbers .Page.Page .Page.TotalPages }}
-            {{- if eq . -1 }}
-            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
-            {{- else }}
-            <li class="page-item{{ if eq . $.Page.Page }} active{{ end }}">
-                <a class="page-link" href="{{ pageURL "/admin/jobs" "" . }}">{{ . }}</a>
-            </li>
+<figure>
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">Type</th>
+                <th scope="col">Status</th>
+                <th scope="col">{{ t "admin-job-detail-priority" }}</th>
+                <th scope="col">Attempts</th>
+                <th scope="col">Created</th>
+                <th scope="col" class="admin-row-actions">{{ t "modeladmin-actions" }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{- range .Jobs }}
+            <tr>
+                <td><a href="/admin/jobs/{{ .ID }}">{{ .Type }}</a></td>
+                <td>{{ template "jobs/status_badge" .Status }}</td>
+                <td>{{ if .Priority }}<span class="badge badge-info">{{ .Priority }}</span>{{ else }}0{{ end }}</td>
+                <td>{{ printf "%d/%d" .Attempts .MaxRetries }}</td>
+                <td>{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
+                <td class="admin-row-actions">
+                    {{- if or (eq (jobStatus .) "failed") (eq (jobStatus .) "dead") }}
+                    <button type="button" class="btn btn-sm btn-outline btn-success"
+                        hx-post="/admin/jobs/{{ .ID }}/retry"
+                        hx-swap="none">
+                        {{ iconArrowCounterclockwise }} {{ t "admin-jobs-action-retry" }}
+                    </button>
+                    {{- end }}
+                    {{- if or (eq (jobStatus .) "pending") (or (eq (jobStatus .) "running") (eq (jobStatus .) "failed")) }}
+                    <button type="button" class="btn btn-sm btn-outline btn-warning"
+                        hx-post="/admin/jobs/{{ .ID }}/cancel"
+                        hx-swap="none"
+                        hx-confirm="{{ t "admin-jobs-cancel-confirm" }}">
+                        {{ iconXCircle }} {{ t "admin-jobs-action-cancel" }}
+                    </button>
+                    {{- end }}
+                    <button type="button" class="btn btn-sm btn-outline btn-error"
+                        hx-delete="/admin/jobs/{{ .ID }}"
+                        hx-swap="none"
+                        hx-confirm="{{ t "admin-job-detail-delete-confirm" }}">
+                        {{ iconTrash }}
+                    </button>
+                </td>
+            </tr>
             {{- end }}
-            {{- end }}
-            <li class="page-item{{ if not .Page.HasMore }} disabled{{ end }}">
-                <a class="page-link" href="{{ pageURL "/admin/jobs" "" (add .Page.Page 1) }}">
-                    {{ t "modeladmin-next" }}
-                </a>
-            </li>
-        </ul>
-    </nav>
-</div>
-{{- end }}
+        </tbody>
+    </table>
+</figure>
+{{ template "mucss/pagination" (dict "Page" .Page "BasePath" "/admin/jobs" "RawQuery" .RawQuery) }}
 {{- else }}
-<div class="text-center py-5 text-body-secondary">
-    <p>{{ t "admin-jobs-empty" }}</p>
-</div>
+<p>{{ t "admin-jobs-empty" }}</p>
 {{- end }}
 {{- end }}

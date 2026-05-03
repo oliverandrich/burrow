@@ -35,12 +35,25 @@ var (
 	_ burrow.HasRequestFuncMap = (*App)(nil)
 )
 
+// stubApp satisfies the Dependencies check for contribs whose actual
+// behaviour isn't exercised by the admin tests.
+type stubApp struct{ name string }
+
+func (s *stubApp) Name() string { return s.name }
+
 // configuredRegistry returns a registry with session and auth apps
 // properly configured via CLI commands (required because Configure
 // reads flag values from the cli.Command).
 func configuredRegistry(t *testing.T) *burrow.Registry {
 	t.Helper()
 	registry := burrow.NewRegistry()
+
+	// Stub the contribs admin declares as Dependencies so registry.Add(admin)
+	// doesn't trip the dependency gate during tests.
+	registry.Add(&stubApp{name: "staticfiles"})
+	registry.Add(&stubApp{name: "htmx"})
+	registry.Add(&stubApp{name: "mucss"})
+	registry.Add(&stubApp{name: "messages"})
 
 	sessionApp := session.New()
 	registry.Add(sessionApp)
@@ -93,8 +106,11 @@ func TestAppConfigure(t *testing.T) {
 }
 
 func TestAppConfigureWithoutAuthReturnsError(t *testing.T) {
+	// An empty registry — admin's Configure should error because no
+	// AdminAuth provider is registered. (We don't add admin to the
+	// registry here because that would trip the Dependencies check
+	// for staticfiles/htmx/mucss, which is unrelated to this test.)
 	registry := burrow.NewRegistry()
-	registry.Add(New())
 
 	app := New()
 	cfg := &burrow.AppConfig{Registry: registry, Config: &burrow.Config{}}
@@ -389,5 +405,5 @@ func TestRequestFuncMap(t *testing.T) {
 
 	fm := app.RequestFuncMap(req.Context())
 
-	assert.Contains(t, fm, "adminSidebar")
+	assert.Contains(t, fm, "adminDashboard")
 }

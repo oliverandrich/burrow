@@ -3,7 +3,9 @@ package notes
 
 import (
 	"embed"
+	"errors"
 	"io/fs"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -22,7 +24,8 @@ var noteTemplateFS embed.FS
 
 // App implements the notes contrib app.
 type App struct {
-	repo *Repository
+	repo     *Repository
+	userRepo *auth.Repository
 }
 
 // New creates a new notes app.
@@ -41,6 +44,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
 
 	a.repo = NewRepository(cfg.DB)
+	a.userRepo = auth.NewRepository(cfg.DB)
 	return nil
 }
 
@@ -100,18 +104,52 @@ func (a *App) Routes(r chi.Router) {
 	})
 }
 
-// adminListNotes handles GET /admin/notes — paginated note list.
+// adminListNotes handles GET /admin/notes — paginated note list with optional search.
 func (a *App) adminListNotes(w http.ResponseWriter, r *http.Request) error {
 	pr := burrow.ParsePageRequest(r)
+	searchTerm := r.URL.Query().Get("q")
 
-	notes, page, err := a.repo.ListAllPaged(r.Context(), pr)
+	var (
+		notes []Note
+		page  burrow.PageResult
+		err   error
+	)
+	if searchTerm != "" {
+		notes, page, err = a.repo.SearchAllPaged(r.Context(), searchTerm, pr)
+	} else {
+		notes, page, err = a.repo.ListAllPaged(r.Context(), pr)
+	}
 	if err != nil {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
 	}
 
+	// Resolve usernames for the notes' user IDs in one batch lookup so the
+	// admin table can show "alice" instead of "01KQJ6A23JTN2R0WWK5M11G3WG".
+	usernames := make(map[string]string)
+	if a.userRepo != nil {
+		userIDs := make(map[string]struct{}, len(notes))
+		for _, n := range notes {
+			userIDs[n.UserID] = struct{}{}
+		}
+		for id := range userIDs {
+			u, err := a.userRepo.GetUserByID(r.Context(), id)
+			switch {
+			case err == nil:
+				usernames[id] = u.Username
+			case errors.Is(err, auth.ErrNotFound):
+				// User was deleted — fall through to ID-only display.
+			default:
+				slog.Warn("notes admin: username lookup failed", "user_id", id, "error", err)
+			}
+		}
+	}
+
 	return burrow.Render(w, r, http.StatusOK, "notes/admin_list", map[string]any{
-		"Notes": notes,
-		"Page":  page,
+		"Notes":      notes,
+		"Page":       page,
+		"SearchTerm": searchTerm,
+		"Usernames":  usernames,
+		"RawQuery":   r.URL.RawQuery,
 	})
 }
 

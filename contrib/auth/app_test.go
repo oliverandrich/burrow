@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/burrowtest"
-	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/den"
 
@@ -882,15 +881,13 @@ func TestAdminCreateInvite(t *testing.T) {
 	assert.Equal(t, "invitee@example.com", invites[0].Email)
 	assert.Equal(t, "John Doe", invites[0].Label)
 
-	// Verify flash message contains the prefix and the registration URL.
+	// Without email config, the registration URL is stashed in the session
+	// for the list page to render in a copyable input + button.
 	sessionValues := session.GetValues(req)
 	require.NotNil(t, sessionValues)
-	storedMsgs, ok := sessionValues["_messages"].([]messages.Message)
-	require.True(t, ok, "expected messages in session")
-	require.Len(t, storedMsgs, 1)
-	assert.Contains(t, storedMsgs[0].Text, "admin-invites-copy-url")
-	assert.Contains(t, storedMsgs[0].Text, "/auth/register?invite=")
-	assert.Equal(t, messages.Success, storedMsgs[0].Level)
+	storedURL, ok := sessionValues[sessionKeyInviteCreatedURL].(string)
+	require.True(t, ok, "expected created-url in session")
+	assert.Contains(t, storedURL, "/auth/register?invite=")
 }
 
 func TestAdminCreateInviteNoAuth(t *testing.T) {

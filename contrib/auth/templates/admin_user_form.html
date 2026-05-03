@@ -1,97 +1,97 @@
 {{ define "auth/admin_user_form" -}}
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h2 class="mb-0">{{ t "modeladmin-edit" }} {{ .User.Username }}</h2>
-</div>
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
-        <li class="breadcrumb-item"><a href="/admin/users">{{ t "admin-nav-users" }}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{{ .User.Username }}</li>
-    </ol>
+<nav>
+    <ul class="breadcrumb" aria-label="breadcrumb">
+        <li><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
+        <li><a href="/admin/users">{{ t "admin-nav-users" }}</a></li>
+        <li aria-current="page">{{ .User.Username }}</li>
+    </ul>
 </nav>
+<header>
+    <h2>{{ t "modeladmin-edit" }} {{ .User.Username }}</h2>
+</header>
 <form method="post" action="/admin/users/{{ .User.ID }}">
     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
     {{- range .Fields }}
     {{- if eq .Type "hidden" }}
     <input type="hidden" name="{{ .FormName }}" value="{{ printf "%v" .Value }}">
     {{- else if eq .Type "textarea" }}
-    <div class="mb-3">
-        <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
+    <label for="{{ .FormName }}">
+        {{ .Label }}{{ if .Required }} *{{ end }}
         <textarea
-            class="form-control{{ if .Errors }} is-invalid{{ end }}"
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             rows="4"
             {{ if .Required }}required{{ end }}
             {{ if .ReadOnly }}disabled{{ end }}
+            {{ if .Errors }}aria-invalid="true"{{ end }}
         >{{ printf "%v" .Value }}</textarea>
-        {{- range .Errors }}
-        <div class="invalid-feedback">{{ . }}</div>
-        {{- end }}
-    </div>
+    </label>
+    {{- range .Errors }}
+    <small class="field-error">{{ . }}</small>
+    {{- end }}
     {{- else if eq .Type "select" }}
     {{- $currentVal := printf "%v" .Value }}
-    <div class="mb-3">
-        <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
+    <label for="{{ .FormName }}">
+        {{ .Label }}{{ if .Required }} *{{ end }}
         <select
-            class="form-select{{ if .Errors }} is-invalid{{ end }}"
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             {{ if .Required }}required{{ end }}
             {{ if .ReadOnly }}disabled{{ end }}
+            {{ if .Errors }}aria-invalid="true"{{ end }}
         >
             {{- range .Choices }}
             <option value="{{ .Value }}"{{ if eq $currentVal .Value }} selected{{ end }}>{{ .Label }}</option>
             {{- end }}
         </select>
-        {{- range .Errors }}
-        <div class="invalid-feedback">{{ . }}</div>
-        {{- end }}
-    </div>
+    </label>
+    {{- range .Errors }}
+    <small class="field-error">{{ . }}</small>
+    {{- end }}
     {{- else if eq .Type "checkbox" }}
-    <div class="mb-3 form-check">
+    <label>
         <input
             type="checkbox"
-            class="form-check-input{{ if .Errors }} is-invalid{{ end }}"
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             {{ if .Value }}checked{{ end }}
             {{ if .ReadOnly }}disabled{{ end }}
+            {{ if .Errors }}aria-invalid="true"{{ end }}
         >
-        <label class="form-check-label" for="{{ .FormName }}">{{ .Label }}</label>
-        {{- range .Errors }}
-        <div class="invalid-feedback">{{ . }}</div>
-        {{- end }}
-    </div>
+        {{ .Label }}
+    </label>
+    {{- range .Errors }}
+    <small class="field-error">{{ . }}</small>
+    {{- end }}
     {{- else }}
-    <div class="mb-3">
-        <label for="{{ .FormName }}" class="form-label">{{ .Label }}</label>
+    <label for="{{ .FormName }}">
+        {{ .Label }}{{ if .Required }} *{{ end }}
         <input
             type="{{ if eq .Type "email" }}email{{ else if eq .Type "number" }}number{{ else }}text{{ end }}"
-            class="form-control{{ if .Errors }} is-invalid{{ end }}"
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             value="{{ printf "%v" .Value }}"
             {{ if .Required }}required{{ end }}
             {{ if .ReadOnly }}disabled{{ end }}
+            {{ if .Errors }}aria-invalid="true"{{ end }}
         >
-        {{- range .Errors }}
-        <div class="invalid-feedback">{{ . }}</div>
-        {{- end }}
-    </div>
+    </label>
+    {{- range .Errors }}
+    <small class="field-error">{{ . }}</small>
+    {{- end }}
     {{- end }}
     {{- end }}
     {{- if .NonFieldErrors }}
-    <div class="alert alert-danger">
+    <div class="alert alert-error" role="alert">
         {{- range .NonFieldErrors }}
-        <p class="mb-0">{{ . }}</p>
+        <p>{{ . }}</p>
         {{- end }}
     </div>
     {{- end }}
-    <div class="d-flex gap-2 mt-4">
+    <div class="grid">
         <button type="submit" class="btn btn-primary">{{ t "modeladmin-save" }}</button>
-        <button type="submit" name="_continue" value="1" class="btn btn-outline-secondary">{{ t "modeladmin-save-continue" }}</button>
-        <a href="/admin/users" class="btn btn-outline-secondary ms-auto">{{ t "modeladmin-back" }}</a>
+        <button type="submit" name="_continue" value="1" class="btn btn-outline btn-secondary">{{ t "modeladmin-save-continue" }}</button>
+        <a href="/admin/users" role="button" class="btn btn-outline btn-secondary">{{ t "modeladmin-back" }}</a>
     </div>
 </form>
 {{- end }}
