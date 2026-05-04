@@ -1,4 +1,4 @@
-// Package mucss provides a design system contrib app using µCSS v1.4.7.
+// Package mucss provides a design system contrib app using µCSS v1.4.8.
 // µCSS is built on PicoCSS v2 with the upstream Pico bugs fixed and
 // additional components (Hero, Alert, Toast, Modal, Pagination, Badge,
 // Skeleton, Spinner, Tabs, Accordion) shipped as part of the framework.

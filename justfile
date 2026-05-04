@@ -163,7 +163,7 @@ update-htmx version="2.0.8":
     echo "Done — htmx v{{version}} updated"
 
 # Update µCSS (downloads latest release; default and 20 named accent variants)
-update-mucss version="1.4.7":
+update-mucss version="1.4.8":
     #!/usr/bin/env bash
     set -euo pipefail
     base="https://cdn.jsdelivr.net/npm/@digicreon/mucss@{{version}}/dist"

@@ -21,6 +21,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Changed
 
 - **Den bumped to v0.11.2.** `OpenDB` and `OpenDBWithoutValidation` now wrap the typed `den.ErrUnsupportedScheme` sentinel, so callers can match unsupported-scheme errors via `errors.Is` instead of substring-matching the message. `uploader.ServeHandler` consumes the new `den.SeekableStorage` capability for Range / conditional-GET support (see Added).
+- **`contrib/mucss` updated to µCSS 1.4.8.** Upstream fix for `<details class="dropdown">` summaries inside coloured navbars — the same pattern Burrow's theme switcher uses. No API or token change.
 - **`example/hello` ported to µCSS** with `WithCompactType`, a `.hero` block, and a native `<dialog>` demo. The `example/hello-pico` evaluation example was removed.
 - **`example/notes` user-facing pages ported to µCSS.** `bootstrap.New()` stays alongside `mucss.New(WithCompactType())` until the admin-area auth templates migrate.
 - **Docs lead with µCSS as the default design contrib.** README, getting-started, contrib/admin, tutorial part 6, and reference docs updated; the "CSS framework default" Open Question is resolved (µCSS default, Bootstrap deprecated).

@@ -204,7 +204,7 @@ Run the just recipe to refresh the embedded CSS files:
 
 ```bash
 just update-mucss            # latest pinned version
-just update-mucss 1.4.7      # specific version
+just update-mucss 1.4.8      # specific version
 ```
 
 ## Relationship to `contrib/bootstrap`
