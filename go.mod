@@ -9,7 +9,7 @@ require (
 	github.com/go-chi/httplog/v3 v3.3.0
 	github.com/go-playground/form/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.30.2
-	github.com/go-webauthn/webauthn v0.16.4
+	github.com/go-webauthn/webauthn v0.17.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/securecookie v1.1.2
@@ -45,7 +45,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/tinylib/msgp v1.6.3 // indirect
+	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
