@@ -2,7 +2,7 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## 0.18.0 — 2026-05-05
 
 ### Breaking Changes
 
@@ -11,13 +11,12 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
+- **`contrib/mucss`** — new default design contrib providing [µCSS v1.x](https://mucss.org/) (PicoCSS v2 derivative with upstream bugs fixed and richer components: Hero, Alert, Toast, Modal, Pagination, Badge, Tabs). 20 named accent variants (`WithColor`), `WithCompactType()` for app/admin UIs, customisable via CSS custom properties (`WithCustomCSS`). The app implements `Configurable` to register `iconSunFill`, `iconMoonStarsFill`, and `iconCircleHalf` template functions used by the theme switcher.
+- **`contrib/mucss` ships Burrow UX extras** (`mu-extras.min.css`, always loaded unless `WithCustomCSS` is set): navbar-dropdown min-width, navbar-icon vertical centering, dialog header flex layout, dialog form-footer button layout, and a `.field-error` rule for inline form errors.
+- **HTMX-driven dialog pattern.** `htmx.OpenDialog(w, id [, class])` and `htmx.CloseDialog(w, id)` emit events that the `htmx/dialog_script` template turns into `dialog.showModal()` / `close()` calls. The `mucss` and `bootstrap` nav layouts ship a permanent `<dialog id="modal">` container and include the script. The optional class arg switches the µCSS modal size variant. Inside an open dialog, clicking any element with `rel="prev"` (µCSS close-icon button convention) or the behavioral `data-close-dialog` attribute closes the dialog client-side without a round-trip. See `example/notes` for the full create + edit flow.
 - **`example/themes`** — new demo app (`just example-themes`) previewing every µCSS accent variant side-by-side with the canonical button/card/alert/badge layout. Useful for picking a `WithColor(...)` value for your project.
 - **`uploader.ServeHandler` supports Range and conditional GET** when the underlying Storage implements `den.SeekableStorage` (file backend). Browsers can now stream video Range-by-Range, and clients with cached copies get 304 Not Modified instead of a full re-download. ETag is the storage path (content-addressed, so stable). Non-seekable backends (S3) keep the existing `io.Copy` fallback — Range support there belongs at the URL layer (pre-signed URLs).
 - **`burrow.CacheControlImmutable`** constant for the year-long immutable Cache-Control value used by content-addressed responses. `contrib/staticfiles` and `uploader` both consume it; downstream apps that serve content-addressed bytes can use it too instead of inlining the literal.
-
-- **`contrib/mucss` ships Burrow UX extras** (`mu-extras.min.css`, always loaded unless `WithCustomCSS` is set): navbar-dropdown min-width, navbar-icon vertical centering, dialog header flex layout, dialog form-footer button layout, and a `.field-error` rule for inline form errors.
-- **HTMX-driven dialog pattern.** `htmx.OpenDialog(w, id [, class])` and `htmx.CloseDialog(w, id)` emit events that the `htmx/dialog_script` template turns into `dialog.showModal()` / `close()` calls. The `mucss` and `bootstrap` nav layouts ship a permanent `<dialog id="modal">` container and include the script. The optional class arg switches the µCSS modal size variant. Inside an open dialog, clicking any element with `rel="prev"` (µCSS close-icon button convention) or the behavioral `data-close-dialog` attribute closes the dialog client-side without a round-trip. See `example/notes` for the full create + edit flow.
-- **`contrib/mucss`** — new default design contrib providing [µCSS v1.x](https://mucss.org/) (PicoCSS v2 derivative with upstream bugs fixed and richer components: Hero, Alert, Toast, Modal, Pagination, Badge, Tabs). 20 named accent variants (`WithColor`), `WithCompactType()` for app/admin UIs, customisable via CSS custom properties (`WithCustomCSS`). The app implements `Configurable` to register `iconSunFill`, `iconMoonStarsFill`, and `iconCircleHalf` template functions used by the theme switcher.
 
 ### Changed
 
