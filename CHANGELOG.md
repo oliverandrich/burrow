@@ -11,6 +11,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
+- **`example/themes`** — new demo app (`just example-themes`) previewing every µCSS accent variant side-by-side with the canonical button/card/alert/badge layout. Useful for picking a `WithColor(...)` value for your project.
 - **`uploader.ServeHandler` supports Range and conditional GET** when the underlying Storage implements `den.SeekableStorage` (file backend). Browsers can now stream video Range-by-Range, and clients with cached copies get 304 Not Modified instead of a full re-download. ETag is the storage path (content-addressed, so stable). Non-seekable backends (S3) keep the existing `io.Copy` fallback — Range support there belongs at the URL layer (pre-signed URLs).
 - **`burrow.CacheControlImmutable`** constant for the year-long immutable Cache-Control value used by content-addressed responses. `contrib/staticfiles` and `uploader` both consume it; downstream apps that serve content-addressed bytes can use it too instead of inlining the literal.
 

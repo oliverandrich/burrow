@@ -175,3 +175,7 @@ update-mucss version="1.4.8":
         curl -fsSL "$base/mu.${color}.css" -o "$out/mu.${color}.css"
     done
     echo "Done — µCSS v{{version}} updated (${#colors[@]} accents + default)"
+
+# Run the µCSS theme preview (every accent variant in one page)
+example-themes *args:
+    go run ./example/themes {{args}}

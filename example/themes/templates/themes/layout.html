@@ -1,0 +1,61 @@
+{{ define "themes/layout" -}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }}</title>
+    <link rel="stylesheet" id="theme-css" href="{{ staticURL "mucss/mu.css" }}">
+    <link rel="stylesheet" href="{{ staticURL "mucss/mu-extras.min.css" }}">
+    {{ template "mucss/theme_script" . }}
+    <style>
+        /* Even spacing between sibling variants in the demo gallery. */
+        section button,
+        section .badge,
+        section .alert {
+            margin-bottom: .5rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">{{ .Content }}</main>
+    <script type="application/json" id="theme-urls">
+        {
+            {{- range $i, $a := .Accents -}}
+            {{- if $i }},{{ end }}
+            "{{ $a.Slug }}": "{{ if eq $a.Slug "default" }}{{ staticURL "mucss/mu.css" }}{{ else }}{{ staticURL (printf "mucss/mu.%s.css" $a.Slug) }}{{ end }}"
+            {{- end }}
+        }
+    </script>
+    <script>
+        (function () {
+            var themeURLs = JSON.parse(document.getElementById("theme-urls").textContent);
+            var accentSelect = document.getElementById("accent-select");
+            var themeLink = document.getElementById("theme-css");
+
+            // Persist selection so a Cmd+R doesn't reset what you were looking at.
+            // Wrap localStorage in try/catch — Safari private-browsing
+            // throws on setItem and would otherwise break the switcher.
+            function readAccent() {
+                try { return localStorage.getItem("themes-accent") || "default"; }
+                catch (e) { return "default"; }
+            }
+            function writeAccent(v) {
+                try { localStorage.setItem("themes-accent", v); }
+                catch (e) { /* private mode — switcher still works, just no persistence */ }
+            }
+
+            var savedAccent = readAccent();
+            accentSelect.value = savedAccent;
+            themeLink.href = themeURLs[savedAccent] || themeURLs["default"];
+
+            accentSelect.addEventListener("change", function (e) {
+                var accent = e.target.value;
+                themeLink.href = themeURLs[accent] || themeURLs["default"];
+                writeAccent(accent);
+            });
+        })();
+    </script>
+</body>
+</html>
+{{- end }}
