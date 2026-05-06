@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Vendored Alpine.js and µCSS attributions added to `THIRD_PARTY_LICENSES.md`.** Alpine.js v3.15.8 (MIT, Copyright (c) 2019-2025 Caleb Porzio and contributors) under `contrib/alpine/static/` and µCSS v1.4.8 (MIT, Copyright (c) 2026 Digicreon) under `contrib/mucss/static/` were both shipped without an entry in the third-party listing.
+
 ## 0.18.0 — 2026-05-05
 
 ### Breaking Changes
