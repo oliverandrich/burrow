@@ -6,6 +6,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Breaking Changes
 
+- **`contrib/alpine` removed.** Alpine.js's vendored static asset (~17KB minified) and the `{{ template "alpine/js" . }}` partial are gone. Apps that need Alpine should vendor it themselves into their own staticfiles directory and ship the `<script>` tag from their own layout. Burrow's design has shifted toward SSR + HTMX + OOB-update patterns where Alpine is not load-bearing.
 - **Den bumped to v0.12.0 — top-level CRUD wrappers collapsed.** `den.Insert` / `den.Update` → `den.Save` (branches on `doc.ID`); `den.InsertMany` → `den.SaveAll`; `den.DeleteMany[T](ctx, db, conds)` → `den.NewQuery[T](db, conds...).Delete(ctx)`; `den.FindOneAndUpdate[T](ctx, db, fields, conds)` → `den.NewQuery[T](db, conds...).UpdateOne(ctx, fields)`. All contrib apps, examples, and tutorial steps migrated. See the [Den 0.12.0 changelog](https://github.com/oliverandrich/den/blob/main/CHANGELOG.md#0120--2026-05-15) for the full migration table.
 - **`burrow.OpenDBWithoutValidation` removed.** Den's struct-tag validation is now unconditionally always-on (the `validate.WithValidation()` opt-in is gone in Den 0.12.0), so the escape hatch has nothing to opt out of. Projects that still carry `validate:"..."` tags producing data violations must fix the data or drop the tag.
 

@@ -34,14 +34,6 @@ Provided by the [`htmx`](../contrib/htmx.md) contrib app.
 | `{{ template "htmx/config" . }}` | `<meta>` tag configuring htmx to swap `422` responses (for form validation) |
 | `{{ template "htmx/dialog_script" . }}` | Listener that turns `htmx.OpenDialog`/`htmx.CloseDialog` events into native `dialog.showModal()` / `close()` calls |
 
-### alpine
-
-Provided by the [`alpine`](../contrib/alpine.md) contrib app.
-
-| Template | Output |
-|----------|--------|
-| `{{ template "alpine/js" . }}` | `<script defer>` tag for Alpine.js |
-
 ### bootstrap (deprecated, removed in v0.20)
 
 Provided by the deprecated [`bootstrap`](../contrib/bootstrap.md) contrib app. New projects should use `mucss` above.

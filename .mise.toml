@@ -70,16 +70,6 @@ curl -sL "https://unpkg.com/htmx.org@$v/dist/htmx.min.js" -o contrib/htmx/static
 echo "Done — htmx v$v updated"
 '''
 
-[tasks."update-alpine"]
-description = "Update Alpine.js vendored JS (override with version=X)"
-run = '''
-set -euo pipefail
-v="${version:-3.15.8}"
-echo "Downloading Alpine.js v$v..."
-curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@$v/dist/cdn.min.js" -o contrib/alpine/static/alpine.min.js
-echo "Done — Alpine.js v$v updated"
-'''
-
 [tasks."update-mucss"]
 description = "Update µCSS vendored CSS (default + 20 named accents) (override with version=X)"
 run = '''
