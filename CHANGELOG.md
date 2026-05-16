@@ -15,6 +15,11 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Tailwind v4 via the standalone CLI** is the recommended CSS stack for new Burrow projects. `.mise.toml` pins `github:tailwindlabs/tailwindcss` alongside the Go toolchain so installation is one `mise install` away. Dark mode follows `prefers-color-scheme`; no user-toggleable theme machinery is shipped by Burrow.
 - **`cmd/burrow-tailwind`** — a thin Go-tool wrapper around `tailwindcss` that auto-generates `@source` directives for every Burrow contrib's template directory. Users install via `go get -tool github.com/oliverandrich/burrow/cmd/burrow-tailwind` and invoke as `go tool burrow-tailwind -i tailwind.css -o static/app.min.css [--watch | --minify]`. Arguments after the binary name are forwarded verbatim to `tailwindcss`, so the wrapper stays out of the way as Tailwind evolves. New contribs with templates are picked up automatically on `go get -u` — no per-project source-list maintenance.
 - **`docs/guide/tailwind.md`** — the full setup, dev (with Air), and production-build workflow. Starter `tailwind.css` at `docs/guide/tailwind.example.css`.
+- **`example/hello` migrated to Tailwind v4.** Ships its own `tailwind.css` source and pre-built `static/app.min.css`. `go run ./example/hello` works out of the box without a manual `tailwindcss` invocation. CI gate verifies the committed CSS stays in sync with the templates.
+
+### Removed
+
+- **`example/themes`** — was a µCSS accent-variant preview app, no longer meaningful after the framework drops µCSS.
 
 ### Changed
 

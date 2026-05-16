@@ -147,7 +147,7 @@ go tool burrow-tailwind -i tailwind.css -o internal/app/static/app.min.css --min
 
 Then it forwards every argument verbatim to `tailwindcss`. New contribs in future Burrow releases — or new internal apps in your own project — get picked up automatically on the next invocation. No per-project source-list maintenance.
 
-A worked example of the realistic layout — with a Den-backed Notes CRUD app — will land under `example/` before v0.20 ships.
+The two examples in this repo show both layouts in action: [`example/hello`](https://github.com/oliverandrich/burrow/tree/main/example/hello) is the flat single-file app; [`example/notes`](https://github.com/oliverandrich/burrow/tree/main/example/notes) is the realistic `cmd/server` + `internal/<app>/` layout with a Den-backed CRUD use case.
 
 ## Customizing contrib styles
 

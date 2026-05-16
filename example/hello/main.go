@@ -1,17 +1,22 @@
 // Command hello is a minimal burrow application that serves a single
-// "Hello, World!" page with µCSS styling and i18n support.
+// "Hello, World!" page with Tailwind v4 styling and i18n support.
 //
-// This example demonstrates the core concepts of a burrow app:
+// This example demonstrates the core concepts of a burrow app in a
+// flat layout — one Go file, one templates/ directory, one static/
+// directory, one tailwind.css:
 //
-//   - Creating a server with contrib apps (staticfiles, htmx, mucss)
-//   - Defining a custom app that provides routes, templates, and translations
-//   - Using the µCSS layout for page rendering
+//   - Creating a server with contrib apps (staticfiles, htmx)
+//   - Defining a custom app that ships its own templates and embeds
+//     its own static CSS
 //   - Configuring the CLI with urfave/cli for flags like --host, --port, etc.
 //
-// Translations are provided via burrow's built-in `t` template function;
-// no separate i18n contrib registration is needed for this minimal case.
+// Translations are provided via burrow's built-in `t` template function.
 //
-// Run it with:
+// Build the CSS once (or run `mise run dev` for hot-reload):
+//
+//	mise run example-hello-css
+//
+// Run it:
 //
 //	go run ./example/hello
 //
@@ -29,15 +34,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/htmx"
-	"github.com/oliverandrich/burrow/contrib/mucss"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
 )
-
-// Embed the templates/ and translations/ directories at compile time.
-// Go's //go:embed directive makes these files available as an in-memory
-// filesystem, so the binary is fully self-contained — no external files needed.
 
 //go:embed templates
 var templateFS embed.FS
@@ -45,98 +45,50 @@ var templateFS embed.FS
 //go:embed translations
 var translationFS embed.FS
 
-// emptyFS is an empty embedded filesystem. We pass it to staticfiles because
-// this example has no custom static assets (CSS, JS, images). Contrib apps
-// like mucss contribute their own static files automatically.
-var emptyFS embed.FS
+//go:embed static
+var staticFS embed.FS
 
 func main() {
-	// staticfiles serves static assets with content-hashed URLs for cache busting.
-	// Even though we have no custom assets, we need it because mucss depends on it.
-	staticApp, err := staticfiles.New(emptyFS)
+	// staticFS has files under `static/app.min.css`; fs.Sub strips that
+	// directory so staticURL resolves names directly without an extra
+	// `static/` segment.
+	staticRoot, _ := fs.Sub(staticFS, "static")
+
+	staticApp, err := staticfiles.New(staticRoot)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Create our custom app. The helloApp struct is defined below and
-	// provides a single route, HTML templates, and translation files.
-	hello := &helloApp{}
-
-	// Create the server and register apps. Order matters: apps are initialized
-	// in the order they are passed, and some apps depend on others being
-	// registered first (e.g. mucss depends on staticfiles and htmx).
-	//
-	// mucss.WithCompactType caps the responsive font-size scaling on large
-	// displays — µCSS's blog-oriented defaults (inherited from PicoCSS) grow
-	// to 21px at 1536px, which feels heavy for app UIs. The compact override
-	// holds it at ~17px and tightens spacing for desktop layouts.
 	srv := burrow.NewServer(
-		staticApp,                          // Static file serving with content-hashed URLs
-		htmx.New(),                         // HTMX request detection and response helpers
-		mucss.New(mucss.WithCompactType()), // µCSS design system, dark mode, compact typography
-		hello,                              // Our custom app (defined below)
+		staticApp,
+		htmx.New(),
+		&helloApp{},
 	)
+	srv.SetLayout("hello/layout")
 
-	// SetLayout picks the layout template for full-page renders. NavLayout
-	// wraps content in <main class="container"> and exposes a navbar slot.
-	srv.SetLayout(mucss.NavLayout())
-
-	// Wire up the CLI. The server provides built-in flags (--host, --port,
-	// --database-dsn, --log-level, etc.) and the Action runs the HTTP server.
 	cmd := &cli.Command{
 		Name:   "hello",
 		Usage:  "Minimal burrow hello world application",
 		Flags:  srv.Flags(nil),
 		Action: srv.Run,
 	}
-
-	// Parse CLI flags (os.Args) and start the HTTP server. This blocks
-	// until the server shuts down (e.g. via Ctrl+C / SIGTERM).
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
 }
 
-// ---------------------------------------------------------------------------
-// helloApp — a minimal custom app
-// ---------------------------------------------------------------------------
-//
-// Every burrow app must implement the burrow.App interface:
-//
-//	Name() string  — unique identifier for the app
-//
-// Beyond that, apps opt into additional features by implementing optional
-// interfaces. This app implements:
-//
-//	HasRoutes       — registers HTTP routes
-//	HasTemplates    — contributes HTML templates to the global template set
-//	HasTranslations — contributes i18n translation files
-
+// helloApp is a minimal Burrow app contributing one route, two
+// templates (layout + page), and translations.
 type helloApp struct{}
 
-func (a *helloApp) Name() string { return "hello" }
-
-// TranslationFS returns the embedded translations/ directory. The i18n app
-// automatically discovers and loads all .toml files from this filesystem.
-// Files are named active.<lang>.toml (e.g. active.en.toml, active.de.toml).
+func (a *helloApp) Name() string         { return "hello" }
 func (a *helloApp) TranslationFS() fs.FS { return translationFS }
 
-// TemplateFS returns the embedded HTML templates. Templates are organized
-// in subdirectories named after the app (templates/hello/*.html) and use
-// Go's html/template syntax. The {{ define "hello/home" }} directive sets
-// the template name used when rendering.
 func (a *helloApp) TemplateFS() fs.FS {
 	sub, _ := fs.Sub(templateFS, "templates")
 	return sub
 }
 
-// Routes registers HTTP routes on the given chi router. burrow.Handle()
-// wraps a handler that returns an error into a standard http.HandlerFunc,
-// providing centralized error handling via HTTPError.
-//
-// Render looks up the named template ("hello/home"), executes it with
-// the given data, and wraps it in the server's layout. For HTMX requests,
-// it automatically returns only the fragment (no layout).
 func (a *helloApp) Routes(r chi.Router) {
 	r.Get("/", burrow.Handle(func(w http.ResponseWriter, r *http.Request) error {
 		return burrow.Render(w, r, http.StatusOK, "hello/home", map[string]any{
