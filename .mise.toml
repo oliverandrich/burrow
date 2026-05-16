@@ -42,21 +42,16 @@ description = "Regenerate THIRD_PARTY_LICENSES.md from go-licenses"
 run = "./scripts/generate-licenses.sh"
 
 [tasks."example-hello"]
-description = "Run the hello world example"
-run = 'go run ./example/hello "$@"'
+description = "Run the hello world example (builds Tailwind CSS first)"
+run = [
+    "go tool burrow-tailwind -i example/hello/tailwind.css -o example/hello/static/app.min.css --minify",
+    'go run ./example/hello "$@"',
+]
 
 [tasks."example-notes"]
 description = "Run the notes example application"
 run = 'go run ./example/notes/cmd/server "$@"'
 
-[tasks."example-hello-css"]
-description = "Compile Tailwind CSS for example/hello"
-run = "go tool burrow-tailwind -i example/hello/tailwind.css -o example/hello/static/app.min.css --minify"
-
-[tasks."build-example-css"]
-description = "Compile Tailwind CSS for every example app under example/"
-depends = ["example-hello-css"]
-run = "true"
 
 # --- Vendored asset updates ---
 # Each `update-*` recipe pulls a fixed upstream version into contrib/<app>/static.

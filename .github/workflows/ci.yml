@@ -38,31 +38,6 @@ jobs:
           RACE_FLAG: ${{ matrix.go-version == '1.26' && '-race' || '' }}
         run: go test $RACE_FLAG ./...
 
-  example-css-drift:
-    name: Example CSS drift check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
-        with:
-          go-version: '1.26'
-          cache: false
-
-      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-
-      - name: Rebuild example CSS
-        run: mise run build-example-css
-
-      - name: Fail if rebuilt CSS differs from committed CSS
-        run: |
-          if ! git diff --exit-code -- 'example/*/static/app.min.css'; then
-            echo "::error::Example CSS is out of sync with templates. Run 'mise run build-example-css' locally and commit the result."
-            exit 1
-          fi
-
   lint:
     runs-on: ubuntu-latest
     steps:
