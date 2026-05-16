@@ -8,9 +8,10 @@ import (
 )
 
 // DefaultAuthLayout returns the template name for the built-in auth layout.
-// Uses the base µCSS layout directly.
+// Empty string means "use the global layout set by the host app via
+// srv.SetLayout"; pass [WithAuthLayout] to override.
 func DefaultAuthLayout() string {
-	return "mucss/layout"
+	return ""
 }
 
 // DefaultRenderer returns the default Renderer that uses the built-in HTML

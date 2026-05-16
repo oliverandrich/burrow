@@ -1,10 +1,13 @@
 {{ define "auth/recovery_codes" -}}
-<p>{{ t "recovery-codes-description" }}</p>
-<pre><code>{{ range $i, $code := .Codes }}{{ if $i }}
+<p class="mb-3 text-sm">{{ t "recovery-codes-description" }}</p>
+<pre class="mb-4 overflow-x-auto rounded-md bg-gray-100 p-3 font-mono text-sm dark:bg-gray-800"><code>{{ range $i, $code := .Codes }}{{ if $i }}
 {{ end }}{{ $code }}{{ end }}</code></pre>
 <form method="POST" action="/auth/recovery-codes/ack">
     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}"/>
-    <button type="submit" class="btn btn-primary">{{ t "recovery-codes-ack" }}</button>
+    <button type="submit"
+        class="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+        {{ t "recovery-codes-ack" }}
+    </button>
 </form>
 {{- end }}
 
@@ -14,21 +17,26 @@
     data-recovery-warning-prefix="{{ t "recovery-warning-prefix" }}"
     data-recovery-warning-suffix="{{ t "recovery-warning-suffix" }}"
 ></div>
-<p>{{ t "recovery-description" }}</p>
-<div id="error-message" class="alert alert-error" role="alert" hidden></div>
-<form id="recovery-form">
-    <label for="username">
-        {{ t "recovery-username-label" }}
-        <input type="text" id="username" name="username" required autocomplete="username"/>
+<p class="mb-3 text-sm">{{ t "recovery-description" }}</p>
+<div id="error-message" class="mb-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200" role="alert" hidden></div>
+<form id="recovery-form" class="space-y-3">
+    <label for="username" class="block">
+        <span class="mb-1 block text-sm font-medium">{{ t "recovery-username-label" }}</span>
+        <input type="text" id="username" name="username" required autocomplete="username"
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900"/>
     </label>
-    <label for="code">
-        {{ t "recovery-code-label" }}
-        <input type="text" id="code" name="code" required/>
+    <label for="code" class="block">
+        <span class="mb-1 block text-sm font-medium">{{ t "recovery-code-label" }}</span>
+        <input type="text" id="code" name="code" required
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900"/>
     </label>
-    <button type="submit" class="btn btn-primary">{{ t "recovery-button" }}</button>
+    <button type="submit"
+        class="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+        {{ t "recovery-button" }}
+    </button>
 </form>
-<p class="auth-links">
-    <a href="/auth/login">{{ t "recovery-back-to-login" }}</a>
+<p class="mt-4 text-center text-sm">
+    <a href="/auth/login" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ t "recovery-back-to-login" }}</a>
 </p>
 <script>
     document.getElementById("recovery-form").addEventListener("submit", async function(e) {

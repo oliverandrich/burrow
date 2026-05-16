@@ -4,12 +4,15 @@
     data-login-waiting="{{ t "login-waiting" }}"
     data-login-button="{{ t "login-button" }}"
 ></div>
-<div id="error-message" class="alert alert-error" role="alert" hidden></div>
-<button id="login-btn" type="button" class="btn btn-primary btn-lg" style="width:100%">{{ t "login-button" }}</button>
-<p class="auth-links">
-    <a href="/auth/register">{{ t "login-create-account" }}</a>
-    &middot;
-    <a href="/auth/recovery">{{ t "login-lost-passkey" }}</a>
+<div id="error-message" class="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200" role="alert" hidden></div>
+<button id="login-btn" type="button"
+    class="w-full rounded-md bg-emerald-600 px-4 py-2.5 text-base font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
+    {{ t "login-button" }}
+</button>
+<p class="mt-4 text-center text-sm">
+    <a href="/auth/register" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ t "login-create-account" }}</a>
+    <span class="mx-2 text-gray-400">&middot;</span>
+    <a href="/auth/recovery" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ t "login-lost-passkey" }}</a>
 </p>
 <script src="{{ staticURL "auth/webauthn.js" }}"></script>
 <script>

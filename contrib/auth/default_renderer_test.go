@@ -37,16 +37,10 @@ func testBaseFuncMap() template.FuncMap {
 			}
 			return ""
 		},
-		"iconSearch":      func(class ...string) template.HTML { return "" },
-		"iconPlus":        func(class ...string) template.HTML { return "" },
-		"iconPersonSlash": func(class ...string) template.HTML { return "" },
-		"iconPersonCheck": func(class ...string) template.HTML { return "" },
-		"iconTrash":       func(class ...string) template.HTML { return "" },
-		"iconXCircle":     func(class ...string) template.HTML { return "" },
-		"pageURL":         func(base, query string, page int) string { return "" },
-		"pageNumbers":     func(current, total int) []int { return nil },
-		"add":             func(a, b int) int { return a + b },
-		"sub":             func(a, b int) int { return a - b },
+		"pageURL":     func(base, query string, page int) string { return "" },
+		"pageNumbers": func(current, total int) []int { return nil },
+		"add":         func(a, b int) int { return a + b },
+		"sub":         func(a, b int) int { return a - b },
 		"dict": func(pairs ...any) map[string]any {
 			m := make(map[string]any, len(pairs)/2)
 			for i := 0; i+1 < len(pairs); i += 2 {
@@ -94,7 +88,7 @@ func TestDefaultRendererLoginPage(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "login-button")
-	assert.NotContains(t, body, "<article>", "login page should not have a card frame")
+	assert.NotContains(t, body, "<article ", "login page should not have a card frame")
 }
 
 func TestDefaultRendererRegisterPage(t *testing.T) {
@@ -108,7 +102,7 @@ func TestDefaultRendererRegisterPage(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "register-username-label")
-	assert.Contains(t, body, "<article>", "register page should be wrapped in a card")
+	assert.Contains(t, body, "<article ", "register page should be wrapped in a card")
 }
 
 func TestDefaultRendererRegisterPageEmailMode(t *testing.T) {
@@ -138,7 +132,7 @@ func TestDefaultRendererCredentialsPage(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "My Passkey")
-	assert.Contains(t, body, "<article>", "credentials page should be wrapped in a card")
+	assert.Contains(t, body, "<article ", "credentials page should be wrapped in a card")
 }
 
 func TestDefaultRendererRecoveryPage(t *testing.T) {
@@ -153,7 +147,7 @@ func TestDefaultRendererRecoveryPage(t *testing.T) {
 	body := rec.Body.String()
 	assert.Contains(t, body, "recovery-description")
 	assert.NotContains(t, body, "<h2>", "recovery page should not have a card title")
-	assert.Contains(t, body, "<article>", "recovery page should be wrapped in a card")
+	assert.Contains(t, body, "<article ", "recovery page should be wrapped in a card")
 }
 
 func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
@@ -170,7 +164,7 @@ func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
 	assert.Contains(t, body, "recovery-codes-title")
 	assert.Contains(t, body, "aaaa-bbbb-cccc")
 	assert.Contains(t, body, "dddd-eeee-ffff")
-	assert.Contains(t, body, "<article>", "recovery codes page should be wrapped in a card")
+	assert.Contains(t, body, "<article ", "recovery codes page should be wrapped in a card")
 	assert.Contains(t, body, "/auth/recovery-codes/ack")
 }
 
@@ -185,7 +179,7 @@ func TestDefaultRendererVerifyPendingPage(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "verify-pending-title")
-	assert.Contains(t, body, "<article>", "verify pending page should be wrapped in a card")
+	assert.Contains(t, body, "<article ", "verify pending page should be wrapped in a card")
 }
 
 func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
@@ -199,7 +193,7 @@ func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "verify-success-title")
-	assert.Contains(t, body, "<article>", "verify email success page should be wrapped in a card")
+	assert.Contains(t, body, "<article ", "verify email success page should be wrapped in a card")
 }
 
 func TestDefaultRendererVerifyEmailError(t *testing.T) {
@@ -214,7 +208,7 @@ func TestDefaultRendererVerifyEmailError(t *testing.T) {
 	body := rec.Body.String()
 	assert.Contains(t, body, "verify-error-title")
 	assert.Contains(t, body, "verify-error-invalid-token")
-	assert.Contains(t, body, "<article>", "verify email error page should be wrapped in a card")
+	assert.Contains(t, body, "<article ", "verify email error page should be wrapped in a card")
 }
 
 func TestDefaultRendererLoginPageWithLogo(t *testing.T) {
@@ -305,7 +299,7 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 // --- DefaultAuthLayout tests ---
 
 func TestDefaultAuthLayout(t *testing.T) {
-	assert.Equal(t, "mucss/layout", DefaultAuthLayout())
+	assert.Empty(t, DefaultAuthLayout())
 }
 
 // --- renderCentered/renderCard without executor ---

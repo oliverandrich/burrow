@@ -14,7 +14,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/bsicons"
 
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/urfave/cli/v3"
@@ -105,14 +104,6 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	a.repo = NewRepository(cfg.DB)
 	a.globalConfig = cfg.Config
 	a.withLocale = cfg.WithLocale
-
-	// Register icon functions used in admin templates.
-	cfg.RegisterIconFunc("iconSearch", bsicons.Search)
-	cfg.RegisterIconFunc("iconPlus", bsicons.PlusLg)
-	cfg.RegisterIconFunc("iconPersonSlash", bsicons.PersonSlash)
-	cfg.RegisterIconFunc("iconPersonCheck", bsicons.PersonCheck)
-	cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
-	cfg.RegisterIconFunc("iconXCircle", bsicons.XCircle)
 
 	// Read flag values and create config.
 	baseURL := ""
@@ -410,6 +401,14 @@ func (a *App) AdminRoutes(r chi.Router) {
 	r.Delete("/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(a.repo)))
 }
 
+// peopleIcon is the inline SVG for the Users admin-nav item (Bootstrap
+// Icons' "people"). Inlining keeps the contrib bsicons-free.
+const peopleIcon = template.HTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" style="vertical-align:-.125em" viewBox="0 0 16 16"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002-.014.002zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a6 6 0 0 0-1.23-.247A7 7 0 0 0 5 9c-4 0-5 3-5 4q0 1 1 1h4.216A2.24 2.24 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.5 5.5 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/></svg>`)
+
+// envelopeIcon is the inline SVG for the Invites admin-nav item
+// (Bootstrap Icons' "envelope").
+const envelopeIcon = template.HTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" style="vertical-align:-.125em" viewBox="0 0 16 16"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1zm13 2.383-4.708 2.825L15 11.105zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741M1 11.105l4.708-2.897L1 5.383z"/></svg>`)
+
 // AdminNavItems returns navigation items for the admin panel.
 func (a *App) AdminNavItems() []burrow.NavItem {
 	return []burrow.NavItem{
@@ -417,7 +416,7 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 			Label:     "Users",
 			LabelKey:  "admin-nav-users",
 			URL:       "/admin/users",
-			Icon:      bsicons.People(),
+			Icon:      peopleIcon,
 			Position:  10,
 			AdminOnly: true,
 		},
@@ -425,7 +424,7 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 			Label:     "Invites",
 			LabelKey:  "admin-nav-invites",
 			URL:       "/admin/invites",
-			Icon:      bsicons.Envelope(),
+			Icon:      envelopeIcon,
 			Position:  20,
 			AdminOnly: true,
 		},

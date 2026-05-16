@@ -1206,7 +1206,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 	app := &App{
 		renderer:   mockR,
 		config:     &Config{LoginRedirect: "/"},
-		authLayout: "mucss/layout",
+		authLayout: "test/auth-layout",
 	}
 
 	r := chi.NewRouter()
@@ -1224,7 +1224,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	// The captured layout should be the auth layout, not the global one.
-	assert.Equal(t, "mucss/layout", *mockR.capturedLayout, "layout should be the auth layout")
+	assert.Equal(t, "test/auth-layout", *mockR.capturedLayout, "layout should be the auth layout")
 }
 
 func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
@@ -1239,7 +1239,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 		repo:       repo,
 		renderer:   mockR,
 		config:     &Config{LoginRedirect: "/"},
-		authLayout: "mucss/layout",
+		authLayout: "test/auth-layout",
 	}
 
 	// Create a user so the credentials handler can look up credentials.

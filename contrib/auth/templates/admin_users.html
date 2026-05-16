@@ -1,82 +1,130 @@
+{{ define "auth/admin_users_tab" -}}
+{{- $active := eq .Current .Role -}}
+<li><a href="/admin/users{{ if .Role }}?role={{ .Role }}{{ if .Q }}&q={{ .Q }}{{ end }}{{ else if .Q }}?q={{ .Q }}{{ end }}" role="tab"
+    class="-mb-px inline-block border-b-2 px-3 py-2 {{ if $active }}border-emerald-600 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}"
+    {{ if $active }}aria-selected="true"{{ end }}>{{ .Label }}</a></li>
+{{- end }}
+
 {{ define "auth/admin_users" -}}
-<nav>
-    <ul class="breadcrumb" aria-label="breadcrumb">
-        <li><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
-        <li aria-current="page">{{ t "admin-nav-users" }}</li>
-    </ul>
-    <ul>
-        <li>
-            <form action="/admin/users" method="GET">
-                {{- if .Role }}
-                <input type="hidden" name="role" value="{{ .Role }}">
-                {{- end }}
-                <input type="search" class="input-sm" name="q" value="{{ .SearchTerm }}" placeholder="{{ t "modeladmin-search" }}" aria-label="{{ t "modeladmin-search" }}">
-            </form>
-        </li>
-    </ul>
+<nav aria-label="breadcrumb" class="mb-4 text-sm">
+    <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "admin-nav-users" }}</li>
+    </ol>
 </nav>
-<header>
-    <h2>{{ t "admin-nav-users" }}</h2>
+<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "admin-nav-users" }}</h2>
+    <form action="/admin/users" method="GET">
+        {{- if .Role }}
+        <input type="hidden" name="role" value="{{ .Role }}">
+        {{- end }}
+        <input type="search" name="q" value="{{ .SearchTerm }}"
+            placeholder="{{ t "modeladmin-search" }}"
+            aria-label="{{ t "modeladmin-search" }}"
+            class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900">
+    </form>
 </header>
-<ul class="tabs tabs-end" role="tablist">
-    <li><a href="/admin/users{{ if .SearchTerm }}?q={{ .SearchTerm }}{{ end }}" role="tab"{{ if eq .Role "" }} aria-selected="true"{{ end }}>{{ t "admin-users-role-all" }}</a></li>
-    <li><a href="/admin/users?role=user{{ if .SearchTerm }}&q={{ .SearchTerm }}{{ end }}" role="tab"{{ if eq .Role "user" }} aria-selected="true"{{ end }}>{{ t "admin-user-detail-role-user" }}</a></li>
-    <li><a href="/admin/users?role=admin{{ if .SearchTerm }}&q={{ .SearchTerm }}{{ end }}" role="tab"{{ if eq .Role "admin" }} aria-selected="true"{{ end }}>{{ t "admin-user-detail-role-admin" }}</a></li>
+<ul class="mb-4 flex flex-wrap items-center gap-1 border-b border-gray-200 text-sm dark:border-gray-800" role="tablist">
+    {{ template "auth/admin_users_tab" (dict "Role" "" "Label" (t "admin-users-role-all") "Current" .Role "Q" .SearchTerm) }}
+    {{ template "auth/admin_users_tab" (dict "Role" "user" "Label" (t "admin-user-detail-role-user") "Current" .Role "Q" .SearchTerm) }}
+    {{ template "auth/admin_users_tab" (dict "Role" "admin" "Label" (t "admin-user-detail-role-admin") "Current" .Role "Q" .SearchTerm) }}
 </ul>
 {{- if .Users }}
-<figure>
-    <table>
-        <thead>
+<div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+    <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
+        <thead class="bg-gray-50 dark:bg-gray-800/40">
             <tr>
-                <th scope="col">Username</th>
-                <th scope="col">Name</th>
-                <th scope="col">Email</th>
-                <th scope="col">Role</th>
-                <th scope="col">Active</th>
-                <th scope="col" class="admin-row-actions">{{ t "modeladmin-actions" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">Username</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">Name</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">Email</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">Role</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">Active</th>
+                <th scope="col" class="px-4 py-2 text-right font-medium">{{ t "modeladmin-actions" }}</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
             {{- range .Users }}
             <tr>
-                <td><a href="/admin/users/{{ .ID }}">{{ .Username }}</a></td>
-                <td>{{ .Name }}</td>
-                <td>{{ deref .Email }}</td>
-                <td>
-                    {{- if eq .Role "admin" }}<span class="badge badge-primary">Admin</span>{{ else }}<span class="badge badge-secondary">User</span>{{ end -}}
+                <td class="px-4 py-2"><a href="/admin/users/{{ .ID }}" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ .Username }}</a></td>
+                <td class="px-4 py-2">{{ .Name }}</td>
+                <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ deref .Email }}</td>
+                <td class="px-4 py-2">
+                    {{- if eq .Role "admin" -}}
+                    <span class="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">Admin</span>
+                    {{- else -}}
+                    <span class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">User</span>
+                    {{- end -}}
                 </td>
-                <td>
-                    {{- if .IsActive }}<span class="badge badge-success">{{ t "admin-users-active" }}</span>{{ else }}<span class="badge badge-error">{{ t "admin-users-inactive" }}</span>{{ end -}}
+                <td class="px-4 py-2">
+                    {{- if .IsActive -}}
+                    <span class="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ t "admin-users-active" }}</span>
+                    {{- else -}}
+                    <span class="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">{{ t "admin-users-inactive" }}</span>
+                    {{- end -}}
                 </td>
-                <td class="admin-row-actions">
+                <td class="whitespace-nowrap px-4 py-2 text-right">
                     {{- if .IsActive }}
-                    <button type="button" class="btn btn-sm btn-outline btn-secondary"
+                    <button type="button"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                         hx-post="/admin/users/{{ .ID }}/deactivate"
                         hx-swap="none"
                         hx-confirm="{{ t "admin-users-deactivate-confirm" }}">
-                        {{ iconPersonSlash }} {{ t "admin-users-action-deactivate" }}
+                        {{ template "auth/icon_person_slash" . }} {{ t "admin-users-action-deactivate" }}
                     </button>
                     {{- else }}
-                    <button type="button" class="btn btn-sm btn-outline btn-success"
+                    <button type="button"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
                         hx-post="/admin/users/{{ .ID }}/activate"
                         hx-swap="none">
-                        {{ iconPersonCheck }} {{ t "admin-users-action-activate" }}
+                        {{ template "auth/icon_person_check" . }} {{ t "admin-users-action-activate" }}
                     </button>
                     {{- end }}
-                    <button type="button" class="btn btn-sm btn-outline btn-error"
+                    <button type="button"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
                         hx-delete="/admin/users/{{ .ID }}"
                         hx-swap="none"
                         hx-confirm="{{ t "admin-users-delete-confirm" }}">
-                        {{ iconTrash }} {{ t "modeladmin-delete" }}
+                        {{ template "auth/icon_trash" . }} {{ t "modeladmin-delete" }}
                     </button>
                 </td>
             </tr>
             {{- end }}
         </tbody>
     </table>
-</figure>
-{{ template "mucss/pagination" (dict "Page" .Page "BasePath" "/admin/users" "RawQuery" .RawQuery) }}
+</div>
+{{ template "auth/pagination" (dict "Page" .Page "BasePath" "/admin/users" "RawQuery" .RawQuery) }}
 {{- else }}
-<p>{{ t "admin-users-none" }}</p>
+<div class="rounded-lg border border-dashed border-gray-300 py-12 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
+    <p>{{ t "admin-users-none" }}</p>
+</div>
+{{- end }}
+{{- end }}
+
+{{ define "auth/pagination" -}}
+{{ if gt .Page.TotalPages 1 -}}
+<nav aria-label="Page navigation" class="mt-4 flex justify-center">
+    <ul class="inline-flex items-center gap-1 text-sm">
+        {{ if le .Page.Page 1 -}}
+        <li><span class="rounded border border-gray-200 px-2 py-1 text-gray-400 dark:border-gray-800 dark:text-gray-600" aria-disabled="true">&laquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (sub .Page.Page 1) }}" aria-label="Previous" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">&laquo;</a></li>
+        {{- end }}
+        {{ range pageNumbers .Page.Page .Page.TotalPages -}}
+        {{ if eq . -1 -}}
+        <li><span aria-hidden="true" class="px-2">&hellip;</span></li>
+        {{- else if eq . $.Page.Page -}}
+        <li><span aria-current="page" class="rounded border border-emerald-500 bg-emerald-50 px-2 py-1 font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{{ . }}</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL $.BasePath $.RawQuery . }}" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">{{ . }}</a></li>
+        {{- end }}
+        {{- end }}
+        {{ if not .Page.HasMore -}}
+        <li><span class="rounded border border-gray-200 px-2 py-1 text-gray-400 dark:border-gray-800 dark:text-gray-600" aria-disabled="true">&raquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (add .Page.Page 1) }}" aria-label="Next" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">&raquo;</a></li>
+        {{- end }}
+    </ul>
+</nav>
 {{- end }}
 {{- end }}

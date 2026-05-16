@@ -1,42 +1,28 @@
 {{ define "auth/centered" -}}
-<div class="auth-shell">
-    <div class="auth-frame">
+<div class="flex min-h-[calc(100vh-2rem)] items-center justify-center px-4 py-8">
+    <div class="w-full max-w-md">
         {{ template "auth/logo" . }}
         {{ .Content }}
     </div>
 </div>
-{{ template "auth/styles" . }}
 {{- end }}
 
 {{ define "auth/card" -}}
-<div class="auth-shell">
-    <div class="auth-frame">
+<div class="flex min-h-[calc(100vh-2rem)] items-center justify-center px-4 py-8">
+    <div class="w-full max-w-md">
         {{ template "auth/logo" . }}
-        <article>
-            {{ if .CardTitle }}<header><h2>{{ .CardTitle }}</h2></header>{{ end }}
+        <article class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            {{ if .CardTitle }}<header class="mb-4 text-center"><h2 class="text-xl font-bold tracking-tight">{{ .CardTitle }}</h2></header>{{ end }}
             {{ .Content }}
         </article>
     </div>
 </div>
-{{ template "auth/styles" . }}
 {{- end }}
 
 {{ define "auth/logo" -}}
-{{ with authLogo }}<div class="auth-logo">{{ . }}</div>{{ end }}
+{{ with authLogo }}<div class="mb-4 text-center">{{ . }}</div>{{ end }}
 {{- end }}
 
 {{ define "auth/csrf_input" -}}
 <input type="hidden" id="csrf-token" value="{{ csrfToken }}"/>
-{{- end }}
-
-{{ define "auth/styles" -}}
-<style>
-.auth-shell{min-height:calc(100vh - 2rem);display:flex;align-items:center;justify-content:center;padding:1rem}
-.auth-frame{width:100%;max-width:28rem}
-.auth-frame label{font-size:.875rem}
-.auth-frame article>header{text-align:center;margin-bottom:1rem}
-.auth-frame article>header h2{margin:0}
-.auth-logo{text-align:center;margin-bottom:1rem}
-.auth-links{text-align:center;margin-top:1rem}
-</style>
 {{- end }}

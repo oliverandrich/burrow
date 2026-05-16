@@ -1,36 +1,41 @@
 {{ define "auth/admin_invites" -}}
-<nav>
-    <ul class="breadcrumb" aria-label="breadcrumb">
-        <li><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
-        <li aria-current="page">{{ t "admin-nav-invites" }}</li>
-    </ul>
-    <ul>
-        <li>
-            <form action="/admin/invites" method="GET">
-                <input type="search" class="input-sm" name="q" value="{{ .SearchTerm }}" placeholder="{{ t "modeladmin-search" }}" aria-label="{{ t "modeladmin-search" }}">
-            </form>
-        </li>
-    </ul>
+<nav aria-label="breadcrumb" class="mb-4 text-sm">
+    <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "admin-nav-invites" }}</li>
+    </ol>
 </nav>
-<header>
-    <h2>{{ t "admin-nav-invites" }}</h2>
-    <button type="button" class="btn btn-primary"
-        hx-get="/admin/invites/new"
-        hx-target="#invite-form"
-        hx-swap="innerHTML">
-        {{ iconPlus }} {{ t "modeladmin-new" }}
-    </button>
+<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "admin-nav-invites" }}</h2>
+    <div class="flex items-center gap-2">
+        <form action="/admin/invites" method="GET">
+            <input type="search" name="q" value="{{ .SearchTerm }}"
+                placeholder="{{ t "modeladmin-search" }}"
+                aria-label="{{ t "modeladmin-search" }}"
+                class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900">
+        </form>
+        <button type="button"
+            class="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+            hx-get="/admin/invites/new"
+            hx-target="#invite-form"
+            hx-swap="innerHTML">
+            {{ template "auth/icon_plus_lg" . }} {{ t "modeladmin-new" }}
+        </button>
+    </div>
 </header>
-<div id="invite-form"></div>
+<div id="invite-form" class="mb-4"></div>
 {{- if .CreatedURL }}
-<div class="alert alert-primary" role="alert">
-    <span class="alert-title">{{ t "admin-invites-created" }}</span>
-    <p>{{ t "admin-invites-copy-url" }}</p>
-    <fieldset role="group" class="admin-invite-url">
-        <input type="text" id="admin-invite-url" readonly value="{{ .CreatedURL }}">
-        <button type="button" class="btn btn-outline btn-secondary" id="admin-invite-copy"
+<div class="mb-4 rounded-md border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/40" role="alert">
+    <strong class="block mb-1">{{ t "admin-invites-created" }}</strong>
+    <p class="mb-2">{{ t "admin-invites-copy-url" }}</p>
+    <div class="flex gap-2">
+        <input type="text" id="admin-invite-url" readonly value="{{ .CreatedURL }}"
+            class="flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-mono dark:border-gray-700 dark:bg-gray-900">
+        <button type="button" id="admin-invite-copy"
+            class="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
             data-done-label="{{ t "admin-invites-copy-done" }}">{{ t "admin-invites-copy" }}</button>
-    </fieldset>
+    </div>
 </div>
 <script>
     (function(){
@@ -46,38 +51,42 @@
 </script>
 {{- end }}
 {{- if .Invites }}
-<figure>
-    <table>
-        <thead>
+<div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+    <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
+        <thead class="bg-gray-50 dark:bg-gray-800/40">
             <tr>
-                <th scope="col">Label</th>
-                <th scope="col">Email</th>
-                <th scope="col">{{ t "admin-invites-status" }}</th>
-                <th scope="col">{{ t "admin-invites-expires" }}</th>
-                <th scope="col">{{ t "admin-invites-created" }}</th>
-                <th scope="col" class="admin-row-actions">{{ t "modeladmin-actions" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">Label</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">Email</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-invites-status" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-invites-expires" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-invites-created" }}</th>
+                <th scope="col" class="px-4 py-2 text-right font-medium">{{ t "modeladmin-actions" }}</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
             {{- range .Invites }}
             <tr>
-                <td>{{ .Label }}</td>
-                <td>{{ .Email }}</td>
-                <td>
-                    {{- if .IsUsed }}<span class="badge badge-secondary">{{ t "admin-invites-status-used" }}</span>
-                    {{- else if .IsExpired }}<span class="badge badge-warning">{{ t "admin-invites-status-expired" }}</span>
-                    {{- else }}<span class="badge badge-success">{{ t "admin-invites-status-active" }}</span>
-                    {{- end }}
+                <td class="px-4 py-2">{{ .Label }}</td>
+                <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ .Email }}</td>
+                <td class="px-4 py-2">
+                    {{- if .IsUsed -}}
+                    <span class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">{{ t "admin-invites-status-used" }}</span>
+                    {{- else if .IsExpired -}}
+                    <span class="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{{ t "admin-invites-status-expired" }}</span>
+                    {{- else -}}
+                    <span class="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ t "admin-invites-status-active" }}</span>
+                    {{- end -}}
                 </td>
-                <td>{{ .ExpiresAt.Format "2006-01-02 15:04" }}</td>
-                <td>{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
-                <td class="admin-row-actions">
+                <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ .ExpiresAt.Format "2006-01-02 15:04" }}</td>
+                <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
+                <td class="whitespace-nowrap px-4 py-2 text-right">
                     {{- if .IsValid }}
-                    <button type="button" class="btn btn-sm btn-outline btn-error"
+                    <button type="button"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
                         hx-delete="/admin/invites/{{ .ID }}/revoke"
                         hx-swap="none"
                         hx-confirm="{{ t "admin-invites-revoke-confirm" }}">
-                        {{ iconXCircle }} {{ t "admin-invites-revoke" }}
+                        {{ template "auth/icon_x_circle" . }} {{ t "admin-invites-revoke" }}
                     </button>
                     {{- end }}
                 </td>
@@ -85,9 +94,11 @@
             {{- end }}
         </tbody>
     </table>
-</figure>
-{{ template "mucss/pagination" (dict "Page" .Page "BasePath" "/admin/invites" "RawQuery" .RawQuery) }}
+</div>
+{{ template "auth/pagination" (dict "Page" .Page "BasePath" "/admin/invites" "RawQuery" .RawQuery) }}
 {{- else }}
-<p>{{ t "admin-invites-none" }}</p>
+<div class="rounded-lg border border-dashed border-gray-300 py-12 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
+    <p>{{ t "admin-invites-none" }}</p>
+</div>
 {{- end }}
 {{- end }}

@@ -4,34 +4,41 @@
     data-register-waiting="{{ t "register-waiting" }}"
     data-register-button="{{ t "register-button" }}"
 ></div>
-<div id="error-message" class="alert alert-error" role="alert" hidden></div>
-<form id="register-form">
+<div id="error-message" class="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200" role="alert" hidden></div>
+<form id="register-form" class="space-y-3">
     {{ if .UseEmail -}}
-    <label for="email">
-        {{ t "register-email-label" }}
+    <label for="email" class="block">
+        <span class="mb-1 block text-sm font-medium">{{ t "register-email-label" }}</span>
         {{ if and .Invite .Email -}}
-        <input type="email" id="email" name="email" value="{{ .Email }}" readonly required/>
+        <input type="email" id="email" name="email" value="{{ .Email }}" readonly required
+            class="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800"/>
         {{- else -}}
-        <input type="email" id="email" name="email" required/>
+        <input type="email" id="email" name="email" required
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900"/>
         {{- end }}
     </label>
     {{- else -}}
-    <label for="username">
-        {{ t "register-username-label" }}
-        <input type="text" id="username" name="username" required autocomplete="username"/>
+    <label for="username" class="block">
+        <span class="mb-1 block text-sm font-medium">{{ t "register-username-label" }}</span>
+        <input type="text" id="username" name="username" required autocomplete="username"
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900"/>
     </label>
     {{- end }}
-    <label for="name">
-        {{ t "register-display-name-label" }}
-        <input type="text" id="name" name="name"/>
+    <label for="name" class="block">
+        <span class="mb-1 block text-sm font-medium">{{ t "register-display-name-label" }}</span>
+        <input type="text" id="name" name="name"
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900"/>
     </label>
     {{ if and .InviteOnly .Invite -}}
     <input type="hidden" id="invite" name="invite" value="{{ .Invite }}"/>
     {{- end }}
-    <button id="register-btn" type="submit" class="btn btn-primary">{{ t "register-button" }}</button>
+    <button id="register-btn" type="submit"
+        class="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
+        {{ t "register-button" }}
+    </button>
 </form>
-<p class="auth-links">
-    <a href="/auth/login">{{ t "register-have-account" }}</a>
+<p class="mt-4 text-center text-sm">
+    <a href="/auth/login" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ t "register-have-account" }}</a>
 </p>
 <script src="{{ staticURL "auth/webauthn.js" }}"></script>
 <script>

@@ -1,22 +1,24 @@
 {{ define "auth/admin_user_form" -}}
-<nav>
-    <ul class="breadcrumb" aria-label="breadcrumb">
-        <li><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
-        <li><a href="/admin/users">{{ t "admin-nav-users" }}</a></li>
-        <li aria-current="page">{{ .User.Username }}</li>
-    </ul>
+<nav aria-label="breadcrumb" class="mb-4 text-sm">
+    <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li aria-hidden="true">/</li>
+        <li><a href="/admin/users" class="hover:underline">{{ t "admin-nav-users" }}</a></li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ .User.Username }}</li>
+    </ol>
 </nav>
-<header>
-    <h2>{{ t "modeladmin-edit" }} {{ .User.Username }}</h2>
+<header class="mb-4">
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "modeladmin-edit" }} {{ .User.Username }}</h2>
 </header>
-<form method="post" action="/admin/users/{{ .User.ID }}">
+<form method="post" action="/admin/users/{{ .User.ID }}" class="space-y-3">
     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
     {{- range .Fields }}
     {{- if eq .Type "hidden" }}
     <input type="hidden" name="{{ .FormName }}" value="{{ printf "%v" .Value }}">
     {{- else if eq .Type "textarea" }}
-    <label for="{{ .FormName }}">
-        {{ .Label }}{{ if .Required }} *{{ end }}
+    <label for="{{ .FormName }}" class="block">
+        <span class="mb-1 block text-sm font-medium">{{ .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}</span>
         <textarea
             id="{{ .FormName }}"
             name="{{ .FormName }}"
@@ -24,21 +26,23 @@
             {{ if .Required }}required{{ end }}
             {{ if .ReadOnly }}disabled{{ end }}
             {{ if .Errors }}aria-invalid="true"{{ end }}
+            class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }} {{ if .ReadOnly }}bg-gray-50 dark:bg-gray-800{{ end }}"
         >{{ printf "%v" .Value }}</textarea>
     </label>
     {{- range .Errors }}
-    <small class="field-error">{{ . }}</small>
+    <small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
     {{- end }}
     {{- else if eq .Type "select" }}
     {{- $currentVal := printf "%v" .Value }}
-    <label for="{{ .FormName }}">
-        {{ .Label }}{{ if .Required }} *{{ end }}
+    <label for="{{ .FormName }}" class="block">
+        <span class="mb-1 block text-sm font-medium">{{ .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}</span>
         <select
             id="{{ .FormName }}"
             name="{{ .FormName }}"
             {{ if .Required }}required{{ end }}
             {{ if .ReadOnly }}disabled{{ end }}
             {{ if .Errors }}aria-invalid="true"{{ end }}
+            class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }} {{ if .ReadOnly }}bg-gray-50 dark:bg-gray-800{{ end }}"
         >
             {{- range .Choices }}
             <option value="{{ .Value }}"{{ if eq $currentVal .Value }} selected{{ end }}>{{ .Label }}</option>
@@ -46,10 +50,10 @@
         </select>
     </label>
     {{- range .Errors }}
-    <small class="field-error">{{ . }}</small>
+    <small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
     {{- end }}
     {{- else if eq .Type "checkbox" }}
-    <label>
+    <label class="inline-flex items-center gap-2 text-sm">
         <input
             type="checkbox"
             id="{{ .FormName }}"
@@ -57,15 +61,16 @@
             {{ if .Value }}checked{{ end }}
             {{ if .ReadOnly }}disabled{{ end }}
             {{ if .Errors }}aria-invalid="true"{{ end }}
+            class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
         >
         {{ .Label }}
     </label>
     {{- range .Errors }}
-    <small class="field-error">{{ . }}</small>
+    <small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
     {{- end }}
     {{- else }}
-    <label for="{{ .FormName }}">
-        {{ .Label }}{{ if .Required }} *{{ end }}
+    <label for="{{ .FormName }}" class="block">
+        <span class="mb-1 block text-sm font-medium">{{ .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}</span>
         <input
             type="{{ if eq .Type "email" }}email{{ else if eq .Type "number" }}number{{ else }}text{{ end }}"
             id="{{ .FormName }}"
@@ -74,24 +79,34 @@
             {{ if .Required }}required{{ end }}
             {{ if .ReadOnly }}disabled{{ end }}
             {{ if .Errors }}aria-invalid="true"{{ end }}
+            class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }} {{ if .ReadOnly }}bg-gray-50 dark:bg-gray-800{{ end }}"
         >
     </label>
     {{- range .Errors }}
-    <small class="field-error">{{ . }}</small>
+    <small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
     {{- end }}
     {{- end }}
     {{- end }}
     {{- if .NonFieldErrors }}
-    <div class="alert alert-error" role="alert">
+    <div class="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200" role="alert">
         {{- range .NonFieldErrors }}
         <p>{{ . }}</p>
         {{- end }}
     </div>
     {{- end }}
-    <div class="grid">
-        <button type="submit" class="btn btn-primary">{{ t "modeladmin-save" }}</button>
-        <button type="submit" name="_continue" value="1" class="btn btn-outline btn-secondary">{{ t "modeladmin-save-continue" }}</button>
-        <a href="/admin/users" role="button" class="btn btn-outline btn-secondary">{{ t "modeladmin-back" }}</a>
+    <div class="flex flex-wrap gap-2 pt-2">
+        <button type="submit"
+            class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">
+            {{ t "modeladmin-save" }}
+        </button>
+        <button type="submit" name="_continue" value="1"
+            class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+            {{ t "modeladmin-save-continue" }}
+        </button>
+        <a href="/admin/users"
+            class="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+            {{ t "modeladmin-back" }}
+        </a>
     </div>
 </form>
 {{- end }}
