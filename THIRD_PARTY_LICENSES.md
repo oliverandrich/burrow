@@ -97,7 +97,6 @@ Generated with [google/go-licenses](https://github.com/google/go-licenses).
 | github.com/pmezard/go-difflib/difflib | BSD-3-Clause | [LICENSE](https://github.com/pmezard/go-difflib/blob/v1.0.0/LICENSE) |
 | github.com/remyoudompheng/bigfft | BSD-3-Clause | [LICENSE](https://github.com/remyoudompheng/bigfft/blob/24d4a6f8daec/LICENSE) |
 | github.com/stretchr/testify | MIT | [LICENSE](https://github.com/stretchr/testify/blob/v1.11.1/LICENSE) |
-| github.com/tdewolff/parse/v2 | MIT | [LICENSE](https://github.com/tdewolff/parse/blob/v2.8.12/LICENSE.md) |
 | github.com/tinylib/msgp/msgp | MIT | [LICENSE](https://github.com/tinylib/msgp/blob/v1.6.3/LICENSE) |
 | github.com/unrolled/secure | MIT | [LICENSE](https://github.com/unrolled/secure/blob/v1.17.0/LICENSE) |
 | github.com/urfave/cli/v3 | MIT | [LICENSE](https://github.com/urfave/cli/blob/v3.8.0/LICENSE) |

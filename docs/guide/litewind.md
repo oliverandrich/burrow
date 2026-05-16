@@ -66,4 +66,6 @@ works out of the box. The inline script runs before first paint, so there is no 
 
 ## Production optimization
 
-With `Cache-Control: immutable` and Burrow's content-hashed static URLs the CSS loads once per release — fine for many apps. A planned `cmd/burrow-purge` tool will strip unused rules over your templates plus Burrow's contrib templates in a single Go-native pass (no node toolchain) for apps that want a smaller payload.
+With `Cache-Control: immutable` and Burrow's content-hashed static URLs the CSS loads once per release — fine for many apps.
+
+> Note: this page describes the v0.20-pre `contrib/litewind` foundation. The v0.20 release is moving to Tailwind v4 via the standalone CLI (which already emits only the classes it sees, no separate purger needed). This page will be replaced by `tailwind.md` when the migration lands.

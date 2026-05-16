@@ -12,7 +12,6 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Added
 
 - **`contrib/litewind`** — new Tailwind-utility design contrib backed by a vendored static CSS (Burrow's custom Litewind build with class-based `dark:` variants). One `<link>`, no Tailwind CLI, no PostCSS, no node toolchain out of the box. Ships a drop-in theme switcher (auto/light/dark via `data-theme`) ported from `contrib/mucss`. Foundation bean for the v0.20 UI-stack migration; deletion of `contrib/mucss` and `contrib/bootstrap` and the contrib-app template migrations follow in later beans.
-- **`cmd/burrow-purge`** — native Go CSS purger for Litewind. Strips unused rules from the vendored stylesheet using only the templates a project actually ships. Invoked via `go tool burrow-purge --out static/app.min.css`. Eliminates the node/PostCSS toolchain that traditional Tailwind/purgecss setups require. Auto-resolves Burrow's contrib templates via `go list -m` so contrib UIs keep working out of the box. See `docs/guide/burrow-purge.md`.
 
 ### Changed
 

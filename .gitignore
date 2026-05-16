@@ -3,7 +3,6 @@ bin/
 tmp/
 tutorial/step*/step*
 tutorial/step*/*.db
-/burrow-purge
 
 # IDE
 .idea/
