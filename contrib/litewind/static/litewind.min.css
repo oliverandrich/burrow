@@ -1,0 +1,14 @@
+/*!
+ * Litewind — placeholder.
+ *
+ * This file is a placeholder for Burrow's vendored Litewind build
+ * (Litewind 2.x base + class-based dark: variants targeting
+ * [data-theme="dark"]).
+ *
+ * Drop the actual CSS in over this file. The Burrow contrib structure,
+ * static-file wiring, theme switcher, and tests are functional with the
+ * placeholder in place — they verify route/registration semantics, not
+ * the CSS content.
+ *
+ * See bean go-webapp-template-tiv8.
+ */

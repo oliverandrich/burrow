@@ -9,6 +9,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Den bumped to v0.12.0 — top-level CRUD wrappers collapsed.** `den.Insert` / `den.Update` → `den.Save` (branches on `doc.ID`); `den.InsertMany` → `den.SaveAll`; `den.DeleteMany[T](ctx, db, conds)` → `den.NewQuery[T](db, conds...).Delete(ctx)`; `den.FindOneAndUpdate[T](ctx, db, fields, conds)` → `den.NewQuery[T](db, conds...).UpdateOne(ctx, fields)`. All contrib apps, examples, and tutorial steps migrated. See the [Den 0.12.0 changelog](https://github.com/oliverandrich/den/blob/main/CHANGELOG.md#0120--2026-05-15) for the full migration table.
 - **`burrow.OpenDBWithoutValidation` removed.** Den's struct-tag validation is now unconditionally always-on (the `validate.WithValidation()` opt-in is gone in Den 0.12.0), so the escape hatch has nothing to opt out of. Projects that still carry `validate:"..."` tags producing data violations must fix the data or drop the tag.
 
+### Added
+
+- **`contrib/litewind`** — new Tailwind-utility design contrib backed by a vendored static CSS (Burrow's custom Litewind build with class-based `dark:` variants). One `<link>`, no Tailwind CLI, no PostCSS, no node toolchain out of the box. Ships a drop-in theme switcher (auto/light/dark via `data-theme`) ported from `contrib/mucss`. Foundation bean for the v0.20 UI-stack migration; deletion of `contrib/mucss` and `contrib/bootstrap` and the contrib-app template migrations follow in later beans.
+
 ### Changed
 
 - **`contrib/jobs` `RescueStale` runs as a single bulk update** instead of an `All` + per-row `UpdateOne` loop, using the new Den 0.12 `QuerySet.Update` write terminal. Closes the race window between snapshot and rescue — the `status=running` guard is now re-evaluated at write time. No public API change.
