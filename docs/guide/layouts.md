@@ -196,10 +196,10 @@ Anything a contrib registers with `{{ define "name" }}` is overridable:
 
 - Layouts (`admin/layout`, `auth/layout`, …)
 - Page templates (`admin/dashboard`, `auth/login`, …)
-- Partials (`htmx/dialog_script`, `mucss/theme_script`, …)
+- Partials (`htmx/dialog_script`, `htmx/config`, …)
 - Error pages (`error/404`, `error/default`, …)
 
-This is the same mechanism that lets a design system app (`contrib/mucss` historically) style error pages — see [Error Handling → Design System Integration](error-handling.md#design-system-integration).
+This is the same mechanism that lets a design system app style error pages — see [Error Handling → Design System Integration](error-handling.md#design-system-integration).
 
 ### What this does NOT solve
 
@@ -255,20 +255,15 @@ Your app must implement `HasTemplates` so that `myapp/layout` is part of the glo
 
 Note how dynamic data like navigation items is accessed via the `navLinks` template function (provided by the framework) rather than through data map entries. The `navLinks` function automatically filters items by auth state and computes active-link highlighting. The `.Content` key is the only data injected automatically by `Render` — it contains the rendered page fragment.
 
-### How the µCSS App Does It
+### How example/notes Does It
 
-The built-in µCSS app simply returns a template name:
+`example/notes` ships its layout from `internal/app/templates/app/layout.html` and wires it up as:
 
 ```go
-func Layout() string {
-    return "mucss/layout"
-}
+srv.SetLayout("app/layout")
 ```
 
-The corresponding template file (`mucss/layout`) is a minimal HTML shell with themed CSS, the dark-mode-before-paint script, htmx, and the page content rendered directly in `<body>`. Apps control their own `<main>` / containers. µCSS also ships a `mucss/nav_layout` that wraps content in `<main class="container">` and exposes overridable `mucss/navbar` and `mucss/alerts` slots — see the [`mucss` contrib docs](../contrib/mucss.md#layouts) for the full template.
-
-!!! note "No navigation in the base layout"
-    The built-in `mucss/layout` is intentionally minimal — it provides the HTML shell, CSS assets, and theme switching. If you need a navbar with navigation items, either set `srv.SetLayout(mucss.NavLayout())` (which gives you `mucss/navbar` and `mucss/alerts` slots) or write a custom layout that replaces the default. The [tutorial](../tutorial/part3.md) shows how to build a layout with navigation.
+The layout is a single `<html>` shell — Tailwind CSS link, htmx config, a Tailwind-styled `<nav>` with `navLinks` + user dropdown, an alerts container, `<main>` for `.Content`, and a hidden `<dialog id="modal">` for HTMX-driven dialog flows. See [`example/notes`](https://github.com/oliverandrich/burrow/tree/main/example/notes) for the full implementation.
 
 ## Data Flow in Layout Templates
 

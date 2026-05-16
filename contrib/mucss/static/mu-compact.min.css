@@ -1,2 +1,0 @@
-/* Burrow compact-type override for µCSS — see mucss.WithCompactType */
-:root,:host{--mu-line-height:1.4}@media (min-width:1024px){:root,:host{--mu-font-size:106.25%;--mu-spacing:0.85rem;--mu-typography-spacing-vertical:0.75rem;--mu-form-element-spacing-vertical:0.5rem;--mu-form-element-spacing-horizontal:0.75rem;--mu-grid-column-gap:0.75rem;--mu-grid-row-gap:0.75rem}}

@@ -10,13 +10,6 @@ This file is auto-generated. Run `just licenses` to regenerate it.
 These files are bundled directly into the binary and do not carry their license
 headers in every distributed form.
 
-### Bootstrap v5.3.8
-
-- **Files:** `contrib/bootstrap/static/bootstrap.min.css`, `contrib/bootstrap/static/bootstrap.bundle.min.js`
-- **URL:** <https://getbootstrap.com/>
-- **Copyright:** Copyright 2011-2025 The Bootstrap Authors
-- **License:** MIT — <https://github.com/twbs/bootstrap/blob/main/LICENSE>
-
 ### Bootstrap Icons v1.13.1
 
 - **Files:** `contrib/bsicons/icons_generated.go` (inline SVG paths)
@@ -30,13 +23,6 @@ headers in every distributed form.
 - **URL:** <https://htmx.org/>
 - **Copyright:** Copyright (c) 2020, Big Sky Software LLC
 - **License:** BSD 2-Clause — <https://github.com/bigskysoftware/htmx/blob/master/LICENSE>
-
-### µCSS v1.4.8
-
-- **Files:** `contrib/mucss/static/mu.css`, `contrib/mucss/static/mu.<accent>.css` (20 accent variants)
-- **URL:** <https://mucss.org/>
-- **Copyright:** Copyright (c) 2026 Digicreon
-- **License:** MIT — <https://github.com/Digicreon/mucss/blob/main/LICENSE>
 
 ## Development Tools
 

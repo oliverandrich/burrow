@@ -62,9 +62,6 @@ run = [
 # style, not positional). Examples:
 #   mise run update-htmx                  # pinned default
 #   mise run update-htmx version=2.1.0    # override
-# The contribs that delete in v0.20 (bsicons, bootstrap, alpine, mucss) take their
-# update recipes with them; only `update-htmx` survives long-term.
-
 [tasks."update-htmx"]
 description = "Update htmx vendored JS (override with version=X)"
 run = '''
@@ -73,37 +70,6 @@ v="${version:-2.0.8}"
 echo "Downloading htmx v$v..."
 curl -sL "https://unpkg.com/htmx.org@$v/dist/htmx.min.js" -o contrib/htmx/static/htmx.min.js
 echo "Done — htmx v$v updated"
-'''
-
-[tasks."update-mucss"]
-description = "Update µCSS vendored CSS (default + 20 named accents) (override with version=X)"
-run = '''
-set -euo pipefail
-v="${version:-1.4.8}"
-base="https://cdn.jsdelivr.net/npm/@digicreon/mucss@$v/dist"
-out="contrib/mucss/static"
-colors=(amber azure blue cyan fuchsia green grey indigo jade lime orange pink pumpkin purple red sand slate violet yellow zinc)
-echo "Downloading µCSS v$v..."
-curl -fsSL "$base/mu.css" -o "$out/mu.css"
-for color in "${colors[@]}"; do
-    curl -fsSL "$base/mu.${color}.css" -o "$out/mu.${color}.css"
-done
-echo "Done — µCSS v$v updated (${#colors[@]} accents + default)"
-'''
-
-[tasks."update-bootstrap"]
-description = "Update Bootstrap CSS/JS vendored assets (override with version=X)"
-run = '''
-set -euo pipefail
-v="${version:-5.3.8}"
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
-echo "Downloading Bootstrap v$v..."
-curl -sL "https://github.com/twbs/bootstrap/releases/download/v$v/bootstrap-$v-dist.zip" -o "$tmp/bootstrap.zip"
-unzip -q -o "$tmp/bootstrap.zip" -d "$tmp/extract"
-cp "$tmp/extract/bootstrap-$v-dist/css/bootstrap.min.css" contrib/bootstrap/static/
-cp "$tmp/extract/bootstrap-$v-dist/js/bootstrap.bundle.min.js" contrib/bootstrap/static/
-echo "Done — Bootstrap v$v updated"
 '''
 
 [tasks."update-icons"]
@@ -121,16 +87,3 @@ go run ./contrib/bsicons/internal/generate -icons-dir "$tmp/extract/bootstrap-ic
 count=$(grep -c '^func ' contrib/bsicons/icons_generated.go)
 echo "Done — $count icons generated from Bootstrap Icons v$v"
 '''
-
-[tasks."sass-setup"]
-description = "Install Bootstrap Sass source (needed for theme compilation)"
-run = "cd contrib/bootstrap && npm install --save-dev bootstrap@5.3.8 --silent"
-
-[tasks.sass]
-description = "Compile all Bootstrap Sass themes"
-depends = ["sass-setup"]
-run = [
-    "sass contrib/bootstrap/scss/theme-blue.scss contrib/bootstrap/static/theme-blue.min.css --style=compressed --no-source-map --quiet-deps --quiet",
-    "sass contrib/bootstrap/scss/theme-purple.scss contrib/bootstrap/static/theme-purple.min.css --style=compressed --no-source-map --quiet-deps --quiet",
-    "sass contrib/bootstrap/scss/theme-gray.scss contrib/bootstrap/static/theme-gray.min.css --style=compressed --no-source-map --quiet-deps --quiet",
-]
