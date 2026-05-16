@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/bsicons"
 	"github.com/oliverandrich/den"
 	"github.com/urfave/cli/v3"
 )
@@ -92,10 +91,6 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	a.defaultDB = cfg.DB
 	a.registry = cfg.Registry
-
-	cfg.RegisterIconFunc("iconArrowCounterclockwise", bsicons.ArrowCounterclockwise)
-	cfg.RegisterIconFunc("iconXCircle", bsicons.XCircle)
-	cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
 
 	// Determine effective database: separate DB if configured, shared DB otherwise.
 	effectiveDB, err := a.resolveDB(context.Background(), cmd.String("jobs-database-dsn"))
@@ -230,12 +225,16 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 			Label:     "Jobs",
 			LabelKey:  "admin-nav-jobs",
 			URL:       "/admin/jobs",
-			Icon:      bsicons.ListTask(),
+			Icon:      listTaskIcon,
 			Position:  40,
 			AdminOnly: true,
 		},
 	}
 }
+
+// listTaskIcon is the inline SVG for the Jobs nav item (Bootstrap Icons'
+// "list-task"). Inlining here keeps the contrib bsicons-free.
+const listTaskIcon = template.HTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 2.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5zM3 3H2v1h1z"/><path d="M5 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M5.5 7a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1zm0 4a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1z"/><path fill-rule="evenodd" d="M1.5 7a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5zM2 7h1v1H2zm0 3.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zm1 .5H2v1h1z"/></svg>`)
 
 // TemplateFS returns the embedded HTML template files.
 func (a *App) TemplateFS() fs.FS {

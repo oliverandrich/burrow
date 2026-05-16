@@ -1,103 +1,107 @@
 {{ define "jobs/admin_detail" -}}
-<nav>
-    <ul class="breadcrumb" aria-label="breadcrumb">
-        <li><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
-        <li><a href="/admin/jobs">{{ t "admin-nav-jobs" }}</a></li>
-        <li aria-current="page">{{ t "admin-job-detail-breadcrumb-job" }}{{ .Job.ID }}</li>
-    </ul>
+<nav aria-label="breadcrumb" class="mb-4 text-sm">
+    <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li aria-hidden="true">/</li>
+        <li><a href="/admin/jobs" class="hover:underline">{{ t "admin-nav-jobs" }}</a></li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "admin-job-detail-breadcrumb-job" }}{{ .Job.ID }}</li>
+    </ol>
 </nav>
-<header>
-    <h2>{{ .Job.Type }} <small>#{{ .Job.ID }}</small></h2>
+<header class="mb-4">
+    <h2 class="text-2xl font-bold tracking-tight">{{ .Job.Type }} <small class="ml-2 font-mono text-base font-normal text-gray-500 dark:text-gray-400">#{{ .Job.ID }}</small></h2>
 </header>
-<article>
-    <header><strong>{{ t "admin-job-detail-info" }}</strong></header>
-    <dl>
-        <dt>{{ t "admin-job-detail-id" }}</dt>
-        <dd>{{ .Job.ID }}</dd>
-        <dt>{{ t "admin-job-detail-type" }}</dt>
+<article class="mb-4 rounded-lg border border-gray-200 dark:border-gray-800">
+    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800/40"><strong>{{ t "admin-job-detail-info" }}</strong></header>
+    <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 p-4 text-sm">
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-id" }}</dt>
+        <dd class="font-mono">{{ .Job.ID }}</dd>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-type" }}</dt>
         <dd>{{ .Job.Type }}</dd>
-        <dt>{{ t "admin-job-detail-status" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-status" }}</dt>
         <dd>{{ template "jobs/status_badge" .Job.Status }}</dd>
-        <dt>{{ t "admin-job-detail-priority" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-priority" }}</dt>
         <dd>{{ .Job.Priority }}</dd>
-        <dt>{{ t "admin-job-detail-attempts" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-attempts" }}</dt>
         <dd>{{ printf "%d/%d" .Job.Attempts .Job.MaxRetries }}</dd>
-        <dt>{{ t "admin-job-detail-run-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-run-at" }}</dt>
         <dd>{{ .Job.RunAt.Format "2006-01-02 15:04:05" }}</dd>
         {{ if .Job.LockedAt -}}
-        <dt>{{ t "admin-job-detail-locked-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-locked-at" }}</dt>
         <dd>{{ .Job.LockedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
         {{ if .Job.CompletedAt -}}
-        <dt>{{ t "admin-job-detail-completed-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-completed-at" }}</dt>
         <dd>{{ .Job.CompletedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
         {{ if .Job.FailedAt -}}
-        <dt>{{ t "admin-job-detail-failed-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-failed-at" }}</dt>
         <dd>{{ .Job.FailedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
         {{ if .Job.LastAttemptedAt -}}
-        <dt>{{ t "admin-job-detail-last-attempted-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-last-attempted-at" }}</dt>
         <dd>{{ .Job.LastAttemptedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
-        <dt>{{ t "admin-job-detail-created-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-created-at" }}</dt>
         <dd>{{ .Job.CreatedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{ if .Job.UpdatedAt -}}
-        <dt>{{ t "admin-job-detail-updated-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-updated-at" }}</dt>
         <dd>{{ .Job.UpdatedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
     </dl>
 </article>
-<article>
-    <header><strong>{{ t "admin-job-detail-payload" }}</strong></header>
-    <pre><code>{{ prettyJSON .Job.Payload }}</code></pre>
+<article class="mb-4 rounded-lg border border-gray-200 dark:border-gray-800">
+    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800/40"><strong>{{ t "admin-job-detail-payload" }}</strong></header>
+    <pre class="overflow-x-auto p-4 text-sm"><code>{{ prettyJSON .Job.Payload }}</code></pre>
 </article>
 {{ if .Job.Result -}}
-<article>
-    <header><strong>{{ t "admin-job-detail-result" }}</strong></header>
-    <pre><code>{{ prettyJSON .Job.Result }}</code></pre>
+<article class="mb-4 rounded-lg border border-gray-200 dark:border-gray-800">
+    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800/40"><strong>{{ t "admin-job-detail-result" }}</strong></header>
+    <pre class="overflow-x-auto p-4 text-sm"><code>{{ prettyJSON .Job.Result }}</code></pre>
 </article>
 {{- end }}
 {{ if .Job.LastError -}}
-<article>
-    <header><strong>{{ t "admin-job-detail-last-error" }}{{ if .Job.ErrorClass }} <span class="badge badge-secondary">{{ .Job.ErrorClass }}</span>{{ end }}</strong></header>
-    <pre>{{ .Job.LastError }}</pre>
+<article class="mb-4 rounded-lg border border-red-200 dark:border-red-900">
+    <header class="border-b border-red-200 bg-red-50 px-4 py-2 dark:border-red-900 dark:bg-red-950/40"><strong>{{ t "admin-job-detail-last-error" }}</strong>{{ if .Job.ErrorClass }} <span class="ml-2 inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">{{ .Job.ErrorClass }}</span>{{ end }}</header>
+    <pre class="overflow-x-auto p-4 text-sm">{{ .Job.LastError }}</pre>
 </article>
 {{- end }}
-<div class="grid">
+<div class="mt-4 flex flex-wrap gap-2">
     {{ if or (eq (jobStatus .Job) "failed") (eq (jobStatus .Job) "dead") -}}
-    <button class="btn btn-success"
+    <button type="button"
+        class="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
         hx-post="/admin/jobs/{{ .Job.ID }}/retry">
-        {{ iconArrowCounterclockwise }} {{ t "admin-job-detail-action-retry" }}
+        {{ template "jobs/icon_arrow_counterclockwise" . }}
+        {{ t "admin-job-detail-action-retry" }}
     </button>
     {{- end }}
     {{ if or (eq (jobStatus .Job) "pending") (or (eq (jobStatus .Job) "running") (eq (jobStatus .Job) "failed")) -}}
-    <button class="btn btn-warning"
+    <button type="button"
+        class="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700"
         hx-post="/admin/jobs/{{ .Job.ID }}/cancel"
         hx-confirm="{{ t "admin-job-detail-cancel-confirm" }}">
-        {{ iconXCircle }} {{ t "admin-job-detail-action-cancel" }}
+        {{ template "jobs/icon_x_circle" . }}
+        {{ t "admin-job-detail-action-cancel" }}
     </button>
     {{- end }}
-    <button class="btn btn-outline btn-error"
+    <button type="button"
+        class="inline-flex items-center gap-1.5 rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30"
         hx-delete="/admin/jobs/{{ .Job.ID }}"
         hx-confirm="{{ t "admin-job-detail-delete-confirm" }}">
-        {{ iconTrash }} {{ t "admin-job-detail-action-delete" }}
+        {{ template "jobs/icon_trash" . }}
+        {{ t "admin-job-detail-action-delete" }}
     </button>
 </div>
 {{- end }}
 
 {{ define "jobs/status_badge" -}}
-{{ if eq (string .) "pending" -}}
-<span class="badge badge-warning">{{ . }}</span>
-{{- else if eq (string .) "running" -}}
-<span class="badge badge-info">{{ . }}</span>
-{{- else if eq (string .) "completed" -}}
-<span class="badge badge-success">{{ . }}</span>
-{{- else if eq (string .) "failed" -}}
-<span class="badge badge-error">{{ . }}</span>
-{{- else if eq (string .) "dead" -}}
-<span class="badge badge-secondary">{{ . }}</span>
-{{- else -}}
-<span class="badge">{{ . }}</span>
-{{- end }}
+{{- $s := string . -}}
+{{- $cls := "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200" -}}
+{{- if eq $s "pending" -}}{{ $cls = "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" -}}
+{{- else if eq $s "running" -}}{{ $cls = "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200" -}}
+{{- else if eq $s "completed" -}}{{ $cls = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" -}}
+{{- else if eq $s "failed" -}}{{ $cls = "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" -}}
+{{- else if eq $s "dead" -}}{{ $cls = "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300" -}}
+{{- end -}}
+<span class="inline-block rounded px-2 py-0.5 text-xs font-medium {{ $cls }}">{{ . }}</span>
 {{- end }}

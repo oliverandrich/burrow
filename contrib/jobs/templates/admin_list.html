@@ -1,72 +1,119 @@
 {{ define "jobs/admin_list" -}}
-<nav>
-    <ul class="breadcrumb" aria-label="breadcrumb">
-        <li><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
-        <li aria-current="page">{{ t "admin-nav-jobs" }}</li>
-    </ul>
+<nav aria-label="breadcrumb" class="mb-4 text-sm">
+    <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "admin-nav-jobs" }}</li>
+    </ol>
 </nav>
-<header>
-    <h2>{{ t "admin-nav-jobs" }}</h2>
+<header class="mb-4">
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "admin-nav-jobs" }}</h2>
 </header>
-<ul class="tabs tabs-end" role="tablist">
-    <li><a href="/admin/jobs" role="tab"{{ if eq .Status "" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-all" }}</a></li>
-    <li><a href="/admin/jobs?status=pending" role="tab"{{ if eq .Status "pending" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-pending" }}</a></li>
-    <li><a href="/admin/jobs?status=running" role="tab"{{ if eq .Status "running" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-running" }}</a></li>
-    <li><a href="/admin/jobs?status=failed" role="tab"{{ if eq .Status "failed" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-failed" }}</a></li>
-    <li><a href="/admin/jobs?status=dead" role="tab"{{ if eq .Status "dead" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-dead" }}</a></li>
-    <li><a href="/admin/jobs?status=completed" role="tab"{{ if eq .Status "completed" }} aria-selected="true"{{ end }}>{{ t "admin-jobs-filter-completed" }}</a></li>
+{{- $status := .Status }}
+<ul class="mb-6 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-gray-200 text-sm dark:border-gray-800" role="tablist">
+    <li><a href="/admin/jobs" role="tab"{{ if eq $status "" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-all" }}</a></li>
+    <li><a href="/admin/jobs?status=pending" role="tab"{{ if eq $status "pending" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "pending" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-pending" }}</a></li>
+    <li><a href="/admin/jobs?status=running" role="tab"{{ if eq $status "running" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "running" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-running" }}</a></li>
+    <li><a href="/admin/jobs?status=failed" role="tab"{{ if eq $status "failed" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "failed" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-failed" }}</a></li>
+    <li><a href="/admin/jobs?status=dead" role="tab"{{ if eq $status "dead" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "dead" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-dead" }}</a></li>
+    <li><a href="/admin/jobs?status=completed" role="tab"{{ if eq $status "completed" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "completed" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-completed" }}</a></li>
 </ul>
 {{- if .Jobs }}
-<figure>
-    <table>
-        <thead>
+<div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+    <table class="w-full text-left text-sm">
+        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
             <tr>
-                <th scope="col">Type</th>
-                <th scope="col">Status</th>
-                <th scope="col">{{ t "admin-job-detail-priority" }}</th>
-                <th scope="col">Attempts</th>
-                <th scope="col">Created</th>
-                <th scope="col" class="admin-row-actions">{{ t "modeladmin-actions" }}</th>
+                <th scope="col" class="px-3 py-2">Type</th>
+                <th scope="col" class="px-3 py-2">Status</th>
+                <th scope="col" class="px-3 py-2">{{ t "admin-job-detail-priority" }}</th>
+                <th scope="col" class="px-3 py-2">Attempts</th>
+                <th scope="col" class="px-3 py-2">Created</th>
+                <th scope="col" class="px-3 py-2 text-end whitespace-nowrap">{{ t "modeladmin-actions" }}</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
             {{- range .Jobs }}
             <tr>
-                <td><a href="/admin/jobs/{{ .ID }}">{{ .Type }}</a></td>
-                <td>{{ template "jobs/status_badge" .Status }}</td>
-                <td>{{ if .Priority }}<span class="badge badge-info">{{ .Priority }}</span>{{ else }}0{{ end }}</td>
-                <td>{{ printf "%d/%d" .Attempts .MaxRetries }}</td>
-                <td>{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
-                <td class="admin-row-actions">
+                <td class="px-3 py-2"><a href="/admin/jobs/{{ .ID }}" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ .Type }}</a></td>
+                <td class="px-3 py-2">{{ template "jobs/status_badge" .Status }}</td>
+                <td class="px-3 py-2">{{ if .Priority }}<span class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">{{ .Priority }}</span>{{ else }}0{{ end }}</td>
+                <td class="px-3 py-2">{{ printf "%d/%d" .Attempts .MaxRetries }}</td>
+                <td class="px-3 py-2">{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
+                <td class="px-3 py-2 text-end whitespace-nowrap">
                     {{- if or (eq (jobStatus .) "failed") (eq (jobStatus .) "dead") }}
-                    <button type="button" class="btn btn-sm btn-outline btn-success"
+                    <button type="button"
+                        class="inline-flex items-center gap-1 rounded border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
                         hx-post="/admin/jobs/{{ .ID }}/retry"
                         hx-swap="none">
-                        {{ iconArrowCounterclockwise }} {{ t "admin-jobs-action-retry" }}
+                        {{ template "jobs/icon_arrow_counterclockwise" . }}
+                        {{ t "admin-jobs-action-retry" }}
                     </button>
                     {{- end }}
                     {{- if or (eq (jobStatus .) "pending") (or (eq (jobStatus .) "running") (eq (jobStatus .) "failed")) }}
-                    <button type="button" class="btn btn-sm btn-outline btn-warning"
+                    <button type="button"
+                        class="inline-flex items-center gap-1 rounded border border-amber-300 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/30"
                         hx-post="/admin/jobs/{{ .ID }}/cancel"
                         hx-swap="none"
                         hx-confirm="{{ t "admin-jobs-cancel-confirm" }}">
-                        {{ iconXCircle }} {{ t "admin-jobs-action-cancel" }}
+                        {{ template "jobs/icon_x_circle" . }}
+                        {{ t "admin-jobs-action-cancel" }}
                     </button>
                     {{- end }}
-                    <button type="button" class="btn btn-sm btn-outline btn-error"
+                    <button type="button"
+                        class="inline-flex items-center gap-1 rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30"
                         hx-delete="/admin/jobs/{{ .ID }}"
                         hx-swap="none"
                         hx-confirm="{{ t "admin-job-detail-delete-confirm" }}">
-                        {{ iconTrash }}
+                        {{ template "jobs/icon_trash" . }}
                     </button>
                 </td>
             </tr>
             {{- end }}
         </tbody>
     </table>
-</figure>
-{{ template "mucss/pagination" (dict "Page" .Page "BasePath" "/admin/jobs" "RawQuery" .RawQuery) }}
+</div>
+{{ template "jobs/pagination" (dict "Page" .Page "BasePath" "/admin/jobs" "RawQuery" .RawQuery) }}
 {{- else }}
-<p>{{ t "admin-jobs-empty" }}</p>
+<p class="text-gray-600 dark:text-gray-400">{{ t "admin-jobs-empty" }}</p>
 {{- end }}
+{{- end }}
+
+{{ define "jobs/pagination" -}}
+{{ if gt .Page.TotalPages 1 -}}
+<nav aria-label="Page navigation" class="mt-4 flex justify-center">
+    <ul class="inline-flex items-center gap-1 text-sm">
+        {{ if le .Page.Page 1 -}}
+        <li><span class="rounded border border-gray-200 px-2 py-1 text-gray-400 dark:border-gray-800 dark:text-gray-600" aria-disabled="true">&laquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (sub .Page.Page 1) }}" aria-label="Previous" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">&laquo;</a></li>
+        {{- end }}
+        {{ range pageNumbers .Page.Page .Page.TotalPages -}}
+        {{ if eq . -1 -}}
+        <li><span aria-hidden="true" class="px-2">&hellip;</span></li>
+        {{- else if eq . $.Page.Page -}}
+        <li><span aria-current="page" class="rounded border border-emerald-500 bg-emerald-50 px-2 py-1 font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{{ . }}</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL $.BasePath $.RawQuery . }}" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">{{ . }}</a></li>
+        {{- end }}
+        {{- end }}
+        {{ if not .Page.HasMore -}}
+        <li><span class="rounded border border-gray-200 px-2 py-1 text-gray-400 dark:border-gray-800 dark:text-gray-600" aria-disabled="true">&raquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (add .Page.Page 1) }}" aria-label="Next" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">&raquo;</a></li>
+        {{- end }}
+    </ul>
+</nav>
+{{- end }}
+{{- end }}
+
+{{ define "jobs/icon_arrow_counterclockwise" -}}
+<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/></svg>
+{{- end }}
+
+{{ define "jobs/icon_x_circle" -}}
+<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/></svg>
+{{- end }}
+
+{{ define "jobs/icon_trash" -}}
+<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>
 {{- end }}
