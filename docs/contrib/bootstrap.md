@@ -108,7 +108,7 @@ Three Sass-compiled themes are available, each setting a different primary color
 
 All Burrow themes share common overrides: tighter border radius, extended spacing scale (6–8), more navbar padding, and no link underlines. Use `Default` for unmodified Bootstrap.
 
-Themes are compiled from `contrib/bootstrap/scss/` using `just sass`.
+Themes are compiled from `contrib/bootstrap/scss/` using `mise run sass`.
 
 ### Custom Theme
 
@@ -195,8 +195,8 @@ Use with standard Bootstrap spacing utilities: `py-6`, `mb-7`, `mt-8`, etc.
 Themes are compiled from Sass. To rebuild after changing `contrib/bootstrap/scss/*.scss`:
 
 ```bash
-just sass        # compile all themes
-just sass-setup  # install Bootstrap Sass source (run once after clone)
+mise run sass        # compile all themes
+mise run sass-setup  # install Bootstrap Sass source (run once after clone)
 ```
 
 A pre-commit hook automatically recompiles when `.scss` files change.

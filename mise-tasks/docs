@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Serve documentation locally on localhost:3000"
+set -euo pipefail
+
+./scripts/generate-licenses.sh
+cp CHANGELOG.md docs/changelog.md
+cp THIRD_PARTY_LICENSES.md docs/third-party-licenses.md
+uv run --with zensical zensical serve -a localhost:3000

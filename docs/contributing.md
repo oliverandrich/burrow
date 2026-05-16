@@ -4,11 +4,8 @@ Thank you for considering contributing to Burrow! This guide explains how to set
 
 ## Prerequisites
 
-- **Go 1.26+** — [go.dev/dl](https://go.dev/dl/)
-- **just** — task runner ([github.com/casey/just](https://github.com/casey/just))
+- **[mise](https://mise.jdx.dev/)** — version manager + task runner. One install gives you the pinned Go toolchain, all dev tools, and the `mise run <task>` commands.
 - **pre-commit** — git hook manager ([pre-commit.com](https://pre-commit.com/#install))
-
-Additional tools (linter, test formatter, etc.) are checked automatically — see [Development Setup](#development-setup) below.
 
 ## Development Setup
 
@@ -17,42 +14,48 @@ Additional tools (linter, test formatter, etc.) are checked automatically — se
 git clone https://github.com/oliverandrich/burrow.git
 cd burrow
 
-# Check that all required tools are installed
-just setup
+# Install pinned tools (Go, golangci-lint, tparse, goimports, govulncheck, ...)
+mise install
+
+# Verify the environment
+mise run setup
 
 # Install git hooks
 pre-commit install
 ```
 
-`just setup` verifies that Go, golangci-lint, tparse, goimports, govulncheck, and pre-commit are available. It prints install instructions for anything missing.
+`mise install` reads `.mise.toml` and installs every pinned tool at the exact version Burrow targets. `mise run setup` then checks that each tool is reachable on PATH and prints a summary.
 
 ## Development Workflow
 
-The `justfile` provides all common tasks:
+`.mise.toml` and `mise-tasks/` define all common tasks:
 
 | Command | Description |
 |---|---|
-| `just test` | Run all tests |
-| `just lint` | Run golangci-lint |
-| `just fmt` | Format all Go files (gofmt + goimports) |
-| `just coverage` | Run tests with coverage report |
-| `just tidy` | Tidy module dependencies |
-| `just docs` | Serve documentation locally |
+| `mise run test` | Run all tests |
+| `mise run lint` | Run golangci-lint |
+| `mise run fmt` | Format all Go files (gofmt + goimports) |
+| `mise run coverage` | Run tests with coverage report |
+| `mise run tidy` | Tidy module dependencies |
+| `mise run docs` | Serve documentation locally |
+| `mise tasks` | List all available tasks |
+
+`mise run <task>` can be shortened to `mise <task>` when the task name doesn't collide with a mise builtin.
 
 A typical workflow:
 
 ```bash
 # Make your changes, then:
-just fmt
-just lint
-just test
+mise run fmt
+mise run lint
+mise run test
 ```
 
 The pre-commit hooks run the linter, vulnerability checker, tests, and `go mod tidy` automatically on each commit.
 
 ## Code Style
 
-- **Linting** — golangci-lint with the project's [`.golangci.yml`](https://github.com/oliverandrich/burrow/blob/main/.golangci.yml) config. All code must pass `just lint` without warnings.
+- **Linting** — golangci-lint with the project's [`.golangci.yml`](https://github.com/oliverandrich/burrow/blob/main/.golangci.yml) config. All code must pass `mise run lint` without warnings.
 - **Testing** — use [testify](https://github.com/stretchr/testify) (`assert`, `require`) for all tests.
 - **Commit messages** — follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `perf:`).
 
@@ -75,7 +78,7 @@ Each contrib app follows a standard layout — see the [Creating an App](guide/c
 1. **Fork** the repository on GitHub.
 2. **Create a branch** from `main` with a descriptive name (e.g. `feat/widget-support`, `fix/session-race`).
 3. **Make focused commits** — each commit should represent one logical change.
-4. **Ensure all checks pass** — `just fmt && just lint && just test`.
+4. **Ensure all checks pass** — `mise run fmt && mise run lint && mise run test`.
 5. **Open a pull request** against `main` with a clear description of *what* and *why*.
 
 ### What we look for in reviews

@@ -200,11 +200,11 @@ The middleware injects `mucss/layout` **only when no layout is already set** in 
 
 ## Updating µCSS
 
-Run the just recipe to refresh the embedded CSS files:
+Run the mise task to refresh the embedded CSS files:
 
 ```bash
-just update-mucss            # latest pinned version
-just update-mucss 1.4.8      # specific version
+mise run update-mucss                     # latest pinned version
+mise run update-mucss version=1.4.8       # specific version
 ```
 
 ## Relationship to `contrib/bootstrap`

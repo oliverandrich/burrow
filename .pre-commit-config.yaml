@@ -18,7 +18,7 @@ repos:
 
       - id: sass-theme
         name: Compile Bootstrap Sass theme
-        entry: just sass
+        entry: mise run sass
         language: system
         files: 'contrib/bootstrap/scss/.*\.scss$'
         pass_filenames: false

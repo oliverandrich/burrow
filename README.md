@@ -192,18 +192,25 @@ Tables and indexes are created automatically on startup via Den's `Register()`. 
 
 ## Development
 
+Burrow uses [mise](https://mise.jdx.dev/) for tool-version pinning and task running. After cloning:
+
 ```bash
-just setup          # Check that all required dev tools are installed
-just test           # Run all tests
-just lint           # Run golangci-lint
-just fmt            # Format code
-just coverage       # Generate coverage report
-just tidy           # Tidy module dependencies
-just example-hello  # Run the hello world example
-just example-notes  # Run the notes example application
+mise install              # Install pinned Go + dev tools
+mise run setup            # Verify the environment
 ```
 
-Requires Go 1.25+. Run `just setup` to verify your dev environment.
+Common tasks:
+
+```bash
+mise run test             # Run all tests
+mise run lint             # Run golangci-lint
+mise run fmt              # Format code
+mise run coverage         # Generate coverage report
+mise run tidy             # Tidy module dependencies
+mise run example-hello    # Run the hello world example
+mise run example-notes    # Run the notes example application
+mise tasks                # List every available task
+```
 
 ## Documentation
 

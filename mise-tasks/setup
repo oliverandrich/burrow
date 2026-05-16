@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#MISE description="Install pinned tools and verify dev environment"
+set -euo pipefail
+
+echo "Installing tools pinned in .mise.toml ..."
+mise install
+
+ok=true
+check() {
+    if command -v "$1" &>/dev/null; then
+        printf "  %-20s %s\n" "$1" "$(command -v "$1")"
+    else
+        printf "  %-20s MISSING — %s\n" "$1" "$2"
+        ok=false
+    fi
+}
+
+echo ""
+echo "Checking dev tools:"
+check go              "run 'mise install' or check that mise is activated in your shell"
+check golangci-lint   "run 'mise install' or check that mise is activated in your shell"
+check tparse          "run 'mise install' or check that mise is activated in your shell"
+check goimports       "run 'mise install' or check that mise is activated in your shell"
+check govulncheck     "run 'mise install' or check that mise is activated in your shell"
+check go-ignore-cov   "run 'mise install' or check that mise is activated in your shell"
+check go-licenses     "run 'mise install' or check that mise is activated in your shell"
+check pre-commit      "run 'mise install' or check that mise is activated in your shell"
+check npm             "https://nodejs.org/ (needed for contrib/bootstrap Sass compilation; removed in v0.20)"
+check sass            "https://sass-lang.com/install/ (needed for contrib/bootstrap; removed in v0.20)"
+echo ""
+if $ok; then
+    echo "All tools installed."
+    echo "Run 'pre-commit install' to set up git hooks."
+else
+    echo "Some tools are missing. Install them and re-run 'mise run setup'."
+    exit 1
+fi

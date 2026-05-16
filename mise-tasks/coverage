@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#MISE description="Run tests with coverage (excludes generated code via go-ignore-cov)"
+set -euo pipefail
+
+go test -race -json -coverprofile=coverage.out ./... > test.json
+go-ignore-cov --file coverage.out --exclude-globs "**/*_generated.go"
+
+# Patch coverage percentages in JSON for packages containing generated files
+cp test.json test.patched.json
+for dir in $(find . -name '*_generated.go' -type f | xargs -I{} dirname {} | sort -u); do
+    pkg=$(go list "./$dir")
+    # Calculate actual percentage: covered / total statements
+    total=$(grep "^${pkg}/" coverage.out | wc -l | tr -d ' ')
+    covered=$(grep "^${pkg}/" coverage.out | grep -v ' 0$' | wc -l | tr -d ' ')
+    if [ "$total" -gt 0 ]; then
+        pct=$(echo "scale=1; $covered * 100 / $total" | bc)
+    else
+        pct="0.0"
+    fi
+    sed -i '' "s|\\(\"Package\":\"${pkg}\".*coverage: \\)[0-9.]*%|\\1${pct}%|g" test.patched.json
+done
+
+tparse -file=test.patched.json
+rm -f test.json test.patched.json
+go tool cover -html=coverage.out -o coverage.html
+echo "Coverage report: coverage.html"

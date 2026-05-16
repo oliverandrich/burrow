@@ -16,6 +16,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Changed
 
+- **Dev tooling migrated from `justfile` to mise.** `.mise.toml` pins the Go toolchain and dev tools (`golangci-lint`, `tparse`, `goimports`, `govulncheck`, `go-licenses`, `go-ignore-cov`, `pre-commit`); tasks live in `[tasks.*]` blocks or `mise-tasks/<name>` scripts. `just <recipe>` → `mise run <task>`. Run `mise install` after cloning. Aligns Burrow with Den (which made the same switch in v0.12.1) and prepares for v0.20 where mise also pins `tailwindcss`.
 - **Den bumped to v0.12.1.** Picks up the PostgreSQL `GroupBy + cursor pagination` bugfix (not exercised by burrow but useful for downstream apps), `Link[T]` JSON encode/decode fast-paths, and the validation skip for tag-less document types — read-path and write-path allocation reductions in the 3-37% range with no API impact.
 - **`contrib/jobs` `RescueStale` runs as a single bulk update** instead of an `All` + per-row `UpdateOne` loop, using the new Den 0.12 `QuerySet.Update` write terminal. Closes the race window between snapshot and rescue — the `status=running` guard is now re-evaluated at write time. No public API change.
 
