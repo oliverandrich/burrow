@@ -31,12 +31,12 @@ Built on [Chi](https://go-chi.io/), [Den](https://github.com/oliverandrich/den) 
 - **SQLite or PostgreSQL** — embedded SQLite (pure Go, no CGO) for single-binary deploys, or PostgreSQL for scale — switch with one flag
 - **Automatic schema** — document types declared in code, tables and indexes created on startup
 - **Standard templates** — Go's `html/template` with a global template set, per-app FuncMaps, and automatic layout wrapping
-- **CSS-agnostic** — the framework itself ships no CSS. The default design contrib is [µCSS](https://mucss.org/) (a polished PicoCSS v2 derivative). The legacy Bootstrap 5 contrib is deprecated and scheduled for removal in v0.20.
+- **Tailwind v4 by default** — `contrib/admin`, `contrib/auth`, and `contrib/jobs` ship Tailwind v4 templates out of the box, and the bundled [`burrow-tailwind`](docs/guide/tailwind.md) wrapper auto-discovers every contrib's template directory so utility scanning Just Works. Prefer a different stack? Bring your own CSS and override the contrib templates via `html/template`'s last-define-wins — Burrow's core itself ships no CSS.
 - **Layout system** — app layout via server, admin layout via admin package
 - **CLI configuration** — flags, environment variables, and TOML config via [urfave/cli](https://github.com/urfave/cli)
 - **CSRF protection** — automatic token generation and validation
 - **Flash messages** — session-based flash message system
-- **µCSS design system** — class-light semantic CSS, JS-free dark mode, 20 accent colors, components (Hero, Alert, Toast, Modal, Pagination, Badge, Tabs); htmx and Bootstrap Icons available as separate contribs.
+- **htmx-first interactivity** — `contrib/htmx` ships the vendored JS plus response helpers (`OpenDialog`, `SmartRedirect`, etc.) so SSR pages get partial swaps and modals without a JS framework. Dark mode follows `prefers-color-scheme`.
 - **Contrib apps** — auth (WebAuthn/passkeys), sessions, i18n, admin, CSRF, flash messages, jobs, uploads, rate limiting, healthcheck, static files
 
 ## Quick Start
