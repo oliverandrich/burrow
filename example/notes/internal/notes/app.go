@@ -4,6 +4,7 @@ package notes
 import (
 	"embed"
 	"errors"
+	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
-	"github.com/oliverandrich/burrow/contrib/bsicons"
 	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/urfave/cli/v3"
 )
@@ -38,11 +38,6 @@ func (a *App) Name() string { return "notes" }
 func (a *App) Dependencies() []string { return []string{"auth"} }
 
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
-	cfg.RegisterIconFunc("iconPlusLg", bsicons.PlusLg)
-	cfg.RegisterIconFunc("iconPencil", bsicons.Pencil)
-	cfg.RegisterIconFunc("iconJournalText", bsicons.JournalText)
-	cfg.RegisterIconFunc("iconTrash", bsicons.Trash)
-
 	a.repo = NewRepository(cfg.DB)
 	a.userRepo = auth.NewRepository(cfg.DB)
 	return nil
@@ -66,7 +61,6 @@ func (a *App) NavItems() []burrow.NavItem {
 		{
 			Label:    "Notes",
 			URL:      "/notes",
-			Icon:     bsicons.JournalText(),
 			Position: 20,
 			AuthOnly: true,
 		},
@@ -79,13 +73,17 @@ func (a *App) AdminRoutes(r chi.Router) {
 	r.Delete("/notes/{id}", burrow.Handle(a.adminDeleteNote))
 }
 
+// notesAdminIcon is the inline SVG for the Notes admin-nav item
+// (Bootstrap Icons' "journal-text").
+const notesAdminIcon = template.HTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" style="vertical-align:-.125em" viewBox="0 0 16 16"><path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/><path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2"/><path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1z"/></svg>`)
+
 func (a *App) AdminNavItems() []burrow.NavItem {
 	return []burrow.NavItem{
 		{
 			Label:     "Notes",
 			LabelKey:  "admin-nav-notes",
 			URL:       "/admin/notes",
-			Icon:      bsicons.JournalText(),
+			Icon:      notesAdminIcon,
 			Position:  30,
 			AdminOnly: true,
 		},

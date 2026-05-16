@@ -102,15 +102,12 @@ contrib/        Reusable apps
   admin/        Admin panel coordinator (top-nav layout, dashboard cards, route mounting)
   auth/         WebAuthn passkeys, recovery codes, email verification
   authmail/     Pluggable email renderer + SMTP implementation
-  bootstrap/    Bootstrap 5 CSS/JS, theme switcher, layout (deprecated, removed in v0.20)
-  bsicons/      Bootstrap Icons as inline SVG template functions
   csrf/         CSRF protection
   healthcheck/  Liveness and readiness probes
   htmx/         htmx static asset + request/response helpers
   i18n/         Locale detection and translations
   jobs/         SQLite-backed background job queue
   messages/     Flash messages
-  mucss/        µCSS design system (default), theme switcher, dark mode
   ratelimit/    Per-client rate limiting
   session/      Cookie-based sessions
   staticfiles/  Static file serving with content-hashed URLs

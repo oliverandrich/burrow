@@ -7,12 +7,16 @@ Apps contribute navigation items that are collected and made available to layout
 Implement the `HasNavItems` interface:
 
 ```go
+// notesIcon is an inline SVG (Bootstrap Icons' "journal-text"); copy any
+// icon SVG into a template.HTML const next to your app.
+const notesIcon = template.HTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">…</svg>`)
+
 func (a *App) NavItems() []burrow.NavItem {
     return []burrow.NavItem{
         {
             Label:    "Notes",
             URL:      "/notes",
-            Icon:     bsicons.JournalText(),
+            Icon:     notesIcon,
             Position: 20,
             AuthOnly: true,
         },
@@ -27,7 +31,7 @@ func (a *App) NavItems() []burrow.NavItem {
 | `Label` | `string` | Display text for the link |
 | `LabelKey` | `string` | i18n message ID; translated at render time, falls back to `Label` |
 | `URL` | `string` | Target path |
-| `Icon` | `template.HTML` | Inline SVG icon (e.g., `bsicons.House()`), empty string for no icon |
+| `Icon` | `template.HTML` | Inline SVG icon (copy from any icon set as `template.HTML`); empty string for no icon |
 | `Position` | `int` | Sort order (lower = earlier, stable sort preserves insertion order for equal positions) |
 | `AuthOnly` | `bool` | Only show to authenticated users |
 | `AdminOnly` | `bool` | Only show to admin users |

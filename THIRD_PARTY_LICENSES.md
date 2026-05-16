@@ -12,7 +12,7 @@ headers in every distributed form.
 
 ### Bootstrap Icons v1.13.1
 
-- **Files:** `contrib/bsicons/icons_generated.go` (inline SVG paths)
+- **Files:** select SVG paths inlined as `template.HTML` consts and `{{ define "<app>/icon_*" }}` blocks under `contrib/admin/templates/`, `contrib/auth/templates/`, `contrib/jobs/templates/`, `example/notes/internal/`.
 - **URL:** <https://icons.getbootstrap.com/>
 - **Copyright:** Copyright 2019-2025 The Bootstrap Authors
 - **License:** MIT — <https://github.com/twbs/icons/blob/main/LICENSE>

@@ -180,14 +180,6 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 		}
 	}
 
-	// Add icon functions registered via AppConfig.RegisterIconFunc.
-	// No duplicate check needed — RegisterIconFunc already deduplicates.
-	if s.appCfg != nil {
-		for k, v := range s.appCfg.IconFuncs() {
-			funcMap[k] = v
-		}
-	}
-
 	// Expose the configured den.Storage's URL composer as mediaURL when
 	// a Storage is installed. Lets templates render attachments with
 	// `{{ mediaURL .Hero }}` without any per-app FuncMap boilerplate;

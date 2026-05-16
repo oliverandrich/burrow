@@ -19,6 +19,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Removed
 
+- **`contrib/bsicons` and the `RegisterIconFunc` plumbing deleted.** With no contrib still pulling the package in, the ~5000-line generated Bootstrap Icons wrapper, the matching `update-icons` mise recipe, and the `AppConfig.RegisterIconFunc` / `IconFuncs` / `IconFunc` API surface are all gone. Apps that need icons should inline the SVG directly — either as a `{{ define "<app>/icon_*" }}` block in `templates/icons.html` for template-side calls, or as a `template.HTML` const next to the app for `NavItem.Icon` slots (see `contrib/jobs`, `contrib/auth`, `example/notes/internal/notes`).
 - **`contrib/mucss` and `contrib/bootstrap` deleted.** Both were the previous design-contrib options; every in-tree consumer (contrib/admin, contrib/auth, contrib/jobs, example/notes, example/hello) is now Tailwind-based and the µCSS/Bootstrap CSS bundles, `mu.css` accent variants, Sass theme sources, and `update-mucss` / `update-bootstrap` / `sass` mise tasks went with them. The `tutorial/step03..08` apps still ship µCSS-driven layouts because they live in their own `go.mod` outside burrow's CI — their migration is tracked separately.
 - **`example/themes`** — was a µCSS accent-variant preview app, no longer meaningful after the framework drops µCSS.
 

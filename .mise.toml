@@ -72,18 +72,3 @@ curl -sL "https://unpkg.com/htmx.org@$v/dist/htmx.min.js" -o contrib/htmx/static
 echo "Done — htmx v$v updated"
 '''
 
-[tasks."update-icons"]
-description = "Update Bootstrap Icons SVG components (override with version=X)"
-run = '''
-set -euo pipefail
-v="${version:-1.13.1}"
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
-echo "Downloading Bootstrap Icons v$v..."
-curl -sL "https://github.com/twbs/icons/releases/download/v$v/bootstrap-icons-$v.zip" -o "$tmp/icons.zip"
-unzip -q -o "$tmp/icons.zip" -d "$tmp/extract"
-echo "Generating icon functions..."
-go run ./contrib/bsicons/internal/generate -icons-dir "$tmp/extract/bootstrap-icons-$v" > contrib/bsicons/icons_generated.go
-count=$(grep -c '^func ' contrib/bsicons/icons_generated.go)
-echo "Done — $count icons generated from Bootstrap Icons v$v"
-'''

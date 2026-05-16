@@ -124,7 +124,6 @@
 //   - csrf — CSRF protection (gorilla/csrf)
 //   - i18n — locale detection and translations (go-i18n)
 //   - admin — admin panel with generic CRUD via ModelAdmin
-//   - bsicons — Bootstrap Icons as inline SVG template functions
 //   - htmx — HTMX asset serving and request/response helpers
 //   - jobs — SQLite-backed in-process job queue with retry
 //   - sse — Server-Sent Events with in-memory pub/sub broker
@@ -153,10 +152,6 @@ type App interface {
 	Name() string
 }
 
-// IconFunc is the function signature for icon template functions.
-// It matches the signature used by bsicons and other icon packages.
-type IconFunc = func(...string) template.HTML
-
 // AppConfig is passed to each app's Configure method, providing
 // access to shared framework resources.
 type AppConfig struct {
@@ -164,24 +159,6 @@ type AppConfig struct {
 	Registry   *Registry
 	Config     *Config
 	WithLocale func(ctx context.Context, lang string) context.Context
-	iconFuncs  map[string]IconFunc
-}
-
-// RegisterIconFunc registers an icon function for use in templates.
-// Duplicate registrations of the same name are silently ignored,
-// allowing multiple apps to depend on the same icon.
-func (cfg *AppConfig) RegisterIconFunc(name string, fn IconFunc) {
-	if cfg.iconFuncs == nil {
-		cfg.iconFuncs = make(map[string]IconFunc)
-	}
-	if _, exists := cfg.iconFuncs[name]; !exists {
-		cfg.iconFuncs[name] = fn
-	}
-}
-
-// IconFuncs returns all registered icon functions.
-func (cfg *AppConfig) IconFuncs() map[string]IconFunc {
-	return cfg.iconFuncs
 }
 
 // NavItem represents a navigation entry contributed by an app.
