@@ -206,18 +206,14 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 	t.Helper()
 
 	app := New()
-	// Stubs for request-scoped functions, icons, and functions from other apps.
+	// Stubs for request-scoped functions and pagination helpers.
 	fm := template.FuncMap{
-		"t":               func(key string) string { return key },
-		"csrfToken":       func() string { return "test-token" },
-		"csrfField":       func() template.HTML { return `<input type="hidden" name="csrf" value="test-token">` },
-		"staticURL":       func(name string) string { return "/static/" + name },
-		"iconTrash":       func(class ...string) template.HTML { return "<svg>trash</svg>" },
-		"iconPlusLg":      func(class ...string) template.HTML { return "<svg>plus</svg>" },
-		"iconPencil":      func(class ...string) template.HTML { return "<svg>pencil</svg>" },
-		"iconJournalText": func(class ...string) template.HTML { return "<svg>journal</svg>" },
-		"add":             func(a, b int) int { return a + b },
-		"sub":             func(a, b int) int { return a - b },
+		"t":         func(key string) string { return key },
+		"csrfToken": func() string { return "test-token" },
+		"csrfField": func() template.HTML { return `<input type="hidden" name="csrf" value="test-token">` },
+		"staticURL": func(name string) string { return "/static/" + name },
+		"add":       func(a, b int) int { return a + b },
+		"sub":       func(a, b int) int { return a - b },
 	}
 
 	tmpl := template.New("").Funcs(fm)
@@ -233,14 +229,15 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 		require.NoError(t, parseErr)
 	}
 
-	// Add a minimal app/alerts_oob template for create/delete/update responses.
-	_, err = tmpl.Parse(`{{ define "app/alerts_oob" -}}
-<div id="alerts" hx-swap-oob="true">
-{{ range .Messages -}}
-<div class="alert alert-{{ .Level }}">{{ .Text }}</div>
-{{- end }}
-</div>
-{{- end }}`)
+	// Minimal stubs for shell-app templates the notes templates depend on.
+	// The real definitions live in example/notes/internal/app/templates/app/.
+	_, err = tmpl.Parse(`
+{{ define "app/alerts_oob" -}}<div id="alerts" hx-swap-oob="true">{{ range .Messages -}}<div class="alert alert-{{ .Level }}">{{ .Text }}</div>{{- end }}</div>{{- end }}
+{{ define "app/icon_trash" -}}<svg>trash</svg>{{- end }}
+{{ define "app/icon_plus_lg" -}}<svg>plus</svg>{{- end }}
+{{ define "app/icon_pencil" -}}<svg>pencil</svg>{{- end }}
+{{ define "app/icon_journal_text" -}}<svg>journal</svg>{{- end }}
+`)
 	require.NoError(t, err)
 
 	return func(_ context.Context, name string, data map[string]any) (template.HTML, error) {

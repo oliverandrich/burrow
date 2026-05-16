@@ -127,3 +127,22 @@ func TestWriteSources_OutputStartsWithHeaderComment(t *testing.T) {
 	first := strings.SplitN(string(data), "\n", 2)[0]
 	assert.Contains(t, first, "Auto-generated")
 }
+
+func TestSourcesOutPath(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"no -i falls back to cwd", []string{"-o", "out.css", "--minify"}, ".tailwind/sources.css"},
+		{"-i with separate value", []string{"-i", "example/notes/tailwind.css", "-o", "x"}, "example/notes/.tailwind/sources.css"},
+		{"--input long form", []string{"--input", "pkg/tailwind.css"}, "pkg/.tailwind/sources.css"},
+		{"-i= attached form", []string{"-i=example/hello/tailwind.css"}, "example/hello/.tailwind/sources.css"},
+		{"--input= attached form", []string{"--input=app/tailwind.css"}, "app/.tailwind/sources.css"},
+		{"bare filename", []string{"-i", "tailwind.css"}, ".tailwind/sources.css"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, sourcesOutPath(tc.args))
+		})
+	}
+}

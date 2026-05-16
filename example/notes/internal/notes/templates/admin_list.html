@@ -1,61 +1,90 @@
 {{ define "notes/admin_list" -}}
-<nav>
-    <ul class="breadcrumb" aria-label="breadcrumb">
-        <li><a href="/admin/">{{ t "modeladmin-admin" }}</a></li>
-        <li aria-current="page">{{ t "admin-nav-notes" }}</li>
-    </ul>
-    <ul>
-        <li>
-            <form action="/admin/notes" method="GET">
-                <input type="search" class="input-sm" name="q" value="{{ .SearchTerm }}" placeholder="{{ t "admin-notes-search-placeholder" }}" aria-label="{{ t "admin-notes-search-placeholder" }}">
-            </form>
-        </li>
-    </ul>
+<nav aria-label="breadcrumb" class="mb-4 text-sm">
+    <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "admin-nav-notes" }}</li>
+    </ol>
 </nav>
-<header>
-    <h2>{{ t "admin-nav-notes" }}</h2>
+<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "admin-nav-notes" }}</h2>
+    <form action="/admin/notes" method="GET">
+        <input type="search" name="q" value="{{ .SearchTerm }}"
+               placeholder="{{ t "admin-notes-search-placeholder" }}"
+               aria-label="{{ t "admin-notes-search-placeholder" }}"
+               class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900">
+    </form>
 </header>
 {{- if .Notes }}
-<figure>
-    <table>
-        <thead>
+<div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+    <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
+        <thead class="bg-gray-50 dark:bg-gray-800/40">
             <tr>
-                <th scope="col">{{ t "admin-notes-col-title" }}</th>
-                <th scope="col">{{ t "admin-notes-col-user" }}</th>
-                <th scope="col">{{ t "admin-notes-col-created" }}</th>
-                <th scope="col" class="admin-row-actions">{{ t "modeladmin-actions" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-notes-col-title" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-notes-col-user" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-notes-col-created" }}</th>
+                <th scope="col" class="px-4 py-2 text-right font-medium">{{ t "modeladmin-actions" }}</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
             {{- range .Notes }}
             <tr>
-                <td>{{ .Title }}</td>
-                <td>
+                <td class="px-4 py-2">{{ .Title }}</td>
+                <td class="px-4 py-2">
                     {{- $username := index $.Usernames .UserID -}}
                     {{- if $username -}}
-                    <a href="/admin/users/{{ .UserID }}">{{ $username }}</a>
+                    <a href="/admin/users/{{ .UserID }}" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ $username }}</a>
                     {{- else -}}
                     {{ .UserID }}
                     {{- end }}
                 </td>
-                <td>{{ naturaltime .CreatedAt }}</td>
-                <td class="admin-row-actions">
-                    <button type="button" class="btn btn-sm btn-outline btn-error"
-                        hx-delete="/admin/notes/{{ .ID }}"
-                        hx-swap="none"
-                        hx-confirm="{{ t "admin-notes-delete-confirm" }}">
-                        {{ iconTrash }} {{ t "admin-notes-action-delete" }}
+                <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ naturaltime .CreatedAt }}</td>
+                <td class="whitespace-nowrap px-4 py-2 text-right">
+                    <button type="button"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                            hx-delete="/admin/notes/{{ .ID }}"
+                            hx-swap="none"
+                            hx-confirm="{{ t "admin-notes-delete-confirm" }}">
+                        {{ template "app/icon_trash" . }} {{ t "admin-notes-action-delete" }}
                     </button>
                 </td>
             </tr>
             {{- end }}
         </tbody>
     </table>
-</figure>
-{{ template "mucss/pagination" (dict "Page" .Page "BasePath" "/admin/notes" "RawQuery" .RawQuery) }}
+</div>
+{{ template "notes/pagination" (dict "Page" .Page "BasePath" "/admin/notes" "RawQuery" .RawQuery) }}
 {{- else }}
-<div class="admin-empty">
+<div class="rounded-lg border border-dashed border-gray-300 py-12 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
     <p>{{ t "admin-notes-empty" }}</p>
 </div>
+{{- end }}
+{{- end }}
+
+{{ define "notes/pagination" -}}
+{{ if gt .Page.TotalPages 1 -}}
+<nav aria-label="Page navigation" class="mt-4 flex justify-center">
+    <ul class="inline-flex items-center gap-1 text-sm">
+        {{ if le .Page.Page 1 -}}
+        <li><span class="rounded border border-gray-200 px-2 py-1 text-gray-400 dark:border-gray-800 dark:text-gray-600" aria-disabled="true">&laquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (sub .Page.Page 1) }}" aria-label="Previous" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">&laquo;</a></li>
+        {{- end }}
+        {{ range pageNumbers .Page.Page .Page.TotalPages -}}
+        {{ if eq . -1 -}}
+        <li><span aria-hidden="true" class="px-2">&hellip;</span></li>
+        {{- else if eq . $.Page.Page -}}
+        <li><span aria-current="page" class="rounded border border-emerald-500 bg-emerald-50 px-2 py-1 font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{{ . }}</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL $.BasePath $.RawQuery . }}" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">{{ . }}</a></li>
+        {{- end }}
+        {{- end }}
+        {{ if not .Page.HasMore -}}
+        <li><span class="rounded border border-gray-200 px-2 py-1 text-gray-400 dark:border-gray-800 dark:text-gray-600" aria-disabled="true">&raquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (add .Page.Page 1) }}" aria-label="Next" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">&raquo;</a></li>
+        {{- end }}
+    </ul>
+</nav>
 {{- end }}
 {{- end }}

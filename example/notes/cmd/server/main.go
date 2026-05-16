@@ -1,5 +1,8 @@
 // Command server demonstrates how to build an application
-// using the burrow framework with contrib apps.
+// using the burrow framework with contrib apps. Following Pattern B
+// (see docs/guide/tailwind.md), the project's layout templates and
+// compiled Tailwind CSS live in `internal/app/`; this main.go just
+// wires apps together.
 package main
 
 import (
@@ -18,11 +21,10 @@ import (
 	"github.com/oliverandrich/burrow/contrib/humanize"
 	"github.com/oliverandrich/burrow/contrib/jobs"
 	"github.com/oliverandrich/burrow/contrib/messages"
-	"github.com/oliverandrich/burrow/contrib/mucss"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
+	"github.com/oliverandrich/burrow/example/notes/internal/app"
 	"github.com/oliverandrich/burrow/example/notes/internal/notes"
-	"github.com/oliverandrich/burrow/example/notes/internal/pages"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
 )
@@ -30,45 +32,40 @@ import (
 // version is set via ldflags at build time.
 var version = "dev"
 
-// emptyFS is an empty filesystem for staticfiles when the example has
-// no user-level static assets. Contrib apps contribute their own via
-// HasStaticFiles.
+// emptyFS holds no user-level static assets — the framework's root
+// static-files app needs *some* fs.FS but the actual CSS bundle is
+// embedded by `internal/app` and served via its `HasStaticFiles`
+// implementation under `/static/app/...`.
 var emptyFS embed.FS
 
 func main() {
-	// Configure logging before starting the server. Replace with
-	// tint, JSON handler, or any slog.Handler of your choice.
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})))
 
-	// Create the staticfiles app (walks FS to compute content hashes).
 	staticApp, err := staticfiles.New(emptyFS)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Create the server with apps in dependency order.
 	srv := burrow.NewServer(
 		session.New(),
 		csrf.New(),
 		staticApp,
 		healthcheck.New(),
 		jobs.New(),
-		pages.New(),
+		app.New(),
 		messages.New(),
 		auth.New(
-			auth.WithLogoComponent(pages.Logo()),
+			auth.WithLogoComponent(app.Logo()),
 		),
 		htmx.New(),
 		humanize.New(),
-		mucss.New(mucss.WithCompactType()),
 		notes.New(),
 		admin.New(),
 	)
 
-	// User-facing pages render with µCSS's nav layout.
-	srv.SetLayout(mucss.NavLayout())
+	srv.SetLayout("app/layout")
 
 	cmd := &cli.Command{
 		Name:     "example",

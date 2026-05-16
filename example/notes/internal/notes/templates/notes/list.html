@@ -1,44 +1,36 @@
 {{ define "notes/list_page" -}}
-<header class="notes-header">
-    <h1>{{ t "notes-title" }}</h1>
-    <a href="/notes/new" role="button" class="btn btn-primary"
+<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-bold tracking-tight">{{ t "notes-title" }}</h1>
+    <a href="/notes/new"
+       class="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
        hx-get="/notes/new"
        hx-target="#modal"
        hx-swap="innerHTML">
-        {{ iconPlusLg }} {{ t "notes-add-button" }}
+        {{ template "app/icon_plus_lg" . }} {{ t "notes-add-button" }}
     </a>
 </header>
-<form method="get" action="/notes" role="search" class="notes-search"
+<form method="get" action="/notes" role="search" class="mb-4"
       hx-get="/notes"
       hx-target="#notes-list"
       hx-swap="innerHTML"
       hx-push-url="true">
-    <fieldset role="group">
+    <div class="flex gap-2">
         <input type="search" name="q" value="{{ .SearchQuery }}"
-               placeholder="{{ t "notes-search-placeholder" }}">
-        <button type="submit" class="btn btn-primary">{{ t "notes-search-button" }}</button>
-    </fieldset>
+               placeholder="{{ t "notes-search-placeholder" }}"
+               class="flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900">
+        <button type="submit" class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">{{ t "notes-search-button" }}</button>
+    </div>
 </form>
 <div id="notes-list">
     {{ template "notes/notes_list" . }}
 </div>
-<style>
-.notes-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap }
-.notes-header h1 { margin: 0 }
-.notes-search { margin: 1rem 0 }
-.notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; align-items: stretch }
-.notes-grid article { display: flex; flex-direction: column; margin: 0 }
-.notes-grid article > footer { margin-top: auto }
-.notes-empty { grid-column: 1/-1; text-align: center; padding: 3rem 0; color: var(--mu-muted-color) }
-.note-card-actions { display: flex; justify-content: flex-end; gap: .5rem }
-</style>
 {{- end }}
 
 {{ define "notes/notes_list" -}}
-<div id="notes-grid" class="notes-grid">
+<div id="notes-grid" class="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {{ if not .Notes -}}
-    <div class="notes-empty" id="notes-empty">
-        {{ iconJournalText }}
+    <div class="col-span-full py-12 text-center text-gray-500 dark:text-gray-400" id="notes-empty">
+        <div class="mx-auto mb-2 text-3xl">{{ template "app/icon_journal_text" . }}</div>
         <p>{{ t "notes-empty" }}</p>
     </div>
     {{- else -}}
@@ -58,29 +50,31 @@
 {{- end }}
 
 {{ define "notes/note_card" -}}
-<article id="note-{{ .ID }}">
+<article id="note-{{ .ID }}" class="flex flex-col rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
     {{ template "notes/note_card_inner" . }}
 </article>
 {{- end }}
 
 {{ define "notes/note_card_inner" -}}
-<header><strong>{{ .Title }}</strong></header>
+<header class="mb-2"><strong class="text-base">{{ .Title }}</strong></header>
 {{ if .Content -}}
-<p>{{ .Content }}</p>
+<p class="mb-3 text-sm text-gray-700 dark:text-gray-300">{{ .Content }}</p>
 {{- end }}
-<footer class="note-card-actions">
-    <a href="/notes/{{ .ID }}" role="button" class="btn btn-sm btn-outline btn-secondary"
+<footer class="mt-auto flex justify-end gap-2">
+    <a href="/notes/{{ .ID }}"
+       class="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
        hx-get="/notes/{{ .ID }}"
        hx-target="#modal"
        hx-swap="innerHTML">
-        {{ iconPencil }} {{ t "notes-edit-button" }}
+        {{ template "app/icon_pencil" . }} {{ t "notes-edit-button" }}
     </a>
-    <button class="btn btn-sm btn-outline btn-error"
+    <button type="button"
+            class="inline-flex items-center gap-1.5 rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
             hx-delete="/notes/{{ .ID }}"
             hx-target="#note-{{ .ID }}"
             hx-swap="outerHTML swap:0.3s"
             hx-confirm="{{ t "notes-delete-confirm" }}">
-        {{ iconTrash }} {{ t "notes-delete-button" }}
+        {{ template "app/icon_trash" . }} {{ t "notes-delete-button" }}
     </button>
 </footer>
 {{- end }}
@@ -90,9 +84,8 @@
 <div hx-get="/notes?page={{ add .Page.Page 1 }}&limit=20{{ if .SearchQuery }}&q={{ .SearchQuery }}{{ end }}"
      hx-trigger="revealed"
      hx-swap="outerHTML"
-     style="grid-column:1/-1">
-    <div aria-busy="true" style="text-align:center;padding:1rem">{{ t "notes-loading" }}</div>
-</div>
+     class="col-span-full py-4 text-center text-sm text-gray-500 dark:text-gray-400"
+     aria-busy="true">{{ t "notes-loading" }}</div>
 {{- end }}
 {{- end }}
 
@@ -104,7 +97,7 @@
 {{- end }}
 
 {{ define "notes/update_response" -}}
-<article id="note-{{ .Note.ID }}" hx-swap-oob="outerHTML">
+<article id="note-{{ .Note.ID }}" class="flex flex-col rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900" hx-swap-oob="outerHTML">
     {{ template "notes/note_card_inner" .Note }}
 </article>
 {{ template "app/alerts_oob" . }}

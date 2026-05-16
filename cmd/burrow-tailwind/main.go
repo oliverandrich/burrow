@@ -10,8 +10,10 @@
 //	go tool burrow-tailwind -i tailwind.css -o static/app.min.css --watch
 //	go tool burrow-tailwind -i tailwind.css -o static/app.min.css --minify
 //
-// On every invocation the tool writes `.tailwind/sources.css` (relative
-// to the working directory) with `@source "<absolute path>";` lines for:
+// On every invocation the tool writes `.tailwind/sources.css` next to
+// the input CSS file passed via `-i` (or relative to the working
+// directory when `-i` is not given) with `@source "<absolute path>";`
+// lines for:
 //
 //   - Every `<burrow>/contrib/<app>/templates/` directory in the Burrow
 //     module the project depends on (resolved via `go list -m`).
@@ -61,8 +63,9 @@ func run(ctx context.Context, args []string) error {
 	projectRoot, _ := projectRootDir(ctx)
 
 	dirs := collectTemplateDirs(burrowDir, projectRoot)
-	if err := writeSources(defaultSourcesOutPath, dirs); err != nil {
-		return fmt.Errorf("write %s: %w", defaultSourcesOutPath, err)
+	sourcesPath := sourcesOutPath(args)
+	if err := writeSources(sourcesPath, dirs); err != nil {
+		return fmt.Errorf("write %s: %w", sourcesPath, err)
 	}
 
 	tw, err := exec.LookPath("tailwindcss")
@@ -126,6 +129,30 @@ func findTemplateSubdirs(root string) []string {
 func isDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
+}
+
+// sourcesOutPath picks the destination for the generated sources.css.
+// When tailwindcss is invoked with `-i <path>` (or its long form
+// `--input <path>`), the file is written next to that input so the
+// `@import "./.tailwind/sources.css"` line inside tailwind.css resolves
+// correctly regardless of cwd. Otherwise it falls back to the
+// cwd-relative default.
+func sourcesOutPath(args []string) string {
+	for i, a := range args {
+		var input string
+		switch {
+		case (a == "-i" || a == "--input") && i+1 < len(args):
+			input = args[i+1]
+		case strings.HasPrefix(a, "-i="):
+			input = strings.TrimPrefix(a, "-i=")
+		case strings.HasPrefix(a, "--input="):
+			input = strings.TrimPrefix(a, "--input=")
+		}
+		if input != "" {
+			return filepath.Join(filepath.Dir(input), defaultSourcesOutPath)
+		}
+	}
+	return defaultSourcesOutPath
 }
 
 // writeSources writes a CSS file at outPath that contains one

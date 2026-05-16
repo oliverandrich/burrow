@@ -1,0 +1,98 @@
+{{ define "app/layout" -}}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }}</title>
+    <link rel="stylesheet" href="{{ staticURL "app/app.min.css" }}">
+    {{ template "htmx/js" . }}
+    {{ template "htmx/config" . }}
+</head>
+<body class="min-h-screen bg-white text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100" {{- csrfHxHeaders }}>
+    <nav class="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+            <ul class="flex items-center gap-4">
+                <li><a href="/" class="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">{{ t "layout-brand" }}</a></li>
+                {{ range navLinks -}}
+                <li>
+                    <a href="{{ .URL }}"
+                       class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm{{ if .IsActive }} bg-gray-100 dark:bg-gray-800{{ end }} hover:bg-gray-100 dark:hover:bg-gray-800"
+                       {{ if .IsActive }}aria-current="page"{{ end }}
+                       hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
+                        {{ if .Icon }}{{ .Icon }} {{ end }}{{ .Label }}
+                    </a>
+                </li>
+                {{- end }}
+            </ul>
+            <ul class="flex items-center gap-2">
+                {{ template "app/user_menu" . }}
+            </ul>
+        </div>
+    </nav>
+    <main class="mx-auto max-w-6xl px-4 py-6">
+        {{ template "app/alerts" . }}
+        {{ .Content }}
+    </main>
+    <dialog id="modal" class="m-auto rounded-lg border border-gray-200 bg-white p-0 text-gray-900 shadow-xl backdrop:bg-black/40 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"></dialog>
+    {{ template "htmx/dialog_script" . }}
+</body>
+</html>
+{{- end }}
+
+{{ define "app/user_menu" -}}
+{{ with currentUser -}}
+<li class="relative">
+    <details class="group">
+        <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+            {{ template "app/icon_person_circle" . }} {{ .Username }}
+        </summary>
+        <ul class="absolute right-0 z-10 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-800 dark:bg-gray-900">
+            {{ if .IsAdmin -}}
+            <li><a href="/admin" class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800">{{ template "app/icon_gear" . }} {{ t "layout-admin" }}</a></li>
+            {{- end }}
+            <li><a href="#" id="logout-link" class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800">{{ template "app/icon_box_arrow_right" . }} {{ t "layout-sign-out" }}</a></li>
+        </ul>
+    </details>
+    <form method="post" action="/auth/logout" id="logout-form" hidden>{{ csrfField }}</form>
+    <script>
+        document.getElementById("logout-link").addEventListener("click",function(e){
+            e.preventDefault();
+            document.getElementById("logout-form").submit();
+        });
+    </script>
+</li>
+{{- else -}}
+<li>
+    <a href="/auth/login" class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+        {{ template "app/icon_box_arrow_in_right" . }} {{ t "layout-sign-in" }}
+    </a>
+</li>
+{{- end }}
+{{- end }}
+
+{{ define "app/alert_classes" -}}
+{{- $level := alertClass . -}}
+{{- if eq $level "success" -}}border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200
+{{- else if eq $level "warning" -}}border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200
+{{- else if eq $level "error" -}}border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200
+{{- else -}}border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200
+{{- end -}}
+{{- end }}
+
+{{ define "app/alerts" -}}
+<div id="alerts" class="space-y-2">
+    {{ range messages -}}
+    <div class="rounded-md border px-3 py-2 text-sm {{ template "app/alert_classes" .Level }}" role="alert">{{ .Text }}</div>
+    {{- end }}
+</div>
+{{- end }}
+
+{{ define "app/alerts_oob" -}}
+<div id="alerts" class="space-y-2" hx-swap-oob="innerHTML">
+    {{ range messages -}}
+    <div class="rounded-md border px-3 py-2 text-sm {{ template "app/alert_classes" .Level }}" role="alert">{{ .Text }}</div>
+    {{- end }}
+</div>
+{{- end }}
+

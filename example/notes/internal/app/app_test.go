@@ -1,4 +1,4 @@
-package pages
+package app
 
 import (
 	"context"
@@ -23,11 +23,19 @@ var (
 	_ burrow.HasTranslations = (*App)(nil)
 	_ burrow.HasTemplates    = (*App)(nil)
 	_ burrow.HasFuncMap      = (*App)(nil)
+	_ burrow.HasStaticFiles  = (*App)(nil)
 )
 
 func TestAppName(t *testing.T) {
 	app := New()
-	assert.Equal(t, "pages", app.Name())
+	assert.Equal(t, "app", app.Name())
+}
+
+func TestStaticFS_AppPrefix(t *testing.T) {
+	app := New()
+	prefix, fsys := app.StaticFS()
+	assert.Equal(t, "app", prefix)
+	require.NotNil(t, fsys)
 }
 
 func TestNavItems(t *testing.T) {
@@ -104,21 +112,6 @@ func TestTemplateFS_ReturnsNonNil(t *testing.T) {
 	app := New()
 	fsys := app.TemplateFS()
 	assert.NotNil(t, fsys)
-}
-
-func TestConfigure_RegistersIcons(t *testing.T) {
-	app := New()
-	cfg := &burrow.AppConfig{}
-	require.NoError(t, app.Configure(cfg, nil))
-
-	icons := cfg.IconFuncs()
-	assert.Contains(t, icons, "iconHouse")
-	assert.Contains(t, icons, "iconKey")
-	assert.Contains(t, icons, "iconPuzzle")
-	assert.Contains(t, icons, "iconLightning")
-	assert.Contains(t, icons, "iconGear")
-	assert.Contains(t, icons, "iconBoxArrowRight")
-	assert.Contains(t, icons, "iconBoxArrowInRight")
 }
 
 func TestRoutes_RegistersHomeRoute(t *testing.T) {

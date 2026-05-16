@@ -49,8 +49,11 @@ run = [
 ]
 
 [tasks."example-notes"]
-description = "Run the notes example application"
-run = 'go run ./example/notes/cmd/server "$@"'
+description = "Run the notes example application (builds Tailwind CSS first)"
+run = [
+    "go tool burrow-tailwind -i example/notes/tailwind.css -o example/notes/internal/app/static/app.min.css --minify",
+    'go run ./example/notes/cmd/server "$@"',
+]
 
 
 # --- Vendored asset updates ---

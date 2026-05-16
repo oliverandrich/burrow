@@ -1,11 +1,12 @@
 {{ define "notes/form" -}}
-<article>
-    <header>
-        <button aria-label="Close" rel="prev"></button>
-        <strong>{{ t .TitleKey }}</strong>
+<article class="w-96 max-w-[90vw] p-6">
+    <header class="mb-4 flex items-center justify-between">
+        <strong class="text-base">{{ t .TitleKey }}</strong>
+        <button type="button" aria-label="Close" rel="prev"
+                class="text-2xl text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">&times;</button>
     </header>
     {{ if .NonFieldErrors -}}
-    <div class="alert alert-error" role="alert">
+    <div class="mb-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200" role="alert">
         {{ range .NonFieldErrors -}}
         <p>{{ . }}</p>
         {{- end }}
@@ -14,26 +15,35 @@
     <form method="post" action="{{ .Action }}"
           hx-post="{{ .Action }}"
           hx-target="#modal"
-          hx-swap="innerHTML">
+          hx-swap="innerHTML"
+          class="space-y-3">
         {{ csrfField }}
         {{ range .Fields -}}
-        <label for="{{ .FormName }}">
-            {{ t .Label }}{{ if .Required }} *{{ end }}
+        <div>
+            <label for="{{ .FormName }}" class="mb-1 block text-sm font-medium">
+                {{ t .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}
+            </label>
             {{ if eq .Type "textarea" -}}
-            <textarea id="{{ .FormName }}" name="{{ .FormName }}" rows="3"{{ if .Errors }} aria-invalid="true"{{ end }}>{{ .Value }}</textarea>
+            <textarea id="{{ .FormName }}" name="{{ .FormName }}" rows="3"
+                      {{ if .Errors }}aria-invalid="true"{{ end }}
+                      class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }}">{{ .Value }}</textarea>
             {{- else -}}
-            <input type="{{ .Type }}" id="{{ .FormName }}" name="{{ .FormName }}" value="{{ .Value }}"{{ if .Required }} required{{ end }}{{ if .Errors }} aria-invalid="true"{{ end }}>
+            <input type="{{ .Type }}" id="{{ .FormName }}" name="{{ .FormName }}" value="{{ .Value }}"
+                   {{ if .Required }}required{{ end }}
+                   {{ if .Errors }}aria-invalid="true"{{ end }}
+                   class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }}">
             {{- end }}
-        </label>
-        {{ range .Errors -}}
-        <small class="field-error">{{ . }}</small>
+            {{ range .Errors -}}
+            <small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
+            {{- end }}
+        </div>
         {{- end }}
-        {{- end }}
-        <footer class="form-actions">
-            <button type="submit" class="btn btn-primary">{{ t "notes-save-button" }}</button>
-            <button type="button" class="btn btn-outline btn-secondary" data-close-dialog>
+        <footer class="flex justify-end gap-2 pt-2">
+            <button type="button" data-close-dialog
+                    class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
                 {{ t "notes-cancel-button" }}
             </button>
+            <button type="submit" class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">{{ t "notes-save-button" }}</button>
         </footer>
     </form>
 </article>
