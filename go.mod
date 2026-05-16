@@ -14,7 +14,7 @@ require (
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/securecookie v1.1.2
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
-	github.com/oliverandrich/den v0.12.0
+	github.com/oliverandrich/den v0.12.1
 	github.com/stretchr/testify v1.11.1
 	github.com/tdewolff/parse/v2 v2.8.12
 	github.com/unrolled/secure v1.17.0
@@ -37,7 +37,7 @@ require (
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
-	github.com/kr/pretty v0.3.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
@@ -45,7 +45,6 @@ require (
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/tinylib/msgp v1.6.3 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/net v0.52.0 // indirect

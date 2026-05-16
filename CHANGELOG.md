@@ -16,6 +16,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Changed
 
+- **Den bumped to v0.12.1.** Picks up the PostgreSQL `GroupBy + cursor pagination` bugfix (not exercised by burrow but useful for downstream apps), `Link[T]` JSON encode/decode fast-paths, and the validation skip for tag-less document types — read-path and write-path allocation reductions in the 3-37% range with no API impact.
 - **`contrib/jobs` `RescueStale` runs as a single bulk update** instead of an `All` + per-row `UpdateOne` loop, using the new Den 0.12 `QuerySet.Update` write terminal. Closes the race window between snapshot and rescue — the `status=running` guard is now re-evaluated at write time. No public API change.
 
 ## 0.18.1 — 2026-05-06
