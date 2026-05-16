@@ -16,6 +16,7 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/oliverandrich/den v0.12.0
 	github.com/stretchr/testify v1.11.1
+	github.com/tdewolff/parse/v2 v2.8.12
 	github.com/unrolled/secure v1.17.0
 	github.com/urfave/cli/v3 v3.8.0
 	github.com/wneessen/go-mail v0.7.2
