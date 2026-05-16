@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
-	"github.com/oliverandrich/burrow/contrib/bsicons"
 	"github.com/urfave/cli/v3"
 )
 
@@ -69,17 +68,15 @@ func New(opts ...Option) *App {
 func (a *App) Name() string { return "admin" }
 
 // Dependencies declares contribs the admin app's templates assume are present:
-// staticfiles serves admin.css, htmx powers the boosted nav, mucss provides
-// the css / theme switcher / pagination templates referenced from admin/layout,
-// and messages provides the flash-message template function used at the top
-// of every admin page.
+// staticfiles serves admin.css and the host app's Tailwind output, htmx powers
+// the boosted nav, and messages provides the flash-message template function
+// used at the top of every admin page.
 func (a *App) Dependencies() []string {
-	return []string{"staticfiles", "htmx", "mucss", "messages"}
+	return []string{"staticfiles", "htmx", "messages"}
 }
 
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.registry = cfg.Registry
-	cfg.RegisterIconFunc("iconPersonCircle", bsicons.PersonCircle)
 
 	// Discover the AdminAuth provider from the registry.
 	for _, app := range cfg.Registry.Apps() {

@@ -52,7 +52,6 @@ func configuredRegistry(t *testing.T) *burrow.Registry {
 	// doesn't trip the dependency gate during tests.
 	registry.Add(&stubApp{name: "staticfiles"})
 	registry.Add(&stubApp{name: "htmx"})
-	registry.Add(&stubApp{name: "mucss"})
 	registry.Add(&stubApp{name: "messages"})
 
 	sessionApp := session.New()
@@ -109,7 +108,7 @@ func TestAppConfigureWithoutAuthReturnsError(t *testing.T) {
 	// An empty registry — admin's Configure should error because no
 	// AdminAuth provider is registered. (We don't add admin to the
 	// registry here because that would trip the Dependencies check
-	// for staticfiles/htmx/mucss, which is unrelated to this test.)
+	// for staticfiles/htmx/messages, which is unrelated to this test.)
 	registry := burrow.NewRegistry()
 
 	app := New()

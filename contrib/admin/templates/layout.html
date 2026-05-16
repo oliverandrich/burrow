@@ -5,45 +5,42 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ .Title }} – {{ t "admin-sidebar-title" }}</title>
-    {{ template "mucss/css" . }}
+    <link rel="stylesheet" href="{{ staticURL "app/app.min.css" }}">
     <link rel="stylesheet" href="{{ staticURL "admin/admin.css" }}">
-    {{ template "mucss/theme_script" . }}
     {{ template "htmx/js" . }}
     {{ template "htmx/config" . }}
 </head>
-<body hx-boost="true" hx-target="#main" {{- csrfHxHeaders }}>
-    <nav class="container-fluid">
-        <ul>
-            <li><strong>{{ t "admin-sidebar-title" }}</strong></li>
-        </ul>
-        <ul>
-            <li>{{ template "mucss/theme_switcher" . }}</li>
+<body class="bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 antialiased"
+      hx-boost="true" hx-target="#main" {{- csrfHxHeaders }}>
+    <header class="border-b border-gray-200 dark:border-gray-800">
+        <nav class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+            <a href="/admin/" class="text-lg font-semibold">{{ t "admin-sidebar-title" }}</a>
             {{ with currentUser }}
-            <li>
-                <details class="dropdown">
-                    <summary>{{ iconPersonCircle }} {{ .Username }}</summary>
-                    <ul dir="rtl">
-                        <li dir="ltr"><a href="#" id="admin-logout-link">{{ t "admin-logout" }}</a></li>
-                    </ul>
-                </details>
-                <form method="post" action="/auth/logout" id="admin-logout-form" hx-boost="false" hidden>
+            <div class="flex items-center gap-3 text-sm">
+                <span class="inline-flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+                        <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/>
+                    </svg>
+                    {{ .Username }}
+                </span>
+                <form method="post" action="/auth/logout" hx-boost="false">
                     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
+                    <button type="submit"
+                            class="rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                        {{ t "admin-logout" }}
+                    </button>
                 </form>
-                <script>
-                    document.getElementById("admin-logout-link").addEventListener("click", function(e) {
-                        e.preventDefault();
-                        document.getElementById("admin-logout-form").submit();
-                    });
-                </script>
-            </li>
+            </div>
             {{ end }}
-        </ul>
-    </nav>
-    <main id="main" class="container">
+        </nav>
+    </header>
+    <main id="main" class="mx-auto max-w-7xl px-4 py-8">
         {{ range messages -}}
-        <div class="alert alert-primary" role="alert">
-            <span class="alert-title">{{ t (printf "admin-alert-%s" .Level) }}</span>
-            <p>{{ .Text }}</p>
+        <div role="alert"
+             class="mb-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+            <p class="font-medium text-blue-900 dark:text-blue-100">{{ t (printf "admin-alert-%s" .Level) }}</p>
+            <p class="mt-1 text-blue-800 dark:text-blue-200">{{ .Text }}</p>
         </div>
         {{- end }}
         {{ .Content }}

@@ -1,18 +1,15 @@
-/* Burrow admin polish — adjustments on top of µCSS for the admin shell. */
+/* Burrow admin polish — small framework-agnostic adjustments on top of the
+ * host app's Tailwind output. Loaded by admin/layout for every admin page.
+ *
+ * These rules are transitional: each one is annotated with the bean that
+ * removes its last consumer. Once empty, this file (and the corresponding
+ * <link> in admin/layout.html) can be deleted.
+ */
 
-/* Dashboard cards: the entire <article> is wrapped in <a> so the whole card
- * is clickable, but µCSS's default link styling (color + underline) makes
- * the card text look like a hyperlink. Strip both so the card behaves like
- * a button visually while keeping the link semantics. */
-.admin-dashboard-link, .admin-dashboard-link:hover { color: inherit; text-decoration: none }
-
-/* Table action column: right-align actions, keep buttons on one line, and
- * zero out the `margin-bottom: 1rem` µCSS adds to all form-buttons so the
- * row vertically centres on the button height instead of stretching.
- * Width override uses an attribute selector to beat µCSS's
- * `button[type=submit]{width:100%}` default. */
+/* Used by every contrib's table-of-rows admin page (auth/admin_users,
+ * auth/admin_invites, jobs/admin_list, example/notes/admin_list, ...).
+ * Removed by beans 9c9i (auth), zq90 (jobs), imcu (example/notes) when
+ * those migrate to Tailwind utilities inline. */
 .admin-row-actions { text-align: end; white-space: nowrap }
 .admin-row-actions button[type] { margin-bottom: 0; width: auto }
-
-/* Form action footers: flex layout so Save/Cancel pairs sit inline right. */
 form > footer.admin-row-actions { display: flex; gap: .5rem; justify-content: flex-end; flex-wrap: wrap }

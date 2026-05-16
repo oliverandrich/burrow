@@ -37,6 +37,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	cfg.RegisterIconFunc("iconGear", bsicons.Gear)
 	cfg.RegisterIconFunc("iconBoxArrowRight", bsicons.BoxArrowRight)
 	cfg.RegisterIconFunc("iconBoxArrowInRight", bsicons.BoxArrowInRight)
+	cfg.RegisterIconFunc("iconPersonCircle", bsicons.PersonCircle)
 	return nil
 }
 func (a *App) TranslationFS() fs.FS { return translationFS }
