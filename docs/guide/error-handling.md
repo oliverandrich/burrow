@@ -124,7 +124,7 @@ A design system app like `contrib/mucss` can override error templates to provide
 2. **Design system app** — styled with CSS framework (e.g. µCSS)
 3. **Your app** — fully custom (if you need per-app error pages)
 
-Each layer overrides the previous one simply by defining the same template name.
+Each layer overrides the previous one simply by defining the same template name — but the layer must be registered with `NewServer` *after* the layer it overrides, because Burrow parses templates in registration order and `html/template`'s last-define-wins decides which definition is used. See [Layouts → Overriding Contrib Templates](layouts.md#overriding-contrib-templates) for the full pattern.
 
 ## i18n
 

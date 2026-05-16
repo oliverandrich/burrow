@@ -130,6 +130,83 @@ admin.New(admin.WithLayout("myapp/admin-layout"))
 
 Pass an empty string for no admin layout.
 
+## Overriding Contrib Templates
+
+Burrow's template loader uses Go's `html/template` package, which obeys **last-define-wins**: when multiple `{{ define "name" }}` blocks share a name, whichever one is parsed last is the version everyone sees. Templates from each app are parsed in the order the apps were registered with `NewServer`, so the override pattern is simply:
+
+- Define the same template name in your own app's `templates/` directory.
+- Make sure your app is registered *after* the contrib whose template you're replacing.
+
+### Example: override the admin dashboard
+
+`contrib/admin` ships `{{ define "admin/dashboard" }}`. To replace it with your own:
+
+```go
+// internal/myadmin/app.go
+//go:embed templates
+var templateFS embed.FS
+
+func (a *App) TemplateFS() fs.FS {
+    sub, _ := fs.Sub(templateFS, "templates")
+    return sub
+}
+```
+
+```html
+{{ define "admin/dashboard" }}
+<section class="...">your custom dashboard markup</section>
+{{ end }}
+```
+
+And register your app *after* admin:
+
+```go
+srv := burrow.NewServer(
+    staticApp,
+    admin.New(),         // ships admin/dashboard
+    myadmin.New(),       // {{ define "admin/dashboard" }} → wins
+)
+```
+
+If your app comes *before* admin in the slice, admin's parse runs last and your override is silently ignored. Two reliable ways to guarantee the correct order:
+
+**1. List your app after the contrib in `NewServer(...)`:**
+
+```go
+srv := burrow.NewServer(
+    staticApp,
+    admin.New(),
+    myadmin.New(),       // explicitly after admin
+)
+```
+
+**2. Declare the contrib as a dependency** — Burrow's topological sort then puts your app after it regardless of slice order:
+
+```go
+func (a *App) Dependencies() []string {
+    return []string{"admin"}
+}
+```
+
+The second form is more robust: it survives a future refactor that reshuffles `NewServer` arguments, and it documents the intent ("I depend on admin's templates being parsed first") in the code that needs the guarantee.
+
+### What you can override
+
+Anything a contrib registers with `{{ define "name" }}` is overridable:
+
+- Layouts (`admin/layout`, `auth/layout`, …)
+- Page templates (`admin/dashboard`, `auth/login`, …)
+- Partials (`htmx/dialog_script`, `mucss/theme_script`, …)
+- Error pages (`error/404`, `error/default`, …)
+
+This is the same mechanism that lets a design system app (`contrib/mucss` historically) style error pages — see [Error Handling → Design System Integration](error-handling.md#design-system-integration).
+
+### What this does NOT solve
+
+Contrib templates may include other contrib templates (`{{ template "htmx/js" . }}` etc.). Overriding the *outer* template lets you compose differently, but you can't override the inner template's *internals* unless you override that inner template too. If a contrib's page template inlines markup directly (rather than splitting it into named blocks), the only way to customize that fragment is to redefine the whole page.
+
+This is the price of the override-by-define mechanism. If a contrib feels too monolithic, file an issue requesting it split into smaller `{{ define }}` blocks — usually a quick fix.
+
 ## Writing a Custom Layout
 
 A layout is simply a template in the global template set. Create a `.html` file in your app's `templates/` directory and set its name via `SetLayout()`.

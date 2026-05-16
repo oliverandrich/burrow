@@ -4,8 +4,7 @@ Thank you for considering contributing to Burrow! This guide explains how to set
 
 ## Prerequisites
 
-- **[mise](https://mise.jdx.dev/)** — version manager + task runner. One install gives you the pinned Go toolchain, all dev tools, and the `mise run <task>` commands.
-- **pre-commit** — git hook manager ([pre-commit.com](https://pre-commit.com/#install))
+- **[mise](https://mise.jdx.dev/)** — version manager + task runner. One install gives you the pinned Go toolchain, every dev tool the project needs (`golangci-lint`, `tparse`, `goimports`, `govulncheck`, `go-licenses`, `go-ignore-cov`, `pre-commit`, `tailwindcss`, `zensical`), and the `mise run <task>` commands.
 
 ## Development Setup
 
@@ -14,17 +13,12 @@ Thank you for considering contributing to Burrow! This guide explains how to set
 git clone https://github.com/oliverandrich/burrow.git
 cd burrow
 
-# Install pinned tools (Go, golangci-lint, tparse, goimports, govulncheck, ...)
+# Install pinned tools and wire up the pre-commit git hooks
 mise install
-
-# Verify the environment
 mise run setup
-
-# Install git hooks
-pre-commit install
 ```
 
-`mise install` reads `.mise.toml` and installs every pinned tool at the exact version Burrow targets. `mise run setup` then checks that each tool is reachable on PATH and prints a summary.
+`mise install` reads `.mise.toml` and fetches every pinned tool at the exact version Burrow targets. `mise run setup` then verifies each tool is reachable on PATH and runs `pre-commit install` so the git hooks fire on every commit.
 
 ## Development Workflow
 

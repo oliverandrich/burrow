@@ -6,7 +6,9 @@ go = "1.26"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 "go:github.com/google/go-licenses" = "latest"
 "go:github.com/quantumcycle/go-ignore-cov" = "latest"
+"github:tailwindlabs/tailwindcss" = "4"
 "pipx:pre-commit" = "latest"
+"pipx:zensical" = "latest"
 
 [tasks.test]
 description = "Run all tests"

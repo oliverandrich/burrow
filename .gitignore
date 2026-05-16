@@ -3,6 +3,10 @@ bin/
 tmp/
 tutorial/step*/step*
 tutorial/step*/*.db
+/burrow-tailwind
+
+# Tailwind generated sources (regenerated on each burrow-tailwind invocation)
+.tailwind/
 
 # IDE
 .idea/

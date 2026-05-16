@@ -12,7 +12,9 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
-- **`contrib/litewind`** — new Tailwind-utility design contrib backed by a vendored static CSS (Burrow's custom Litewind build with class-based `dark:` variants). One `<link>`, no Tailwind CLI, no PostCSS, no node toolchain out of the box. Ships a drop-in theme switcher (auto/light/dark via `data-theme`) ported from `contrib/mucss`. Foundation bean for the v0.20 UI-stack migration; deletion of `contrib/mucss` and `contrib/bootstrap` and the contrib-app template migrations follow in later beans.
+- **Tailwind v4 via the standalone CLI** is the recommended CSS stack for new Burrow projects. `.mise.toml` pins `github:tailwindlabs/tailwindcss` alongside the Go toolchain so installation is one `mise install` away. Dark mode follows `prefers-color-scheme`; no user-toggleable theme machinery is shipped by Burrow.
+- **`cmd/burrow-tailwind`** — a thin Go-tool wrapper around `tailwindcss` that auto-generates `@source` directives for every Burrow contrib's template directory. Users install via `go get -tool github.com/oliverandrich/burrow/cmd/burrow-tailwind` and invoke as `go tool burrow-tailwind -i tailwind.css -o static/app.min.css [--watch | --minify]`. Arguments after the binary name are forwarded verbatim to `tailwindcss`, so the wrapper stays out of the way as Tailwind evolves. New contribs with templates are picked up automatically on `go get -u` — no per-project source-list maintenance.
+- **`docs/guide/tailwind.md`** — the full setup, dev (with Air), and production-build workflow. Starter `tailwind.css` at `docs/guide/tailwind.example.css`.
 
 ### Changed
 

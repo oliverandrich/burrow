@@ -10,13 +10,6 @@ This file is auto-generated. Run `just licenses` to regenerate it.
 These files are bundled directly into the binary and do not carry their license
 headers in every distributed form.
 
-### Alpine.js v3.15.8
-
-- **Files:** `contrib/alpine/static/alpine.min.js`
-- **URL:** <https://alpinejs.dev/>
-- **Copyright:** Copyright (c) 2019-2025 Caleb Porzio and contributors
-- **License:** MIT — <https://github.com/alpinejs/alpine/blob/main/LICENSE.md>
-
 ### Bootstrap v5.3.8
 
 - **Files:** `contrib/bootstrap/static/bootstrap.min.css`, `contrib/bootstrap/static/bootstrap.bundle.min.js`

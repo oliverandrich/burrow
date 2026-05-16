@@ -196,7 +196,7 @@ Burrow uses [mise](https://mise.jdx.dev/) for tool-version pinning and task runn
 
 ```bash
 mise install              # Install pinned Go + dev tools
-mise run setup            # Verify the environment
+mise run setup            # Verify the environment + install pre-commit git hooks
 ```
 
 Common tasks:

@@ -25,13 +25,20 @@ check govulncheck     "run 'mise install' or check that mise is activated in you
 check go-ignore-cov   "run 'mise install' or check that mise is activated in your shell"
 check go-licenses     "run 'mise install' or check that mise is activated in your shell"
 check pre-commit      "run 'mise install' or check that mise is activated in your shell"
-check npm             "https://nodejs.org/ (needed for contrib/bootstrap Sass compilation; removed in v0.20)"
-check sass            "https://sass-lang.com/install/ (needed for contrib/bootstrap; removed in v0.20)"
+check zensical        "run 'mise install' or check that mise is activated in your shell"
 echo ""
-if $ok; then
-    echo "All tools installed."
-    echo "Run 'pre-commit install' to set up git hooks."
-else
+if ! $ok; then
     echo "Some tools are missing. Install them and re-run 'mise run setup'."
     exit 1
 fi
+echo "All tools installed."
+
+echo ""
+echo "Installing pre-commit git hooks ..."
+if ! pre-commit install; then
+    echo ""
+    echo "WARN: pre-commit install did not succeed."
+    echo "      If you intentionally use a custom git hooks setup, ignore this."
+    echo "      Otherwise, follow the hint pre-commit printed above and rerun 'mise run setup'."
+fi
+echo "Done. Setup complete."

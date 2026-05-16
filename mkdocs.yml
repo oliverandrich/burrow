@@ -75,6 +75,7 @@ nav:
       - Templates & UI:
           - Layouts & Rendering: guide/layouts.md
           - Navigation: guide/navigation.md
+          - Tailwind CSS: guide/tailwind.md
           - Forms: guide/forms.md
           - Validation: guide/validation.md
           - Internationalization: guide/i18n.md
