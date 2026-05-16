@@ -222,7 +222,7 @@ func TestRepository_DeleteCompleted(t *testing.T) {
 	require.NoError(t, err)
 	backdated := time.Now().Add(-2 * time.Hour)
 	updated.CompletedAt = &backdated
-	err = den.Update(ctx, db, updated)
+	err = den.Save(ctx, db, updated)
 	require.NoError(t, err)
 
 	// Delete completed older than 1 hour.
@@ -254,7 +254,7 @@ func TestRepository_RescueStale(t *testing.T) {
 	require.NoError(t, err)
 	backdated := time.Now().Add(-30 * time.Minute)
 	updated.LockedAt = &backdated
-	err = den.Update(ctx, db, updated)
+	err = den.Save(ctx, db, updated)
 	require.NoError(t, err)
 
 	// Rescue stale jobs older than 10 minutes.
@@ -436,7 +436,7 @@ func TestClaim_SkipsOwnedJobs(t *testing.T) {
 	require.NoError(t, err)
 	job.Status = StatusFailed
 	job.WorkerID = "other-worker"
-	require.NoError(t, den.Update(ctx, db, job))
+	require.NoError(t, den.Save(ctx, db, job))
 
 	// Claim should skip it because worker_id is not empty.
 	claimed, err := repo.Claim(ctx, "worker-1", 1)
@@ -586,10 +586,8 @@ func TestRepository_RescueStale_SkipsCompletedJobs(t *testing.T) {
 
 	// Backdate locked_at first (while still running).
 	past := time.Now().Add(-10 * time.Minute)
-	_, err = den.FindOneAndUpdate[Job](ctx, db,
-		den.SetFields{"locked_at": &past},
-		[]where.Condition{where.Field("_id").Eq(job.ID)},
-	)
+	_, err = den.NewQuery[Job](db, where.Field("_id").Eq(job.ID)).
+		UpdateOne(ctx, den.SetFields{"locked_at": &past})
 	require.NoError(t, err)
 
 	// Complete the job — simulates the race where worker finishes between
@@ -728,10 +726,8 @@ func TestRepository_Retry_ClearsResultAndErrorClass(t *testing.T) {
 	require.NoError(t, repo.Fail(ctx, job, "boom", "*errors.errorString", 30*time.Second))
 
 	// Manually set result to verify retry clears it.
-	_, err = den.FindOneAndUpdate[Job](ctx, db,
-		den.SetFields{"result": `{"stale":"data"}`},
-		[]where.Condition{where.Field("_id").Eq(job.ID)},
-	)
+	_, err = den.NewQuery[Job](db, where.Field("_id").Eq(job.ID)).
+		UpdateOne(ctx, den.SetFields{"result": `{"stale":"data"}`})
 	require.NoError(t, err)
 
 	err = repo.Retry(ctx, job.ID)

@@ -42,7 +42,7 @@ func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxR
 		MaxRetries: maxRetries,
 		RunAt:      runAt,
 	}
-	if err := den.Insert(ctx, r.db, job); err != nil {
+	if err := den.Save(ctx, r.db, job); err != nil {
 		return nil, fmt.Errorf("enqueue job %q: %w", typeName, err)
 	}
 	return job, nil
@@ -81,7 +81,7 @@ func (r *Repository) Claim(ctx context.Context, workerID string, limit int) ([]*
 			job.Status = StatusRunning
 			job.LockedAt = &now
 			job.WorkerID = workerID
-			if err := den.Update(ctx, tx, job); err != nil {
+			if err := den.Save(ctx, tx, job); err != nil {
 				return fmt.Errorf("claim jobs: update %s: %w", job.ID, err)
 			}
 			claimed = append(claimed, job)
@@ -113,17 +113,15 @@ func ownedRunningConditions(job *Job) []where.Condition {
 // if ownership has changed.
 func (r *Repository) Complete(ctx context.Context, job *Job, result string) error {
 	now := time.Now()
-	_, err := den.FindOneAndUpdate[Job](ctx, r.db,
-		den.SetFields{
+	_, err := den.NewQuery[Job](r.db, ownedRunningConditions(job)...).
+		UpdateOne(ctx, den.SetFields{
 			"status":            string(StatusCompleted),
 			"completed_at":      &now,
 			"attempts":          job.Attempts,
 			"result":            result,
 			"last_attempted_at": job.LastAttemptedAt,
 			"worker_id":         "",
-		},
-		ownedRunningConditions(job),
-	)
+		})
 	if errors.Is(err, den.ErrNotFound) {
 		return ErrStaleJob
 	}
@@ -162,7 +160,7 @@ func (r *Repository) Fail(ctx context.Context, job *Job, errMsg, errorClass stri
 		fields["failed_at"] = &now
 	}
 
-	_, err := den.FindOneAndUpdate[Job](ctx, r.db, fields, ownedRunningConditions(job))
+	_, err := den.NewQuery[Job](r.db, ownedRunningConditions(job)...).UpdateOne(ctx, fields)
 	if errors.Is(err, den.ErrNotFound) {
 		return ErrStaleJob
 	}
@@ -175,10 +173,10 @@ func (r *Repository) Fail(ctx context.Context, job *Job, errMsg, errorClass stri
 // DeleteCompleted removes completed jobs older than the given duration.
 func (r *Repository) DeleteCompleted(ctx context.Context, olderThan time.Duration) (int64, error) {
 	cutoffStr := time.Now().Add(-olderThan).Format(time.RFC3339Nano)
-	return den.DeleteMany[Job](ctx, r.db, []where.Condition{
+	return den.NewQuery[Job](r.db,
 		where.Field("status").Eq(string(StatusCompleted)),
 		where.Field("completed_at").Lt(cutoffStr),
-	})
+	).Delete(ctx)
 }
 
 // GetByID returns a single job by ID.
@@ -232,24 +230,21 @@ func (r *Repository) GetResult(ctx context.Context, id string) (string, error) {
 // Retry resets a dead or failed job back to pending for re-processing.
 func (r *Repository) Retry(ctx context.Context, id string) error {
 	now := time.Now()
-	_, err := den.FindOneAndUpdate[Job](ctx, r.db,
-		den.SetFields{
-			"status":            string(StatusPending),
-			"attempts":          0,
-			"last_error":        "",
-			"error_class":       "",
-			"result":            "",
-			"last_attempted_at": nil,
-			"failed_at":         nil,
-			"locked_at":         nil,
-			"run_at":            now,
-			"worker_id":         "",
-		},
-		[]where.Condition{
-			where.Field("_id").Eq(id),
-			where.Field("status").In(string(StatusFailed), string(StatusDead)),
-		},
-	)
+	_, err := den.NewQuery[Job](r.db,
+		where.Field("_id").Eq(id),
+		where.Field("status").In(string(StatusFailed), string(StatusDead)),
+	).UpdateOne(ctx, den.SetFields{
+		"status":            string(StatusPending),
+		"attempts":          0,
+		"last_error":        "",
+		"error_class":       "",
+		"result":            "",
+		"last_attempted_at": nil,
+		"failed_at":         nil,
+		"locked_at":         nil,
+		"run_at":            now,
+		"worker_id":         "",
+	})
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			// Either doesn't exist or wrong status
@@ -266,18 +261,15 @@ func (r *Repository) Retry(ctx context.Context, id string) error {
 // Cancel marks a pending, running, or failed job as dead.
 func (r *Repository) Cancel(ctx context.Context, id string) error {
 	now := time.Now()
-	_, err := den.FindOneAndUpdate[Job](ctx, r.db,
-		den.SetFields{
-			"status":    string(StatusDead),
-			"failed_at": &now,
-			"locked_at": nil,
-			"worker_id": "",
-		},
-		[]where.Condition{
-			where.Field("_id").Eq(id),
-			where.Field("status").In(string(StatusPending), string(StatusRunning), string(StatusFailed)),
-		},
-	)
+	_, err := den.NewQuery[Job](r.db,
+		where.Field("_id").Eq(id),
+		where.Field("status").In(string(StatusPending), string(StatusRunning), string(StatusFailed)),
+	).UpdateOne(ctx, den.SetFields{
+		"status":    string(StatusDead),
+		"failed_at": &now,
+		"locked_at": nil,
+		"worker_id": "",
+	})
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			if _, getErr := r.GetByID(ctx, id); getErr != nil {
@@ -308,18 +300,15 @@ func (r *Repository) RescueStale(ctx context.Context, staleDuration time.Duratio
 	now := time.Now()
 	var count int64
 	for _, job := range stale {
-		_, err := den.FindOneAndUpdate[Job](ctx, r.db,
-			den.SetFields{
-				"status":    string(StatusPending),
-				"locked_at": nil,
-				"worker_id": "",
-				"run_at":    now,
-			},
-			[]where.Condition{
-				where.Field("_id").Eq(job.ID),
-				where.Field("status").Eq(string(StatusRunning)),
-			},
-		)
+		_, err := den.NewQuery[Job](r.db,
+			where.Field("_id").Eq(job.ID),
+			where.Field("status").Eq(string(StatusRunning)),
+		).UpdateOne(ctx, den.SetFields{
+			"status":    string(StatusPending),
+			"locked_at": nil,
+			"worker_id": "",
+			"run_at":    now,
+		})
 		if err != nil {
 			if errors.Is(err, den.ErrNotFound) {
 				continue // Job was completed/failed between query and update — skip.

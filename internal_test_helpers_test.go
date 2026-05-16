@@ -10,7 +10,6 @@ import (
 
 	"github.com/oliverandrich/den"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme for internal tests
-	"github.com/oliverandrich/den/validate"
 )
 
 // testDB returns a file-backed SQLite database wrapped in a [den.DB] for
@@ -20,7 +19,7 @@ import (
 func testDB(t *testing.T) *den.DB {
 	t.Helper()
 	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := den.OpenURL(t.Context(), dsn, validate.WithValidation())
+	db, err := den.OpenURL(t.Context(), dsn)
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}

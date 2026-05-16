@@ -1382,7 +1382,7 @@ func TestResendVerificationUserWithNilEmail(t *testing.T) {
 	reloaded, err := repo.GetUserByID(context.Background(), user.ID)
 	require.NoError(t, err)
 	reloaded.Email = nil
-	require.NoError(t, den.Update(context.Background(), repo.db, reloaded))
+	require.NoError(t, den.Save(context.Background(), repo.db, reloaded))
 
 	body := strings.NewReader(`{"email":"nullemail@example.com"}`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/resend-verification", body)

@@ -65,30 +65,12 @@ func TestOpenDB_ValidationEnabled(t *testing.T) {
 
 	// Empty Name violates `validate:"required"`.
 	doc := &validatedDoc{}
-	err = den.Insert(ctx, db, doc)
+	err = den.Save(ctx, db, doc)
 	require.ErrorIs(t, err, den.ErrValidation)
 
 	// A populated Name passes.
 	valid := &validatedDoc{Name: "alice"}
-	require.NoError(t, den.Insert(ctx, db, valid))
-}
-
-// TestOpenDBWithoutValidation_IsEscapeHatch verifies the migration escape
-// hatch: validation is NOT enforced, so a document with violated tags
-// inserts successfully.
-func TestOpenDBWithoutValidation_IsEscapeHatch(t *testing.T) {
-	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := OpenDBWithoutValidation(t.Context(), dsn)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-
-	ctx := t.Context()
-	require.NoError(t, den.Register(ctx, db, &validatedDoc{}))
-
-	// Empty Name would normally violate `validate:"required"` but
-	// OpenDBWithoutValidation skips struct-tag checking entirely.
-	doc := &validatedDoc{}
-	require.NoError(t, den.Insert(ctx, db, doc))
+	require.NoError(t, den.Save(ctx, db, valid))
 }
 
 func TestOpenStorage_EmptyDSNReturnsNil(t *testing.T) {

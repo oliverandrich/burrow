@@ -124,7 +124,7 @@ func (a *blogApp) UploadMedia(w http.ResponseWriter, r *http.Request) error {
     }
 
     media := &Media{Attachment: att, AltText: r.FormValue("alt")}
-    if err := den.Insert(r.Context(), a.db, media); err != nil {
+    if err := den.Save(r.Context(), a.db, media); err != nil {
         // Bytes were stored but the record did not land — clean up to
         // avoid an orphan. The Delete error is best-effort.
         _ = a.upload.Storage().Delete(r.Context(), att)
@@ -156,7 +156,7 @@ func (a *blogApp) UploadHero(w http.ResponseWriter, r *http.Request) error {
     }
 
     post.Hero = att
-    if err := den.Update(r.Context(), a.db, post); err != nil {
+    if err := den.Save(r.Context(), a.db, post); err != nil {
         _ = a.upload.Storage().Delete(r.Context(), att)
         return err
     }
@@ -172,15 +172,14 @@ func (a *blogApp) UploadHero(w http.ResponseWriter, r *http.Request) error {
 | `MaxSize` | `int64` | Per-file upper bound in bytes (0 = no limit). Enforced mid-stream — no partial file is persisted if the limit is hit |
 | `Filename` | `string` | Original filename; used as extension fallback when the MIME type has no mapping. Populated from the multipart header if left empty |
 
-!!! warning "Orphan bytes on Insert failure"
-    `Store` persists bytes synchronously. If the subsequent
-    `den.Insert` or `den.Update` fails, the bytes are on disk with
-    no record pointing at them. The canonical fix is the
-    `_ = uploader.Storage().Delete(ctx, att)` call shown above — always
-    pair `Store` with a compensating `Delete` in the record-save error
-    path.
+!!! warning "Orphan bytes on Save failure"
+    `Store` persists bytes synchronously. If the subsequent `den.Save`
+    fails, the bytes are on disk with no record pointing at them. The
+    canonical fix is the `_ = uploader.Storage().Delete(ctx, att)` call
+    shown above — always pair `Store` with a compensating `Delete` in
+    the record-save error path.
 
-    Process crashes between `Store` and `Insert` still produce orphans.
+    Process crashes between `Store` and `Save` still produce orphans.
     An automated offline sweeper is planned for a later release; until
     then, operators can periodically diff `Storage`-enumerated paths
     against every `StoragePath` in the DB and remove unreferenced

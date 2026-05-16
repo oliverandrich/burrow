@@ -86,7 +86,7 @@ func TestWorker_RetryOnFailure(t *testing.T) {
 		now := time.Now()
 		for _, j := range failedJobs {
 			j.RunAt = now
-			_ = den.Update(context.Background(), db, j)
+			_ = den.Save(context.Background(), db, j)
 		}
 		completed, _, _ := repo.ListPaged(context.Background(), burrow.PageRequest{Limit: 1, Page: 1}, StatusCompleted)
 		return len(completed) == 1
@@ -235,7 +235,7 @@ func TestWorker_Maintenance(t *testing.T) {
 	require.NoError(t, err)
 	backdated := time.Now().Add(-30 * time.Minute)
 	staleJob.LockedAt = &backdated
-	require.NoError(t, den.Update(ctx, db, staleJob))
+	require.NoError(t, den.Save(ctx, db, staleJob))
 
 	// Create a completed job older than 24h.
 	_, err = repo.Enqueue(ctx, "task", `{}`, 3, 0, time.Now())
@@ -250,7 +250,7 @@ func TestWorker_Maintenance(t *testing.T) {
 	require.NoError(t, err)
 	oldCompleted := time.Now().Add(-48 * time.Hour)
 	completedJob.CompletedAt = &oldCompleted
-	require.NoError(t, den.Update(ctx, db, completedJob))
+	require.NoError(t, den.Save(ctx, db, completedJob))
 
 	// Run maintenance directly.
 	w.maintenance(ctx)

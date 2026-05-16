@@ -82,7 +82,7 @@ func NewRepository(db *den.DB) *Repository {
 }
 
 func (r *Repository) Create(ctx context.Context, note *Note) error {
-    return den.Insert(ctx, r.db, note)
+    return den.Save(ctx, r.db, note)
 }
 
 func (r *Repository) ListByUserID(ctx context.Context, userID string) ([]Note, error) {

@@ -26,7 +26,7 @@ func TestFreshDB_RegisterDocumentsOnEmptyDatabase(t *testing.T) {
 
 	// Verify the table accepts inserts.
 	item := &testItem{Name: "test"}
-	err = den.Insert(t.Context(), db, item)
+	err = den.Save(t.Context(), db, item)
 	require.NoError(t, err)
 	assert.NotEmpty(t, item.ID)
 }
@@ -64,7 +64,7 @@ func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
 
 	// Verify that app_a's document type was registered (table exists).
 	item := &testItem{Name: "hello"}
-	err = den.Insert(t.Context(), db, item)
+	err = den.Save(t.Context(), db, item)
 	require.NoError(t, err)
 
 	// Verify both apps were registered.
@@ -121,7 +121,7 @@ func TestFreshDB_RegisterDocumentsIdempotent(t *testing.T) {
 
 	// Verify the table still works.
 	item := &testItem{Name: "test"}
-	err = den.Insert(t.Context(), db, item)
+	err = den.Save(t.Context(), db, item)
 	require.NoError(t, err)
 }
 

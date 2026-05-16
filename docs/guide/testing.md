@@ -274,7 +274,7 @@ func TestDocumentRegistration(t *testing.T) {
 
     // Verify the collection works by inserting a document.
     item := &Item{Name: "test"}
-    err := den.Insert(t.Context(), db, item)
+    err := den.Save(t.Context(), db, item)
     require.NoError(t, err)
     assert.NotEmpty(t, item.ID)
 }

@@ -55,12 +55,12 @@ func (r *Repository) SearchQuestionsPaged(ctx context.Context, query string, pr 
 
 // UpdateQuestion saves changes to an existing question.
 func (r *Repository) UpdateQuestion(ctx context.Context, q *Question) error {
-    return den.Update(ctx, r.db, q)
+    return den.Save(ctx, r.db, q)
 }
 
 // DeleteQuestion removes a question and all its choices.
 func (r *Repository) DeleteQuestion(ctx context.Context, id string) error {
-    if _, err := den.DeleteMany[Choice](ctx, r.db, []where.Condition{where.Field("question_id").Eq(id)}); err != nil {
+    if _, err := den.NewQuery[Choice](r.db, where.Field("question_id").Eq(id)).Delete(ctx); err != nil {
         return fmt.Errorf("delete choices for %s: %w", id, err)
     }
     q, err := r.GetQuestionByID(ctx, id)
@@ -72,7 +72,7 @@ func (r *Repository) DeleteQuestion(ctx context.Context, id string) error {
 
 // UpdateChoice saves changes to an existing choice.
 func (r *Repository) UpdateChoice(ctx context.Context, c *Choice) error {
-    return den.Update(ctx, r.db, c)
+    return den.Save(ctx, r.db, c)
 }
 
 // DeleteChoice removes a single choice.

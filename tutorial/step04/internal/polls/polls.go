@@ -83,12 +83,12 @@ func (r *Repository) GetQuestion(ctx context.Context, id string) (*Question, err
 
 // CreateQuestion inserts a new question.
 func (r *Repository) CreateQuestion(ctx context.Context, q *Question) error {
-	return den.Insert(ctx, r.db, q)
+	return den.Save(ctx, r.db, q)
 }
 
 // CreateChoice inserts a new choice for a question.
 func (r *Repository) CreateChoice(ctx context.Context, c *Choice) error {
-	return den.Insert(ctx, r.db, c)
+	return den.Save(ctx, r.db, c)
 }
 
 func (r *Repository) IncrementVotes(ctx context.Context, choiceID string) error {
@@ -97,7 +97,7 @@ func (r *Repository) IncrementVotes(ctx context.Context, choiceID string) error 
 		return fmt.Errorf("find choice %s: %w", choiceID, err)
 	}
 	choice.Votes++
-	return den.Update(ctx, r.db, choice)
+	return den.Save(ctx, r.db, choice)
 }
 
 // --------------------------------------------------------------------------

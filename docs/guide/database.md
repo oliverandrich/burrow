@@ -121,9 +121,6 @@ Supported tags come from [go-playground/validator](https://github.com/go-playgro
 !!! tip "Form-only validators belong on form DTOs"
     Some validators like `eqfield` (matching a field on a sibling struct) are meant for form input and don't make sense on a persisted document. Keep those on separate form DTOs and use `burrow.Bind()` to validate request input before copying values into the document.
 
-!!! warning "Escape hatch for migration"
-    If an existing project has `validate:"..."` tags on documents that previously had no effect, use `burrow.OpenDBWithoutValidation()` instead of `burrow.OpenDB()` to preserve the old behavior while you clean up the data. Prefer removing the escape hatch as soon as possible.
-
 ### Queries
 
 Den provides a chainable QuerySet API for queries and a functional API for mutations:
@@ -140,14 +137,8 @@ notes, err := den.NewQuery[Note](db,
     where.Field("user_id").Eq(userID),
 ).Sort("created_at", den.Desc).All(ctx)
 
-// Insert
+// Save — inserts when ID is empty, updates when populated
 note := &Note{UserID: "01J...", Title: "Hello"}
-err := den.Insert(ctx, db, note)
-
-// Update (replace entire document)
-err := den.Replace(ctx, db, note)
-
-// Save (insert or update based on ID)
 err := den.Save(ctx, db, note)
 
 // Delete
@@ -166,10 +157,10 @@ Use `den.RunInTransaction()` for atomic operations:
 
 ```go
 err := den.RunInTransaction(ctx, db, func(tx *den.Tx) error {
-    if err := den.Insert(ctx, tx, note); err != nil {
+    if err := den.Save(ctx, tx, note); err != nil {
         return err
     }
-    if err := den.Insert(ctx, tx, tag); err != nil {
+    if err := den.Save(ctx, tx, tag); err != nil {
         return err
     }
     return nil
@@ -199,7 +190,7 @@ func (r *Repository) GetNoteByID(ctx context.Context, id string) (*Note, error) 
 }
 
 func (r *Repository) CreateNote(ctx context.Context, note *Note) error {
-    if err := den.Insert(ctx, r.db, note); err != nil {
+    if err := den.Save(ctx, r.db, note); err != nil {
         return fmt.Errorf("create note: %w", err)
     }
     return nil

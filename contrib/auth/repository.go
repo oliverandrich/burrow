@@ -31,7 +31,7 @@ func NewRepository(db *den.DB) *Repository {
 // CreateUser creates a new user with a username and optional name.
 func (r *Repository) CreateUser(ctx context.Context, username, name string) (*User, error) {
 	user := &User{Username: username, Name: name, Role: RoleUser, IsActive: true}
-	if err := den.Insert(ctx, r.db, user); err != nil {
+	if err := den.Save(ctx, r.db, user); err != nil {
 		return nil, fmt.Errorf("create user %q: %w", username, err)
 	}
 	return user, nil
@@ -46,7 +46,7 @@ func (r *Repository) CreateUserWithEmail(ctx context.Context, email, name string
 		Role:     RoleUser,
 		IsActive: true,
 	}
-	if err := den.Insert(ctx, r.db, user); err != nil {
+	if err := den.Save(ctx, r.db, user); err != nil {
 		return nil, fmt.Errorf("create user with email %q: %w", email, err)
 	}
 	return user, nil
@@ -104,7 +104,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*User, e
 
 // UpdateUser updates a user record.
 func (r *Repository) UpdateUser(ctx context.Context, user *User) error {
-	if err := den.Update(ctx, r.db, user); err != nil {
+	if err := den.Save(ctx, r.db, user); err != nil {
 		return fmt.Errorf("update user %s: %w", user.ID, err)
 	}
 	return nil
@@ -112,10 +112,8 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User) error {
 
 // SetUserRole updates a user's role.
 func (r *Repository) SetUserRole(ctx context.Context, userID string, role string) error {
-	_, err := den.FindOneAndUpdate[User](ctx, r.db,
-		den.SetFields{"role": role},
-		[]where.Condition{where.Field("_id").Eq(userID)},
-	)
+	_, err := den.NewQuery[User](r.db, where.Field("_id").Eq(userID)).
+		UpdateOne(ctx, den.SetFields{"role": role})
 	if err != nil {
 		return fmt.Errorf("set role for user %s: %w", userID, err)
 	}
@@ -124,10 +122,8 @@ func (r *Repository) SetUserRole(ctx context.Context, userID string, role string
 
 // SetUserActive sets a user's is_active flag.
 func (r *Repository) SetUserActive(ctx context.Context, userID string, active bool) error {
-	_, err := den.FindOneAndUpdate[User](ctx, r.db,
-		den.SetFields{"is_active": active},
-		[]where.Condition{where.Field("_id").Eq(userID)},
-	)
+	_, err := den.NewQuery[User](r.db, where.Field("_id").Eq(userID)).
+		UpdateOne(ctx, den.SetFields{"is_active": active})
 	if err != nil {
 		return fmt.Errorf("set active for user %s: %w", userID, err)
 	}
@@ -137,10 +133,8 @@ func (r *Repository) SetUserActive(ctx context.Context, userID string, active bo
 // MarkEmailVerified marks a user's email as verified.
 func (r *Repository) MarkEmailVerified(ctx context.Context, userID string) error {
 	now := time.Now()
-	_, err := den.FindOneAndUpdate[User](ctx, r.db,
-		den.SetFields{"email_verified": true, "email_verified_at": &now},
-		[]where.Condition{where.Field("_id").Eq(userID)},
-	)
+	_, err := den.NewQuery[User](r.db, where.Field("_id").Eq(userID)).
+		UpdateOne(ctx, den.SetFields{"email_verified": true, "email_verified_at": &now})
 	if err != nil {
 		return fmt.Errorf("mark email verified for user %s: %w", userID, err)
 	}
@@ -353,7 +347,7 @@ func (r *Repository) ListInvitesPaged(ctx context.Context, pr burrow.PageRequest
 
 // CreateCredential creates a new WebAuthn credential.
 func (r *Repository) CreateCredential(ctx context.Context, cred *Credential) error {
-	if err := den.Insert(ctx, r.db, cred); err != nil {
+	if err := den.Save(ctx, r.db, cred); err != nil {
 		return fmt.Errorf("create credential for user %s: %w", cred.UserID, err)
 	}
 	return nil
@@ -376,10 +370,8 @@ func (r *Repository) GetCredentialsByUserID(ctx context.Context, userID string) 
 func (r *Repository) UpdateCredentialSignCount(ctx context.Context, credentialID []byte, signCount uint32) error {
 	// Encode as base64 to match JSON serialization of []byte fields.
 	credIDBase64 := base64.StdEncoding.EncodeToString(credentialID)
-	_, err := den.FindOneAndUpdate[Credential](ctx, r.db,
-		den.SetFields{"sign_count": signCount},
-		[]where.Condition{where.Field("credential_id").Eq(credIDBase64)},
-	)
+	_, err := den.NewQuery[Credential](r.db, where.Field("credential_id").Eq(credIDBase64)).
+		UpdateOne(ctx, den.SetFields{"sign_count": signCount})
 	if err != nil {
 		return fmt.Errorf("update credential sign count: %w", err)
 	}
@@ -421,7 +413,7 @@ func (r *Repository) CreateRecoveryCodes(ctx context.Context, userID string, cod
 			CodeHash: hash,
 		}
 	}
-	if err := den.InsertMany(ctx, r.db, codes); err != nil {
+	if err := den.SaveAll(ctx, r.db, codes); err != nil {
 		return fmt.Errorf("create recovery codes for user %s: %w", userID, err)
 	}
 	return nil
@@ -458,10 +450,8 @@ func (r *Repository) GetUnusedRecoveryCodeCount(ctx context.Context, userID stri
 // MarkRecoveryCodeUsed marks a recovery code as used.
 func (r *Repository) MarkRecoveryCodeUsed(ctx context.Context, codeID string) error {
 	now := time.Now()
-	_, err := den.FindOneAndUpdate[RecoveryCode](ctx, r.db,
-		den.SetFields{"used": true, "used_at": &now},
-		[]where.Condition{where.Field("_id").Eq(codeID)},
-	)
+	_, err := den.NewQuery[RecoveryCode](r.db, where.Field("_id").Eq(codeID)).
+		UpdateOne(ctx, den.SetFields{"used": true, "used_at": &now})
 	if err != nil {
 		return fmt.Errorf("mark recovery code %s as used: %w", codeID, err)
 	}
@@ -470,9 +460,7 @@ func (r *Repository) MarkRecoveryCodeUsed(ctx context.Context, codeID string) er
 
 // DeleteRecoveryCodes deletes all recovery codes for a user.
 func (r *Repository) DeleteRecoveryCodes(ctx context.Context, userID string) error {
-	_, err := den.DeleteMany[RecoveryCode](ctx, r.db,
-		[]where.Condition{where.Field("user_id").Eq(userID)},
-	)
+	_, err := den.NewQuery[RecoveryCode](r.db, where.Field("user_id").Eq(userID)).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("delete recovery codes for user %s: %w", userID, err)
 	}
@@ -525,7 +513,7 @@ func (r *Repository) CreateEmailVerificationToken(ctx context.Context, userID st
 		TokenHash: tokenHash,
 		ExpiresAt: expiresAt,
 	}
-	if err := den.Insert(ctx, r.db, token); err != nil {
+	if err := den.Save(ctx, r.db, token); err != nil {
 		return fmt.Errorf("create email verification token for user %s: %w", userID, err)
 	}
 	return nil
@@ -560,9 +548,7 @@ func (r *Repository) DeleteEmailVerificationToken(ctx context.Context, tokenID s
 
 // DeleteUserEmailVerificationTokens deletes all tokens for a user.
 func (r *Repository) DeleteUserEmailVerificationTokens(ctx context.Context, userID string) error {
-	_, err := den.DeleteMany[EmailVerificationToken](ctx, r.db,
-		[]where.Condition{where.Field("user_id").Eq(userID)},
-	)
+	_, err := den.NewQuery[EmailVerificationToken](r.db, where.Field("user_id").Eq(userID)).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("delete email verification tokens for user %s: %w", userID, err)
 	}
@@ -571,9 +557,7 @@ func (r *Repository) DeleteUserEmailVerificationTokens(ctx context.Context, user
 
 // DeleteExpiredEmailVerificationTokens deletes expired tokens.
 func (r *Repository) DeleteExpiredEmailVerificationTokens(ctx context.Context) error {
-	_, err := den.DeleteMany[EmailVerificationToken](ctx, r.db,
-		[]where.Condition{where.Field("expires_at").Lt(time.Now().Format(time.RFC3339Nano))},
-	)
+	_, err := den.NewQuery[EmailVerificationToken](r.db, where.Field("expires_at").Lt(time.Now().Format(time.RFC3339Nano))).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("delete expired email verification tokens: %w", err)
 	}
@@ -584,7 +568,7 @@ func (r *Repository) DeleteExpiredEmailVerificationTokens(ctx context.Context) e
 
 // CreateInvite creates a new invite record.
 func (r *Repository) CreateInvite(ctx context.Context, invite *Invite) error {
-	if err := den.Insert(ctx, r.db, invite); err != nil {
+	if err := den.Save(ctx, r.db, invite); err != nil {
 		return fmt.Errorf("create invite for %q: %w", invite.Email, err)
 	}
 	return nil
@@ -623,13 +607,10 @@ var ErrInviteAlreadyUsed = errors.New("invite already used")
 // preventing a race condition where two registrations consume the same invite.
 func (r *Repository) MarkInviteUsed(ctx context.Context, inviteID, userID string) error {
 	now := time.Now()
-	_, err := den.FindOneAndUpdate[Invite](ctx, r.db,
-		den.SetFields{"used_at": &now, "used_by": &userID},
-		[]where.Condition{
-			where.Field("_id").Eq(inviteID),
-			where.Field("used_at").IsNil(),
-		},
-	)
+	_, err := den.NewQuery[Invite](r.db,
+		where.Field("_id").Eq(inviteID),
+		where.Field("used_at").IsNil(),
+	).UpdateOne(ctx, den.SetFields{"used_at": &now, "used_by": &userID})
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			return ErrInviteAlreadyUsed

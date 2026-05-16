@@ -69,7 +69,7 @@ func TestServerBootstrap(t *testing.T) {
 
 	// Document type was registered — verify by inserting.
 	thing := &testThing{Label: "test"}
-	err = den.Insert(t.Context(), db, thing)
+	err = den.Save(t.Context(), db, thing)
 	require.NoError(t, err)
 	assert.NotEmpty(t, thing.ID)
 }

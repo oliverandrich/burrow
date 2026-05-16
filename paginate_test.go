@@ -220,7 +220,7 @@ func TestApplyOffset_Integration(t *testing.T) {
 	// Insert 10 items.
 	for range 10 {
 		item := &paginationItem{Name: "item"}
-		require.NoError(t, den.Insert(t.Context(), db, item))
+		require.NoError(t, den.Save(t.Context(), db, item))
 	}
 
 	t.Run("first page", func(t *testing.T) {

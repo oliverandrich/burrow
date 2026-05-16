@@ -98,16 +98,15 @@ type StoreOptions struct {
 // Store extracts a file from a multipart request, validates it (MIME
 // allow-list, max size, non-empty), and persists it through the bound
 // Storage. The returned [document.Attachment] is ready to assign onto a
-// document field (embedded or named) before the subsequent
-// den.Insert / den.Update.
+// document field (embedded or named) before the subsequent den.Save.
 //
 // Typical IS-a-file usage (the document IS the file):
 //
 //	att, err := u.Store(r, "file", opts)
 //	if err != nil { return err }
 //	media := &Media{Attachment: att, AltText: "..."}
-//	if err := den.Insert(r.Context(), db, media); err != nil {
-//	    // Insert failed after bytes were stored — clean up to avoid
+//	if err := den.Save(r.Context(), db, media); err != nil {
+//	    // Save failed after bytes were stored — clean up to avoid
 //	    // an orphan. Best-effort, log if needed.
 //	    _ = u.Storage().Delete(r.Context(), att)
 //	    return err
@@ -118,7 +117,7 @@ type StoreOptions struct {
 //	att, err := u.Store(r, "hero", opts)
 //	if err != nil { return err }
 //	post.Hero = att
-//	if err := den.Update(r.Context(), db, post); err != nil {
+//	if err := den.Save(r.Context(), db, post); err != nil {
 //	    _ = u.Storage().Delete(r.Context(), att)
 //	    return err
 //	}

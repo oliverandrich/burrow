@@ -26,7 +26,7 @@ func NewRepository(db *den.DB) *Repository {
 
 // Create inserts a new note.
 func (r *Repository) Create(ctx context.Context, note *Note) error {
-	if err := den.Insert(ctx, r.db, note); err != nil {
+	if err := den.Save(ctx, r.db, note); err != nil {
 		return fmt.Errorf("create note: %w", err)
 	}
 	return nil
@@ -174,7 +174,7 @@ func (r *Repository) GetByID(ctx context.Context, noteID, userID string) (*Note,
 
 // Update updates an existing note.
 func (r *Repository) Update(ctx context.Context, note *Note) error {
-	if err := den.Update(ctx, r.db, note); err != nil {
+	if err := den.Save(ctx, r.db, note); err != nil {
 		return fmt.Errorf("update note %s: %w", note.ID, err)
 	}
 	return nil

@@ -1054,7 +1054,7 @@ func TestPurgeOrphanedUsersDeletesUsersWithoutCredentials(t *testing.T) {
 	orphanReloaded, err := repo.GetUserByID(ctx, orphan.ID)
 	require.NoError(t, err)
 	orphanReloaded.CreatedAt = time.Now().Add(-10 * time.Minute)
-	require.NoError(t, den.Update(ctx, db, orphanReloaded))
+	require.NoError(t, den.Save(ctx, db, orphanReloaded))
 
 	// Create a user WITH credentials (should be kept).
 	legit, err := repo.CreateUser(ctx, "legit", "")
@@ -1062,7 +1062,7 @@ func TestPurgeOrphanedUsersDeletesUsersWithoutCredentials(t *testing.T) {
 	legitReloaded, err := repo.GetUserByID(ctx, legit.ID)
 	require.NoError(t, err)
 	legitReloaded.CreatedAt = time.Now().Add(-10 * time.Minute)
-	require.NoError(t, den.Update(ctx, db, legitReloaded))
+	require.NoError(t, den.Save(ctx, db, legitReloaded))
 	require.NoError(t, repo.CreateCredential(ctx, &Credential{
 		UserID:       legit.ID,
 		CredentialID: []byte("cred1"),
@@ -1889,7 +1889,7 @@ func TestBackgroundCleanupPurgesOrphanedUsers(t *testing.T) {
 	userReloaded, err := repo.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
 	userReloaded.CreatedAt = time.Now().Add(-10 * time.Minute)
-	require.NoError(t, den.Update(ctx, db, userReloaded))
+	require.NoError(t, den.Save(ctx, db, userReloaded))
 
 	// Also create an expired email verification token.
 	err = repo.CreateEmailVerificationToken(ctx, user.ID, "expired-hash", time.Now().Add(-time.Hour))

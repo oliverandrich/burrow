@@ -85,17 +85,17 @@ type Note struct {
 
 // Create with a linked author
 note := &Note{Title: "Hello", Author: den.NewLink(&user)}
-den.Insert(ctx, db, note)
+den.Save(ctx, db, note)
 
 // Fetch with links resolved (like Django's select_related)
 note, _ := den.NewQuery[Note](db).WithFetchLinks().First(ctx)
 fmt.Println(note.Author.Value.Name) // loaded automatically
 
 // Reverse query (like Django's note_set.all())
-notes, _ := den.BackLinks[Note](ctx, db, "author", userID)
+notes, _ := den.NewQuery[Note](db).BackLinks("author", userID).All(ctx)
 ```
 
-`Link[T]` stores only the ID in JSON — the linked document is fetched on demand via `WithFetchLinks()` or `FetchLink()`. `BackLinks` finds all documents that reference a given target, similar to Django's reverse accessors.
+`Link[T]` stores only the ID in JSON — the linked document is fetched on demand via `WithFetchLinks()` or `FetchLink()`. `QuerySet.BackLinks(field, id)` finds all documents that reference a given target, similar to Django's reverse accessors.
 
 Den provides a chainable QuerySet API — `den.NewQuery`, `den.FindByID`, etc. Queries execute when a terminal method (`.All(ctx)`, `.First(ctx)`, `.Count(ctx)`, `.Exists(ctx)`) is called:
 

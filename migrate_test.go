@@ -28,7 +28,7 @@ func TestRegistryRegisterDocumentsCreatesTable(t *testing.T) {
 
 	// Verify table was created by inserting a document.
 	w := &testWidget{Name: "gear", Color: "red"}
-	err = den.Insert(t.Context(), db, w)
+	err = den.Save(t.Context(), db, w)
 	require.NoError(t, err)
 	assert.NotEmpty(t, w.ID)
 }
@@ -45,7 +45,7 @@ func TestRegistryRegisterDocumentsSkipsNonDocumentApps(t *testing.T) {
 
 	// Verify the document type from docapp was registered.
 	w := &testWidget{Name: "test"}
-	err = den.Insert(t.Context(), db, w)
+	err = den.Save(t.Context(), db, w)
 	require.NoError(t, err)
 }
 
@@ -64,7 +64,7 @@ func TestRegistryRegisterDocumentsIdempotent(t *testing.T) {
 
 	// Verify the table works correctly (proves no duplicate errors).
 	w := &testWidget{Name: "gear", Color: "red"}
-	err := den.Insert(t.Context(), db, w)
+	err := den.Save(t.Context(), db, w)
 	require.NoError(t, err)
 }
 
@@ -87,11 +87,11 @@ func TestRegistryRegisterDocumentsMultipleApps(t *testing.T) {
 
 	// Verify both document types are registered.
 	w := &testWidget{Name: "test"}
-	err = den.Insert(t.Context(), db, w)
+	err = den.Save(t.Context(), db, w)
 	require.NoError(t, err)
 
 	s := &testSetting{Key: "theme", Value: "dark"}
-	err = den.Insert(t.Context(), db, s)
+	err = den.Save(t.Context(), db, s)
 	require.NoError(t, err)
 }
 
@@ -110,6 +110,6 @@ func TestRegistryRegisterDocumentsWithDependencyOrder(t *testing.T) {
 
 	// Verify widget table works.
 	w := &testWidget{Name: "test"}
-	err = den.Insert(t.Context(), db, w)
+	err = den.Save(t.Context(), db, w)
 	require.NoError(t, err)
 }
