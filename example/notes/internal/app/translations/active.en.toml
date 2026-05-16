@@ -1,6 +1,5 @@
 # Layout
 layout-brand = "Burrow"
-layout-toggle-nav = "Toggle navigation"
 layout-admin = "Admin"
 layout-sign-out = "Sign out"
 layout-sign-in = "Sign in"
@@ -13,4 +12,4 @@ home-card-passkey-text = "WebAuthn-based authentication with recovery codes and 
 home-card-contrib-title = "Contrib Apps"
 home-card-contrib-text = "Session, CSRF, i18n, admin panel, static files, and health checks — all as pluggable apps."
 home-card-htmx-title = "htmx Ready"
-home-card-htmx-text = "µCSS and htmx included via the static files pipeline with content-hashed URLs."
+home-card-htmx-text = "Tailwind v4 and htmx wired through the static files pipeline with content-hashed URLs."
