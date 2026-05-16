@@ -374,7 +374,7 @@ func TestNewNoteHandler(t *testing.T) {
 	assert.Contains(t, body, `hx-post="/notes"`)
 	assert.Contains(t, body, `name="title"`)
 	assert.Contains(t, body, `name="content"`)
-	assert.JSONEq(t, `{"openDialog":{"id":"modal","class":"modal-lg"}}`, rec.Header().Get("HX-Trigger-After-Swap"))
+	assert.JSONEq(t, `{"openDialog":"modal"}`, rec.Header().Get("HX-Trigger-After-Swap"))
 }
 
 func TestNewNoteUnauthenticatedPanics(t *testing.T) {
@@ -599,7 +599,7 @@ func TestEditNoteHTMX(t *testing.T) {
 	assert.Contains(t, body, "Original")
 	assert.Contains(t, body, `action="/notes/`+note.ID+`"`)
 	assert.Contains(t, body, `hx-post="/notes/`+note.ID+`"`)
-	assert.JSONEq(t, `{"openDialog":{"id":"modal","class":"modal-lg"}}`, rec.Header().Get("HX-Trigger-After-Swap"))
+	assert.JSONEq(t, `{"openDialog":"modal"}`, rec.Header().Get("HX-Trigger-After-Swap"))
 }
 
 func TestEditNoteUnauthenticatedPanics(t *testing.T) {
