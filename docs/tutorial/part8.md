@@ -383,8 +383,8 @@ Create `internal/polls/templates/polls/admin_list.html`. The file defines both t
 
 The pagination partial — a thin wrapper around the `pageURL` and `pageNumbers` framework helpers, styled by our `.pagination` rules in `app.css` — see [`tutorial/step08/internal/polls/templates/polls/admin_list.html`](https://github.com/oliverandrich/burrow/blob/main/tutorial/step08/internal/polls/templates/polls/admin_list.html) for the full `polls/pagination` define.
 
-!!! tip "Reuse `admin/pagination` when you ship Tailwind"
-    Burrow's `contrib/admin` ships a ready-made `admin/pagination` template that uses Tailwind classes. Once your project's stylesheet includes those classes (see the [Tailwind guide](../guide/tailwind.md)), you can drop the local `polls/pagination` define and call `{{ template "admin/pagination" ... }}` instead — same data contract.
+!!! note "Why a local `polls/pagination` define?"
+    Burrow's `contrib/admin` ships a ready-made `admin/pagination` template — but it's written in Tailwind utility classes. This tutorial deliberately stays away from Tailwind to keep the toolchain story simple, so we render pagination with our own hand-written `.pagination` rules in `app.css`. If your project ships [Tailwind](../guide/tailwind.md), drop the local define and call `{{ template "admin/pagination" (dict "Page" .Page "BasePath" "..." "RawQuery" .RawQuery) }}` instead — same data contract.
 
 Key bits:
 
