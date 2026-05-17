@@ -14,8 +14,8 @@ A starter template that gives you a running Burrow application in one
 command. It ships with:
 
 - `cmd/<name>/main.go` wiring up a typical contrib stack (`session`,
-  `csrf`, `staticfiles`, `healthcheck`, `messages`, `htmx`,
-  `mucss`) with a `pages` app providing the homepage and layout
+  `csrf`, `staticfiles`, `healthcheck`, `messages`, `htmx`) plus a
+  Tailwind-classed shell app providing the homepage and layout
   overrides.
 - A `justfile` with recipes for `run`, `run-once`, `test`, `coverage`,
   `lint`, `fmt`, `tidy`, `install`, and `setup` (checks your dev

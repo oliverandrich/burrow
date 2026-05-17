@@ -45,7 +45,7 @@ Provided by the framework itself. Always available.
 
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|
-| `staticURL` | Static | `{{ staticURL "bootstrap/bootstrap.min.css" }}` | Returns content-hashed URL for a static file. Paths are prefixed by the contrib app's prefix (e.g., `bootstrap/filename`). |
+| `staticURL` | Static | `{{ staticURL "app/app.min.css" }}` | Returns content-hashed URL for a static file. Paths are prefixed by the contributing app's prefix (e.g., `app/filename`). |
 
 ### csrf
 

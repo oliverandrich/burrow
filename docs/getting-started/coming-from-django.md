@@ -35,7 +35,6 @@ Django discovers apps through `INSTALLED_APPS` in `settings.py` and uses `AppCon
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
-    mucss.New(),
     &notesApp{},
 )
 ```

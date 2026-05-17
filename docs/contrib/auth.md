@@ -4,7 +4,7 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 
 **Package:** `github.com/oliverandrich/burrow/contrib/auth`
 
-**Depends on:** `session`, `i18n`, `csrf`, `staticfiles`, `mucss` (for the default user-facing templates)
+**Depends on:** `session`, `i18n`, `csrf`, `staticfiles`
 
 ## Setup
 
@@ -13,7 +13,6 @@ srv := burrow.NewServer(
     session.New(),
     csrf.New(),
     auth.New(),
-    mucss.New(),
     htmx.New(),
     admin.New(),
     staticApp, // staticfiles.New(emptyFS) — returns (*App, error)
@@ -41,7 +40,7 @@ The auth app ships HTML templates via `HasTemplates`. These templates use the gl
 
 Public auth pages (login, register, recovery, email verification) use a separate layout — typically a minimal page without the full app navigation. This avoids showing the navbar to unauthenticated users. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
-By default, `auth.New()` uses a built-in layout template name (`DefaultAuthLayout()` returns `"mucss/layout"`) that renders a minimal page with µCSS. Override it with `auth.WithAuthLayout()`:
+By default, `auth.New()` uses `DefaultAuthLayout()` which returns the empty string — meaning auth pages inherit the global layout set by the host via `srv.SetLayout`. Override it with `auth.WithAuthLayout("...")` when you want a dedicated layout for unauthenticated pages:
 
 ```go
 auth.New(
@@ -58,10 +57,10 @@ An auth layout is simply a template name string referring to a template in the g
 <head>
     <meta charset="utf-8">
     <title>{{ .Title }}</title>
-    {{ template "mucss/css" . }}
+    <link rel="stylesheet" href="{{ staticURL "app/app.min.css" }}">
 </head>
-<body>
-    <main class="container" style="max-width: 480px;">
+<body class="min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <main class="mx-auto max-w-md p-6">
         {{ .Content }}
     </main>
 </body>
@@ -239,7 +238,7 @@ The auth app uses a `Renderer` interface to render all user-facing HTML pages. E
 
 ### Default Renderer
 
-By default, `auth.New()` uses a built-in renderer that calls `burrow.Render()` with the shipped `auth/*` templates. These templates use µCSS markup and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.). `auth.DefaultAuthLayout()` returns `"mucss/layout"` — apps still on the deprecated `contrib/bootstrap` need to override via `auth.WithAuthLayout("bootstrap/layout")` and supply a Bootstrap-themed `Renderer` via `auth.WithRenderer(...)`.
+By default, `auth.New()` uses a built-in renderer that calls `burrow.Render()` with the shipped `auth/*` templates. These templates use Tailwind v4 utility classes and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.). `auth.DefaultAuthLayout()` returns the empty string so auth pages inherit whatever the host set via `srv.SetLayout`; override the layout via `auth.WithAuthLayout("myapp/auth-layout")` and the renderer via `auth.WithRenderer(...)` when you need a different look.
 
 For most applications, the default renderer works out of the box — you only need to override it if you want to fundamentally change how auth pages are rendered.
 
@@ -283,7 +282,7 @@ func (r *myRenderer) LoginPage(w http.ResponseWriter, req *http.Request, loginRe
 ```
 
 !!! tip
-    You don't need a custom renderer just to change styles. The default templates use µCSS markup and are wrapped in the [auth layout](#auth-layout), which you can override separately via `auth.WithAuthLayout()`.
+    You don't need a custom renderer just to change styles. The default templates use Tailwind v4 utility classes and are wrapped in the [auth layout](#auth-layout), which you can override separately via `auth.WithAuthLayout()`.
 
 ## Admin Integration
 

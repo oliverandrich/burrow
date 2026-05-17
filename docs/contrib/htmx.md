@@ -25,8 +25,7 @@ The htmx app embeds `htmx.min.js` and the [SSE extension](https://htmx.org/exten
 
 The `htmx/config` template renders a `<meta>` tag that configures htmx to swap `422 Unprocessable Entity` responses. This is the correct HTTP status for form validation errors, and allows handlers to return 422 consistently for both htmx and non-htmx requests.
 
-!!! note "Included in the µCSS layout"
-    If you use the `mucss` app, `htmx/config` is already included in the default layout. (The deprecated `bootstrap` contrib also includes it.)
+Include `{{ template "htmx/config" . }}` in your layout `<head>` next to `{{ template "htmx/js" . }}`.
 
 ## Templates
 
@@ -36,7 +35,7 @@ The htmx app implements `HasTemplates` and contributes these templates:
 |----------|-------------|
 | `htmx/js` | `<script defer>` tag for htmx JS |
 | `htmx/config` | `<meta>` tag with htmx response handling config (swaps 422 responses) |
-| `htmx/dialog_script` | Client-side listeners for `htmx.OpenDialog` / `htmx.CloseDialog` server triggers, plus delegated close on `[rel="prev"]` clicks. Included automatically by the `mucss` and `bootstrap` `nav_layout`s. |
+| `htmx/dialog_script` | Client-side listeners for `htmx.OpenDialog` / `htmx.CloseDialog` server triggers, plus delegated close on `[rel="prev"]` clicks. |
 
 ## HTMX-driven dialogs
 
@@ -44,14 +43,14 @@ A standard pattern for opening forms (or any other content) inside a `<dialog>` 
 
 ### Setup
 
-The `mucss` and `bootstrap` `nav_layout` templates ship a permanent empty `<dialog id="modal"></dialog>` container plus the `htmx/dialog_script` listener — no app-side wiring needed. If you build a custom layout, include both yourself:
+Add a permanent empty `<dialog id="modal"></dialog>` container plus the `htmx/dialog_script` listener to your layout:
 
 ```html
 <dialog id="modal"></dialog>
 {{ template "htmx/dialog_script" . }}
 ```
 
-The dialog is a structural container only — each view that opens the dialog renders its own `<article>` (or framework-equivalent element) as the swapped content. This lets the view choose its own width class (e.g. µCSS's `modal-lg`), classes, or even bypass the card chrome entirely.
+The dialog is a structural container only — each view that opens the dialog renders its own content (an `<article>`, a `<form>`, or any other element) as the swapped content. This lets the view choose its own width, classes, or bypass any card chrome entirely.
 
 ### Trigger buttons
 
@@ -86,7 +85,7 @@ func (a *App) New(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
-The optional third argument to `OpenDialog` replaces the dialog element's `className` before opening — useful for µCSS's size variants (`modal-sm`, `modal-lg`, `modal-fullscreen`), which target the dialog itself rather than its content. Pass `""` to clear a previously applied class.
+The optional third argument to `OpenDialog` replaces the dialog element's `className` before opening — useful for size or styling variants defined in your stylesheet that target the dialog itself rather than its content. Pass `""` to clear a previously applied class.
 
 ### Validation errors
 
@@ -121,7 +120,7 @@ The server tells the client to close via `htmx.CloseDialog(w, id)`. Users can al
 </footer>
 ```
 
-**Why two attributes?** `rel="prev"` carries the visual side-effect that µCSS (and any other framework using the same selector) styles it as a 1rem X-icon close button. `data-close-dialog` is purely behavioral — use it on cancel buttons, "Not now" links, or any other element that should close the dialog without inheriting close-icon styling.
+**Why two attributes?** `rel="prev"` carries the visual side-effect that some CSS frameworks style as a close-icon button (the `rel="prev"` selector is a long-standing convention). `data-close-dialog` is purely behavioral — use it on cancel buttons, "Not now" links, or any other element that should close the dialog without inheriting close-icon styling.
 
 ### How it works
 

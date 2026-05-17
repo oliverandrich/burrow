@@ -68,26 +68,17 @@ for _, msg := range msgs {
 
 ### In Layout Templates
 
-Messages are available in layout templates via the `messages` template function (provided by the messages contrib app via `HasRequestFuncMap`). With µCSS the level names map directly to alert classes:
+Messages are available in layout templates via the `messages` template function (provided by the messages contrib app via `HasRequestFuncMap`). The four level values (`info`, `success`, `warning`, `error`) map straight to whatever CSS conventions your layout uses. The `example/notes` layout uses Tailwind utility classes via a per-level helper define:
 
 ```html
 {{ range messages -}}
-<div class="alert alert-{{ .Level }}" role="alert">
+<div class="rounded-md border px-3 py-2 text-sm {{ template "app/alert_classes" .Level }}" role="alert">
     {{ .Text }}
 </div>
 {{ end -}}
 ```
 
-For the deprecated Bootstrap contrib, map `error` → `danger` (Bootstrap's class name) and use the dismissible markup:
-
-```html
-{{ range messages -}}
-<div class="alert alert-{{ if eq .Level "error" }}danger{{ else }}{{ .Level }}{{ end }} alert-dismissible fade show" role="alert">
-    {{ .Text }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-{{ end -}}
-```
+See `example/notes/internal/app/templates/app/layout.html` for the full `app/alert_classes` define (one Tailwind class set per level).
 
 ## Custom Rendering
 

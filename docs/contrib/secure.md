@@ -98,14 +98,14 @@ Overrides auto-detection. When `true`, HSTS, SSL redirect, and host checking are
 
 ## Recommended CSP
 
-CSP is not set by default because no single policy works for all applications. However, Burrow's built-in contrib apps (Bootstrap, HTMX, Auth, Admin) use inline `<script>` tags and inline `style` attributes, so a working CSP requires `'unsafe-inline'` for both.
+CSP is not set by default because no single policy works for all applications. Burrow's built-in contrib apps (htmx, auth, admin) ship a couple of inline scripts (htmx dialog listener, the auth WebAuthn flow), so a working CSP usually needs `'unsafe-inline'` for `script-src`.
 
-### Typical Burrow + Bootstrap + HTMX Setup
+### Typical Burrow + Tailwind + HTMX Setup
 
 ```go
 secure.New(
     secure.WithContentSecurityPolicy(
-        "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'",
+        "default-src 'self'; style-src 'self'; script-src 'self' 'unsafe-inline'",
     ),
 )
 ```
@@ -113,8 +113,8 @@ secure.New(
 This allows:
 
 - **`default-src 'self'`** — Only load resources from your own origin (images, fonts, media, etc.)
-- **`style-src 'self' 'unsafe-inline'`** — Own stylesheets plus inline styles (needed by per-page polish blocks, Bootstrap Icons SVGs)
-- **`script-src 'self' 'unsafe-inline'`** — Own scripts plus inline scripts (needed by theme switcher, admin history sync, auth WebAuthn flows)
+- **`style-src 'self'`** — Stylesheets from your own origin only. Tailwind v4's CSS output doesn't inject inline styles, so `'unsafe-inline'` isn't needed unless you write `style="..."` attributes yourself.
+- **`script-src 'self' 'unsafe-inline'`** — Own scripts plus inline scripts (needed by the htmx dialog script, admin history sync, auth WebAuthn flows)
 
 ### Stricter Setup (No Inline Content)
 

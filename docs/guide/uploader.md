@@ -34,7 +34,7 @@ mirroring the `--database-dsn` mechanism. There is **nothing to wire in
 // main.go — identical to any Burrow app
 func main() {
     srv := burrow.NewServer(&blogApp{})
-    srv.SetLayout(mucss.NavLayout())
+    srv.SetLayout("app/layout")
 
     cmd := &cli.Command{
         Flags:  srv.Flags(nil),

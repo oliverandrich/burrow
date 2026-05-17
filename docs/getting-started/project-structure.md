@@ -52,6 +52,6 @@ myapp/
 
 **Schema is automatic** — apps declare their document types via `HasDocuments`. Den creates tables and indexes on startup. No SQL migration files needed.
 
-**Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Set them via `srv.SetLayout()` in `main.go`, or use the [`mucss` contrib app](../contrib/mucss.md) (default design system) which provides a ready-made layout. The [`bootstrap` contrib](../contrib/bootstrap.md) is maintained as an alternative.
+**Layouts are separate from apps** — layout templates live at the project level since they're shared across all apps. Set them via `srv.SetLayout()` in `main.go`. The recommended setup for non-trivial apps is a small shell app under `internal/app/` that owns the project-level layout and the built Tailwind CSS — see the [Tailwind guide](../guide/tailwind.md#why-the-shell-is-in-internalapp) for the rationale.
 
 **Static files are optional** — use the [staticfiles contrib app](../contrib/staticfiles.md) if you need content-hashed URLs and cache headers.

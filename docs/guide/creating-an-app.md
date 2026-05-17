@@ -223,7 +223,7 @@ func (a *App) NavItems() []burrow.NavItem { // (4)!
         {
             Label:    "Notes",
             URL:      "/notes",
-            Icon:     bsicons.JournalText(), // "github.com/oliverandrich/burrow/contrib/bsicons"
+            Icon:     "notes/icon_journal_text", // see Navigation › Icon convention
             Position: 20,
             AuthOnly: true,
         },

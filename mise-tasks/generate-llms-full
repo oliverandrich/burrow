@@ -37,8 +37,6 @@ files=(
     contrib/csrf.md
     contrib/admin.md
     contrib/i18n.md
-    contrib/bootstrap.md
-    contrib/bsicons.md
     contrib/htmx.md
     contrib/jobs.md
     contrib/messages.md

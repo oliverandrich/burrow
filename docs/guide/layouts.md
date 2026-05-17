@@ -85,32 +85,19 @@ Layout templates access dynamic data (navigation, current user, messages, etc.) 
 
 ## Setting the App Layout
 
-There are two ways to set the app layout:
-
-**Using a design system app** (recommended):
+Set the layout by name in `main.go`:
 
 ```go
-srv := burrow.NewServer(
-    mucss.New(),  // provides base layout + CSS assets
-    // ... other apps
-)
+srv.SetLayout("app/layout")
 ```
 
-The `mucss` app injects its default layout via middleware only when no layout is already set. This is batteries-included by default. (The legacy `bootstrap` contrib does the same but is deprecated and scheduled for removal in v0.20 — use `mucss` for new projects.)
+The name refers to a `{{ define "app/layout" }}` block in a template file shipped by one of your apps (typically a small shell app under `internal/app/` that owns the project-level layout — see [Why the shell is in `internal/app/`](tailwind.md#why-the-shell-is-in-internalapp) in the Tailwind guide).
 
-**Using `SetLayout()` explicitly:**
-
-```go
-srv.SetLayout("myapp/layout")
-```
-
-When `SetLayout()` is called, it takes precedence over design system middleware like `mucss` or `bootstrap`.
-
-If neither approach is used, content renders unwrapped.
+If `SetLayout` is not called, content renders unwrapped (no shell).
 
 ## Setting the Auth Layout
 
-Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. By default, `auth.New()` uses a built-in layout template name (`DefaultAuthLayout()` returns `"mucss/layout"`) that renders a minimal HTML shell with µCSS but no navigation. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. By default, `auth.New()` uses `DefaultAuthLayout()` which returns the empty string, meaning auth pages inherit the layout set via `srv.SetLayout`. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
 To override the auth layout with a custom template name, use `auth.WithAuthLayout()`:
 

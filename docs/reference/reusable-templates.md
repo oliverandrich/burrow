@@ -4,25 +4,17 @@ Contrib apps provide named templates for common asset includes and UI components
 
 ## Asset Includes
 
-Include CSS and JavaScript assets in your layout `<head>`:
+Include JavaScript assets in your layout `<head>`:
 
 ```html
 <head>
-    {{ template "mucss/css" . }}
-    {{ template "mucss/theme_script" . }}
+    <link rel="stylesheet" href="{{ staticURL "app/app.min.css" }}">
     {{ template "htmx/js" . }}
     {{ template "htmx/config" . }}
 </head>
 ```
 
-### mucss
-
-Provided by the [`mucss`](../contrib/mucss.md) contrib app — the default design contrib.
-
-| Template | Output |
-|----------|--------|
-| `{{ template "mucss/css" . }}` | `<link>` tags for the µCSS stylesheet (and `mu-extras.min.css` unless `WithCustomCSS` is set) |
-| `{{ template "mucss/theme_script" . }}` | Inline script that applies the persisted theme before paint (place in `<head>`) |
+The CSS bundle (Tailwind output) lives in your shell app under `internal/app/static/app.min.css`; see the [Tailwind guide](../guide/tailwind.md) for the recommended project layout.
 
 ### htmx
 
@@ -34,15 +26,6 @@ Provided by the [`htmx`](../contrib/htmx.md) contrib app.
 | `{{ template "htmx/config" . }}` | `<meta>` tag configuring htmx to swap `422` responses (for form validation) |
 | `{{ template "htmx/dialog_script" . }}` | Listener that turns `htmx.OpenDialog`/`htmx.CloseDialog` events into native `dialog.showModal()` / `close()` calls |
 
-### bootstrap (deprecated, removed in v0.20)
-
-Provided by the deprecated [`bootstrap`](../contrib/bootstrap.md) contrib app. New projects should use `mucss` above.
-
-| Template | Output |
-|----------|--------|
-| `{{ template "bootstrap/css" . }}` | `<link>` tag for Bootstrap CSS |
-| `{{ template "bootstrap/js" . }}` | `<script defer>` tag for Bootstrap JS bundle (includes Popper) |
-
 ## UI Components
 
 ### admin
@@ -53,21 +36,6 @@ Provided by the [`admin`](../contrib/admin.md) contrib app.
 |----------|-------------|
 | `{{ template "admin/pagination" (dict "BasePath" "/notes" "RawQuery" .RawQuery "Page" .Page) }}` | Offset-based pagination nav (Tailwind-classed) with query-preserving links and `aria-current="page"` on the active page |
 
-### mucss
+## Icons
 
-Provided by the [`mucss`](../contrib/mucss.md) contrib app.
-
-| Template | Description |
-|----------|-------------|
-| `{{ template "mucss/layout" . }}` | Base HTML page shell with theme support |
-| `{{ template "mucss/nav_layout" . }}` | Layout with navbar and alerts slots; ships a permanent `<dialog id="modal">` and the `htmx/dialog_script` |
-| `{{ template "mucss/theme_switcher" . }}` | Three-state theme toggle (light/dark/auto), `aria-current="true"` marks the active option |
-
-### bootstrap (deprecated, removed in v0.20)
-
-| Template | Description |
-|----------|-------------|
-| `{{ template "bootstrap/layout" . }}` | Base HTML page shell with theme support |
-| `{{ template "bootstrap/pagination" dict "BasePath" "/notes" "RawQuery" .RawQuery "Page" .Page }}` | Offset-based pagination nav with query-preserving links |
-| `{{ template "bootstrap/theme_script" . }}` | Inline script for dark mode persistence (place in `<head>`) |
-| `{{ template "bootstrap/theme_switcher" . }}` | Theme toggle button (light/dark/auto) |
+Each app that contributes nav items keeps its icon SVGs in `templates/icons.html` as `{{ define "<app>/icon_<name>" }}` blocks. Render an icon by template name with the core `{{ icon }}` function — see [Navigation › Icon convention](../guide/navigation.md#icon-convention).

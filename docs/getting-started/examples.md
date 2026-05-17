@@ -6,7 +6,7 @@ Burrow ships with two example applications and a step-by-step tutorial. Each one
 
 **Source:** [`example/hello/`](https://github.com/oliverandrich/burrow/tree/main/example/hello)
 
-A single-file application (~150 lines) that serves a "Hello, World!" page with µCSS styling, dark/light theme, and i18n support. Start here to understand the absolute minimum needed for a burrow app.
+A single-file application (~150 lines) that serves a "Hello, World!" page with Tailwind v4 styling, `prefers-color-scheme` dark mode, and i18n support. Start here to understand the absolute minimum needed for a burrow app.
 
 **What you can learn from it:**
 
@@ -29,7 +29,7 @@ A full-featured notes application with authentication, an admin panel, and HTMX-
 
 **What you can learn from it:**
 
-- **Multi-app architecture** — session, CSRF, auth, admin, jobs, messages, htmx, humanize, and mucss all wired together in `main.go`
+- **Multi-app architecture** — session, CSRF, auth, admin, jobs, messages, htmx, and humanize all wired together in `main.go`
 - **Repository pattern** with Den/SQLite — CRUD operations, offset-based pagination
 - **FTS5 full-text search** — migration with triggers, `SearchByUserID` repository method, HTMX search form
 - **Admin views** — hand-written admin handlers with search, pagination, and htmx actions

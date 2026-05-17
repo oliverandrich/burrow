@@ -50,7 +50,7 @@ Use `csrfToken` when you need just the token value, e.g. for meta tags or JavaSc
 
 ### htmx
 
-The µCSS, Bootstrap, and admin layouts use `{{ csrfHxHeaders }}` on the `<body>` tag, so all htmx requests include the CSRF token automatically. No manual setup is needed when using these layouts.
+The admin layout and `example/notes`'s `app/layout` set `{{ csrfHxHeaders }}` on the `<body>` tag, so all htmx requests inside those layouts include the CSRF token automatically.
 
 If you use a custom layout, add the `csrfHxHeaders` function to your `<body>` tag:
 

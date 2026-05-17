@@ -20,19 +20,15 @@ Burrow is designed for server-rendered web applications, not API-only services.
 
 ## Contrib Apps
 
-- [Admin](https://burrow.readthedocs.io/contrib/admin/): Admin panel coordinator (top-nav layout, dashboard cards, route mounting)
-- [Alpine.js](https://burrow.readthedocs.io/contrib/alpine/): Alpine.js asset serving
+- [Admin](https://burrow.readthedocs.io/contrib/admin/): Admin panel coordinator (top-nav layout, dashboard cards, route mounting); ships `admin/pagination`
 - [Auth](https://burrow.readthedocs.io/contrib/auth/): WebAuthn/passkey authentication with recovery codes
 - [Auth Mail](https://burrow.readthedocs.io/contrib/authmail/): Pluggable email rendering with SMTP backend
-- [Bootstrap](https://burrow.readthedocs.io/contrib/bootstrap/): **Deprecated, removed in v0.20** — use `mucss` for new projects
-- [Bootstrap Icons](https://burrow.readthedocs.io/contrib/bsicons/): Bootstrap Icons as inline SVG template functions
 - [CSRF](https://burrow.readthedocs.io/contrib/csrf/): CSRF protection via gorilla/csrf
 - [Healthcheck](https://burrow.readthedocs.io/contrib/healthcheck/): Liveness and readiness probes
 - [htmx](https://burrow.readthedocs.io/contrib/htmx/): HTMX integration with request/response helpers + dialog pattern
 - [Humanize](https://burrow.readthedocs.io/contrib/humanize/): i18n-aware template functions (naturaltime, intcomma, filesizeformat)
 - [Jobs](https://burrow.readthedocs.io/contrib/jobs/): SQLite-backed background job queue
 - [Messages](https://burrow.readthedocs.io/contrib/messages/): Flash messages
-- [µCSS](https://burrow.readthedocs.io/contrib/mucss/): **Default design contrib** — class-light semantic CSS, JS-free dark mode, 20 accent variants, components (Hero, Alert, Toast, Modal, Pagination, Badge, Tabs)
 - [Rate Limiting](https://burrow.readthedocs.io/contrib/ratelimit/): Per-client token bucket rate limiting
 - [Security Headers](https://burrow.readthedocs.io/contrib/secure/): Security response headers (X-Content-Type-Options, HSTS, CSP)
 - [Session](https://burrow.readthedocs.io/contrib/session/): Cookie-based sessions via gorilla/sessions
@@ -49,7 +45,7 @@ Burrow is designed for server-rendered web applications, not API-only services.
 - [Configuration Reference](https://burrow.readthedocs.io/reference/configuration/): All flags, env vars, TOML keys
 - [Template Functions](https://burrow.readthedocs.io/reference/template-functions/): Built-in template functions
 - [Context Helpers](https://burrow.readthedocs.io/reference/context-helpers/): Request context accessors
-- [Reusable Templates](https://burrow.readthedocs.io/reference/reusable-templates/): Named templates from contrib apps (mucss/css, htmx/js, mucss/pagination, etc.)
+- [Reusable Templates](https://burrow.readthedocs.io/reference/reusable-templates/): Named templates from contrib apps (htmx/js, htmx/config, admin/pagination, etc.)
 
 ## Quick Conventions for Coding Agents
 
@@ -178,7 +174,7 @@ result := burrow.OffsetResult(pr, totalCount)
 url := burrow.PageURL(basePath, r.URL.RawQuery, page) // preserves existing query params
 ```
 
-Use the `mucss/pagination` template for ready-made `<nav>` rendering.
+Use the `admin/pagination` template (shipped by `contrib/admin`) for ready-made `<nav>` rendering.
 
 ## Optional
 

@@ -28,13 +28,13 @@ The admin app discovers auth middleware via the `AdminAuth` interface and admin 
 
 ## Default Layout
 
-The built-in default layout renders a full admin HTML page with µCSS styling, a top navbar (brand on the left, user-menu + theme switcher on the right via `<details class="dropdown">`), and htmx for `hx-boost`-powered navigation. The dashboard at `/admin/` is the primary navigation surface — each registered admin section appears as a card.
+The built-in default layout renders a full admin HTML page with Tailwind v4 styling, a top navbar (brand on the left, user info on the right), and htmx for `hx-boost`-powered navigation. The dashboard at `/admin/` is the primary navigation surface — each registered admin section appears as a card.
 
 Each admin page renders its own breadcrumb (`<nav><ul class="breadcrumb">…<li aria-current="page">…</ul></nav>`) for back-navigation. There is no persistent sidebar — the cards-on-dashboard pattern keeps the chrome minimal and works the same on desktop and mobile.
 
 Static assets are served via the `staticfiles` app using content-hashed URLs.
 
-**Dependencies:** the admin app declares `staticfiles`, `htmx`, `mucss`, and `messages` — register all four (or pick `auth.WithAuthLayout(...)` + a custom renderer if you need a Bootstrap-themed admin instead).
+**Dependencies:** the admin app declares `staticfiles`, `htmx`, and `messages` — register all three.
 
 ## Building Admin Views
 
@@ -50,12 +50,12 @@ func (a *App) AdminRoutes(r chi.Router) {
 
 func (a *App) AdminNavItems() []burrow.NavItem {
     return []burrow.NavItem{
-        {Label: "Notes", LabelKey: "admin-nav-notes", URL: "/admin/notes", Icon: bsicons.JournalText(), Position: 20},
+        {Label: "Notes", LabelKey: "admin-nav-notes", URL: "/admin/notes", Icon: "notes/icon_journal_text", Position: 20},
     }
 }
 ```
 
-Admin handlers follow the same patterns as regular handlers — use Den queries for data access, `burrow.Render` for template rendering, and `htmx.SmartRedirect` for redirects from htmx requests. Render lists with native `<table>`, breadcrumb via `<ul class="breadcrumb">`, status indicators with `<span class="badge badge-{primary,secondary,success,warning,error,info}">`, action buttons with `.btn .btn-outline .btn-{secondary,success,error,warning}`, and the shared `mucss/pagination` template (handlers pass `RawQuery: r.URL.RawQuery` so filters/search persist across pages). See the `contrib/auth` and `contrib/jobs` source code for complete examples of admin views with search, filters, pagination, and inline forms.
+Admin handlers follow the same patterns as regular handlers — use Den queries for data access, `burrow.Render` for template rendering, and `htmx.SmartRedirect` for redirects from htmx requests. The admin contrib ships a shared `admin/pagination` template (handlers pass `RawQuery: r.URL.RawQuery` so filters/search persist across pages). See the `contrib/auth` and `contrib/jobs` source code for complete examples of admin views with search, filters, pagination, and inline forms.
 
 ## Routes
 
@@ -103,4 +103,4 @@ The admin app collects all `HasAdmin` implementations and mounts their routes un
 | `HasFuncMap` | Contributes admin icon template functions |
 | `HasTranslations` | Contributes English and German translations for admin UI |
 | `HasStaticFiles` | Ships `admin.css` (admin-shell polish: action-row alignment, dashboard card link styling, form-footer flex) |
-| `HasDependencies` | Requires `staticfiles`, `htmx`, `mucss`, `messages` |
+| `HasDependencies` | Requires `staticfiles`, `htmx`, `messages` |
