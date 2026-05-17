@@ -76,7 +76,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Deprecated
 
-- **`contrib/bootstrap`** is deprecated, removal in v0.20. Critical fixes only. New projects should use [`contrib/mucss`](contrib/mucss.md) — the port is mostly mechanical (`<div class="card">` → `<article>`, `alert-danger` → `alert-error`). `contrib/bsicons` (not Bootstrap-coupled) stays.
+- **`contrib/bootstrap`** is deprecated, removal in v0.20. Critical fixes only. New projects should use `contrib/mucss` — the port is mostly mechanical (`<div class="card">` → `<article>`, `alert-danger` → `alert-error`). `contrib/bsicons` (not Bootstrap-coupled) stays.
 
 ### Fixed
 
