@@ -131,6 +131,18 @@ func (s *Server) buildTemplates() error {
 	}
 
 	s.templates = t
+
+	// iconTemplates is a sibling Clone used by the `icon` template function.
+	// Executing icon defines against s.templates would mark it as executed,
+	// which html/template forbids cloning afterwards — every subsequent
+	// executeTemplate (which Clones s.templates per request) would then fail
+	// with "cannot Clone ... after it has executed".
+	iconTpl, err := t.Clone()
+	if err != nil {
+		return fmt.Errorf("clone icon templates: %w", err)
+	}
+	s.iconTemplates = iconTpl
+
 	return nil
 }
 
@@ -145,17 +157,18 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 	// a template-define name (e.g. "auth/icon_people"). Apps keep their
 	// icons in templates/icons.html as {{ define "<app>/icon_<name>" }} blocks.
 	//
-	// Executes against s.templates directly rather than via s.executeTemplate
-	// to avoid a per-icon Clone when RequestFuncMap providers are registered —
-	// the outer page render already paid that cost. Icon defines therefore
-	// cannot use request-scoped funcs (csrfToken, t, currentUser, …); they
-	// see the parse-time stubs. Acceptable: icons are static SVG snippets.
+	// Executes against s.iconTemplates (a Clone made at buildTemplates time)
+	// rather than s.templates so the icon execution doesn't mark s.templates
+	// as executed — html/template forbids cloning a template that has been
+	// executed, and we Clone s.templates per request. Icon defines see
+	// parse-time stubs only; they cannot use request-scoped funcs (csrfToken,
+	// t, currentUser, …). Acceptable: icons are static SVG snippets.
 	funcMap["icon"] = func(name string) template.HTML {
-		if name == "" || s.templates == nil {
+		if name == "" || s.iconTemplates == nil {
 			return ""
 		}
 		var buf bytes.Buffer
-		if err := s.templates.ExecuteTemplate(&buf, name, nil); err != nil {
+		if err := s.iconTemplates.ExecuteTemplate(&buf, name, nil); err != nil {
 			return ""
 		}
 		return template.HTML(buf.String()) //nolint:gosec // template output, contextually escaped

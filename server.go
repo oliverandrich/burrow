@@ -25,9 +25,14 @@ import (
 //  3. Collect CLI flags with [Server.Flags]
 //  4. Start with [Server.Run] (opens DB, migrates, bootstraps, serves HTTP)
 type Server struct { //nolint:govet // fieldalignment: readability over optimization
-	registry                *Registry
-	layout                  string
-	templates               *template.Template
+	registry  *Registry
+	layout    string
+	templates *template.Template
+	// iconTemplates is a Clone of templates kept separately so the `icon`
+	// template function can ExecuteTemplate against it without marking
+	// `templates` as "executed" — once that happens, [html/template.Template.Clone]
+	// returns an error and per-request Clone (executeTemplate) breaks.
+	iconTemplates           *template.Template
 	requestFuncMapProviders []func(ctx context.Context) template.FuncMap
 	i18nBundle              *i18n.Bundle
 	appCfg                  *AppConfig

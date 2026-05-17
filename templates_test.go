@@ -587,6 +587,45 @@ func TestTemplateMiddleware(t *testing.T) {
 	require.NotNil(t, gotExec, "template executor should be in context")
 }
 
+func TestExecuteTemplateUsingIconDoesNotPoisonClone(t *testing.T) {
+	// Regression for "html/template: cannot Clone \"\" after it has executed":
+	// {{ icon }} executes a template define out of the global tree. If it ran
+	// against s.templates directly, the global tree would be marked executed
+	// and the next Clone() (e.g. for layout wrap-around or any subsequent
+	// request) would fail.
+	s := &Server{registry: NewRegistry()}
+
+	tplFS := fstest.MapFS{
+		"page.html": &fstest.MapFile{
+			Data: []byte(`{{ define "myapp/page" }}{{ icon "myapp/icon_star" }}{{ end }}`),
+		},
+		"icons.html": &fstest.MapFile{
+			Data: []byte(`{{ define "myapp/icon_star" }}<svg>star</svg>{{ end }}`),
+		},
+	}
+
+	// A request-scoped funcmap forces the executeTemplate Clone() path.
+	app := &templateRequestFuncMapApp{
+		name:  "myapp",
+		tplFS: tplFS,
+		rfm: func(_ context.Context) template.FuncMap {
+			return template.FuncMap{"reqfn": func() string { return "" }}
+		},
+	}
+	s.registry.Add(app)
+	require.NoError(t, s.buildTemplates())
+
+	html1, err := s.executeTemplate(t.Context(), "myapp/page", nil)
+	require.NoError(t, err)
+	assert.Equal(t, template.HTML("<svg>star</svg>"), html1)
+
+	// Second execution would fail before the fix because s.templates was
+	// marked executed by the icon call inside the first render.
+	html2, err := s.executeTemplate(t.Context(), "myapp/page", nil)
+	require.NoError(t, err, "Clone must still work after a render that used {{ icon }}")
+	assert.Equal(t, template.HTML("<svg>star</svg>"), html2)
+}
+
 // Test helpers: apps implementing template interfaces.
 
 type templateApp struct { //nolint:govet // fieldalignment: readability over optimization
