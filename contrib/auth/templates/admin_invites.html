@@ -95,7 +95,7 @@
         </tbody>
     </table>
 </div>
-{{ template "auth/pagination" (dict "Page" .Page "BasePath" "/admin/invites" "RawQuery" .RawQuery) }}
+{{ template "admin/pagination" (dict "Page" .Page "BasePath" "/admin/invites" "RawQuery" .RawQuery) }}
 {{- else }}
 <div class="rounded-lg border border-dashed border-gray-300 py-12 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
     <p>{{ t "admin-invites-none" }}</p>

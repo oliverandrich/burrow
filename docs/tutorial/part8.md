@@ -380,7 +380,7 @@ Create `internal/polls/templates/polls/admin_list.html`:
         </tbody>
     </table>
 </figure>
-{{ template "mucss/pagination" (dict "Page" .Page "BasePath" "/admin/polls" "RawQuery" .RawQuery) }}
+{{ template "admin/pagination" (dict "Page" .Page "BasePath" "/admin/polls" "RawQuery" .RawQuery) }}
 {{- else }}
 <p>No polls yet.</p>
 {{- end }}
@@ -391,7 +391,7 @@ Key bits:
 
 - The breadcrumb pattern (`<nav><ul class="breadcrumb">`) and the search input live next to each other inside one `<nav>` so µCSS lays them out as the page header.
 - `hx-delete` + `hx-confirm` give a one-click delete with a browser confirmation, no separate confirmation page needed.
-- `mucss/pagination` is the shared pagination template; passing `RawQuery` keeps the search term in the URLs.
+- `admin/pagination` is the shared pagination template (shipped by `contrib/admin`); passing `RawQuery` keeps the search term in the URLs.
 
 Create `internal/polls/templates/polls/admin_form.html`:
 

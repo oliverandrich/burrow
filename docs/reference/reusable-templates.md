@@ -45,6 +45,14 @@ Provided by the deprecated [`bootstrap`](../contrib/bootstrap.md) contrib app. N
 
 ## UI Components
 
+### admin
+
+Provided by the [`admin`](../contrib/admin.md) contrib app.
+
+| Template | Description |
+|----------|-------------|
+| `{{ template "admin/pagination" (dict "BasePath" "/notes" "RawQuery" .RawQuery "Page" .Page) }}` | Offset-based pagination nav (Tailwind-classed) with query-preserving links and `aria-current="page"` on the active page |
+
 ### mucss
 
 Provided by the [`mucss`](../contrib/mucss.md) contrib app.
@@ -53,7 +61,6 @@ Provided by the [`mucss`](../contrib/mucss.md) contrib app.
 |----------|-------------|
 | `{{ template "mucss/layout" . }}` | Base HTML page shell with theme support |
 | `{{ template "mucss/nav_layout" . }}` | Layout with navbar and alerts slots; ships a permanent `<dialog id="modal">` and the `htmx/dialog_script` |
-| `{{ template "mucss/pagination" (dict "BasePath" "/notes" "RawQuery" .RawQuery "Page" .Page) }}` | Offset-based pagination nav with query-preserving links and `aria-current="page"` on the active page |
 | `{{ template "mucss/theme_switcher" . }}` | Three-state theme toggle (light/dark/auto), `aria-current="true"` marks the active option |
 
 ### bootstrap (deprecated, removed in v0.20)

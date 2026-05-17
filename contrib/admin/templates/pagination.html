@@ -1,0 +1,27 @@
+{{ define "admin/pagination" -}}
+{{ if gt .Page.TotalPages 1 -}}
+<nav aria-label="Page navigation" class="mt-4 flex justify-center">
+    <ul class="inline-flex items-center gap-1 text-sm">
+        {{ if le .Page.Page 1 -}}
+        <li><span class="rounded border border-gray-200 px-2 py-1 text-gray-400 dark:border-gray-800 dark:text-gray-600" aria-disabled="true">&laquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (sub .Page.Page 1) }}" aria-label="Previous" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">&laquo;</a></li>
+        {{- end }}
+        {{ range pageNumbers .Page.Page .Page.TotalPages -}}
+        {{ if eq . -1 -}}
+        <li><span aria-hidden="true" class="px-2">&hellip;</span></li>
+        {{- else if eq . $.Page.Page -}}
+        <li><span aria-current="page" class="rounded border border-emerald-500 bg-emerald-50 px-2 py-1 font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{{ . }}</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL $.BasePath $.RawQuery . }}" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">{{ . }}</a></li>
+        {{- end }}
+        {{- end }}
+        {{ if not .Page.HasMore -}}
+        <li><span class="rounded border border-gray-200 px-2 py-1 text-gray-400 dark:border-gray-800 dark:text-gray-600" aria-disabled="true">&raquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (add .Page.Page 1) }}" aria-label="Next" class="rounded border border-gray-200 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">&raquo;</a></li>
+        {{- end }}
+    </ul>
+</nav>
+{{- end }}
+{{- end }}

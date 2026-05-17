@@ -112,14 +112,12 @@ In templates, pass the current query string and use `pageURL` to generate links:
 {{- end }}
 ```
 
-## Built-in Pagination Components
+## Built-in Pagination Component
 
-The design contribs ship a ready-made pagination nav. The default — [µCSS — Pagination](../contrib/mucss.md#pagination) — exposes `mucss/pagination`; the deprecated `contrib/bootstrap` exposes `bootstrap/pagination` with the same data shape.
-
-Use the template in your own templates by passing a struct or map with `BasePath`, `RawQuery`, and `Page`:
+`contrib/admin` ships a ready-made Tailwind-classed pagination nav as `admin/pagination`. Call it from any template by passing a struct or map with `BasePath`, `RawQuery`, and `Page`:
 
 ```html
-{{ template "mucss/pagination" (dict "BasePath" "/notes" "RawQuery" .RawQuery "Page" .Page) }}
+{{ template "admin/pagination" (dict "BasePath" "/notes" "RawQuery" .RawQuery "Page" .Page) }}
 ```
 
 This renders a `<nav>` with numbered page links, previous/next buttons, and ellipsis for large page counts. The current page is marked with `aria-current="page"`. Query parameters (search terms, filters) are preserved in pagination links.
