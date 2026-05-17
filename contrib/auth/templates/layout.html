@@ -1,0 +1,14 @@
+{{ define "auth/layout" -}}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }}</title>
+    <link rel="stylesheet" href="{{ staticURL "app/app.min.css" }}">
+</head>
+<body class="min-h-screen bg-white text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
+    {{ .Content }}
+</body>
+</html>
+{{- end }}

@@ -8,10 +8,15 @@ import (
 )
 
 // DefaultAuthLayout returns the template name for the built-in auth layout.
-// Empty string means "use the global layout set by the host app via
-// srv.SetLayout"; pass [WithAuthLayout] to override.
+// The shipped "auth/layout" is a Tailwind-styled, navbar-less shell that
+// links to the host's app/app.min.css (per the Pattern B convention from
+// docs/guide/tailwind.md). Hosts that don't follow that convention — or
+// want a completely different look — override via [WithAuthLayout]; the
+// empty string is also accepted to inherit whatever the host set via
+// srv.SetLayout (the pre-v0.20 behaviour, which leaks the host's navbar
+// into login pages and is rarely what you want).
 func DefaultAuthLayout() string {
-	return ""
+	return "auth/layout"
 }
 
 // DefaultRenderer returns the default Renderer that uses the built-in HTML

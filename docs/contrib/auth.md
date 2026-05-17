@@ -38,15 +38,19 @@ The auth app ships HTML templates via `HasTemplates`. These templates use the gl
 
 ## Auth Layout
 
-Public auth pages (login, register, recovery, email verification) use a separate layout — typically a minimal page without the full app navigation. This avoids showing the navbar to unauthenticated users. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+Public auth pages (login, register, recovery, email verification) use a separate layout — a minimal page without the full app navigation. This avoids showing the navbar to unauthenticated users. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
-By default, `auth.New()` uses `DefaultAuthLayout()` which returns the empty string — meaning auth pages inherit the global layout set by the host via `srv.SetLayout`. Override it with `auth.WithAuthLayout("...")` when you want a dedicated layout for unauthenticated pages:
+By default, `auth.New()` ships its own `auth/layout` template: a Tailwind-styled, navbar-less shell that links to the host's `app/app.min.css` (per the [Pattern B convention](../guide/tailwind.md)). Registering `auth.New()` works out of the box — no `WithAuthLayout` call required — as long as your host follows Pattern B.
+
+Hosts that don't follow Pattern B (CSS lives at a different `staticURL`, custom shell markup, etc.) override the layout with `auth.WithAuthLayout("myapp/auth-layout")`:
 
 ```go
 auth.New(
     auth.WithAuthLayout("myapp/auth-layout"),
 )
 ```
+
+Passing the empty string is also accepted — auth pages then inherit whatever the host set via `srv.SetLayout`. That was the pre-v0.20 behaviour and is generally not what you want (the host's navbar bleeds into login pages).
 
 An auth layout is simply a template name string referring to a template in the global template set:
 

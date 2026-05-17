@@ -299,7 +299,8 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 // --- DefaultAuthLayout tests ---
 
 func TestDefaultAuthLayout(t *testing.T) {
-	assert.Empty(t, DefaultAuthLayout())
+	assert.Equal(t, "auth/layout", DefaultAuthLayout(),
+		"contrib/auth must ship a navbar-less default layout so registering auth doesn't leak the host's navbar into login pages")
 }
 
 // --- renderCentered/renderCard without executor ---
