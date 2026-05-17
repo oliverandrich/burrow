@@ -41,11 +41,11 @@ headers in every distributed form.
 
 ## Development Tools
 
-### just
+### mise
 
-- **URL:** <https://just.systems/>
-- **Copyright:** Copyright (c) Casey Rodarmor
-- **License:** CC0-1.0 — <https://github.com/casey/just/blob/master/LICENSE>
+- **URL:** <https://mise.jdx.dev/>
+- **Copyright:** Copyright (c) 2022 Jeff Dickey
+- **License:** MIT — <https://github.com/jdx/mise/blob/main/LICENSE>
 
 ### zensical
 
