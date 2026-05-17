@@ -17,6 +17,7 @@ import (
 
     "github.com/go-chi/chi/v5"
     "github.com/oliverandrich/burrow"
+    "github.com/oliverandrich/burrow/burrowtest"
     "github.com/oliverandrich/burrow/contrib/auth"
     "github.com/oliverandrich/burrow/contrib/session"
     "github.com/oliverandrich/den"
@@ -25,27 +26,38 @@ import (
 )
 ```
 
+Burrow's test helpers live in the `burrowtest` sub-package (following the `net/http/httptest` convention). Importing `burrowtest` blank-imports the SQLite Den backend, so test binaries don't need to repeat the `_ ".../den/backend/sqlite"` line — production binaries that don't depend on `burrowtest` still don't link the SQLite engine.
+
 ## Framework Test Helpers
 
-Burrow provides shared test helpers in the root package. These are prefixed with `Test` to signal they are for testing only.
+### burrowtest.DB
 
-### TestDB
-
-`burrow.TestDB` returns an in-memory SQLite database wrapped in a `*den.DB`. The database is closed automatically when the test finishes:
+`burrowtest.DB` returns a file-backed SQLite database wrapped in a `*den.DB`, created under `t.TempDir()` and closed automatically when the test finishes:
 
 ```go
 func TestListNotes(t *testing.T) {
-    db := burrow.TestDB(t, &Note{})
+    db := burrowtest.DB(t)
+    require.NoError(t, den.Register(t.Context(), db, &Note{}))
 
     // ... test your handlers/repositories with db
 }
 ```
 
-Pass your document types to `TestDB` so their collections are registered automatically.
+Document types are registered explicitly via `den.Register` after the DB is open — pass the same `&Type{}` zero-values your app passes from `HasDocuments.Documents()`.
 
-### TestErrorExecContext
+### burrowtest.TempDSN
 
-`burrow.TestErrorExecContext` injects a minimal `TemplateExecutor` into the context that renders error templates. You need this whenever your test triggers an error through `Handle()` or calls `RenderError()` directly:
+`burrowtest.TempDSN` returns a file-backed SQLite DSN under `t.TempDir()`, for tests that need the DSN string rather than an open `*den.DB` — for example, when handing `--database-dsn` to a `cli.Command` you're driving from a test:
+
+```go
+dsn := burrowtest.TempDSN(t)
+// dsn ⇒ "sqlite:///tmp/.../test.db"
+require.NoError(t, myCmd.Run(t.Context(), []string{"myapp", "--database-dsn", dsn, "migrate"}))
+```
+
+### burrowtest.ErrorExecContext
+
+`burrowtest.ErrorExecContext` injects a minimal `TemplateExecutor` into the context that renders error templates. You need this whenever your test triggers an error through `Handle()` or calls `RenderError()` directly:
 
 ```go
 func TestNotFound(t *testing.T) {
@@ -53,7 +65,7 @@ func TestNotFound(t *testing.T) {
         return burrow.NewHTTPError(http.StatusNotFound, "note not found")
     })
 
-    ctx := burrow.TestErrorExecContext(t.Context())
+    ctx := burrowtest.ErrorExecContext(t.Context())
     req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/notes/999", nil)
     rec := httptest.NewRecorder()
     handler.ServeHTTP(rec, req)
@@ -65,15 +77,27 @@ func TestNotFound(t *testing.T) {
 
 In production, the template middleware provides the executor automatically. In tests, you provide this lightweight substitute.
 
-### TestErrorExecMiddleware
+### burrowtest.ErrorExecMiddleware
 
-`burrow.TestErrorExecMiddleware` is the middleware version — useful when setting up a chi router for integration tests:
+`burrowtest.ErrorExecMiddleware` is the middleware version — useful when setting up a chi router for integration tests:
 
 ```go
 r := chi.NewRouter()
-r.Use(burrow.TestErrorExecMiddleware)
+r.Use(burrowtest.ErrorExecMiddleware)
 r.Use(auth.RequireAdmin())
 r.Get("/admin", adminHandler)
+```
+
+### burrowtest.StubApp
+
+`burrowtest.StubApp(name)` returns a minimal `burrow.App` exposing only the given name. Use it in tests that wire up a registry but don't need the depended-on contrib to do real work — for example, satisfying `auth`'s declared `Dependencies()` of `csrf` and `staticfiles` when only testing handlers:
+
+```go
+registry := burrow.NewRegistry()
+registry.Add(session.New())
+registry.Add(burrowtest.StubApp("csrf"))
+registry.Add(burrowtest.StubApp("staticfiles"))
+registry.Add(auth.New())
 ```
 
 ## Testing Handlers
@@ -97,7 +121,7 @@ func TestGreetHandler(t *testing.T) {
 
 ### Testing Error Responses
 
-Handlers signal errors by returning a `*burrow.HTTPError`. When wrapped with `burrow.Handle()`, the error is rendered through `RenderError()`, which needs a `TemplateExecutor` in the context. Use `TestErrorExecContext` (see [Framework Test Helpers](#framework-test-helpers)):
+Handlers signal errors by returning a `*burrow.HTTPError`. When wrapped with `burrow.Handle()`, the error is rendered through `RenderError()`, which needs a `TemplateExecutor` in the context. Use `burrowtest.ErrorExecContext` (see [Framework Test Helpers](#framework-test-helpers)):
 
 ```go
 func TestNotFound(t *testing.T) {
@@ -105,7 +129,7 @@ func TestNotFound(t *testing.T) {
         return burrow.NewHTTPError(http.StatusNotFound, "note not found")
     })
 
-    ctx := burrow.TestErrorExecContext(t.Context())
+    ctx := burrowtest.ErrorExecContext(t.Context())
     req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/notes/999", nil)
     rec := httptest.NewRecorder()
     handler.ServeHTTP(rec, req)
@@ -208,10 +232,11 @@ Burrow automatically detects HTMX requests via the `HX-Request` header and skips
 
 ```go
 func TestListNotes(t *testing.T) {
-    db := testDB(t)
+    db := burrowtest.DB(t)
+    require.NoError(t, den.Register(t.Context(), db, &Note{}))
     repo := NewRepository(db)
     require.NoError(t, repo.Create(t.Context(), &Note{Title: "Test", UserID: "01J000000000000000000042"}))
-    app := &App{repo: NewRepository(db)}
+    app := &App{repo: repo}
 
     setup := func(t *testing.T) *http.Request {
         t.Helper()
@@ -266,11 +291,12 @@ assert.Equal(t, "/notes", rec.Header().Get("Location"))
 
 ## Testing Document Registration
 
-Den handles schema creation automatically. In tests, pass your document types to `TestDB`:
+Den creates collections and indexes from your struct tags. In tests, open a DB with `burrowtest.DB` and call `den.Register` with the same zero-value pointers your app passes from `HasDocuments.Documents()`:
 
 ```go
 func TestDocumentRegistration(t *testing.T) {
-    db := burrow.TestDB(t, &Item{})
+    db := burrowtest.DB(t)
+    require.NoError(t, den.Register(t.Context(), db, &Item{}))
 
     // Verify the collection works by inserting a document.
     item := &Item{Name: "test"}
@@ -325,7 +351,7 @@ func TestRequireAuth(t *testing.T) {
 }
 ```
 
-Use table-driven tests for middleware that checks roles or permissions. `RequireAdmin` redirects unauthenticated users to login and renders 403 for authenticated non-admins — so you need `TestErrorExecContext` for the 403 case:
+Use table-driven tests for middleware that checks roles or permissions. `RequireAdmin` redirects unauthenticated users to login and renders 403 for authenticated non-admins — so you need `burrowtest.ErrorExecContext` for the 403 case:
 
 ```go
 func TestRequireAdmin(t *testing.T) {
@@ -344,7 +370,7 @@ func TestRequireAdmin(t *testing.T) {
             r.Use(func(next http.Handler) http.Handler {
                 return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
                     ctx := auth.WithUser(r.Context(), &auth.User{ID: "01J000000000000000000001", Role: tt.role})
-                    ctx = burrow.TestErrorExecContext(ctx)
+                    ctx = burrowtest.ErrorExecContext(ctx)
                     next.ServeHTTP(w, r.WithContext(ctx))
                 })
             })
@@ -394,13 +420,13 @@ The examples above test individual pieces in isolation. A complete integration t
 
 ```go
 func TestCreateNoteIntegration(t *testing.T) {
-    db := burrow.TestDB(t, &Note{})
+    db := burrowtest.DB(t)
+    require.NoError(t, den.Register(t.Context(), db, &Note{}))
     app := New()
-
     app.repo = NewRepository(db)
 
     r := chi.NewRouter()
-    r.Use(burrow.TestErrorExecMiddleware)
+    r.Use(burrowtest.ErrorExecMiddleware)
     r.Use(session.New().Middleware()...)
     r.Use(func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -422,7 +448,7 @@ func TestCreateNoteIntegration(t *testing.T) {
     assert.Contains(t, rec.Body.String(), "Integration Test")
 
     // Verify the note was persisted.
-    notes, err := repo.ListByUserID(t.Context(), "01J000000000000000000001")
+    notes, err := app.repo.ListByUserID(t.Context(), "01J000000000000000000001")
     require.NoError(t, err)
     assert.Len(t, notes, 1)
 }
@@ -497,21 +523,22 @@ The `contrib/auth/authtest` package provides shared helpers for tests that depen
 
 ### Database with Auth Migrations
 
-`authtest.NewDB` returns an in-memory database with all auth document types already registered:
+`authtest.NewDB` returns a file-backed SQLite database with all auth document types already registered. If your test also needs your app's own document types, register them on top:
 
 ```go
 import "github.com/oliverandrich/burrow/contrib/auth/authtest"
 
 func testDB(t *testing.T) *den.DB {
     t.Helper()
-    // Pass your app's document types to register them alongside auth types.
-    return authtest.NewDB(t, &Note{})
+    db := authtest.NewDB(t)
+    require.NoError(t, den.Register(t.Context(), db, &Note{}))
+    return db
 }
 ```
 
 ### Creating Test Users
 
-`authtest.CreateUser` inserts a user with sensible defaults (unique username, role `"user"`, active). Use functional options to override:
+`authtest.CreateUser` inserts a user with sensible defaults (unique auto-incremented username, role `"user"`, active). Use functional options to override:
 
 ```go
 // Default user — unique username auto-generated.
@@ -519,15 +546,15 @@ user := authtest.CreateUser(t, db)
 
 // Fully customised user.
 admin := authtest.CreateUser(t, db,
-    authtest.WithID(1),
+    authtest.WithID("01J000000000000000000001"),
     authtest.WithUsername("admin"),
     authtest.WithEmail("admin@example.com"),
     authtest.WithName("Admin"),
-    authtest.WithRole("admin"),
+    authtest.WithRole(auth.RoleAdmin),
 )
 ```
 
-Available options: `WithID`, `WithUsername`, `WithEmail`, `WithName`, `WithRole`, `WithActive`.
+Available options: `WithID`, `WithUsername`, `WithEmail`, `WithName`, `WithRole`, `WithActive`. `WithID` takes a string (ULIDs in production; any unique string works in tests).
 
 ### Testing with Authentication
 
@@ -549,14 +576,15 @@ req = session.Inject(req, map[string]any{})
 
 | What to test | Key tools |
 |---|---|
-| Database | `burrow.TestDB(t, &Type{})` |
-| Auth test DB | `authtest.NewDB(t, &Type{})` — in-memory DB with auth documents |
+| Database | `burrowtest.DB(t)` + `den.Register(ctx, db, &Type{})` |
+| Custom DSN | `burrowtest.TempDSN(t)` — file-backed SQLite under `t.TempDir()` |
+| Auth test DB | `authtest.NewDB(t)` — DB with auth documents pre-registered |
 | Test users | `authtest.CreateUser(t, db, ...options)` |
 | Handlers | `httptest.NewRecorder`, `httptest.NewRequestWithContext(t.Context(), ...)` |
-| Error responses | `burrow.TestErrorExecContext(ctx)`, `burrow.TestErrorExecMiddleware` |
+| Error responses | `burrowtest.ErrorExecContext(ctx)`, `burrowtest.ErrorExecMiddleware` |
+| Stub registered apps | `burrowtest.StubApp(name)` |
 | Auth context | `auth.WithUser(ctx, user)`, `session.Inject(req, values)` |
 | HTMX responses | `req.Header.Set("HX-Request", "true")`, check `hx-swap-oob` |
-| Documents | `burrow.TestDB(t, &Type{})` registers collections automatically |
 | Middleware | Chi router with `r.Use()`, table-driven tests |
 | Validation | `burrow.Validate()`, `errors.As(err, &ve)`, `ve.HasField()` |
-| Templates | `TemplateExecutor` with stubbed functions, `WithTemplateExecutor` |
+| Templates | `TemplateExecutor` with stubbed functions, `burrow.WithTemplateExecutor` |
