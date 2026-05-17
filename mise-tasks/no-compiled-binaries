@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Reject staged files that look like compiled executables (Mach-O / ELF / PE).
-# Build outputs do not belong in git — keep them out of commits.
+#MISE description="Reject staged compiled binaries (Mach-O / ELF / PE)"
 set -euo pipefail
 
 violations=()

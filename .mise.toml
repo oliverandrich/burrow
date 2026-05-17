@@ -37,10 +37,6 @@ run = "govulncheck ./..."
 description = "List active beans (excludes completed and scrapped)"
 run = "beans list --no-status completed --no-status scrapped"
 
-[tasks.licenses]
-description = "Regenerate THIRD_PARTY_LICENSES.md from go-licenses"
-run = "./scripts/generate-licenses.sh"
-
 [tasks."example-hello"]
 description = "Run the hello world example (builds Tailwind CSS first)"
 run = [

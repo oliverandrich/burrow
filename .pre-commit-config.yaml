@@ -31,14 +31,14 @@ repos:
 
       - id: licenses
         name: Regenerate THIRD_PARTY_LICENSES.md
-        entry: ./scripts/generate-licenses.sh
+        entry: mise run licenses
         language: system
         files: 'go\.(mod|sum)$'
         pass_filenames: false
 
       - id: no-compiled-binaries
         name: Reject compiled binaries (Mach-O/ELF/PE)
-        entry: ./scripts/check-no-binaries.sh
+        entry: mise run no-compiled-binaries
         language: system
         types: [binary]
 

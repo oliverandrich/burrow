@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Generates llms-full.txt by concatenating all documentation markdown files
-# in a logical order. Output goes to docs/llms-full.txt.
+#MISE description="Generate docs/llms-full.txt by concatenating all documentation markdown"
 set -euo pipefail
 
-DOCS_DIR="docs"
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+DOCS_DIR="$ROOT_DIR/docs"
 OUTPUT="$DOCS_DIR/llms-full.txt"
 
 # Files in reading order: core docs first, then guides, contrib, reference, tutorial.

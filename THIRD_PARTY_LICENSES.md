@@ -3,7 +3,7 @@
 This file lists all third-party components used by Burrow, including embedded
 assets and Go module dependencies.
 
-This file is auto-generated. Run `just licenses` to regenerate it.
+This file is auto-generated. Run `mise run licenses` to regenerate it.
 
 ## Embedded Assets
 

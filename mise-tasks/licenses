@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#MISE description="Regenerate THIRD_PARTY_LICENSES.md from go-licenses"
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+OUTPUT="$ROOT_DIR/THIRD_PARTY_LICENSES.md"
+MODULE="github.com/oliverandrich/burrow"
+
+if ! command -v go-licenses &>/dev/null; then
+    echo "Error: go-licenses not found. Run 'mise install'." >&2
+    exit 1
+fi
+
+# Static header — embedded assets and dev tools that are not Go modules.
+cat > "$OUTPUT" <<'STUB'
+# Third-Party Licenses
+
+This file lists all third-party components used by Burrow, including embedded
+assets and Go module dependencies.
+
+This file is auto-generated. Run `mise run licenses` to regenerate it.
+
+## Embedded Assets
+
+These files are bundled directly into the binary and do not carry their license
+headers in every distributed form.
+
+### Bootstrap Icons v1.13.1
+
+- **Files:** select SVG paths inlined as `template.HTML` consts and `{{ define "<app>/icon_*" }}` blocks under `contrib/admin/templates/`, `contrib/auth/templates/`, `contrib/jobs/templates/`, `example/notes/internal/`.
+- **URL:** <https://icons.getbootstrap.com/>
+- **Copyright:** Copyright 2019-2025 The Bootstrap Authors
+- **License:** MIT — <https://github.com/twbs/icons/blob/main/LICENSE>
+
+### htmx v2.0.8
+
+- **Files:** `contrib/htmx/static/htmx.min.js`
+- **URL:** <https://htmx.org/>
+- **Copyright:** Copyright (c) 2020, Big Sky Software LLC
+- **License:** BSD 2-Clause — <https://github.com/bigskysoftware/htmx/blob/master/LICENSE>
+
+## Development Tools
+
+### just
+
+- **URL:** <https://just.systems/>
+- **Copyright:** Copyright (c) Casey Rodarmor
+- **License:** CC0-1.0 — <https://github.com/casey/just/blob/master/LICENSE>
+
+### zensical
+
+- **URL:** <https://zensical.org/>
+- **Copyright:** Copyright (c) Zensical contributors
+- **License:** MIT — <https://pypi.org/project/zensical/>
+
+## Go Module Dependencies
+
+Generated with [google/go-licenses](https://github.com/google/go-licenses).
+
+| Module | License | URL |
+|--------|---------|-----|
+STUB
+
+# Append go-licenses output. Filter out our own modules; apply overrides where
+# go-licenses cannot detect the upstream license URL.
+go-licenses report ./... 2>/dev/null \
+    | sort \
+    | grep -v "^${MODULE}" \
+    | sed 's|^modernc.org/mathutil,Unknown,Unknown$|modernc.org/mathutil,https://gitlab.com/cznic/mathutil/-/blob/master/LICENSE,BSD-3-Clause|' \
+    | while IFS=',' read -r mod url license; do
+        printf '| %s | %s | [LICENSE](%s) |\n' "$mod" "$license" "$url"
+    done >> "$OUTPUT"
+
+echo "Generated $OUTPUT"
