@@ -35,12 +35,6 @@ var (
 	_ burrow.HasRequestFuncMap = (*App)(nil)
 )
 
-// stubApp satisfies the Dependencies check for contribs whose actual
-// behaviour isn't exercised by the admin tests.
-type stubApp struct{ name string }
-
-func (s *stubApp) Name() string { return s.name }
-
 // configuredRegistry returns a registry with session and auth apps
 // properly configured via CLI commands (required because Configure
 // reads flag values from the cli.Command).
@@ -49,10 +43,13 @@ func configuredRegistry(t *testing.T) *burrow.Registry {
 	registry := burrow.NewRegistry()
 
 	// Stub the contribs admin declares as Dependencies so registry.Add(admin)
-	// doesn't trip the dependency gate during tests.
-	registry.Add(&stubApp{name: "staticfiles"})
-	registry.Add(&stubApp{name: "htmx"})
-	registry.Add(&stubApp{name: "messages"})
+	// doesn't trip the dependency gate during tests. session and auth are real
+	// because the test fixtures (e.g. TestAdminUsersListRoute) need a working
+	// auth middleware.
+	registry.Add(burrowtest.StubApp("staticfiles"))
+	registry.Add(burrowtest.StubApp("htmx"))
+	registry.Add(burrowtest.StubApp("messages"))
+	registry.Add(burrowtest.StubApp("csrf"))
 
 	sessionApp := session.New()
 	registry.Add(sessionApp)
@@ -94,6 +91,10 @@ func TestAppConfigure(t *testing.T) {
 	registry := burrow.NewRegistry()
 
 	registry.Add(session.New())
+	// Stub auth's declared dependencies so registry.Add(authApp) doesn't
+	// trip the dependency gate; this test only exercises admin's Configure.
+	registry.Add(burrowtest.StubApp("csrf"))
+	registry.Add(burrowtest.StubApp("staticfiles"))
 	authApp := auth.New()
 	registry.Add(authApp)
 

@@ -123,14 +123,16 @@ Returns navigation entries collected into the request context by the framework:
 ```go
 type NavItem struct {
     Label     string
-    LabelKey  string        // i18n message ID
+    LabelKey  string // i18n message ID
     URL       string
-    Icon      template.HTML // inline SVG, empty string for no icon
+    Icon      string // template-define name (e.g. "auth/icon_people"), empty for no icon
     Position  int
     AuthOnly  bool
     AdminOnly bool
 }
 ```
+
+Layouts render `Icon` via the `{{ icon "..." }}` template function, which looks up the named template define (see [Template Functions](template-functions.md#core-functions)). Each contrib owns its icons in `templates/icons.html` as `{{ define "<app>/icon_<name>" }}` blocks.
 
 ```go
 func (a *App) NavItems() []burrow.NavItem {
@@ -195,9 +197,13 @@ func (a *App) FuncMap() template.FuncMap {
 ```
 
 !!! warning "Reserved function names"
-    The following names are already registered by the framework and contrib apps:
-    `safeHTML`, `safeURL`, `safeAttr`, `lang`, `navItems`, `navLinks`, `staticURL`, `csrfToken`, `t`, `tData`, `tPlural`, `currentUser`, `isAuthenticated`, `add`, `sub`, `pageURL`, `pageNumbers`, plus any `icon*` names registered via `cfg.RegisterIconFunc()`.
-    Do not use these names in your own `FuncMap` — the server will panic at startup.
+    The following names are owned by the framework or shipped by standard contribs. Even if your build doesn't register the providing contrib, avoid these names in your own `FuncMap` — the server will panic at startup once the contrib is added.
+
+    Always available (core base / always-on i18n bundle):
+    `safeHTML`, `safeURL`, `safeAttr`, `add`, `sub`, `pageURL`, `pageNumbers`, `icon`, `dict`, `lang`, `t`, `tData`, `tPlural`, `navItems`, `navLinks`. Also `mediaURL` when Den is opened with a Storage.
+
+    Reserved for standard contribs (registered only when the contrib is registered; templates using them otherwise fail to parse at boot):
+    `staticURL` (staticfiles), `csrfToken` / `csrfField` / `csrfHxHeaders` (csrf), `messages` (messages), `currentUser` / `isAuthenticated` / `authLogo` / `credName` / `deref` (auth), `naturaltime` / `intcomma` / `filesizeformat` (humanize).
 
 ### HasRequestFuncMap
 
@@ -273,7 +279,18 @@ type HasCLICommands interface {
 }
 ```
 
-Returns CLI subcommands (e.g., `promote`, `demote`). Collect them with `srv.Registry().AllCLICommands()`.
+Returns CLI subcommands (e.g., `promote`, `demote`). Wire them into the top-level `cli.Command` via `srv.CLICommands()`:
+
+```go
+cmd := &cli.Command{
+    Name:     "myapp",
+    Flags:    srv.Flags(nil),
+    Action:   srv.Run,
+    Commands: srv.CLICommands(), // boots DB + Configure before each subcommand
+}
+```
+
+`srv.CLICommands()` wraps each subcommand's `Action` with the server's boot sequence (open DB, run `Configure()` on all apps) and tears it down afterwards, so a subcommand like `promote alice` runs against a fully-configured app graph. Use `srv.Registry().AllCLICommands()` only as a low-level escape hatch when you need the raw, unwrapped commands and want to manage the boot lifecycle yourself.
 
 ```go
 func (a *App) CLICommands() []*cli.Command {

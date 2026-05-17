@@ -99,7 +99,7 @@ func New(opts ...Option) *App {
 
 func (a *App) Name() string { return "auth" }
 
-func (a *App) Dependencies() []string { return []string{"session"} }
+func (a *App) Dependencies() []string { return []string{"session", "csrf", "staticfiles"} }
 
 func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	a.repo = NewRepository(cfg.DB)

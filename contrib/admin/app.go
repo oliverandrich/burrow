@@ -67,12 +67,17 @@ func New(opts ...Option) *App {
 
 func (a *App) Name() string { return "admin" }
 
-// Dependencies declares contribs the admin app's templates assume are present:
-// staticfiles serves admin.css and the host app's Tailwind output, htmx powers
-// the boosted nav, and messages provides the flash-message template function
-// used at the top of every admin page.
+// Dependencies declares contribs the admin app's templates and runtime assume
+// are present:
+//   - staticfiles serves admin.css and the host app's Tailwind output
+//   - htmx powers the boosted nav
+//   - messages provides the flash-message template function used at the top
+//     of every admin page
+//   - csrf provides csrfToken and csrfHxHeaders used by the admin layout
+//   - auth provides currentUser/isAuthenticated and the AdminAuth middleware
+//     (admin's Configure also panics without an AdminAuth provider)
 func (a *App) Dependencies() []string {
-	return []string{"staticfiles", "htmx", "messages"}
+	return []string{"staticfiles", "htmx", "messages", "csrf", "auth"}
 }
 
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {

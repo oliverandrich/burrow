@@ -17,12 +17,19 @@ import (
 var coreTemplateFS embed.FS
 
 // baseFuncMap returns the default template functions available in all templates.
+//
+// Only universal helpers live here. Funcs that depend on contrib registration
+// (csrfToken, csrfField, csrfHxHeaders → contrib/csrf; staticURL →
+// contrib/staticfiles; messages → contrib/messages) and the locale-scoped
+// lang/t/tData/tPlural (provided by the always-on i18n bundle pre-registered
+// by Server.boot) deliberately do NOT have stubs here — templates that use
+// them fail to parse when the providing app is not registered, surfacing the
+// missing dependency at boot instead of silently rendering empty values.
 func baseFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"safeHTML": func(s string) template.HTML { return template.HTML(s) },         //nolint:gosec // intentional
 		"safeURL":  func(s string) template.URL { return template.URL(s) },           //nolint:gosec // intentional
 		"safeAttr": func(s string) template.HTMLAttr { return template.HTMLAttr(s) }, //nolint:gosec // intentional
-		"lang":     func() string { return "en" },
 		"dict": func(pairs ...any) map[string]any {
 			m := make(map[string]any, len(pairs)/2)
 			for i := 0; i+1 < len(pairs); i += 2 {
@@ -32,13 +39,10 @@ func baseFuncMap() template.FuncMap {
 			}
 			return m
 		},
-		"add":           func(a, b int) int { return a + b },
-		"sub":           func(a, b int) int { return a - b },
-		"pageNumbers":   PageNumbers,
-		"pageURL":       PageURL,
-		"csrfToken":     func() string { return "" },
-		"csrfField":     func() template.HTML { return "" },
-		"csrfHxHeaders": func() template.HTMLAttr { return "" },
+		"add":         func(a, b int) int { return a + b },
+		"sub":         func(a, b int) int { return a - b },
+		"pageNumbers": PageNumbers,
+		"pageURL":     PageURL,
 	}
 }
 

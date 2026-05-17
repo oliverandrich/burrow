@@ -4,7 +4,7 @@ In-process, SQLite-backed background job queue with a worker pool, retry logic, 
 
 **Package:** `github.com/oliverandrich/burrow/contrib/jobs`
 
-**Depends on:** none (optional: `admin` for admin panel UI)
+**Depends on:** `admin` (jobs's admin pages share the admin layout and call `{{ template "admin/pagination" }}`; admin transitively requires `staticfiles`, `htmx`, `messages`, `csrf`, `auth`).
 
 ## Setup
 
@@ -249,6 +249,7 @@ The jobs app implements `HasShutdown`. When the server shuts down:
 |-----------|-------------|
 | `burrow.App` | Required: `Name()` |
 | `HasDocuments` | Registers the `jobs` document type |
+| `HasDependencies` | Requires `admin` |
 | `Configurable` | Worker count and poll interval flags |
 | `HasShutdown` | Stops the worker pool gracefully |
 | `HasAdmin` | Admin UI for job management |

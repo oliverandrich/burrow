@@ -56,6 +56,12 @@ func New(opts ...Option) *App {
 
 func (a *App) Name() string { return "jobs" }
 
+// Dependencies declares the contribs that the jobs admin pages assume are
+// present. admin transitively pulls in staticfiles, htmx, messages, csrf and
+// auth, all of which jobs's admin_list.html relies on via the admin layout
+// and the shared {{ template "admin/pagination" }} block.
+func (a *App) Dependencies() []string { return []string{"admin"} }
+
 // Documents returns the document types for this app.
 func (a *App) Documents() []document.Document {
 	return []document.Document{&Job{}}

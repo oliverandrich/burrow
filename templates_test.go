@@ -67,23 +67,15 @@ func TestBaseFuncMapDict(t *testing.T) {
 	})
 }
 
-func TestBaseFuncMapLang(t *testing.T) {
-	fm := baseFuncMap()
-	fn := fm["lang"].(func() string)
-	assert.Equal(t, "en", fn())
-}
-
-func TestBaseFuncMapCsrfFallbacks(t *testing.T) {
+func TestBaseFuncMapNoSilentDefaults(t *testing.T) {
 	fm := baseFuncMap()
 
-	tokenFn := fm["csrfToken"].(func() string)
-	assert.Empty(t, tokenFn(), "csrfToken fallback should return empty string")
-
-	fieldFn := fm["csrfField"].(func() template.HTML)
-	assert.Equal(t, template.HTML(""), fieldFn(), "csrfField fallback should return empty HTML")
-
-	hxFn := fm["csrfHxHeaders"].(func() template.HTMLAttr)
-	assert.Equal(t, template.HTMLAttr(""), hxFn(), "csrfHxHeaders fallback should return empty attr")
+	// These funcs are provided by specific contrib apps (csrf) or by the
+	// always-on i18n bundle (lang). The base FuncMap must not stub them,
+	// otherwise a missing contrib silently degrades into an empty value.
+	for _, name := range []string{"lang", "csrfToken", "csrfField", "csrfHxHeaders"} {
+		assert.NotContains(t, fm, name, "base FuncMap must not stub %q", name)
+	}
 }
 
 func TestCollectFuncMap_MediaURLFromStorage(t *testing.T) {
@@ -115,26 +107,45 @@ func TestCollectFuncMap_NoMediaURLWithoutStorage(t *testing.T) {
 	assert.False(t, ok, "mediaURL must not be registered when DB has no Storage")
 }
 
-func TestCsrfHxHeadersFallbackRendersCleanBody(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
-
-	tplFS := fstest.MapFS{
-		"page.html": &fstest.MapFile{
-			Data: []byte(`{{ define "test/page" }}<body{{- csrfHxHeaders }}>{{ end }}`),
-		},
+func TestBuildTemplatesFailsWithoutCsrfApp(t *testing.T) {
+	cases := []struct {
+		name     string
+		template string
+	}{
+		{"csrfToken", `{{ define "test/page" }}{{ csrfToken }}{{ end }}`},
+		{"csrfField", `{{ define "test/page" }}{{ csrfField }}{{ end }}`},
+		{"csrfHxHeaders", `{{ define "test/page" }}<body{{- csrfHxHeaders }}>{{ end }}`},
 	}
-	s.registry.Add(&templateApp{name: "test", tplFS: tplFS})
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &Server{registry: NewRegistry()}
+			s.registry.Add(&templateApp{
+				name:  "test",
+				tplFS: fstest.MapFS{"page.html": &fstest.MapFile{Data: []byte(tc.template)}},
+			})
 
-	err := s.buildTemplates()
-	require.NoError(t, err)
-
-	html, err := s.executeTemplate(t.Context(), "test/page", nil)
-	require.NoError(t, err)
-	// Clean body tag when csrf is not registered.
-	assert.Equal(t, template.HTML("<body>"), html)
+			err := s.buildTemplates()
+			require.Error(t, err, "template using %q must fail to parse when contrib/csrf is not registered", tc.name)
+			assert.Contains(t, err.Error(), "function "+`"`+tc.name+`"`+" not defined")
+		})
+	}
 }
 
-func TestCsrfTokenFallbackOverriddenByRequestFuncMap(t *testing.T) {
+func TestBuildTemplatesFailsWithoutLangFunc(t *testing.T) {
+	s := &Server{registry: NewRegistry()}
+	s.registry.Add(&templateApp{
+		name:  "test",
+		tplFS: fstest.MapFS{"page.html": &fstest.MapFile{Data: []byte(`{{ define "test/page" }}{{ lang }}{{ end }}`)}},
+	})
+
+	// Server.boot pre-registers i18n.Bundle which provides "lang"; this
+	// test simulates the bare-Server case where boot hasn't run.
+	err := s.buildTemplates()
+	require.Error(t, err, "template using {{ lang }} must fail to parse without an i18n bundle pre-registered")
+	assert.Contains(t, err.Error(), `function "lang" not defined`)
+}
+
+func TestCsrfTokenFromRequestFuncMap(t *testing.T) {
 	s := &Server{registry: NewRegistry()}
 
 	tplFS := fstest.MapFS{
@@ -143,7 +154,6 @@ func TestCsrfTokenFallbackOverriddenByRequestFuncMap(t *testing.T) {
 		},
 	}
 
-	// App that overrides csrf funcs via RequestFuncMap (like csrf app does).
 	app := &templateRequestFuncMapApp{
 		name:  "csrf",
 		tplFS: tplFS,
@@ -156,7 +166,6 @@ func TestCsrfTokenFallbackOverriddenByRequestFuncMap(t *testing.T) {
 	}
 	s.registry.Add(app)
 
-	// Should NOT panic despite keys being in both baseFuncMap and RequestFuncMap.
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
@@ -259,7 +268,7 @@ func TestBuildTemplatesFuncMapOverridesBaseAllowed(t *testing.T) {
 	app := &templateFuncMapApp{
 		name:  "override",
 		tplFS: fstest.MapFS{},
-		fm:    template.FuncMap{"lang": func() string { return "de" }},
+		fm:    template.FuncMap{"add": func(a, b int) int { return a*10 + b }},
 	}
 	s.registry.Add(app)
 

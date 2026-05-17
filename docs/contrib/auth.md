@@ -4,7 +4,7 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 
 **Package:** `github.com/oliverandrich/burrow/contrib/auth`
 
-**Depends on:** `session`, `i18n`, `csrf`, `staticfiles`
+**Depends on:** `session`, `csrf`, `staticfiles` (hard — server fails at boot if any is missing). Soft-integrates with `jobs` (queued email delivery; falls back to synchronous send) and ships English + German translations via `HasTranslations` for the framework's always-on i18n bundle.
 
 ## Setup
 
@@ -128,12 +128,15 @@ Admin routes (registered via `HasAdmin`, require auth + admin role):
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/admin/users` | List users |
-| GET | `/admin/users/{id}` | User detail |
+| GET | `/admin/users/{id}` | User detail / edit form |
 | POST | `/admin/users/{id}` | Update user |
 | DELETE | `/admin/users/{id}` | Delete user |
+| POST | `/admin/users/{id}/deactivate` | Deactivate user |
+| POST | `/admin/users/{id}/activate` | Activate user |
 | GET | `/admin/invites` | List invites |
+| GET | `/admin/invites/new` | New invite form (htmx fragment) |
 | POST | `/admin/invites` | Create an invite |
-| DELETE | `/admin/invites/{id}` | Delete an invite |
+| DELETE | `/admin/invites/{id}/revoke` | Revoke an invite |
 
 ## Template Functions
 
@@ -297,9 +300,9 @@ The auth app implements `HasAdmin` to provide user and invite management in the 
 | `--auth-use-email` | `AUTH_USE_EMAIL` | `false` | Use email instead of username |
 | `--auth-require-verification` | `AUTH_REQUIRE_VERIFICATION` | `false` | Require email verification |
 | `--auth-invite-only` | `AUTH_INVITE_ONLY` | `false` | Require invite to register |
-| `--webauthn-rp-id` | `WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (domain) |
-| `--webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | `Web App` | WebAuthn RP display name |
-| `--webauthn-rp-origin` | `WEBAUTHN_RP_ORIGIN` | (base URL) | WebAuthn RP origin |
+| `--auth-webauthn-rp-id` | `WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (domain) |
+| `--auth-webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | `Web App` | WebAuthn RP display name |
+| `--auth-webauthn-rp-origin` | `WEBAUTHN_RP_ORIGIN` | (base URL) | WebAuthn RP origin |
 
 ## Email Service
 
@@ -356,7 +359,7 @@ Without the i18n app, templates fall back to displaying translation keys (which 
 | `HasTemplates` | Contributes auth HTML templates |
 | `HasRequestFuncMap` | Provides `currentUser`, `isAuthenticated` to templates |
 | `HasTranslations` | Contributes English and German translation files |
-| `HasFuncMap` | Provides `credName`, `emailValue`, `deref` to templates |
+| `HasFuncMap` | Provides `credName`, `deref` to templates |
 | `Configurable` | Auth and WebAuthn flags |
 | `HasDependencies` | Requires `session` |
 | `HasJobs` | Registers `auth.send_email` job handler for email delivery via queue |

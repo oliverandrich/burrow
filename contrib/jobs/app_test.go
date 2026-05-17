@@ -20,6 +20,7 @@ var (
 	_ burrow.App              = (*App)(nil)
 	_ burrow.Queue            = (*App)(nil)
 	_ burrow.HasDocuments     = (*App)(nil)
+	_ burrow.HasDependencies  = (*App)(nil)
 	_ burrow.Configurable     = (*App)(nil)
 	_ burrow.PostConfigurable = (*App)(nil)
 	_ burrow.HasShutdown      = (*App)(nil)
@@ -29,6 +30,11 @@ var (
 	_ burrow.HasFuncMap       = (*App)(nil)
 	_ burrow.Startable        = (*App)(nil)
 )
+
+func TestApp_Dependencies(t *testing.T) {
+	app := New()
+	assert.Equal(t, []string{"admin"}, app.Dependencies())
+}
 
 func TestApp_Name(t *testing.T) {
 	app := New()
@@ -445,7 +451,8 @@ func TestApp_PostConfigure_RegistryWithoutHasJobs(t *testing.T) {
 
 	// Registry with an app that does NOT implement HasJobs.
 	registry := burrow.NewRegistry()
-	registry.Add(New()) // jobs app itself does not implement HasJobs
+	registry.Add(burrowtest.StubApp("admin")) // satisfies jobs's declared dependency
+	registry.Add(New())                       // jobs app itself does not implement HasJobs
 	appCfg := &burrow.AppConfig{DB: db, Registry: registry}
 
 	cmd := &cli.Command{

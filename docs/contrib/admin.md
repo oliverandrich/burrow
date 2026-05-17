@@ -34,7 +34,7 @@ Each admin page renders its own breadcrumb (`<nav><ul class="breadcrumb">…<li 
 
 Static assets are served via the `staticfiles` app using content-hashed URLs.
 
-**Dependencies:** the admin app declares `staticfiles`, `htmx`, and `messages` — register all three.
+**Dependencies:** `staticfiles`, `htmx`, `messages`, `csrf`, `auth` — all five must be registered. The layout uses `{{ csrfToken }}`, `{{ csrfHxHeaders }}`, `{{ currentUser }}`, and admin's `Configure` needs an `AdminAuth` provider (supplied by `contrib/auth`).
 
 ## Building Admin Views
 
@@ -103,4 +103,4 @@ The admin app collects all `HasAdmin` implementations and mounts their routes un
 | `HasFuncMap` | Contributes admin icon template functions |
 | `HasTranslations` | Contributes English and German translations for admin UI |
 | `HasStaticFiles` | Ships `admin.css` (admin-shell polish: action-row alignment, dashboard card link styling, form-footer flex) |
-| `HasDependencies` | Requires `staticfiles`, `htmx`, `messages` |
+| `HasDependencies` | Requires `staticfiles`, `htmx`, `messages`, `csrf`, `auth` |

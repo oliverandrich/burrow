@@ -711,7 +711,7 @@ func TestCLIPromoteThroughServerCLICommands(t *testing.T) {
 
 	// Wire up Server with auth registered (plus auth's declared dependencies)
 	// and invoke promote via the wrapped subcommand path.
-	srv := burrow.NewServer(session.New(), New())
+	srv := burrow.NewServer(session.New(), burrowtest.StubApp("csrf"), burrowtest.StubApp("staticfiles"), New())
 	cmd := &cli.Command{
 		Name:     "test",
 		Flags:    srv.Flags(nil),
@@ -756,6 +756,10 @@ func newTestApp(t *testing.T) (*App, *Repository) {
 	registry := burrow.NewRegistry()
 	sessionApp := session.New()
 	registry.Add(sessionApp)
+	// Stub auth's declared dependencies; tests here exercise handler-level
+	// behaviour only, not csrf/staticfiles wiring.
+	registry.Add(burrowtest.StubApp("csrf"))
+	registry.Add(burrowtest.StubApp("staticfiles"))
 	app := New()
 	registry.Add(app)
 	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
@@ -1682,9 +1686,7 @@ func TestNewWithMultipleOptions(t *testing.T) {
 
 func TestDependencies(t *testing.T) {
 	app := &App{}
-	deps := app.Dependencies()
-	require.Len(t, deps, 1)
-	assert.Equal(t, "session", deps[0])
+	assert.Equal(t, []string{"session", "csrf", "staticfiles"}, app.Dependencies())
 }
 
 func TestAdminRoutes(t *testing.T) {
@@ -1718,6 +1720,8 @@ func TestConfigure(t *testing.T) {
 	db := openTestDB(t)
 	registry := burrow.NewRegistry()
 	registry.Add(session.New())
+	registry.Add(burrowtest.StubApp("csrf"))
+	registry.Add(burrowtest.StubApp("staticfiles"))
 	app := New()
 	registry.Add(app)
 	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
@@ -1760,6 +1764,8 @@ func TestConfigureWithDefaultOrigin(t *testing.T) {
 	db := openTestDB(t)
 	registry := burrow.NewRegistry()
 	registry.Add(session.New())
+	registry.Add(burrowtest.StubApp("csrf"))
+	registry.Add(burrowtest.StubApp("staticfiles"))
 	app := New()
 	registry.Add(app)
 	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}

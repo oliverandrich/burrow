@@ -22,6 +22,7 @@ Provided by the framework itself. Always available.
 | `pageNumbers` | `{{ range pageNumbers .Current .Total }}` | Generates a slice of page numbers with ellipsis gaps (`-1`) |
 | `mediaURL` | `{{ mediaURL .Hero }}` | Returns the public URL for a `document.Attachment`. Auto-registered when Den is opened with `den.WithStorage(...)`; unregistered (and a parse-time error) when no Storage is configured. |
 | `icon` | `{{ icon "auth/icon_people" }}` | Looks up the named template define and returns its rendered HTML. Returns empty when the name is empty or unknown. Used by layouts to render `NavItem.Icon` / `NavLink.Icon` / `admin.DashboardItem.Icon` (all hold template-define names). See [Navigation › Icon convention](../guide/navigation.md#icon-convention). |
+| `dict` | `{{ template "x" (dict "Page" .Page "BasePath" "/x") }}` | Builds a `map[string]any` from alternating key/value pairs. Useful for passing multiple values to a sub-template. Keys must be strings. |
 
 **Navigation (request-scoped, provided by the framework):**
 
@@ -30,14 +31,16 @@ Provided by the framework itself. Always available.
 | `navItems` | `{{ range navItems }}` | Raw `[]NavItem` from all `HasNavItems` apps. No filtering or active state. |
 | `navLinks` | `{{ range navLinks }}` | Filtered `[]NavLink` with `IsActive` computed from the request path. Hides `AuthOnly`/`AdminOnly` items based on the `AuthChecker` in context. |
 
-**i18n (request-scoped, provided by the core `i18n` sub-package):**
+**i18n (request-scoped, always available — the framework's i18n bundle is pre-registered by `Server.boot` and the locale middleware runs on every request):**
 
 | Function | Example | Description |
 |----------|---------|-------------|
-| `lang` | `<html lang="{{ lang }}">` | Current locale (e.g., `"en"`, `"de"`). Returns the locale detected from the `Accept-Language` header. |
-| `t` | `{{ t "welcome-title" }}` | Simple translation lookup by message ID. |
+| `lang` | `<html lang="{{ lang }}">` | Current locale (e.g., `"en"`, `"de"`). Resolved from the `Accept-Language` header by the bundle's locale middleware. |
+| `t` | `{{ t "welcome-title" }}` | Simple translation lookup by message ID. Returns the message ID itself when no translation is loaded. |
 | `tData` | `{{ tData "greeting" .Data }}` | Translation with interpolation data (`map[string]any`). |
 | `tPlural` | `{{ tPlural "items-count" .Count }}` | Pluralised translation. |
+
+Apps contribute translation files via `HasTranslations`; the framework auto-discovers them at boot. No separate `contrib/i18n` app is needed.
 
 ## Contrib App Functions
 
@@ -49,10 +52,19 @@ Provided by the framework itself. Always available.
 
 ### csrf
 
+These funcs **only exist when `contrib/csrf` is registered**. Templates that use them fail to parse at server boot if csrf is missing — there are no silent fallbacks. Apps that ship templates calling `csrfToken` / `csrfField` / `csrfHxHeaders` must declare `csrf` in their `Dependencies()`.
+
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|
 | `csrfToken` | Request | `{{ csrfToken }}` | Returns the raw CSRF token string. |
 | `csrfField` | Request | `{{ csrfField }}` | Renders a complete `<input type="hidden">` element with the CSRF token. |
+| `csrfHxHeaders` | Request | `<body {{ csrfHxHeaders }}>` | Renders the `hx-headers='{"X-CSRF-Token": "…"}'` attribute so all htmx requests carry the CSRF token. |
+
+### messages
+
+| Function | Type | Example | Description |
+|----------|------|---------|-------------|
+| `messages` | Request | `{{ range messages }}{{ .Text }}{{ end }}` | Returns the flash messages collected during this request (`[]messages.Message`). Registered by `contrib/messages` via `HasRequestFuncMap`. |
 
 ### auth
 
@@ -60,8 +72,7 @@ Provided by the framework itself. Always available.
 
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|
-| `credName` | Static | `{{ credName .Credential }}` | Returns a human-readable name for a WebAuthn credential. |
-| `emailValue` | Static | `{{ emailValue .User }}` | Returns the user's email or empty string if nil. |
+| `credName` | Static | `{{ credName .Credential }}` | Returns the credential's `Name`, falling back to `"Passkey"` when empty. |
 | `deref` | Static | `{{ deref .StringPtr }}` | Dereferences a `*string`, returns empty string if nil. |
 
 **Request-scoped** (`HasRequestFuncMap`):
