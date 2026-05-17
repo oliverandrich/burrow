@@ -4,9 +4,28 @@ In this final part you'll add the `htmx` contrib app for SPA-like navigation, HT
 
 **Source code:** [`tutorial/step07/`](https://github.com/oliverandrich/burrow/tree/main/tutorial/step07)
 
-## Using HTMX Helpers
+## Register the htmx Contrib
 
-The `htmx` contrib app (registered since Part 3) provides Go helpers for detecting HTMX requests and setting response headers. To use htmx on the client side, add the script to your layout.
+The `htmx` contrib app ships the vendored `htmx.js` static asset plus Go helpers for detecting HTMX requests and setting response headers. We dropped it back in Part 4 when none of the views needed it; add it back to `main.go` now:
+
+```go
+import "github.com/oliverandrich/burrow/contrib/htmx"
+
+srv := burrow.NewServer(
+    session.New(),
+    csrf.New(),
+    staticApp,
+    healthcheck.New(),
+    messages.New(),
+    htmx.New(),           // re-added
+    app.New(),
+    auth.New(),
+    polls.New(),
+    admin.New(),
+)
+```
+
+## Using HTMX Helpers
 
 In `internal/app/templates/app/layout.html`, add the htmx script and the response-config helper inside `<head>`, and add `hx-boost="true"` plus the CSRF-headers helper to the `<body>` tag:
 
@@ -42,7 +61,7 @@ func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
     }
 
     _ = messages.AddSuccess(w, r, "Your vote has been recorded!")
-    resultsURL := fmt.Sprintf("/polls/%d/results", questionID)
+    resultsURL := fmt.Sprintf("/polls/%s/results", questionID)
 
     if htmx.Request(r).IsHTMX() {
         htmx.Redirect(w, resultsURL)
@@ -91,7 +110,7 @@ Update `internal/polls/templates/polls/results.html`:
 document.addEventListener("DOMContentLoaded", function() {
     const ctx = document.getElementById("results-chart");
     if (!ctx) return;
-    const primary = getComputedStyle(document.documentElement).getPropertyValue("--mu-primary").trim() || "#1095c1";
+    const primary = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#1095c1";
     new Chart(ctx, {
         type: "bar",
         data: {
@@ -130,25 +149,26 @@ In `internal/polls/polls.go`, replace the simple `ListQuestions` with a paginate
 
 ```go
 func (r *Repository) ListQuestionsPaged(ctx context.Context, pr burrow.PageRequest) ([]Question, burrow.PageResult, error) {
-    count, err := den.NewQuery[Question](r.db).Count(ctx)
-    if err != nil {
-        return nil, burrow.PageResult{}, err
-    }
-
-    questions, err := den.NewQuery[Question](r.db).
-        Sort("id", den.Desc).
+    ptrs, count, err := den.NewQuery[Question](r.db).
+        Sort("_id", den.Desc).
         Limit(pr.Limit).
         Skip(pr.Offset()).
-        All(ctx)
+        AllWithCount(ctx)
     if err != nil {
-        return nil, burrow.PageResult{}, err
+        return nil, burrow.PageResult{}, fmt.Errorf("list questions paged: %w", err)
     }
 
-    return questions, burrow.OffsetResult(pr, count), nil
+    questions := make([]Question, len(ptrs))
+    for i, p := range ptrs {
+        questions[i] = *p
+    }
+    return questions, burrow.OffsetResult(pr, int(count)), nil
 }
 ```
 
 - **`.Limit()` / `.Skip()`** — chainable methods for pagination
+- **`.AllWithCount()`** — returns the page slice and the total count in a single round-trip (no separate `Count` query)
+- **`Sort("_id", ...)`** — Den's internal ULID-based primary key; sorting on it gives a stable newest-first order without needing a separate index
 - **`burrow.OffsetResult()`** — builds the `PageResult` with page numbers and `HasMore` flag
 
 ## Infinite Scroll

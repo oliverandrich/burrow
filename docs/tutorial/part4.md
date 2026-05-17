@@ -6,30 +6,31 @@ In this part you'll add a voting form with CSRF protection, flash messages, and 
 
 ## New Contrib Apps
 
-This step introduces two new contrib apps:
+This step introduces four new contrib apps and drops one:
 
-- **`csrf`** — CSRF protection via gorilla/csrf. Injects a `csrfToken` template function.
-- **`messages`** — Flash messages that survive redirects. Stored in the session.
+- **`session`** — cookie-based sessions, needed by `csrf` and `messages` for per-request state.
+- **`csrf`** — CSRF protection via gorilla/csrf. Provides `csrfToken` / `csrfField` template functions.
+- **`messages`** — flash messages that survive redirects. Stored in the session.
+- **`healthcheck`** — exposes `/healthz` and `/healthz/ready` endpoints (replaces `htmx`, which is registered again in Part 7 once we actually need it client-side).
 
-Update `main.go` — add the new imports and apps:
+Update `main.go` — add the new imports and rework the `NewServer` call:
 
 ```go
 import (
     "github.com/oliverandrich/burrow/contrib/csrf"
+    "github.com/oliverandrich/burrow/contrib/healthcheck"
     "github.com/oliverandrich/burrow/contrib/messages"
     "github.com/oliverandrich/burrow/contrib/session"
 )
 ```
 
-Then update the `NewServer` call:
-
 ```go
 srv := burrow.NewServer(
     session.New(),
-    csrf.New(),          // new
+    csrf.New(),
     staticApp,
-    htmx.New(),
-    messages.New(),      // new
+    healthcheck.New(),
+    messages.New(),
     app.New(),
     polls.New(),
 )
@@ -88,21 +89,22 @@ Add the `IncrementVotes` method to the repository:
 func (r *Repository) IncrementVotes(ctx context.Context, choiceID string) error {
     choice, err := den.FindByID[Choice](ctx, r.db, choiceID)
     if err != nil {
-        return err
+        return fmt.Errorf("find choice %s: %w", choiceID, err)
     }
     choice.Votes++
-    return den.Replace(ctx, r.db, choice)
+    return den.Save(ctx, r.db, choice)
 }
 ```
+
+`den.Save` is Den's branching CRUD entry: inserts on a zero `ID`, updates otherwise. Here the loaded `choice` already has an ID, so this becomes an update.
 
 Then add a `Vote` handler method on `*App`:
 
 ```go
 func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
+    r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
     questionID := chi.URLParam(r, "id")
-    if questionID == "" {
-        return burrow.NewHTTPError(http.StatusBadRequest, "invalid question ID")
-    }
 
     choiceID := r.FormValue("choice")
     if choiceID == "" {
@@ -124,6 +126,8 @@ func (a *App) Vote(w http.ResponseWriter, r *http.Request) error {
     return nil
 }
 ```
+
+`http.MaxBytesReader(w, r.Body, 1<<20)` caps the form body at 1 MiB so a misbehaving client can't exhaust memory by streaming a giant POST body — cheap insurance for any handler that reads form data.
 
 This demonstrates:
 

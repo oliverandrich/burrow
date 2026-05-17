@@ -19,7 +19,7 @@ srv := burrow.NewServer(
     session.New(),
     csrf.New(),
     staticApp,
-    htmx.New(),
+    healthcheck.New(),
     messages.New(),
     app.New(),
     auth.New(),           // new
@@ -75,22 +75,7 @@ Burrow automatically sorts apps by dependencies during `NewServer()`, so you don
 
 ## Show the User in the Navbar
 
-In `internal/app/app.go`, add the `auth` import:
-
-```go
-"github.com/oliverandrich/burrow/contrib/auth"
-```
-
-Then update the `Layout()` function to pass the current user to the template:
-
-```go
-layoutData := map[string]any{
-    "Content":  content,
-    "NavItems": burrow.NavItems(r.Context()),
-    "Messages": messages.Get(r.Context()),
-    "User":     auth.CurrentUser(r.Context()),  // new
-}
-```
+No Go change is needed here: the auth contrib already exposes `currentUser` and `isAuthenticated` to every template via `HasRequestFuncMap`, and the framework injects flash messages via `messages` and the locale via `lang` the same way. The layout reads those functions directly without any data plumbing through `Render`.
 
 Update the navbar in `internal/app/templates/app/layout.html`. Add a `<li class="spacer"></li>` between the nav items and the user controls — the `.spacer` rule in `app.css` is a `flex: 1` filler that pushes the username and sign-out button to the right edge:
 

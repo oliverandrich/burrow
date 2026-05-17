@@ -45,11 +45,12 @@ func main() {
 	srv.SetLayout(app.Layout())
 
 	cmd := &cli.Command{
-		Name:    "polls",
-		Usage:   "Polls tutorial application",
-		Version: "0.6.0",
-		Flags:   srv.Flags(nil),
-		Action:  srv.Run,
+		Name:     "polls",
+		Usage:    "Polls tutorial application",
+		Version:  "0.6.0",
+		Flags:    srv.Flags(nil),
+		Action:   srv.Run,
+		Commands: srv.CLICommands(),
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
