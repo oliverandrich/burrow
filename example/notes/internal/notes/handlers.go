@@ -191,7 +191,13 @@ func (a *App) Delete(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to add flash message")
 	}
 
-	return htmx.RenderOrRedirect(w, r, "/notes", "app/alerts_oob", map[string]any{
+	remaining, err := a.repo.CountByUserID(r.Context(), user.ID)
+	if err != nil {
+		return err
+	}
+
+	return htmx.RenderOrRedirect(w, r, "/notes", "notes/delete_response", map[string]any{
 		"Messages": messages.Get(r.Context()),
+		"Empty":    remaining == 0,
 	})
 }

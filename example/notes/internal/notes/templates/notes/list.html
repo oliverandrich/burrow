@@ -29,16 +29,20 @@
 {{ define "notes/notes_list" -}}
 <div id="notes-grid" class="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {{ if not .Notes -}}
-    <div class="col-span-full py-12 text-center text-gray-500 dark:text-gray-400" id="notes-empty">
-        <div class="mx-auto mb-2 text-3xl">{{ template "app/icon_journal_text" . }}</div>
-        <p>{{ t "notes-empty" }}</p>
-    </div>
+    {{ template "notes/notes_empty_state" . }}
     {{- else -}}
     {{ range .Notes -}}
     {{ template "notes/note_card" . }}
     {{- end }}
     {{ template "notes/scroll_trigger" $ }}
     {{- end }}
+</div>
+{{- end }}
+
+{{ define "notes/notes_empty_state" -}}
+<div class="col-span-full py-12 text-center text-gray-500 dark:text-gray-400" id="notes-empty">
+    <div class="mx-auto mb-2 text-3xl">{{ template "app/icon_journal_text" . }}</div>
+    <p>{{ t "notes-empty" }}</p>
 </div>
 {{- end }}
 
@@ -90,9 +94,21 @@
 {{- end }}
 
 {{ define "notes/create_response" -}}
+{{- /* Remove the empty-state placeholder if present (transition 0 → 1 note). */ -}}
+<div id="notes-empty" hx-swap-oob="delete"></div>
 <div id="notes-grid" hx-swap-oob="afterbegin">
     {{ template "notes/note_card" .Note }}
 </div>
+{{ template "app/alerts_oob" . }}
+{{- end }}
+
+{{ define "notes/delete_response" -}}
+{{- /* Re-inject the empty-state placeholder if this delete cleared the list. */ -}}
+{{- if .Empty }}
+<div id="notes-grid" hx-swap-oob="innerHTML">
+    {{ template "notes/notes_empty_state" . }}
+</div>
+{{- end }}
 {{ template "app/alerts_oob" . }}
 {{- end }}
 

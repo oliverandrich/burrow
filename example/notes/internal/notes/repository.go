@@ -180,6 +180,15 @@ func (r *Repository) Update(ctx context.Context, note *Note) error {
 	return nil
 }
 
+// CountByUserID returns the total number of notes owned by the given user.
+func (r *Repository) CountByUserID(ctx context.Context, userID string) (int, error) {
+	count, err := den.NewQuery[Note](r.db, where.Field("user_id").Eq(userID)).Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count notes for user %s: %w", userID, err)
+	}
+	return int(count), nil
+}
+
 // Delete deletes a note owned by the given user.
 func (r *Repository) Delete(ctx context.Context, noteID, userID string) error {
 	note, err := den.NewQuery[Note](r.db,
