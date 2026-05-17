@@ -63,8 +63,8 @@ func (a *App) Name() string { return "notes" }
 
 // Documents tells Burrow which document types this app uses.
 // Tables and indexes are created automatically on startup.
-func (a *App) Documents() []any {
-    return []any{&Note{}}
+func (a *App) Documents() []document.Document {
+    return []document.Document{&Note{}}
 }
 ```
 
@@ -207,8 +207,8 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     return nil
 }
 
-func (a *App) Documents() []any { // (2)!
-    return []any{&Note{}}
+func (a *App) Documents() []document.Document { // (2)!
+    return []document.Document{&Note{}}
 }
 
 func (a *App) TemplateFS() fs.FS { // (3)!
@@ -284,7 +284,7 @@ Your app can implement any combination of these interfaces:
 
 | Interface | Method | Purpose |
 |-----------|--------|---------|
-| `HasDocuments` | `Documents() []any` | Register document types |
+| `HasDocuments` | `Documents() []document.Document` | Register document types |
 | `HasRoutes` | `Routes(r chi.Router)` | Register HTTP handlers |
 | `HasMiddleware` | `Middleware() []func(http.Handler) http.Handler` | Add global middleware |
 | `HasNavItems` | `NavItems() []burrow.NavItem` | Contribute navigation entries |

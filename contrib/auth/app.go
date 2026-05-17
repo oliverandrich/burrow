@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/den/document"
 
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/urfave/cli/v3"
@@ -161,8 +162,8 @@ func (a *App) StaticFS() (string, fs.FS) {
 }
 
 // Documents returns the Den document types registered by this app.
-func (a *App) Documents() []any {
-	return []any{&User{}, &Credential{}, &RecoveryCode{}, &EmailVerificationToken{}, &Invite{}}
+func (a *App) Documents() []document.Document {
+	return []document.Document{&User{}, &Credential{}, &RecoveryCode{}, &EmailVerificationToken{}, &Invite{}}
 }
 
 // TranslationFS returns the embedded translation files for auto-discovery by the i18n app.

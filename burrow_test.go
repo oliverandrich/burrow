@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -29,7 +30,7 @@ type fullApp struct {
 }
 
 func (a *fullApp) Name() string                                      { return "full" }
-func (a *fullApp) Documents() []any                                  { return nil }
+func (a *fullApp) Documents() []document.Document                    { return nil }
 func (a *fullApp) Middleware() []func(http.Handler) http.Handler     { return nil }
 func (a *fullApp) NavItems() []NavItem                               { return nil }
 func (a *fullApp) Flags(_ func(string) cli.ValueSource) []cli.Flag   { return nil }

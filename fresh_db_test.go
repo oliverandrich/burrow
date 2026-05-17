@@ -46,14 +46,14 @@ func TestFreshDB_EmptyTableReturnsEmptyResults(t *testing.T) {
 // docApp is a test helper implementing App + HasDocuments.
 type docApp struct {
 	name string
-	docs []any
+	docs []document.Document
 }
 
-func (a *docApp) Name() string     { return a.name }
-func (a *docApp) Documents() []any { return a.docs }
+func (a *docApp) Name() string                   { return a.name }
+func (a *docApp) Documents() []document.Document { return a.docs }
 
 func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
-	appA := &docApp{name: "app_a", docs: []any{&testItem{}}}
+	appA := &docApp{name: "app_a", docs: []document.Document{&testItem{}}}
 	appB := &minimalApp{} // no documents
 
 	srv := NewServer(appA, appB)
@@ -126,7 +126,7 @@ func TestFreshDB_RegisterDocumentsIdempotent(t *testing.T) {
 }
 
 func TestFreshDB_BootstrapAndHandleRequestsCleanly(t *testing.T) {
-	appA := &docApp{name: "things", docs: []any{&testItem{}}}
+	appA := &docApp{name: "things", docs: []document.Document{&testItem{}}}
 	srv := NewServer(appA)
 	db := testDB(t)
 

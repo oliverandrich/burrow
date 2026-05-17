@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/document"
 	"github.com/urfave/cli/v3"
 )
 
@@ -56,8 +57,8 @@ func New(opts ...Option) *App {
 func (a *App) Name() string { return "jobs" }
 
 // Documents returns the document types for this app.
-func (a *App) Documents() []any {
-	return []any{&Job{}}
+func (a *App) Documents() []document.Document {
+	return []document.Document{&Job{}}
 }
 
 func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {

@@ -12,6 +12,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/den/document"
 	"github.com/urfave/cli/v3"
 )
 
@@ -45,8 +46,8 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 func (a *App) TranslationFS() fs.FS { return translationFS }
 
 // Documents returns the Den document types registered by this app.
-func (a *App) Documents() []any {
-	return []any{&Note{}}
+func (a *App) Documents() []document.Document {
+	return []document.Document{&Note{}}
 }
 
 // TemplateFS returns the embedded HTML template files.

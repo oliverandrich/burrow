@@ -52,15 +52,15 @@ Apps can implement any combination of these interfaces. The framework detects th
 
 ```go
 type HasDocuments interface {
-    Documents() []any
+    Documents() []document.Document
 }
 ```
 
 Returns a slice of document type instances that Den should register. Called during startup before `Configure()`. Den inspects each type's struct tags and creates or updates the underlying collections and indexes automatically:
 
 ```go
-func (a *App) Documents() []any {
-    return []any{&Note{}, &Tag{}}
+func (a *App) Documents() []document.Document {
+    return []document.Document{&Note{}, &Tag{}}
 }
 ```
 

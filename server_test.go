@@ -59,7 +59,7 @@ type testThing struct {
 }
 
 func TestServerBootstrap(t *testing.T) {
-	app := &docApp{name: "things", docs: []any{&testThing{}}}
+	app := &docApp{name: "things", docs: []document.Document{&testThing{}}}
 
 	s := NewServer(app)
 	db := testDB(t)

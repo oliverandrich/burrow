@@ -180,8 +180,8 @@ Core flags include `--host`, `--port`, `--database-dsn`, `--log-level`, `--log-f
 Apps declare their document types by implementing `HasDocuments`:
 
 ```go
-func (a *App) Documents() []any {
-    return []any{&Poll{}, &Choice{}}
+func (a *App) Documents() []document.Document {
+    return []document.Document{&Poll{}, &Choice{}}
 }
 ```
 

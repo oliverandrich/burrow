@@ -142,6 +142,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/document"
 	"github.com/urfave/cli/v3"
 )
 
@@ -190,9 +191,12 @@ type NavLink struct {
 
 // HasDocuments is implemented by apps that register Den document types.
 // The returned slice should contain zero-value pointers, e.g. &User{}, &Job{}.
-// Den's Register() creates tables and indexes automatically from the struct tags.
+// [document.Document] is Den's sealed marker interface — only types that
+// embed [document.Base] satisfy it, so non-document types fail at compile
+// time. Den's Register() creates tables and indexes automatically from the
+// struct tags.
 type HasDocuments interface {
-	Documents() []any
+	Documents() []document.Document
 }
 
 // HasMiddleware is implemented by apps that contribute HTTP middleware.

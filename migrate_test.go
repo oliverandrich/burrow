@@ -20,7 +20,7 @@ func TestRegistryRegisterDocumentsCreatesTable(t *testing.T) {
 	db := testDB(t)
 	reg := NewRegistry()
 
-	app := &docApp{name: "widgets", docs: []any{&testWidget{}}}
+	app := &docApp{name: "widgets", docs: []document.Document{&testWidget{}}}
 	reg.Add(app)
 
 	err := reg.RegisterDocuments(t.Context(), db)
@@ -37,7 +37,7 @@ func TestRegistryRegisterDocumentsSkipsNonDocumentApps(t *testing.T) {
 	db := testDB(t)
 	reg := NewRegistry()
 
-	reg.Add(&docApp{name: "docapp", docs: []any{&testWidget{}}})
+	reg.Add(&docApp{name: "docapp", docs: []document.Document{&testWidget{}}})
 	reg.Add(&minimalApp{}) // Not HasDocuments, should be skipped.
 
 	err := reg.RegisterDocuments(t.Context(), db)
@@ -53,7 +53,7 @@ func TestRegistryRegisterDocumentsIdempotent(t *testing.T) {
 	db := testDB(t)
 	reg := NewRegistry()
 
-	app := &docApp{name: "widgets", docs: []any{&testWidget{}}}
+	app := &docApp{name: "widgets", docs: []document.Document{&testWidget{}}}
 	reg.Add(app)
 
 	// Register three times — all should succeed.
@@ -79,8 +79,8 @@ func TestRegistryRegisterDocumentsMultipleApps(t *testing.T) {
 		Value string `json:"value"`
 	}
 
-	reg.Add(&docApp{name: "app_a", docs: []any{&testWidget{}}})
-	reg.Add(&docApp{name: "app_b", docs: []any{&testSetting{}}})
+	reg.Add(&docApp{name: "app_a", docs: []document.Document{&testWidget{}}})
+	reg.Add(&docApp{name: "app_b", docs: []document.Document{&testSetting{}}})
 
 	err := reg.RegisterDocuments(t.Context(), db)
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestRegistryRegisterDocumentsWithDependencyOrder(t *testing.T) {
 	reg := NewRegistry()
 
 	// Register in dependency order.
-	reg.Add(&docApp{name: "base", docs: []any{&testWidget{}}})
+	reg.Add(&docApp{name: "base", docs: []document.Document{&testWidget{}}})
 	reg.Add(&struct {
 		docApp
 	}{docApp: docApp{name: "child", docs: nil}})

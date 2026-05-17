@@ -106,8 +106,8 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     return nil
 }
 
-func (a *App) Documents() []any {
-    return []any{&Question{}, &Choice{}}
+func (a *App) Documents() []document.Document {
+    return []document.Document{&Question{}, &Choice{}}
 }
 ```
 

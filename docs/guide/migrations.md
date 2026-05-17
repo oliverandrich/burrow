@@ -12,8 +12,8 @@ Den handles schema management automatically based on your document struct defini
 ## Implementing HasDocuments
 
 ```go
-func (a *App) Documents() []any {
-    return []any{
+func (a *App) Documents() []document.Document {
+    return []document.Document{
         &Note{},
         &Tag{},
     }
