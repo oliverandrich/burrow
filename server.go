@@ -167,15 +167,11 @@ func (s *Server) Flags(configSource func(key string) cli.ValueSource) []cli.Flag
 // It opens the database, runs migrations, bootstraps apps,
 // configures apps, and starts the HTTP server with graceful shutdown.
 func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
-	cfg := NewConfig(cmd)
-
-	if err := cfg.ValidateTLS(cmd); err != nil {
+	cfg, cleanup, err := s.boot(ctx, cmd)
+	if err != nil {
 		return err
 	}
-
-	if cfg.Server.BaseURL == "" {
-		cfg.Server.BaseURL = cfg.ResolveBaseURL()
-	}
+	defer cleanup()
 
 	slog.Info("starting server",
 		"host", cfg.Server.Host,
@@ -183,52 +179,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		"base_url", cfg.Server.BaseURL,
 	)
 
-	// Create i18n bundle from core config (before bootstrap so apps get WithLocale).
-	langs := strings.Split(cfg.I18n.SupportedLanguages, ",")
-	bundle, err := i18n.NewBundle(cfg.I18n.DefaultLanguage, langs)
-	if err != nil {
-		return fmt.Errorf("create i18n bundle: %w", err)
-	}
-	s.i18nBundle = bundle
-
-	storage, err := openStorage(cfg.Storage)
-	if err != nil {
-		return fmt.Errorf("open storage: %w", err)
-	}
-
-	var dbOpts []den.Option
-	if storage != nil {
-		dbOpts = append(dbOpts, den.WithStorage(storage))
-	}
-
-	db, err := OpenDB(ctx, cfg.Database.DSN, dbOpts...)
-	if err != nil {
-		return fmt.Errorf("open database: %w", err)
-	}
-	defer func() {
-		if closeErr := db.Close(); closeErr != nil {
-			slog.Error("failed to close database", "error", closeErr)
-		}
-	}()
-
-	if err := s.bootstrap(ctx, db, cfg); err != nil {
-		return err
-	}
-
-	// Load translations from all HasTranslations apps.
-	for _, app := range s.registry.Apps() {
-		if p, ok := app.(HasTranslations); ok {
-			if err := s.i18nBundle.AddTranslations(p.TranslationFS()); err != nil {
-				return fmt.Errorf("load translations from %q: %w", app.Name(), err)
-			}
-		}
-	}
-
-	if err := s.registry.Configure(s.appCfg, cmd); err != nil {
-		return err
-	}
-
-	if s.appCfg.Config.Server.Seed {
+	if cfg.Server.Seed {
 		if err := s.registry.Seed(ctx); err != nil {
 			return fmt.Errorf("seed: %w", err)
 		}
@@ -295,6 +246,121 @@ func (s *Server) bootstrap(ctx context.Context, db *den.DB, cfg *Config) error {
 	}
 
 	return nil
+}
+
+// boot performs the initialisation steps shared between [Server.Run] (which
+// serves HTTP) and [Server.CLICommands] (which runs framework subcommands):
+// build the Config, open storage and database, bootstrap document types, load
+// translations, and Configure all apps. Returns the parsed Config and a
+// cleanup function the caller must defer (closes the database).
+//
+// Boot does NOT run Seed, build templates, or start the HTTP server — those
+// are HTTP-server-specific and live in [Server.Run].
+func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), error) {
+	cfg := NewConfig(cmd)
+
+	if err := cfg.ValidateTLS(cmd); err != nil {
+		return nil, nil, err
+	}
+
+	if cfg.Server.BaseURL == "" {
+		cfg.Server.BaseURL = cfg.ResolveBaseURL()
+	}
+
+	// Create i18n bundle from core config (before bootstrap so apps get WithLocale).
+	langs := strings.Split(cfg.I18n.SupportedLanguages, ",")
+	bundle, err := i18n.NewBundle(cfg.I18n.DefaultLanguage, langs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create i18n bundle: %w", err)
+	}
+	s.i18nBundle = bundle
+
+	storage, err := openStorage(cfg.Storage)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open storage: %w", err)
+	}
+
+	var dbOpts []den.Option
+	if storage != nil {
+		dbOpts = append(dbOpts, den.WithStorage(storage))
+	}
+
+	db, err := OpenDB(ctx, cfg.Database.DSN, dbOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open database: %w", err)
+	}
+	cleanup := func() {
+		if closeErr := db.Close(); closeErr != nil {
+			slog.Error("failed to close database", "error", closeErr)
+		}
+	}
+
+	if err := s.bootstrap(ctx, db, cfg); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+
+	// Load translations from all HasTranslations apps.
+	for _, app := range s.registry.Apps() {
+		if p, ok := app.(HasTranslations); ok {
+			if err := s.i18nBundle.AddTranslations(p.TranslationFS()); err != nil {
+				cleanup()
+				return nil, nil, fmt.Errorf("load translations from %q: %w", app.Name(), err)
+			}
+		}
+	}
+
+	if err := s.registry.Configure(s.appCfg, cmd); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+
+	return cfg, cleanup, nil
+}
+
+// CLICommands returns CLI subcommands from all HasCLICommands apps, each
+// wrapped to run inside the framework's boot lifecycle: the wrapped Action
+// calls [Server.boot] (open DB, bootstrap, Configure all apps) before the
+// original Action fires, and closes the database afterwards. Without this
+// wrapping, contrib subcommands like `auth promote` would run against
+// uninitialised apps and fail with errors like "auth app not initialized".
+//
+// Use this in place of `srv.Registry().AllCLICommands()` when wiring
+// subcommands into a [cli.Command]:
+//
+//	cmd := &cli.Command{
+//	    Flags:    srv.Flags(nil),
+//	    Action:   srv.Run,
+//	    Commands: srv.CLICommands(),
+//	}
+//
+// Each returned command is a shallow copy of the registry's original; only
+// Action is replaced. Mutating the returned commands' slice fields (Flags,
+// Commands, Arguments) would also mutate the registry's originals — don't.
+//
+// Limitations: sub-subcommands (a contrib subcommand's own nested Commands)
+// are not recursively wrapped, and the top-level Action must be non-nil
+// (a command that only forwards to sub-subcommands is not supported here).
+func (s *Server) CLICommands() []*cli.Command {
+	raw := s.registry.AllCLICommands()
+	out := make([]*cli.Command, len(raw))
+	for i, c := range raw {
+		wrapped := *c
+		orig := c.Action
+		wrapped.Action = func(ctx context.Context, cmd *cli.Command) error {
+			if orig == nil {
+				return nil
+			}
+			_, cleanup, err := s.boot(ctx, cmd)
+			if err != nil {
+				return err
+			}
+			defer cleanup()
+			return orig(ctx, cmd)
+		}
+		out[i] = &wrapped
+	}
+	return out
 }
 
 func layoutMiddleware(name string) func(http.Handler) http.Handler {

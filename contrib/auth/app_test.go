@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -682,6 +683,53 @@ func TestCLICreateInvite(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, invites, 1)
 	assert.Equal(t, "test@example.com", invites[0].Email)
+}
+
+// TestCLIPromoteThroughServerCLICommands is the end-to-end variant of
+// TestCLIPromote: it goes through the framework's boot lifecycle (
+// Server.CLICommands -> wrapped Action -> Server.boot -> auth.Configure ->
+// promote.Action) rather than constructing &App{repo: repo} directly. Without
+// the wrap, the test reproduces the user-reported regression: the promote
+// subcommand fires before Configure() runs, a.repo is nil, and the action
+// fails with "auth app not initialized".
+func TestCLIPromoteThroughServerCLICommands(t *testing.T) {
+	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
+	ctx := t.Context()
+
+	// Pre-seed: open the DB ourselves and create alice, then close. The CLI
+	// subcommand opens its own connection after; SQLite's WAL backend handles
+	// serial reopens cleanly. We do the same dance again at the end to verify.
+	{
+		db, err := burrow.OpenDB(ctx, dsn)
+		require.NoError(t, err)
+		app := New()
+		require.NoError(t, den.Register(ctx, db, app.Documents()...))
+		repo := NewRepository(db)
+		_, err = repo.CreateUser(ctx, "alice", "")
+		require.NoError(t, err)
+		require.NoError(t, db.Close())
+	}
+
+	// Wire up Server with auth registered (plus auth's declared dependencies)
+	// and invoke promote via the wrapped subcommand path.
+	srv := burrow.NewServer(session.New(), New())
+	cmd := &cli.Command{
+		Name:     "test",
+		Flags:    srv.Flags(nil),
+		Commands: srv.CLICommands(),
+	}
+	err := cmd.Run(ctx, []string{"test", "--database-dsn", dsn, "promote", "alice"})
+	require.NoError(t, err, "promote subcommand must succeed when wrapped by Server.CLICommands")
+
+	// Verify alice's role is admin in the database.
+	db, err := burrow.OpenDB(ctx, dsn)
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+	require.NoError(t, den.Register(ctx, db, New().Documents()...))
+	repo := NewRepository(db)
+	user, err := repo.GetUserByUsername(ctx, "alice")
+	require.NoError(t, err)
+	assert.Equal(t, RoleAdmin, user.Role)
 }
 
 // --- Admin tests ---

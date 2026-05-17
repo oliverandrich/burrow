@@ -37,6 +37,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **Den bumped to v0.12.1.** Picks up the PostgreSQL `GroupBy + cursor pagination` bugfix (not exercised by burrow but useful for downstream apps), `Link[T]` JSON encode/decode fast-paths, and the validation skip for tag-less document types — read-path and write-path allocation reductions in the 3-37% range with no API impact.
 - **`contrib/jobs` `RescueStale` runs as a single bulk update** instead of an `All` + per-row `UpdateOne` loop, using the new Den 0.12 `QuerySet.Update` write terminal. Closes the race window between snapshot and rescue — the `status=running` guard is now re-evaluated at write time. No public API change.
 
+### Fixed
+
+- **CLI subcommands (`auth promote`, `auth demote`, `auth create-invite`) now run with apps Configure()'d.** New `Server.CLICommands()` returns the same subcommands as `Server.Registry().AllCLICommands()` but wraps each Action to open the DB and run the full Configure pipeline first. Without this, the subcommand fired against uninitialised apps and failed with `auth app not initialized`. **Migration:** in your `cli.Command{...}`, replace `Commands: srv.Registry().AllCLICommands()` with `Commands: srv.CLICommands()`. The boot phase of `Server.Run` was extracted into a private helper so both paths share it.
+
 ## 0.18.1 — 2026-05-06
 
 ### Fixed

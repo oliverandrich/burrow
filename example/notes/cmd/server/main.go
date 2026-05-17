@@ -73,7 +73,7 @@ func main() {
 		Version:  version,
 		Flags:    srv.Flags(nil),
 		Action:   srv.Run,
-		Commands: srv.Registry().AllCLICommands(),
+		Commands: srv.CLICommands(),
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {

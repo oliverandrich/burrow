@@ -67,16 +67,18 @@ The dashboard is available at `GET /admin/`.
 
 The CLI subcommands for user management (`promote`, `demote`, `create-invite`) are contributed by the **auth** app via `HasCLICommands`, not by the admin app itself. See [Auth docs](auth.md) for details.
 
-To wire up CLI commands from all apps, add them to your `cli.Command`:
+To wire up CLI commands from all apps, add them to your `cli.Command` via `srv.CLICommands()`:
 
 ```go
 cmd := &cli.Command{
     Name:     "myapp",
     Flags:    srv.Flags(nil),
     Action:   srv.Run,
-    Commands: srv.Registry().AllCLICommands(),
+    Commands: srv.CLICommands(),
 }
 ```
+
+`srv.CLICommands()` wraps each subcommand's `Action` so the framework's boot lifecycle (database open, `Configure()` on every app) runs before the subcommand fires. The raw `srv.Registry().AllCLICommands()` skips that step and is wrong for contrib subcommands that depend on configured state (e.g. `auth promote`).
 
 ## HasAdmin Interface
 

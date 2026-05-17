@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -176,4 +177,40 @@ func TestServerRunAction(t *testing.T) {
 	// The server should start and stop cleanly on cancelled context.
 	require.NoError(t, err)
 	assert.True(t, app.configured)
+}
+
+// TestServerCLICommandsConfigureBeforeAction pins the contract that subcommands
+// returned by Server.CLICommands() run inside the framework's boot lifecycle —
+// i.e. Configure() runs on every Configurable app before any subcommand Action
+// fires. Without the wrap (raw Registry.AllCLICommands), Action runs against
+// uninitialised apps (a.repo == nil etc.).
+func TestServerCLICommandsConfigureBeforeAction(t *testing.T) {
+	var actionRan, configuredAtAction bool
+
+	app := &trackingApp{name: "testapp"}
+	app.commands = []*cli.Command{
+		{
+			Name: "myop",
+			Action: func(_ context.Context, _ *cli.Command) error {
+				configuredAtAction = app.configured
+				actionRan = true
+				return nil
+			},
+		},
+	}
+
+	s := NewServer(app)
+	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
+
+	cmd := &cli.Command{
+		Name:     "test",
+		Flags:    s.Flags(nil),
+		Commands: s.CLICommands(),
+	}
+
+	err := cmd.Run(t.Context(), []string{"test", "--database-dsn", dsn, "myop"})
+	require.NoError(t, err)
+
+	assert.True(t, actionRan, "subcommand Action must have fired")
+	assert.True(t, configuredAtAction, "Configure must have run before the subcommand Action")
 }
