@@ -1,7 +1,6 @@
 package burrow
 
 import (
-	"context"
 	"encoding/json"
 	"html/template"
 	"io/fs"
@@ -12,7 +11,6 @@ import (
 	"testing/fstest"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/oliverandrich/burrow/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,29 +68,17 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	srv := NewServer(app)
 	srv.SetLayout("integration/layout")
 
-	// Open an in-memory database, matching the real boot sequence.
-	db, err := OpenDB(t.Context(), "sqlite://:memory:")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	// Drive boot through srv.boot so future changes to the framework's
+	// initialisation sequence (DB open, i18n, bootstrap, Configure) apply
+	// here automatically. boot needs a *cli.Command for NewConfig(cmd) —
+	// a no-op Run populates the flag values which boot then reads.
+	ctx := t.Context()
+	cmd := testCommand(srv.Flags(nil))
+	require.NoError(t, cmd.Run(ctx, []string{"test", "--database-dsn", "sqlite://:memory:"}))
 
-	// Create i18n bundle (required by the boot sequence).
-	bundle, err := i18n.NewBundle("en", []string{"en"})
+	_, cleanup, err := srv.boot(ctx, cmd)
 	require.NoError(t, err)
-	srv.i18nBundle = bundle
-
-	// Bootstrap: migrations.
-	cfg := &Config{
-		Server:   ServerConfig{Host: "localhost", Port: 8080, BaseURL: "http://localhost:8080"},
-		Database: DatabaseConfig{DSN: "sqlite://:memory:"},
-		I18n:     I18nConfig{DefaultLanguage: "en", SupportedLanguages: "en"},
-	}
-	ctx := context.Background()
-	err = srv.bootstrap(ctx, db, cfg)
-	require.NoError(t, err)
-
-	// Configure apps (mirrors Run()).
-	err = srv.registry.Configure(srv.appCfg, nil)
-	require.NoError(t, err)
+	t.Cleanup(cleanup)
 
 	// Register core request func map providers (mirrors Run()).
 	srv.requestFuncMapProviders = append(srv.requestFuncMapProviders, srv.i18nBundle.RequestFuncMap)
