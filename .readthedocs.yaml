@@ -10,7 +10,7 @@ build:
     pre_build:
       - cp CHANGELOG.md docs/changelog.md
       - cp THIRD_PARTY_LICENSES.md docs/third-party-licenses.md
-      - ./scripts/generate-llms-full.sh
+      - ./mise-tasks/generate-llms-full
     build:
       html:
         - zensical build
