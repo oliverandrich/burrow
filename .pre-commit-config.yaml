@@ -1,26 +1,39 @@
 repos:
-  - repo: https://github.com/tekwizely/pre-commit-golang
-    rev: v1.0.0-rc.4
-    hooks:
-      - id: golangci-lint-mod
-      - id: go-vulncheck-mod
-      - id: go-test-mod
-      - id: go-mod-tidy
-
   - repo: local
     hooks:
+      - id: golangci-lint
+        name: golangci-lint
+        entry: golangci-lint run ./...
+        language: system
+        files: '\.go$'
+        pass_filenames: false
+
+      - id: govulncheck
+        name: govulncheck
+        entry: govulncheck ./...
+        language: system
+        files: '\.go$|^go\.(mod|sum)$'
+        pass_filenames: false
+
+      - id: go-test
+        name: go test
+        entry: go test ./...
+        language: system
+        files: '\.go$'
+        pass_filenames: false
+
+      - id: go-mod-tidy
+        name: go mod tidy
+        entry: go mod tidy
+        language: system
+        files: '^go\.(mod|sum)$'
+        pass_filenames: false
+
       - id: licenses
         name: Regenerate THIRD_PARTY_LICENSES.md
         entry: ./scripts/generate-licenses.sh
         language: system
         files: 'go\.(mod|sum)$'
-        pass_filenames: false
-
-      - id: sass-theme
-        name: Compile Bootstrap Sass theme
-        entry: mise run sass
-        language: system
-        files: 'contrib/bootstrap/scss/.*\.scss$'
         pass_filenames: false
 
       - id: no-compiled-binaries

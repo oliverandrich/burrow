@@ -1,7 +1,7 @@
 [tools]
 go = "1.26"
 "go:github.com/mfridman/tparse" = "latest"
-"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "latest"
+"golangci-lint" = "latest"
 "go:golang.org/x/tools/cmd/goimports" = "latest"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 "go:github.com/google/go-licenses" = "latest"
