@@ -57,25 +57,72 @@ Returns all CLI flags: core framework flags merged with flags from all `HasFlags
 func (s *Server) Run(ctx context.Context, cmd *cli.Command) error
 ```
 
-Boots and starts the server. This is a `cli.ActionFunc` — pass it directly to `cli.Command.Action`.
+Boots and starts the HTTP server. This is a `cli.ActionFunc` — pass it directly to `cli.Command.Action`.
+
+#### CLICommands
+
+```go
+func (s *Server) CLICommands() []*cli.Command
+```
+
+Returns the CLI subcommands from all `HasCLICommands` apps, each wrapped to run inside the framework's boot lifecycle. The wrapped `Action` opens the database, runs `Configure()` on every app, then invokes the original Action; the database is closed when it returns. Use this in place of `srv.Registry().AllCLICommands()` when wiring contrib subcommands like `auth promote`:
+
+```go
+cmd := &cli.Command{
+    Flags:    srv.Flags(nil),
+    Action:   srv.Run,
+    Commands: srv.CLICommands(),
+}
+```
+
+Without the wrapping, contrib subcommands would fire against uninitialised apps and fail with errors like `auth app not initialized`. `AllCLICommands` remains available on the registry as a low-level escape hatch when you want to manage the boot lifecycle yourself.
+
+#### TemplateExecutor
+
+```go
+type TemplateExecutor func(ctx context.Context, name string, data map[string]any) (template.HTML, error)
+
+func (s *Server) TemplateExecutor() TemplateExecutor
+```
+
+Returns the server's template executor. Use it after boot to render templates outside an HTTP handler — for example, from a background job or an SSE broadcast. Pair with [`burrow.WithTemplateExecutor`](context-helpers.md#withtemplateexecutor) to inject it into a context that `burrow.Render` / `burrow.RenderFragment` can pick up. Returns `nil` before templates have been built (i.e. before `Run`).
+
+```go
+func (a *App) Start(srv *burrow.Server) error {
+    a.worker = NewWorker(a.repo, srv.TemplateExecutor())
+    // worker calls burrow.RenderFragment with a context carrying the executor
+    return nil
+}
+```
 
 ### Boot Sequence
 
-When `Run()` is called, the following happens in order:
+`Server.Run` shares its boot phase with `Server.CLICommands` (both call the same internal `boot` helper) so that contrib subcommands run with the same fully-configured app graph as the HTTP server. The full ordering when `Run()` fires:
 
-1. **Parse config** — reads CLI flags, env vars, and TOML into a `Config` struct
-2. **Open database** — connects to Den (SQLite with WAL mode, or PostgreSQL)
-3. **Register documents** — calls `Documents()` on every `HasDocuments` app and registers types with Den
-4. **Configure apps** — calls `Configure()` on each `Configurable` app with the shared `AppConfig`
-5. **Seed database** — calls `Seed()` on each `Seedable` app (only when `--seed` flag is set)
-6. **Post-configure apps** — calls `PostConfigure()` on each `PostConfigurable` app
-7. **Build i18n bundle** — creates the i18n bundle from configured languages, loads translation files from all `HasTranslations` apps, and registers locale detection middleware
-8. **Build templates** — collects `.html` files from all `HasTemplates` apps and template functions from all `HasFuncMap` apps, parses them into a single global `*template.Template`
-9. **Create router** — sets up Chi with core middleware (request logger, request ID, gzip, body limit)
-10. **Inject context** — injects nav items (from `HasNavItems`), layout, template executor, and locale into the request context via middleware
-11. **Register middleware** — applies middleware from all `HasMiddleware` apps and injects request-scoped template functions (core `navLinks`/`navItems` plus `HasRequestFuncMap` contributions)
-12. **Register routes** — calls `Routes()` on all `HasRoutes` apps
-13. **Start HTTP server** — listens on the configured address with graceful shutdown and zero-downtime restart via SIGHUP (see [Deployment Guide](../guide/deployment.md))
+**Boot phase** (shared with `CLICommands`):
+
+1. **Parse config** — builds `*Config` from CLI flags, env vars, and TOML (`NewConfig(cmd)`)
+2. **Validate TLS** — checks `--tls-*` flags are coherent
+3. **Resolve base URL** — falls back to host/port if `--base-url` is unset
+4. **Create i18n bundle** — `i18n.NewBundle(defaultLang, supportedLangs)`; bundle is always present so `{{ t "..." }}` works even without `HasTranslations` apps
+5. **Open storage** — opens `den.Storage` for the `--storage-dsn` (skipped when empty)
+6. **Open database** — `OpenDB(ctx, dsn, den.WithStorage(...))` connects to Den (SQLite with WAL, or PostgreSQL)
+7. **Register documents** — `Registry.RegisterDocuments` calls `Documents()` on every `HasDocuments` app and hands them to `den.Register`
+8. **Build `AppConfig`** — `DB`, `Registry`, `Config`, `WithLocale` ready for `Configure`
+9. **Load translations** — for each `HasTranslations` app, `bundle.AddTranslations(app.TranslationFS())`
+10. **Configure + PostConfigure** — `Registry.Configure(cfg, cmd)` runs `Configure()` on every `Configurable` app, then a second pass runs `PostConfigure()` on every `PostConfigurable` (e.g. `contrib/jobs` discovers `HasJobs` handlers here, after all `Configure()` calls have run)
+
+**Run-only phase** (HTTP server):
+
+11. **Seed** — `Registry.Seed` calls `Seed()` on every `Seedable` app, but only when `--seed` is set
+12. **Register request-scoped template providers** — core registers `i18n.Bundle.RequestFuncMap` and `coreRequestFuncMap` (`navItems`, `navLinks`) before templates are parsed
+13. **Build templates** — collects `.html` files from all `HasTemplates` apps and `FuncMap()` from all `HasFuncMap` apps; parses into a single `*template.Template`. Per-request `HasRequestFuncMap` stubs are registered here too so templates parse cleanly
+14. **Create router** — Chi router with core middleware: request logger, request ID, gzip, body-size limit, locale middleware
+15. **Inject context middleware** — nav items (from `HasNavItems`), layout name, template executor
+16. **Apply contrib middleware** — `Registry.RegisterMiddleware` runs every `HasMiddleware` app
+17. **Apply contrib routes** — `Registry.RegisterRoutes` runs every `HasRoutes` app; default 404 / 405 handlers register last
+18. **Start background processes** — for every `Startable` app, `Start(srv)` runs (e.g. `contrib/jobs` launches its worker pool with the template executor)
+19. **Start HTTP server** — listens on the configured address with graceful shutdown and zero-downtime restart via SIGHUP (see [Deployment Guide](../guide/deployment.md))
 
 !!! note "Logging"
     The framework uses `slog.Default()` for all logging. Configure your preferred logger (text, JSON, [tint](https://github.com/lmittmann/tint), etc.) by calling `slog.SetDefault()` before starting the server.
@@ -156,13 +203,21 @@ func (r *Registry) AllFlags(configSource func(key string) cli.ValueSource) []cli
 
 Collects CLI flags from all `HasFlags` apps. Pass `nil` for CLI+ENV only.
 
+#### Configure
+
+```go
+func (r *Registry) Configure(cfg *AppConfig, cmd *cli.Command) error
+```
+
+Two-phase app configuration. First, `Configure()` runs on every `Configurable` app in registration order; then `PostConfigure()` runs on every `PostConfigurable` app. The two phases guarantee that all apps have completed `Configure()` before any `PostConfigure()` fires — required by apps like `contrib/jobs` that need to discover `HasJobs` handlers from other apps after they've been initialised. Called automatically by `Server.boot` (which `Server.Run` and `Server.CLICommands` share).
+
 #### ConfigureAll
 
 ```go
 func (r *Registry) ConfigureAll(cfg *AppConfig) error
 ```
 
-Calls `Configure()` on each `Configurable` app with the shared `AppConfig`.
+Test convenience: calls only the `Configure()` phase (no `PostConfigure`), passing `nil` for `*cli.Command`. Use in unit tests that don't go through `cli`; production code should call `Server.Run` / `Server.CLICommands` instead.
 
 #### AllCLICommands
 
@@ -170,7 +225,7 @@ Calls `Configure()` on each `Configurable` app with the shared `AppConfig`.
 func (r *Registry) AllCLICommands() []*cli.Command
 ```
 
-Collects CLI subcommands from all `HasCLICommands` apps.
+Collects CLI subcommands from all `HasCLICommands` apps **without** the boot-lifecycle wrapping that `Server.CLICommands` adds. Use this only when you need raw access to the registered subcommands — most projects should call `srv.CLICommands()` instead so contrib subcommands like `auth promote` run against a fully-configured app graph.
 
 #### Seed
 

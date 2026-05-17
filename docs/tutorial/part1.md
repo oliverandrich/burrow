@@ -84,7 +84,7 @@ You should see log output indicating the server has started. Burrow creates an `
 
 ## What Happens at Boot
 
-When `srv.Run` is called, Burrow follows this sequence:
+When `srv.Run` is called, Burrow follows roughly this sequence:
 
 1. Parse configuration from CLI flags, environment variables, and TOML files
 2. Open the database via Den (SQLite with WAL mode, or PostgreSQL)
@@ -95,6 +95,8 @@ When `srv.Run` is called, Burrow follows this sequence:
 7. Apply middleware from all `HasMiddleware` apps
 8. Register routes from all `HasRoutes` apps
 9. Start the HTTP server with graceful shutdown
+
+This is the short version. The full ordering — i18n bundle creation, storage opening, translation loading, the second `PostConfigure` pass, seeding, and background-process startup — is documented in [Boot Sequence](../reference/server.md#boot-sequence). You won't need that level of detail until later in the tutorial.
 
 ## Built-in CLI Flags
 
