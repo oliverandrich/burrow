@@ -49,6 +49,7 @@ import (
 
     "github.com/oliverandrich/burrow"
     "github.com/oliverandrich/burrow/contrib/healthcheck"
+    _ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
     "github.com/urfave/cli/v3"
 )
 

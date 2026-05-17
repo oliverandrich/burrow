@@ -147,4 +147,5 @@ ctx := messages.Inject(context.Background(), []messages.Message{
 |-----------|-------------|
 | `burrow.App` | Required: `Name()` |
 | `burrow.HasMiddleware` | Flash message middleware (read from session, inject into context, clear) |
+| `burrow.HasRequestFuncMap` | Provides the `messages` template function used in layouts |
 | `burrow.HasDependencies` | Declares dependency on `session` |

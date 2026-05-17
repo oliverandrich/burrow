@@ -315,6 +315,27 @@ burrow.PageURL("/notes", "q=alpha&sort=-created_at", 3)
 
 See [Pagination Guide](../guide/pagination.md) for full usage examples.
 
+## Database
+
+### OpenDB
+
+```go
+func OpenDB(ctx context.Context, dsn string, opts ...den.Option) (*den.DB, error)
+```
+
+Opens a Den database for the given DSN. The matching backend must be blank-imported by the calling binary so its `init()` registers the URL scheme with Den:
+
+```go
+import (
+    _ "github.com/oliverandrich/den/backend/sqlite"   // for sqlite:// DSNs
+    _ "github.com/oliverandrich/den/backend/postgres" // for postgres:// DSNs
+)
+```
+
+If the DSN's scheme has no matching blank-import, `OpenDB` returns an error naming the missing import path. SQLite DSNs auto-create the parent directory and apply burrow's PRAGMA tuning (WAL, foreign keys, busy timeout). Pass `den.WithStorage(...)` via `opts` to attach a `den.Storage` so `mediaURL` becomes available in templates.
+
+`Server.boot` calls `OpenDB` for you using `--database-dsn` plus the storage configured via `--storage-dsn`; you only call `OpenDB` directly in tests or one-off CLI tools that don't go through `Server.Run`. Test code should prefer [`burrowtest.DB`](../guide/testing.md#burrowtestdb), which wraps `OpenDB` against a file-backed SQLite DSN under `t.TempDir()`.
+
 ## Configuration Helpers
 
 ### FlagSources
