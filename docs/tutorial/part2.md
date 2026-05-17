@@ -23,18 +23,21 @@ package polls
 
 import (
     "context"
+    "fmt"
     "time"
 
     "github.com/oliverandrich/burrow"
     "github.com/oliverandrich/den"
     "github.com/oliverandrich/den/document"
     "github.com/oliverandrich/den/where"
+    "github.com/urfave/cli/v3"
 )
 
 type Question struct {
     document.Base
-    Text        string    `json:"text" den:"index"`
-    PublishedAt time.Time `json:"published_at"`
+    PublishedAt time.Time `json:"published_at" den:"index"`
+    Text        string    `json:"text"`
+    Choices     []Choice  `json:"-"`
 }
 
 type Choice struct {
@@ -48,8 +51,8 @@ type Choice struct {
 Key points:
 
 - **`document.Base`** provides ULID-based ID, revision tracking, and timestamps
-- **`den:"index"`** tags add secondary indexes for efficient queries
-- **Relations** between questions and choices are managed via the `QuestionID` field — Den uses document references rather than ORM-style relation declarations
+- **`den:"index"`** tags add secondary indexes for efficient queries — `PublishedAt` is indexed because we sort the question list by it
+- **`Choices []Choice` with `json:"-"`** is a regular Go slice that we populate manually from a follow-up `Choice` query (see `GetQuestion` below); the `json:"-"` tag keeps it out of Den's persisted JSON. There is no ORM-style relation declaration — Den uses document references via the `QuestionID` field
 
 ### Document Registration
 
@@ -72,21 +75,43 @@ func NewRepository(db *den.DB) *Repository {
 }
 
 func (r *Repository) ListQuestions(ctx context.Context) ([]Question, error) {
-    return den.NewQuery[Question](r.db).
+    ptrs, err := den.NewQuery[Question](r.db).
         Sort("published_at", den.Desc).
+        Sort("_id", den.Desc).
         All(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("list questions: %w", err)
+    }
+    questions := make([]Question, len(ptrs))
+    for i, p := range ptrs {
+        questions[i] = *p
+    }
+    return questions, nil
 }
 
 func (r *Repository) GetQuestion(ctx context.Context, id string) (*Question, error) {
-    return den.FindByID[Question](ctx, r.db, id)
-}
-
-func (r *Repository) GetChoicesForQuestion(ctx context.Context, questionID string) ([]Choice, error) {
-    return den.NewQuery[Choice](r.db,
-        where.Field("question_id").Eq(questionID),
-    ).All(ctx)
+    question, err := den.FindByID[Question](ctx, r.db, id)
+    if err != nil {
+        return nil, fmt.Errorf("get question %s: %w", id, err)
+    }
+    choicePtrs, err := den.NewQuery[Choice](r.db, where.Field("question_id").Eq(id)).All(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("get choices for question %s: %w", id, err)
+    }
+    choices := make([]Choice, len(choicePtrs))
+    for i, p := range choicePtrs {
+        choices[i] = *p
+    }
+    question.Choices = choices
+    return question, nil
 }
 ```
+
+Notes:
+
+- `den.NewQuery[T](...).All(ctx)` returns `[]*T`; the small conversion loop copies pointers into value slices so handlers can pass `Question` and `Choice` by value into templates without worrying about nil dereferences.
+- `ListQuestions` adds a secondary sort on `_id` (Den's internal ULID-based primary key) so questions with identical `PublishedAt` get a stable, newest-first order.
+- `GetQuestion` folds choices into the parent question. Den doesn't auto-load relations — you decide where the boundary lives, which keeps query patterns explicit.
 
 ### App Setup
 

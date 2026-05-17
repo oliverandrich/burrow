@@ -27,8 +27,9 @@ import (
     "net/http"
     "os"
 
-    "github.com/oliverandrich/burrow"
     "github.com/go-chi/chi/v5"
+    "github.com/oliverandrich/burrow"
+    _ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
     "github.com/urfave/cli/v3"
 )
 
@@ -70,6 +71,7 @@ func (a *homepageApp) Routes(r chi.Router) {
 
 A few things to note:
 
+- **The blank import `_ "github.com/oliverandrich/den/backend/sqlite"`** registers the SQLite backend with Den so `sqlite://` DSNs work. Every binary that opens a database must blank-import the backend that matches its DSN — Burrow doesn't pull either one in by default so production binaries only link the engine they actually use.
 - **`burrow.HandlerFunc`** has the signature `func(w http.ResponseWriter, r *http.Request) error` — just like the standard library, but with an error return. This lets you propagate errors instead of handling them in every handler.
 - **`burrow.Handle()`** wraps a `HandlerFunc` into a standard `http.HandlerFunc`. If the handler returns an `*HTTPError`, it sends the appropriate status code and message.
 - **`burrow.Text()`** is a helper that writes a plain text response.

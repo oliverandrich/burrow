@@ -21,11 +21,14 @@ mkdir -p internal/polls/templates/polls
 Add the following imports to `internal/polls/polls.go` (alongside the existing ones from Part 2):
 
 ```go
-"fmt"
+"embed"
+"io/fs"
 "net/http"
 
 "github.com/go-chi/chi/v5"
 ```
+
+`embed` and `io/fs` are needed for the `//go:embed templates` directive and the `fs.Sub` call below. (Part 2 already pulled in `fmt` for the repository's error wrapping.)
 
 Then add the interface implementations. The polls app now implements `HasTemplates`, `HasRoutes`, and `HasNavItems`:
 
@@ -118,7 +121,7 @@ And `internal/polls/templates/polls/results.html`:
 </div>
 <style>
 .poll-results{list-style:none;padding:0}
-.poll-results li{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--mu-muted-border-color)}
+.poll-results li{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border)}
 </style>
 {{- end }}
 ```
@@ -325,6 +328,7 @@ import (
     "github.com/oliverandrich/burrow"
     "github.com/oliverandrich/burrow/contrib/htmx"
     "github.com/oliverandrich/burrow/contrib/staticfiles"
+    _ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
     "github.com/urfave/cli/v3"
 
     "polls/internal/app"
