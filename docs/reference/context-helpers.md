@@ -55,6 +55,40 @@ func WithLayout(ctx context.Context, name string) context.Context
 
 Stores the app layout template name in the context. Used internally by the framework middleware.
 
+### RequestPath
+
+```go
+func RequestPath(ctx context.Context) string
+```
+
+Returns the current request path from the context. Set automatically by the template middleware for HTTP requests. Apps can use this to compute active-link state in custom navigation templates. Returns `""` if not set.
+
+### WithRequestPath
+
+```go
+func WithRequestPath(ctx context.Context, path string) context.Context
+```
+
+Stores the request path in the context. Used internally for HTTP requests; non-HTTP renderers (background jobs, SSE, CLI) should set it explicitly when nav-link highlighting is needed.
+
+### TemplateExec
+
+```go
+func TemplateExec(ctx context.Context) TemplateExecutor
+
+type TemplateExecutor func(ctx context.Context, name string, data map[string]any) (template.HTML, error)
+```
+
+Returns the template executor injected by the framework. For non-HTTP rendering, obtain one via `Server.TemplateExecutor()` after boot and store it with `WithTemplateExecutor`. Used internally by `Render` and `RenderFragment`.
+
+### WithTemplateExecutor
+
+```go
+func WithTemplateExecutor(ctx context.Context, exec TemplateExecutor) context.Context
+```
+
+Stores a template executor in the context.
+
 ### Generic Helpers
 
 ```go
@@ -86,26 +120,8 @@ func WithNavGroups(ctx context.Context, groups []NavGroup) context.Context
 
 Stores admin nav groups in the context. Used internally by the admin route middleware.
 
-### RequestPath
-
-```go
-func RequestPath(ctx context.Context) string
-```
-
-Returns the current request path from the context. Apps can use this to compute active-link state in their own navigation templates. (The admin app no longer reads this — it dropped its sidebar in favor of dashboard cards — but the helper remains for app-side use.) Returns `""` if not set.
-
-> **Deprecated:** `RequestPathFromContext` will be removed in a future version. Use `RequestPath` instead.
-
-### WithRequestPath
-
-```go
-func WithRequestPath(ctx context.Context, path string) context.Context
-```
-
-Stores the current request path in the context. Used internally by the admin route middleware.
-
 !!! note
-    The admin layout template name is injected via `burrow.WithLayout(ctx, "admin/layout")` inside the `/admin` route group — there is no separate `admin.Layout` or `admin.WithLayout` helper.
+    The admin layout template name is injected via `burrow.WithLayout(ctx, "admin/layout")` inside the `/admin` route group — there is no separate `admin.Layout` or `admin.WithLayout` helper. The request path lives in the root `burrow` package — use `burrow.RequestPath(ctx)` (see [Core Helpers](#core-helpers)). `admin.RequestPath` / `admin.WithRequestPath` / `admin.RequestPathFromContext` still exist as deprecated thin wrappers and will be removed in a future release.
 
 ## CSRF Helpers
 

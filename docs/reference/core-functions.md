@@ -353,14 +353,16 @@ See [Layouts & Rendering](../guide/layouts.md) for details on implementing layou
 ```go
 type NavItem struct {
     Label     string
-    LabelKey  string        // i18n message ID (used instead of Label when i18n is active)
+    LabelKey  string // i18n message ID (used instead of Label when i18n is active)
     URL       string
-    Icon      template.HTML // inline SVG, empty for no icon
-    Position  int           // sort order (lower = earlier)
-    AuthOnly  bool          // only shown to authenticated users
-    AdminOnly bool          // only shown to admin users
+    Icon      string // template-define name (e.g. "auth/icon_people"), empty for no icon
+    Position  int    // sort order (lower = earlier)
+    AuthOnly  bool   // only shown to authenticated users
+    AdminOnly bool   // only shown to admin users
 }
 ```
+
+Layouts render `Icon` via the `{{ icon "..." }}` template function — see [Template Functions](template-functions.md#core-functions).
 
 See [Navigation](../guide/navigation.md) for positioning and ordering.
 
@@ -370,7 +372,7 @@ See [Navigation](../guide/navigation.md) for positioning and ordering.
 type NavLink struct {
     Label    string
     URL      string
-    Icon     template.HTML
+    Icon     string // template-define name; render with {{ icon .Icon }}
     IsActive bool
 }
 ```

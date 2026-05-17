@@ -70,9 +70,9 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--auth-use-email` | `AUTH_USE_EMAIL` | `false` | Use email instead of username |
 | `--auth-require-verification` | `AUTH_REQUIRE_VERIFICATION` | `false` | Require email verification before login |
 | `--auth-invite-only` | `AUTH_INVITE_ONLY` | `false` | Require invite to register |
-| `--webauthn-rp-id` | `WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (domain name) |
-| `--webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | `Web App` | WebAuthn RP display name |
-| `--webauthn-rp-origin` | `WEBAUTHN_RP_ORIGIN` | (base URL) | WebAuthn RP origin |
+| `--auth-webauthn-rp-id` | `WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (domain name) |
+| `--auth-webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | `Web App` | WebAuthn RP display name |
+| `--auth-webauthn-rp-origin` | `WEBAUTHN_RP_ORIGIN` | (base URL) | WebAuthn RP origin |
 
 ### Jobs
 
@@ -83,13 +83,9 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--jobs-poll-interval` | `JOBS_POLL_INTERVAL` | `1s` | Interval between queue polls |
 | `--jobs-retry-base-delay` | `JOBS_RETRY_BASE_DELAY` | `30s` | Base delay for exponential retry backoff |
 
-### Uploads
+### Uploads / Storage
 
-| Flag | Env Var | Default | Description |
-|------|---------|---------|-------------|
-| `--uploads-dir` | `UPLOADS_DIR` | `./uploads` | Directory for uploaded files |
-| `--uploads-url-prefix` | `UPLOADS_URL_PREFIX` | `/uploads` | URL prefix for serving uploaded files |
-| `--uploads-allowed-types` | `UPLOADS_ALLOWED_TYPES` | (all) | Comma-separated list of allowed MIME types |
+Storage is configured via the core `--storage-dsn` flag (see [Storage](#storage) above), not separate `--uploads-*` flags. The `uploads` contrib app reads from the shared `den.Storage` opened by the core; there are no additional CLI flags.
 
 ### Rate Limit
 
@@ -121,6 +117,7 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--smtp-username` | `SMTP_USERNAME` | (none) | SMTP username |
 | `--smtp-password` | `SMTP_PASSWORD` | (none) | SMTP password |
 | `--smtp-from` | `SMTP_FROM` | `noreply@localhost` | Sender email address |
+| `--smtp-tls` | `SMTP_TLS` | `starttls` | TLS mode: `starttls`, `tls`, or `none` |
 
 ## TOML Config Example
 
