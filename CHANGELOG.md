@@ -627,7 +627,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - Reorganized guide sidebar into Core, Templates & UI, Advanced, and Deployment groups.
 - New guide: [Full-Text Search](guide/fts5.md) covering FTS5 virtual tables, triggers, sanitization, highlighting, and performance.
 - Added copyright footer to documentation site.
-- New guide: [Coming from Django](getting-started/coming-from-django.md) mapping Django concepts to Burrow equivalents with side-by-side code examples.
+- New guide: *Coming from Django*, mapping Django concepts to Burrow equivalents with side-by-side code examples.
 - Added request lifecycle diagram to the [Routing](guide/routing.md) guide.
 - Added "Why urfave/cli?" section to [Server & Registry](reference/server.md) reference.
 - New guide: [Testing](guide/testing.md) covering test helpers and patterns.
