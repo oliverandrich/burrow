@@ -4,47 +4,69 @@
         <li><a href="/admin/">Admin</a></li>
         <li aria-current="page">Polls</li>
     </ul>
-    <ul>
-        <li>
-            <form action="/admin/polls" method="GET">
-                <input type="search" class="input-sm" name="q" value="{{ .SearchTerm }}" placeholder="Search…" aria-label="Search">
-            </form>
-        </li>
-    </ul>
 </nav>
 <header>
     <h2>Polls</h2>
-    <a href="/admin/polls/new" role="button" class="btn btn-primary">New poll</a>
+    <form action="/admin/polls" method="GET">
+        <input type="search" name="q" value="{{ .SearchTerm }}" placeholder="Search…" aria-label="Search">
+        <a href="/admin/polls/new" class="btn">New poll</a>
+    </form>
 </header>
 {{- if .Questions }}
-<figure>
-    <table>
-        <thead>
-            <tr>
-                <th scope="col">Question</th>
-                <th scope="col">Published</th>
-                <th scope="col" class="admin-row-actions">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{- range .Questions }}
-            <tr>
-                <td><a href="/admin/polls/{{ .ID }}">{{ .Text }}</a></td>
-                <td>{{ .PublishedAt.Format "2006-01-02 15:04" }}</td>
-                <td class="admin-row-actions">
-                    <a href="/admin/polls/{{ .ID }}" role="button" class="btn btn-sm btn-outline btn-secondary">Edit</a>
-                    <button type="button" class="btn btn-sm btn-outline btn-error"
-                        hx-delete="/admin/polls/{{ .ID }}"
-                        hx-swap="none"
-                        hx-confirm="Delete this poll and all its choices?">Delete</button>
-                </td>
-            </tr>
-            {{- end }}
-        </tbody>
-    </table>
-</figure>
-{{ template "mucss/pagination" (dict "Page" .Page "BasePath" "/admin/polls" "RawQuery" .RawQuery) }}
+<table>
+    <thead>
+        <tr>
+            <th scope="col">Question</th>
+            <th scope="col">Published</th>
+            <th scope="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{- range .Questions }}
+        <tr>
+            <td><a href="/admin/polls/{{ .ID }}">{{ .Text }}</a></td>
+            <td>{{ .PublishedAt.Format "2006-01-02 15:04" }}</td>
+            <td>
+                <a href="/admin/polls/{{ .ID }}" class="btn btn-sm btn-outline">Edit</a>
+                <button type="button" class="btn btn-sm btn-error"
+                    hx-delete="/admin/polls/{{ .ID }}"
+                    hx-swap="none"
+                    hx-confirm="Delete this poll and all its choices?">Delete</button>
+            </td>
+        </tr>
+        {{- end }}
+    </tbody>
+</table>
+{{ template "polls/pagination" (dict "Page" .Page "BasePath" "/admin/polls" "RawQuery" .RawQuery) }}
 {{- else }}
 <p>No polls yet.</p>
+{{- end }}
+{{- end }}
+
+{{ define "polls/pagination" -}}
+{{ if gt .Page.TotalPages 1 -}}
+<nav aria-label="Page navigation">
+    <ul class="pagination">
+        {{ if le .Page.Page 1 -}}
+        <li><span aria-disabled="true">&laquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (sub .Page.Page 1) }}" aria-label="Previous">&laquo;</a></li>
+        {{- end }}
+        {{ range pageNumbers .Page.Page .Page.TotalPages -}}
+        {{ if eq . -1 -}}
+        <li><span aria-hidden="true">&hellip;</span></li>
+        {{- else if eq . $.Page.Page -}}
+        <li><span aria-current="page">{{ . }}</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL $.BasePath $.RawQuery . }}">{{ . }}</a></li>
+        {{- end }}
+        {{- end }}
+        {{ if not .Page.HasMore -}}
+        <li><span aria-disabled="true">&raquo;</span></li>
+        {{- else -}}
+        <li><a href="{{ pageURL .BasePath .RawQuery (add .Page.Page 1) }}" aria-label="Next">&raquo;</a></li>
+        {{- end }}
+    </ul>
+</nav>
 {{- end }}
 {{- end }}

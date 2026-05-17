@@ -26,7 +26,7 @@
 
 <style>
 .poll-results{list-style:none;padding:0}
-.poll-results li{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--mu-muted-border-color)}
+.poll-results li{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border)}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
@@ -34,7 +34,7 @@
 document.addEventListener("DOMContentLoaded", function() {
     const ctx = document.getElementById("results-chart");
     if (!ctx) return;
-    const primary = getComputedStyle(document.documentElement).getPropertyValue("--mu-primary").trim() || "#1095c1";
+    const primary = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#1095c1";
     new Chart(ctx, {
         type: "bar",
         data: {

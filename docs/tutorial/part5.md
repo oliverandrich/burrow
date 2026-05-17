@@ -21,8 +21,7 @@ srv := burrow.NewServer(
     staticApp,
     htmx.New(),
     messages.New(),
-    mucss.New(),
-    pages.New(),
+    app.New(),
     auth.New(),           // new
     polls.New(),
 )
@@ -76,7 +75,7 @@ Burrow automatically sorts apps by dependencies during `NewServer()`, so you don
 
 ## Show the User in the Navbar
 
-In `internal/pages/pages.go`, add the `auth` import:
+In `internal/app/app.go`, add the `auth` import:
 
 ```go
 "github.com/oliverandrich/burrow/contrib/auth"
@@ -93,41 +92,32 @@ layoutData := map[string]any{
 }
 ```
 
-Update the navbar in `internal/pages/templates/app/layout.html`. The brand and nav items stay in the left `<ul>`; the username, sign-out form, and theme switcher go into a second `<ul>` (µCSS's `<nav>` flex layout pushes them to the right automatically). Logout has to be a POST to defend against CSRF, so we use a small inline `<form>` with the submit button styled as a link:
+Update the navbar in `internal/app/templates/app/layout.html`. Add a `<li class="spacer"></li>` between the nav items and the user controls — the `.spacer` rule in `app.css` is a `flex: 1` filler that pushes the username and sign-out button to the right edge:
 
 ```html
-<nav class="container-fluid">
+<nav class="topnav">
     <ul>
-        <li><a href="/"><strong>Polls</strong></a></li>
+        <li><a href="/" class="brand">Polls</a></li>
         {{ range navLinks -}}
         <li><a href="{{ .URL }}"{{ if .IsActive }} aria-current="page"{{ end }}>{{ .Label }}</a></li>
         {{ end -}}
-    </ul>
-    <ul>
+        <li class="spacer"></li>
         {{ if currentUser -}}
-        <li><small>{{ (currentUser).Username }}</small></li>
+        <li>{{ (currentUser).Username }}</li>
         <li>
-            <form method="post" action="/auth/logout" class="logout-form">
+            <form method="post" action="/auth/logout">
                 {{ csrfField }}
-                <button type="submit" class="btn btn-link">Sign out</button>
+                <button type="submit" class="btn btn-outline btn-sm">Sign out</button>
             </form>
         </li>
         {{ else -}}
         <li><a href="/auth/login">Sign in</a></li>
         {{ end -}}
-        <li>{{ template "mucss/theme_switcher" . }}</li>
     </ul>
 </nav>
 ```
 
-The logout form needs two small style tweaks so the submit button reads as a regular nav link instead of a stacked block element. Add this `<style>` block in the `<head>` (alongside the µCSS templates):
-
-```html
-<style>
-nav .logout-form{display:inline;margin:0}
-nav .logout-form button{margin:0}
-</style>
-```
+Logout has to be a POST to defend against CSRF, so we use a small inline `<form>` with the submit button styled as an outline button via the `.btn .btn-outline .btn-sm` classes from `app.css`.
 
 `currentUser` is a template function provided by the auth app via `HasRequestFuncMap` — it returns the logged-in user (or nil) for the current request, so you don't need to plumb it through the layout data manually.
 

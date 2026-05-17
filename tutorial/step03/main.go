@@ -1,4 +1,4 @@
-// Command step03 adds templates, layouts, and µCSS styling.
+// Command step03 adds templates, a layout, and the project stylesheet.
 package main
 
 import (
@@ -9,17 +9,17 @@ import (
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/htmx"
-	"github.com/oliverandrich/burrow/contrib/mucss"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
 
-	"tutorial/step03/internal/pages"
+	"tutorial/step03/internal/app"
 	"tutorial/step03/internal/polls"
 )
 
-// emptyFS is used when the application has no custom static assets.
-// Contrib apps like mucss contribute their own assets automatically.
+// emptyFS is used when the application has no custom static assets at the
+// framework-root level. The app shell contributes its own stylesheet via
+// HasStaticFiles (served under /static/app/...).
 var emptyFS embed.FS
 
 func main() {
@@ -31,12 +31,11 @@ func main() {
 	srv := burrow.NewServer(
 		staticApp,
 		htmx.New(),
-		mucss.New(),
-		pages.New(),
+		app.New(),
 		polls.New(),
 	)
 
-	srv.SetLayout(pages.Layout())
+	srv.SetLayout(app.Layout())
 
 	cmd := &cli.Command{
 		Name:    "polls",

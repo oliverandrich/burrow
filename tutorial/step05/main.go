@@ -12,13 +12,12 @@ import (
 	"github.com/oliverandrich/burrow/contrib/csrf"
 	"github.com/oliverandrich/burrow/contrib/healthcheck"
 	"github.com/oliverandrich/burrow/contrib/messages"
-	"github.com/oliverandrich/burrow/contrib/mucss"
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/burrow/contrib/staticfiles"
 	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme
 	"github.com/urfave/cli/v3"
 
-	"tutorial/step05/internal/pages"
+	"tutorial/step05/internal/app"
 	"tutorial/step05/internal/polls"
 )
 
@@ -36,13 +35,12 @@ func main() {
 		staticApp,
 		healthcheck.New(),
 		messages.New(),
-		mucss.New(),
-		pages.New(),
+		app.New(),
 		auth.New(),
 		polls.New(),
 	)
 
-	srv.SetLayout(pages.Layout())
+	srv.SetLayout(app.Layout())
 
 	cmd := &cli.Command{
 		Name:    "polls",

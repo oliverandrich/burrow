@@ -30,7 +30,7 @@ The admin app:
 
 ## Add an Admin Link to the Navbar
 
-Users need a way to get to the admin panel. In `internal/pages/pages.go`, add an admin NavItem:
+Users need a way to get to the admin panel. In `internal/app/app.go`, add an admin NavItem:
 
 ```go
 func (a *App) NavItems() []burrow.NavItem {

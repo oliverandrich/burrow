@@ -1,6 +1,6 @@
 # Part 3: Templates & Layouts
 
-In this part you'll add HTML templates, a µCSS-styled layout, and views that render question lists and detail pages.
+In this part you'll add HTML templates, a layout backed by a small hand-written stylesheet, and views that render question lists and detail pages.
 
 **Source code:** [`tutorial/step03/`](https://github.com/oliverandrich/burrow/tree/main/tutorial/step03)
 
@@ -172,19 +172,20 @@ func (a *App) Routes(r chi.Router) {
 }
 ```
 
-## Create a Pages App with Layout
+## Create an App Shell
 
-The **pages app** provides the site layout and homepage. Create the directories first:
+The **app shell** provides the site layout, homepage, and the project-level stylesheet. Convention: it lives under `internal/app/`. Create the directories first:
 
 ```bash
-mkdir -p internal/pages/templates/app
-mkdir -p internal/pages/templates/pages
+mkdir -p internal/app/templates/app
+mkdir -p internal/app/templates/pages
+mkdir -p internal/app/static
 ```
 
-Create `internal/pages/pages.go`:
+Create `internal/app/app.go`:
 
 ```go
-package pages
+package app
 
 import (
     "embed"
@@ -198,15 +199,25 @@ import (
 //go:embed templates
 var templateFS embed.FS
 
+//go:embed static
+var staticFS embed.FS
+
 type App struct{}
 
 func New() *App { return &App{} }
 
-func (a *App) Name() string { return "pages" }
+func (a *App) Name() string { return "app" }
 
 func (a *App) TemplateFS() fs.FS {
     sub, _ := fs.Sub(templateFS, "templates")
     return sub
+}
+
+// StaticFS publishes the project stylesheet under the "app" prefix so the
+// layout can link to it as {{ staticURL "app/app.css" }}.
+func (a *App) StaticFS() (string, fs.FS) {
+    sub, _ := fs.Sub(staticFS, "static")
+    return "app", sub
 }
 
 func (a *App) NavItems() []burrow.NavItem {
@@ -226,7 +237,7 @@ func (a *App) Routes(r chi.Router) {
 
 ### The Layout Name
 
-Still in `internal/pages/pages.go`, add the `Layout()` function. It returns the template name for the layout:
+Still in `internal/app/app.go`, add the `Layout()` function. It returns the template name for the layout:
 
 ```go
 func Layout() string {
@@ -242,7 +253,7 @@ When `Render()` is called:
 
 ### The Layout Template
 
-Create `internal/pages/templates/app/layout.html`:
+Create `internal/app/templates/app/layout.html`:
 
 ```html
 {{ define "app/layout" -}}
@@ -252,19 +263,15 @@ Create `internal/pages/templates/app/layout.html`:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ if .Title }}{{ .Title }} — {{ end }}Polls</title>
-    {{ template "mucss/css" . }}
-    {{ template "mucss/theme_script" . }}
+    <link rel="stylesheet" href="{{ staticURL "app/app.css" }}">
 </head>
 <body>
-    <nav class="container-fluid">
+    <nav class="topnav">
         <ul>
-            <li><a href="/"><strong>Polls</strong></a></li>
+            <li><a href="/" class="brand">Polls</a></li>
             {{ range navLinks -}}
             <li><a href="{{ .URL }}"{{ if .IsActive }} aria-current="page"{{ end }}>{{ .Label }}</a></li>
             {{ end -}}
-        </ul>
-        <ul>
-            <li>{{ template "mucss/theme_switcher" . }}</li>
         </ul>
     </nav>
     <main class="container">
@@ -275,27 +282,32 @@ Create `internal/pages/templates/app/layout.html`:
 {{- end }}
 ```
 
-`navLinks` is a built-in template function that returns the navigation items registered by all apps (via `HasNavItems`), with `IsActive` pre-computed based on the current request path. Each item has `.Label`, `.URL`, `.Icon`, and `.IsActive` fields. We mark the current page with `aria-current="page"`, which µCSS styles natively as the active link.
+`navLinks` is a built-in template function that returns the navigation items registered by all apps (via `HasNavItems`), with `IsActive` pre-computed based on the current request path. Each item has `.Label`, `.URL`, `.Icon`, and `.IsActive` fields. We mark the current page with `aria-current="page"`.
 
-The `{{ template "mucss/css" }}` call includes the µCSS stylesheet, `{{ template "mucss/theme_script" }}` adds the dark/light theme switcher script (and a snippet that applies the saved theme before paint to avoid a flash of unstyled content), and `{{ template "mucss/theme_switcher" }}` renders a small dropdown the user can use to toggle the theme. These templates are provided by the `mucss` contrib app — internally they use `staticURL` for content-hashed URLs.
+`{{ staticURL "app/app.css" }}` resolves to the content-hashed URL of `app.css` (served by the `staticfiles` contrib under our app's prefix). Create that stylesheet next.
+
+### The Stylesheet
+
+Create `internal/app/static/app.css` with a small hand-written rule set. The full file is in [`tutorial/step03/internal/app/static/app.css`](https://github.com/oliverandrich/burrow/blob/main/tutorial/step03/internal/app/static/app.css) — about 200 lines, covering `.topnav`, `.container`, `.btn*`, `.alert*`, `.badge*`, `.breadcrumb`, `.pagination`, a `.hero` block for the homepage, the poll-specific `.poll-*` lists, plus a few form/table defaults and `prefers-color-scheme` dark mode. Copy it as-is for now; subsequent parts reuse it unchanged.
+
+!!! note "Why not Tailwind?"
+    The tutorial keeps the styling layer deliberately tiny so it stays out of the way of teaching Burrow. For a production-grade setup using Tailwind v4 and its standalone CLI, see [Tailwind CSS](../guide/tailwind.md).
 
 ### The Homepage Template
 
-Create `internal/pages/templates/pages/home.html`:
+Create `internal/app/templates/pages/home.html`:
 
 ```html
 {{ define "pages/home" -}}
-<section class="hero">
-    <hgroup>
-        <h1>Welcome to Polls</h1>
-        <p>A simple polling application built with the burrow framework.</p>
-    </hgroup>
-    <p><a href="/polls" role="button" class="btn btn-primary btn-lg">View Polls &raquo;</a></p>
+<section>
+    <h1>Welcome to Polls</h1>
+    <p>A simple polling application built with the burrow framework.</p>
+    <p><a href="/polls" class="btn">View Polls &raquo;</a></p>
 </section>
 {{- end }}
 ```
 
-`<section class="hero">` is one of µCSS's component classes — it gives you a centered title block with subtle styling, perfect for a landing-page header.
+`.btn` is one of the classes in our `app.css` — a basic primary-coloured button.
 
 ## Update main.go
 
@@ -312,17 +324,15 @@ import (
 
     "github.com/oliverandrich/burrow"
     "github.com/oliverandrich/burrow/contrib/htmx"
-    "github.com/oliverandrich/burrow/contrib/mucss"
     "github.com/oliverandrich/burrow/contrib/staticfiles"
     "github.com/urfave/cli/v3"
 
-    "polls/internal/pages"
+    "polls/internal/app"
     "polls/internal/polls"
 )
 
-// emptyFS is a placeholder — our app has no static files of its own yet.
-// Contrib apps (mucss, htmx) contribute their own assets via HasStaticFiles.
-// When you add your own CSS/JS later, replace this with //go:embed static.
+// emptyFS is used by the framework's root staticfiles app. Our project-level
+// stylesheet is contributed by the `app` shell via its own HasStaticFiles.
 var emptyFS embed.FS
 
 func main() {
@@ -334,12 +344,11 @@ func main() {
     srv := burrow.NewServer(
         staticApp,
         htmx.New(),
-        mucss.New(),
-        pages.New(),
+        app.New(),
         polls.New(),
     )
 
-    srv.SetLayout(pages.Layout())
+    srv.SetLayout(app.Layout())
 
     cmd := &cli.Command{
         Name:    "polls",
@@ -359,8 +368,7 @@ This replaces the `homepageApp` from Part 1 with proper apps:
 
 - **`staticfiles`** — serves static files with content-hashed URLs
 - **`htmx`** — provides the htmx JavaScript library
-- **`mucss`** — provides the µCSS stylesheet, theme switcher, and dark/light mode script
-- **`pages`** — homepage and layout
+- **`app`** — homepage, layout, and the project's stylesheet
 - **`polls`** — now with templates and routes
 
 ## Run It
@@ -370,7 +378,7 @@ go mod tidy
 go run .
 ```
 
-Open `http://localhost:8080` — you'll see the µCSS-styled homepage. Click "View Polls" to see the (empty) polls list. There are no questions yet because we haven't added a way to create them.
+Open `http://localhost:8080` — you'll see the homepage. Click "View Polls" to see the (empty) polls list. There are no questions yet because we haven't added a way to create them.
 
 !!! tip "Seeding test data"
     The polls app implements `Seedable` with a `Seed(ctx)` method that inserts a few example questions. Start the server with `--seed` once to populate the database: `go run . --seed`. The seed runs every time `--seed` is passed, so re-running it duplicates the questions — drop `data/app.db` between runs if you want a clean reset.
@@ -380,7 +388,7 @@ Open `http://localhost:8080` — you'll see the µCSS-styled homepage. Click "Vi
 - **`HasTemplates`** — apps contribute `.html` template files to the global template set
 - **`Render()`** — renders a named template, automatically wrapping in a layout for normal requests and returning fragments for HTMX requests
 - **Layout templates** — wrap page content in a full HTML document with navigation (via `navLinks` template function), scripts, and styles
-- **`staticfiles`** and **`mucss`** — contrib apps handle CSS/JS assets with cache busting
+- **`HasStaticFiles`** — apps publish their own static assets under a chosen URL prefix; the `staticfiles` contrib serves them with content-hashed URLs
 
 ## Next
 

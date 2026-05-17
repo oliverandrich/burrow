@@ -30,8 +30,7 @@ srv := burrow.NewServer(
     staticApp,
     htmx.New(),
     messages.New(),      // new
-    mucss.New(),
-    pages.New(),
+    app.New(),
     polls.New(),
 )
 ```
@@ -147,7 +146,7 @@ func (a *App) Routes(r chi.Router) {
 
 ## Display Flash Messages
 
-Update the layout template in `internal/pages/templates/app/layout.html` to show messages above the content:
+Update the layout template in `internal/app/templates/app/layout.html` to show messages above the content:
 
 ```html
 <main class="container">
@@ -160,7 +159,7 @@ Update the layout template in `internal/pages/templates/app/layout.html` to show
 
 `messages` is a template function provided by the `messages` contrib app via `HasRequestFuncMap` — it returns the flash messages for the current request without you having to plumb them through the template data manually.
 
-Each `Message` has a `Level` (success, error, warning, info) and `Text`. The level maps naturally to a µCSS alert class — `alert-success`, `alert-error`, `alert-warning`, `alert-info`.
+Each `Message` has a `Level` (success, error, warning, info) and `Text`. The level maps to one of the alert classes shipped in `app.css` — `.alert-success`, `.alert-error`, `.alert-warning`, `.alert-info`.
 
 ## Run It
 

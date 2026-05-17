@@ -332,7 +332,7 @@ func (a *App) adminDeleteChoice(w http.ResponseWriter, r *http.Request) error {
 
 ## Templates
 
-Create `internal/polls/templates/polls/admin_list.html`:
+Create `internal/polls/templates/polls/admin_list.html`. The file defines both the list page and a small `polls/pagination` partial it uses at the bottom:
 
 ```html
 {{ define "polls/admin_list" -}}
@@ -341,57 +341,56 @@ Create `internal/polls/templates/polls/admin_list.html`:
         <li><a href="/admin/">Admin</a></li>
         <li aria-current="page">Polls</li>
     </ul>
-    <ul>
-        <li>
-            <form action="/admin/polls" method="GET">
-                <input type="search" class="input-sm" name="q" value="{{ .SearchTerm }}" placeholder="Search…" aria-label="Search">
-            </form>
-        </li>
-    </ul>
 </nav>
 <header>
     <h2>Polls</h2>
-    <a href="/admin/polls/new" role="button" class="btn btn-primary">New poll</a>
+    <form action="/admin/polls" method="GET">
+        <input type="search" name="q" value="{{ .SearchTerm }}" placeholder="Search…" aria-label="Search">
+        <a href="/admin/polls/new" class="btn">New poll</a>
+    </form>
 </header>
 {{- if .Questions }}
-<figure>
-    <table>
-        <thead>
-            <tr>
-                <th scope="col">Question</th>
-                <th scope="col">Published</th>
-                <th scope="col" class="admin-row-actions">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{- range .Questions }}
-            <tr>
-                <td><a href="/admin/polls/{{ .ID }}">{{ .Text }}</a></td>
-                <td>{{ .PublishedAt.Format "2006-01-02 15:04" }}</td>
-                <td class="admin-row-actions">
-                    <a href="/admin/polls/{{ .ID }}" role="button" class="btn btn-sm btn-outline btn-secondary">Edit</a>
-                    <button type="button" class="btn btn-sm btn-outline btn-error"
-                        hx-delete="/admin/polls/{{ .ID }}"
-                        hx-swap="none"
-                        hx-confirm="Delete this poll and all its choices?">Delete</button>
-                </td>
-            </tr>
-            {{- end }}
-        </tbody>
-    </table>
-</figure>
-{{ template "admin/pagination" (dict "Page" .Page "BasePath" "/admin/polls" "RawQuery" .RawQuery) }}
+<table>
+    <thead>
+        <tr>
+            <th scope="col">Question</th>
+            <th scope="col">Published</th>
+            <th scope="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{- range .Questions }}
+        <tr>
+            <td><a href="/admin/polls/{{ .ID }}">{{ .Text }}</a></td>
+            <td>{{ .PublishedAt.Format "2006-01-02 15:04" }}</td>
+            <td>
+                <a href="/admin/polls/{{ .ID }}" class="btn btn-sm btn-outline">Edit</a>
+                <button type="button" class="btn btn-sm btn-error"
+                    hx-delete="/admin/polls/{{ .ID }}"
+                    hx-swap="none"
+                    hx-confirm="Delete this poll and all its choices?">Delete</button>
+            </td>
+        </tr>
+        {{- end }}
+    </tbody>
+</table>
+{{ template "polls/pagination" (dict "Page" .Page "BasePath" "/admin/polls" "RawQuery" .RawQuery) }}
 {{- else }}
 <p>No polls yet.</p>
 {{- end }}
 {{- end }}
 ```
 
+The pagination partial — a thin wrapper around the `pageURL` and `pageNumbers` framework helpers, styled by our `.pagination` rules in `app.css` — see [`tutorial/step08/internal/polls/templates/polls/admin_list.html`](https://github.com/oliverandrich/burrow/blob/main/tutorial/step08/internal/polls/templates/polls/admin_list.html) for the full `polls/pagination` define.
+
+!!! tip "Reuse `admin/pagination` when you ship Tailwind"
+    Burrow's `contrib/admin` ships a ready-made `admin/pagination` template that uses Tailwind classes. Once your project's stylesheet includes those classes (see the [Tailwind guide](../guide/tailwind.md)), you can drop the local `polls/pagination` define and call `{{ template "admin/pagination" ... }}` instead — same data contract.
+
 Key bits:
 
-- The breadcrumb pattern (`<nav><ul class="breadcrumb">`) and the search input live next to each other inside one `<nav>` so µCSS lays them out as the page header.
+- The breadcrumb pattern (`<nav><ul class="breadcrumb">`) sits above a `<header>` with the page title and a search/new-poll row — the `.breadcrumb` class is one of the rules in our `app.css`.
 - `hx-delete` + `hx-confirm` give a one-click delete with a browser confirmation, no separate confirmation page needed.
-- `admin/pagination` is the shared pagination template (shipped by `contrib/admin`); passing `RawQuery` keeps the search term in the URLs.
+- Passing `RawQuery` to `polls/pagination` keeps the search term in the URLs.
 
 Create `internal/polls/templates/polls/admin_form.html`:
 

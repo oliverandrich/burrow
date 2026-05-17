@@ -8,43 +8,22 @@ In this final part you'll add the `htmx` contrib app for SPA-like navigation, HT
 
 The `htmx` contrib app (registered since Part 3) provides Go helpers for detecting HTMX requests and setting response headers. To use htmx on the client side, add the script to your layout.
 
-In `internal/pages/templates/app/layout.html`, add the htmx script in the `<head>` alongside the existing `mucss/css` and `mucss/theme_script` templates, and add `hx-boost="true"` plus the CSRF-headers helper to the `<body>` tag:
+In `internal/app/templates/app/layout.html`, add the htmx script and the response-config helper inside `<head>`, and add `hx-boost="true"` plus the CSRF-headers helper to the `<body>` tag:
 
 ```html
 {{ template "htmx/js" . }}
+{{ template "htmx/config" . }}
 ```
 
 ```html
 <body hx-boost="true" {{- csrfHxHeaders }}>
 ```
 
-`hx-boost` makes all links and forms use HTMX automatically — navigating via AJAX and swapping just the `<body>` content. Burrow's `Render()` detects the `HX-Request` header and returns only the fragment (no layout wrapping), making this work seamlessly. `csrfHxHeaders` (provided by the `csrf` contrib) renders the htmx config attribute that injects the CSRF token into every HTMX request — so we no longer need to embed `{{ csrfField }}` inside every form.
+`hx-boost` makes all links and forms use HTMX automatically — navigating via AJAX and swapping just the `<body>` content. Burrow's `Render()` detects the `HX-Request` header and returns only the fragment (no layout wrapping), making this work seamlessly. `csrfHxHeaders` (provided by the `csrf` contrib) renders the htmx config attribute that injects the CSRF token into every HTMX request — so we no longer need to embed `{{ csrfField }}` inside every form. `htmx/config` adds a small `<meta>` tag that tells htmx to swap `422` responses too (used by form-validation error responses later).
 
-## Polish the User Menu
+## Sign out via HTMX
 
-Now that htmx is loaded, the inline-`<form>` logout button from Part 5 can become a proper dropdown menu with a `hx-post` link. **Replace** the entire `{{ if currentUser -}} … {{ end -}}` block in the right `<ul>` of the navbar (the inline form + `<style>` block in `<head>` for `nav .logout-form`) with this:
-
-```html
-<ul>
-    {{ if currentUser -}}
-    <li>
-        <details class="dropdown">
-            <summary>{{ (currentUser).Username }}</summary>
-            <ul dir="rtl">
-                <li dir="ltr"><a href="#" hx-post="/auth/logout">Sign out</a></li>
-            </ul>
-        </details>
-    </li>
-    {{ else -}}
-    <li><a href="/auth/login">Sign in</a></li>
-    {{ end -}}
-    <li>{{ template "mucss/theme_switcher" . }}</li>
-</ul>
-```
-
-The `<details class="dropdown">` is a native HTML5 disclosure widget that µCSS styles as a menu. The "Sign out" link triggers a POST via `hx-post` — htmx serializes no body, but the CSRF token comes through via the `csrfHxHeaders` we added to the `<body>`. `<ul dir="rtl">` right-anchors the popup; `<li dir="ltr">` keeps each item's text in normal reading order.
-
-You can now drop the `<style>` block with `nav .logout-form` rules — the dropdown doesn't need it.
+The inline `<form>` logout button from Part 5 still works — `hx-boost` automatically AJAX-ifies it. No change needed in markup. The button picks up the CSRF token via `csrfHxHeaders` (no per-form `csrfField` required when posting from inside a boosted body).
 
 ## HTMX-Aware Voting
 

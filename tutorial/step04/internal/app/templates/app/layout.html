@@ -1,0 +1,28 @@
+{{ define "app/layout" -}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ if .Title }}{{ .Title }} — {{ end }}Polls</title>
+    <link rel="stylesheet" href="{{ staticURL "app/app.css" }}">
+</head>
+<body>
+    <nav class="topnav">
+        <ul>
+            <li><a href="/" class="brand">Polls</a></li>
+            {{ range navLinks -}}
+            <li><a href="{{ .URL }}"{{ if .IsActive }} aria-current="page"{{ end }}>{{ .Label }}</a></li>
+            {{ end -}}
+        </ul>
+    </nav>
+
+    <main class="container">
+        {{ range messages -}}
+        <div class="alert alert-{{ .Level }}" role="alert">{{ .Text }}</div>
+        {{ end -}}
+        {{ .Content }}
+    </main>
+</body>
+</html>
+{{- end }}
