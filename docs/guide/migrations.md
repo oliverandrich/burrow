@@ -1,6 +1,6 @@
-# Migrations
+# Database Migrations
 
-Den handles schema management automatically based on your document struct definitions. There are no hand-written SQL migration files.
+Den handles schema management automatically based on your document struct definitions. There are no hand-written SQL migration files. For framework-version upgrades (e.g. v0.18 → v0.20) see the [Migration](../migration/v0.20.md) section instead.
 
 ## How It Works
 

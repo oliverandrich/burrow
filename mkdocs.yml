@@ -69,7 +69,7 @@ nav:
           - Routing: guide/routing.md
           - Error Handling: guide/error-handling.md
           - Database: guide/database.md
-          - Migrations: guide/migrations.md
+          - Database Migrations: guide/migrations.md
           - Configuration: guide/configuration.md
       - Templates & UI:
           - Layouts & Rendering: guide/layouts.md
@@ -128,6 +128,8 @@ nav:
       - Template Functions: reference/template-functions.md
       - Reusable Templates: reference/reusable-templates.md
       - Context Helpers: reference/context-helpers.md
+  - Migration:
+      - "v0.20": migration/v0.20.md
   - Contributing: contributing.md
   - Changelog: changelog.md
   - License: license.md
