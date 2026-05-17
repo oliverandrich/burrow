@@ -954,7 +954,7 @@ func TestAdminNavItems(t *testing.T) {
 	assert.Equal(t, "admin-nav-notes", items[0].LabelKey)
 	assert.Equal(t, "/admin/notes", items[0].URL)
 	assert.True(t, items[0].AdminOnly)
-	assert.NotNil(t, items[0].Icon)
+	assert.Equal(t, "notes/icon_journal_text", items[0].Icon)
 	assert.Equal(t, 30, items[0].Position)
 }
 

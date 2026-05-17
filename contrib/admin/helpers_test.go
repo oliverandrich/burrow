@@ -2,7 +2,6 @@ package admin
 
 import (
 	"context"
-	"html/template"
 	"testing"
 
 	"github.com/oliverandrich/burrow"
@@ -87,8 +86,8 @@ func TestPrepareDashboard(t *testing.T) {
 
 	groups := []NavGroup{
 		{AppName: "auth", Items: []burrow.NavItem{
-			{Label: "Users", URL: "/admin/users", Icon: template.HTML("<svg>users</svg>")},
-			{Label: "Invites", URL: "/admin/invites", Icon: template.HTML("<svg>invites</svg>")},
+			{Label: "Users", URL: "/admin/users", Icon: "auth/icon_people"},
+			{Label: "Invites", URL: "/admin/invites", Icon: "auth/icon_envelope"},
 		}},
 	}
 
@@ -101,7 +100,7 @@ func TestPrepareDashboard(t *testing.T) {
 	require.Len(t, dash[0].Items, 2)
 	assert.Equal(t, "Users", dash[0].Items[0].Label)
 	assert.Equal(t, "/admin/users", dash[0].Items[0].URL)
-	assert.Equal(t, template.HTML("<svg>users</svg>"), dash[0].Items[0].Icon)
+	assert.Equal(t, "auth/icon_people", dash[0].Items[0].Icon)
 
 	assert.Equal(t, "Invites", dash[0].Items[1].Label)
 }

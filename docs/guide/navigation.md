@@ -7,22 +7,20 @@ Apps contribute navigation items that are collected and made available to layout
 Implement the `HasNavItems` interface:
 
 ```go
-// notesIcon is an inline SVG (Bootstrap Icons' "journal-text"); copy any
-// icon SVG into a template.HTML const next to your app.
-const notesIcon = template.HTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">…</svg>`)
-
 func (a *App) NavItems() []burrow.NavItem {
     return []burrow.NavItem{
         {
             Label:    "Notes",
             URL:      "/notes",
-            Icon:     notesIcon,
+            Icon:     "notes/icon_journal_text",
             Position: 20,
             AuthOnly: true,
         },
     }
 }
 ```
+
+`Icon` is the name of a template define. See [Icon convention](#icon-convention) below.
 
 ## NavItem Fields
 
@@ -31,7 +29,7 @@ func (a *App) NavItems() []burrow.NavItem {
 | `Label` | `string` | Display text for the link |
 | `LabelKey` | `string` | i18n message ID; translated at render time, falls back to `Label` |
 | `URL` | `string` | Target path |
-| `Icon` | `template.HTML` | Inline SVG icon (copy from any icon set as `template.HTML`); empty string for no icon |
+| `Icon` | `string` | Name of a template define (e.g. `"notes/icon_journal_text"`); empty string for no icon |
 | `Position` | `int` | Sort order (lower = earlier, stable sort preserves insertion order for equal positions) |
 | `AuthOnly` | `bool` | Only show to authenticated users |
 | `AdminOnly` | `bool` | Only show to admin users |
@@ -49,7 +47,7 @@ The framework provides the `navLinks` template function, which returns filtered,
 <nav>
   {{ range navLinks }}
     <a href="{{ .URL }}"{{ if .IsActive }} class="active"{{ end }}>
-      {{ .Icon }} {{ .Label }}
+      {{ if .Icon }}{{ icon .Icon }} {{ end }}{{ .Label }}
     </a>
   {{ end }}
 </nav>
@@ -57,13 +55,15 @@ The framework provides the `navLinks` template function, which returns filtered,
 {{- end }}
 ```
 
+The built-in `{{ icon }}` template function looks up the named template and renders it. (Go's built-in `{{ template "name" }}` action requires a string literal at parse time and can't accept a variable.)
+
 ### NavLink Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `Label` | `string` | Display text |
 | `URL` | `string` | Target path |
-| `Icon` | `template.HTML` | Inline SVG icon |
+| `Icon` | `string` | Template-define name (see [Icon convention](#icon-convention)) |
 | `IsActive` | `bool` | `true` when the current request path matches the item URL |
 
 Active matching uses prefix matching: `/notes/1` matches `/notes`. The root URL `/` only matches exactly.
@@ -103,3 +103,13 @@ Nav items are sorted by `Position` using a stable sort. Items with equal positio
 | 10–50 | Main app pages |
 | 50–80 | Secondary pages |
 | 80–100 | Admin, settings |
+
+## Icon convention
+
+`NavItem.Icon` is the name of a template define. Each app keeps its icons in a `templates/icons.html` file, namespaced like the rest of the app's templates:
+
+```html
+{{ define "notes/icon_journal_text" -}}<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16"><path d="…"/></svg>{{- end }}
+```
+
+Layouts render the icon via the `{{ icon }}` template function: `{{ icon .Icon }}`. The same defines are also callable from the app's own templates via the built-in `{{ template "notes/icon_journal_text" . }}` action — so each icon lives in exactly one place. Copy SVGs from any icon set (e.g. [Bootstrap Icons](https://icons.getbootstrap.com/)) and size them with Tailwind utilities applied to the `<svg>` element directly.

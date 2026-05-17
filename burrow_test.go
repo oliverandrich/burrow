@@ -179,14 +179,14 @@ func TestNavItemFields(t *testing.T) {
 	item := NavItem{
 		Label:    "Dashboard",
 		URL:      "/dashboard",
-		Icon:     template.HTML(`<svg>icon</svg>`),
+		Icon:     "app/icon_dashboard",
 		Position: 10,
 		AuthOnly: true,
 	}
 
 	assert.Equal(t, "Dashboard", item.Label)
 	assert.Equal(t, "/dashboard", item.URL)
-	assert.Equal(t, template.HTML(`<svg>icon</svg>`), item.Icon)
+	assert.Equal(t, "app/icon_dashboard", item.Icon)
 	assert.Equal(t, 10, item.Position)
 	assert.True(t, item.AuthOnly)
 }

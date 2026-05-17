@@ -2,7 +2,6 @@ package admin
 
 import (
 	"context"
-	"html/template"
 	"sort"
 	"strings"
 
@@ -18,10 +17,13 @@ type DashboardGroup struct {
 }
 
 // DashboardItem holds pre-computed data for a single dashboard nav link.
+//
+// Icon is a template name (see [burrow.NavItem]); the dashboard template
+// renders it via {{ template .Icon . }}.
 type DashboardItem struct {
 	Label string
 	URL   string
-	Icon  template.HTML
+	Icon  string
 }
 
 // PrepareDashboard pre-computes dashboard groups with translated labels,

@@ -20,7 +20,7 @@
                        class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm{{ if .IsActive }} bg-gray-100 dark:bg-gray-800{{ end }} hover:bg-gray-100 dark:hover:bg-gray-800"
                        {{ if .IsActive }}aria-current="page"{{ end }}
                        hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
-                        {{ if .Icon }}{{ .Icon }} {{ end }}{{ .Label }}
+                        {{ if .Icon }}{{ icon .Icon }} {{ end }}{{ .Label }}
                     </a>
                 </li>
                 {{- end }}

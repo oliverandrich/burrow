@@ -466,13 +466,47 @@ func TestBuildNavLinks_ShowsAdminOnlyForAdmins(t *testing.T) {
 func TestBuildNavLinks_PreservesIcon(t *testing.T) {
 	ctx := context.Background()
 	ctx = WithNavItems(ctx, []NavItem{
-		{Label: "Home", URL: "/", Icon: "<svg>icon</svg>"},
+		{Label: "Home", URL: "/", Icon: "app/icon_home"},
 	})
 
 	links := buildNavLinks(ctx, "/")
 
 	require.Len(t, links, 1)
-	assert.Equal(t, template.HTML("<svg>icon</svg>"), links[0].Icon)
+	assert.Equal(t, "app/icon_home", links[0].Icon)
+}
+
+func TestIconFunc(t *testing.T) {
+	s := &Server{registry: NewRegistry()}
+
+	tplFS := fstest.MapFS{
+		"icons.html": &fstest.MapFile{
+			Data: []byte(`{{ define "test/icon_star" }}<svg>star</svg>{{ end }}`),
+		},
+		"page.html": &fstest.MapFile{
+			Data: []byte(`{{ define "test/page" }}[{{ icon .Name }}]{{ end }}`),
+		},
+	}
+	s.registry.Add(&templateApp{name: "test", tplFS: tplFS})
+
+	require.NoError(t, s.buildTemplates())
+
+	t.Run("known icon renders", func(t *testing.T) {
+		html, err := s.executeTemplate(t.Context(), "test/page", map[string]any{"Name": "test/icon_star"})
+		require.NoError(t, err)
+		assert.Equal(t, template.HTML("[<svg>star</svg>]"), html)
+	})
+
+	t.Run("empty name renders nothing", func(t *testing.T) {
+		html, err := s.executeTemplate(t.Context(), "test/page", map[string]any{"Name": ""})
+		require.NoError(t, err)
+		assert.Equal(t, template.HTML("[]"), html)
+	})
+
+	t.Run("unknown name renders nothing", func(t *testing.T) {
+		html, err := s.executeTemplate(t.Context(), "test/page", map[string]any{"Name": "test/icon_missing"})
+		require.NoError(t, err)
+		assert.Equal(t, template.HTML("[]"), html)
+	})
 }
 
 func TestBuildNavLinks_TranslatesLabelKey(t *testing.T) {

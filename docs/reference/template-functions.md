@@ -21,6 +21,7 @@ Provided by the framework itself. Always available.
 | `pageURL` | `{{ pageURL .BasePath .RawQuery 3 }}` | Builds a pagination URL preserving existing query parameters |
 | `pageNumbers` | `{{ range pageNumbers .Current .Total }}` | Generates a slice of page numbers with ellipsis gaps (`-1`) |
 | `mediaURL` | `{{ mediaURL .Hero }}` | Returns the public URL for a `document.Attachment`. Auto-registered when Den is opened with `den.WithStorage(...)`; unregistered (and a parse-time error) when no Storage is configured. |
+| `icon` | `{{ icon "auth/icon_people" }}` | Looks up the named template define and returns its rendered HTML. Returns empty when the name is empty or unknown. Used by layouts to render `NavItem.Icon` / `NavLink.Icon` / `admin.DashboardItem.Icon` (all hold template-define names). See [Navigation › Icon convention](../guide/navigation.md#icon-convention). |
 
 **Navigation (request-scoped, provided by the framework):**
 
@@ -70,15 +71,6 @@ Provided by the framework itself. Always available.
 | `currentUser` | Request | `{{ if $u := currentUser }}{{ $u.Email }}{{ end }}` | Returns the authenticated `*auth.User` or `nil`. |
 | `isAuthenticated` | Request | `{{ if isAuthenticated }}...{{ end }}` | Returns `true` if a user is logged in. |
 | `authLogo` | Request | `{{ authLogo }}` | Returns the auth logo HTML. |
-
-### Icons (via RegisterIconFunc)
-
-Icon template functions are registered by apps in their `Configure()` method via [`cfg.RegisterIconFunc()`](interfaces.md#registericonfunc). They are not tied to any specific contrib app. The `IconFunc` signature is `func(...string) template.HTML` — the variadic string parameter accepts optional CSS classes.
-
-| Function | Type | Example | Description |
-|----------|------|---------|-------------|
-| `icon<Name>` | Static | `{{ iconSunFill }}` | Icon SVG. Name depends on which icons are registered by apps. |
-| `icon<Name>` (with class) | Static | `{{ iconSunFill "fs-1" }}` | Icon SVG with CSS class applied. |
 
 ## How It Works
 

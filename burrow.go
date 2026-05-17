@@ -162,11 +162,15 @@ type AppConfig struct {
 }
 
 // NavItem represents a navigation entry contributed by an app.
+//
+// Icon is the name of a template define (e.g. "auth/icon_people") rendered by
+// the layout via {{ template .Icon . }}. Each contrib keeps its icons in
+// templates/icons.html as {{ define "<app>/icon_<name>" }} blocks.
 type NavItem struct { //nolint:govet // fieldalignment: readability over optimization
 	Label     string
 	LabelKey  string // i18n message ID; translated at render time, falls back to Label
 	URL       string
-	Icon      template.HTML
+	Icon      string
 	Position  int
 	AuthOnly  bool
 	AdminOnly bool
@@ -175,10 +179,12 @@ type NavItem struct { //nolint:govet // fieldalignment: readability over optimiz
 // NavLink is a template-ready navigation item with pre-computed active state.
 // It is produced by the navLinks template function from the registered NavItems,
 // filtered by the current user's authentication/authorization state.
+//
+// Icon is a template name; see [NavItem].
 type NavLink struct {
 	Label    string
 	URL      string
-	Icon     template.HTML
+	Icon     string
 	IsActive bool
 }
 

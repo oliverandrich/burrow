@@ -136,6 +136,26 @@ func (s *Server) buildTemplates() error {
 // panics on duplicate function names across apps.
 func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 	funcMap := baseFuncMap()
+	// icon renders an icon template by name. Used by layouts to render
+	// NavItem.Icon / NavLink.Icon / DashboardItem.Icon, all of which hold
+	// a template-define name (e.g. "auth/icon_people"). Apps keep their
+	// icons in templates/icons.html as {{ define "<app>/icon_<name>" }} blocks.
+	//
+	// Executes against s.templates directly rather than via s.executeTemplate
+	// to avoid a per-icon Clone when RequestFuncMap providers are registered —
+	// the outer page render already paid that cost. Icon defines therefore
+	// cannot use request-scoped funcs (csrfToken, t, currentUser, …); they
+	// see the parse-time stubs. Acceptable: icons are static SVG snippets.
+	funcMap["icon"] = func(name string) template.HTML {
+		if name == "" || s.templates == nil {
+			return ""
+		}
+		var buf bytes.Buffer
+		if err := s.templates.ExecuteTemplate(&buf, name, nil); err != nil {
+			return ""
+		}
+		return template.HTML(buf.String()) //nolint:gosec // template output, contextually escaped
+	}
 	baseKeys := make(map[string]bool, len(funcMap))
 	for k := range funcMap {
 		baseKeys[k] = true
