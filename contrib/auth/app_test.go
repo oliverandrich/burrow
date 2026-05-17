@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -693,7 +692,7 @@ func TestCLICreateInvite(t *testing.T) {
 // subcommand fires before Configure() runs, a.repo is nil, and the action
 // fails with "auth app not initialized".
 func TestCLIPromoteThroughServerCLICommands(t *testing.T) {
-	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
+	dsn := burrowtest.TempDSN(t)
 	ctx := t.Context()
 
 	// Pre-seed: open the DB ourselves and create alice, then close. The CLI

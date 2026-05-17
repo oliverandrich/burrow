@@ -1,7 +1,6 @@
 package burrow
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/oliverandrich/den"
@@ -16,8 +15,7 @@ type validatedDoc struct {
 }
 
 func TestOpenDB_SQLite(t *testing.T) {
-	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := OpenDB(t.Context(), dsn)
+	db, err := OpenDB(t.Context(), testDSN(t))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	require.NoError(t, db.Ping(t.Context()))
@@ -55,8 +53,7 @@ func TestOpenDB_NoScheme(t *testing.T) {
 // validation by default: a document with a violated `validate:"required"`
 // tag is rejected at insert time.
 func TestOpenDB_ValidationEnabled(t *testing.T) {
-	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := OpenDB(t.Context(), dsn)
+	db, err := OpenDB(t.Context(), testDSN(t))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 

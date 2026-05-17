@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -200,7 +199,6 @@ func TestServerCLICommandsConfigureBeforeAction(t *testing.T) {
 	}
 
 	s := NewServer(app)
-	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
 
 	cmd := &cli.Command{
 		Name:     "test",
@@ -208,7 +206,7 @@ func TestServerCLICommandsConfigureBeforeAction(t *testing.T) {
 		Commands: s.CLICommands(),
 	}
 
-	err := cmd.Run(t.Context(), []string{"test", "--database-dsn", dsn, "myop"})
+	err := cmd.Run(t.Context(), []string{"test", "--database-dsn", testDSN(t), "myop"})
 	require.NoError(t, err)
 
 	assert.True(t, actionRan, "subcommand Action must have fired")

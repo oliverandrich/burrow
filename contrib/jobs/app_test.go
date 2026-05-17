@@ -3,13 +3,13 @@ package jobs
 import (
 	"context"
 	"io/fs"
-	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -468,7 +468,7 @@ func TestApp_PostConfigure_RegistryWithoutHasJobs(t *testing.T) {
 
 func TestApp_Configure_SeparateDatabase(t *testing.T) {
 	sharedDB := testDB(t)
-	separateDSN := "sqlite:///" + filepath.Join(t.TempDir(), "jobs.db")
+	separateDSN := burrowtest.TempDSN(t)
 
 	app := New()
 	appCfg := &burrow.AppConfig{DB: sharedDB}
@@ -540,7 +540,7 @@ func TestApp_Configure_SharedDatabase_Default(t *testing.T) {
 }
 
 func TestApp_Shutdown_ClosesSeparateDB(t *testing.T) {
-	separateDSN := "sqlite:///" + filepath.Join(t.TempDir(), "jobs.db")
+	separateDSN := burrowtest.TempDSN(t)
 
 	sharedDB := testDB(t)
 	app := New()
@@ -585,7 +585,7 @@ func TestApp_Start_CreatesWorkerWithExecutor(t *testing.T) {
 
 func TestApp_Configure_SeparateDatabase_CreatesJobsAdmin(t *testing.T) {
 	sharedDB := testDB(t)
-	separateDSN := "sqlite:///" + filepath.Join(t.TempDir(), "jobs.db")
+	separateDSN := burrowtest.TempDSN(t)
 
 	app := New()
 	appCfg := &burrow.AppConfig{DB: sharedDB}

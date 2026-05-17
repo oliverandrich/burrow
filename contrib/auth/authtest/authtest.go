@@ -5,13 +5,13 @@ package authtest
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sync/atomic"
 	"testing"
 
+	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/den"
-	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme for OpenURL
+	_ "github.com/oliverandrich/den/backend/sqlite" // register sqlite:// scheme for den.OpenURL — explicit so authtest's deps are visible at its own file even if burrowtest's import surface changes
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,8 +23,7 @@ var userCounter atomic.Int64
 func NewDB(t *testing.T) *den.DB {
 	t.Helper()
 
-	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "auth_test.db")
-	db, err := den.OpenURL(t.Context(), dsn)
+	db, err := den.OpenURL(t.Context(), burrowtest.TempDSN(t))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 

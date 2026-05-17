@@ -18,13 +18,19 @@ import (
 // internal tests depended on the burrowtest sub-package.
 func testDB(t *testing.T) *den.DB {
 	t.Helper()
-	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := den.OpenURL(t.Context(), dsn)
+	db, err := den.OpenURL(t.Context(), testDSN(t))
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	return db
+}
+
+// testDSN mirrors [burrowtest.TempDSN]; package burrow can't import
+// burrowtest (which itself imports burrow) without a cycle.
+func testDSN(t *testing.T) string {
+	t.Helper()
+	return "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
 }
 
 // testErrorExecContext mirrors burrowtest.ErrorExecContext for

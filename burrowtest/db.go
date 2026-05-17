@@ -22,11 +22,19 @@ import (
 // when the test finishes.
 func DB(t *testing.T) *den.DB {
 	t.Helper()
-	dsn := "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-	db, err := den.OpenURL(t.Context(), dsn)
+	db, err := den.OpenURL(t.Context(), TempDSN(t))
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	return db
+}
+
+// TempDSN returns a file-backed SQLite DSN under [testing.T.TempDir],
+// for tests that need to construct their own DB connection (e.g. passing
+// --database-dsn to a cli.Command). The directory is cleaned up when the
+// test finishes.
+func TempDSN(t *testing.T) string {
+	t.Helper()
+	return "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
 }
