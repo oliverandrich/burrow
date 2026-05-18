@@ -7,6 +7,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Changed
 
 - **Dropped "Django-inspired" framing from current-state copy.** Scaffolded project's homepage and README, plus the `forms` package doc, now describe Burrow on its own terms. The broader marketing comparison in burrow's own README and `docs/index.md` ("for Go developers who want something like Django, Rails, or Flask") is kept intentionally.
+- **Scaffolded project's README rewritten for post-scaffold reality.** Quick Start leads with `mise run setup && mise run dev` instead of the obsolete `gohatch` invocation; the gohatch requirement and the "Template Variables" metadata section are gone; the Development table uses `burrow tailwind`.
 
 ## 0.21.1 — 2026-05-18
 
