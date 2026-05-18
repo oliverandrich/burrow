@@ -1,0 +1,39 @@
+# Build output
+/build/
+/dist/
+
+# air (live reload)
+/tmp/
+
+# Persistent dev secrets (generated once, reused across air reloads)
+.dev-keys
+
+# Test coverage
+coverage.out
+*.coverprofile
+coverage.html
+
+# SQLite
+*.db
+*.db-wal
+*.db-shm
+
+# Tailwind output (built fresh by `mise run css`)
+/internal/app/static/app.min.css
+/.tailwind/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+*.swp
+
+# Claude Code
+CLAUDE.md
+AGENTS.md
+.claude/
+
+# Beans
+.beans.yml
+.beans/

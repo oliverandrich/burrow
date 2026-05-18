@@ -1,0 +1,36 @@
+{{ define "pages/home" -}}
+<section class="mb-8 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-8 dark:border-emerald-900 dark:from-emerald-950/30 dark:to-gray-900">
+    <h1 class="mb-2 text-3xl font-bold tracking-tight">Welcome to __ProjectName__</h1>
+    <p class="text-base text-gray-700 dark:text-gray-300">__ProjectDescription__</p>
+</section>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <article class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <header class="mb-2 flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+            {{ template "app/icon_burrow" . }}
+            <strong class="text-base">Burrow</strong>
+        </header>
+        <p class="text-sm text-gray-700 dark:text-gray-300">
+            Built on the Burrow web framework — a Django-inspired Go framework with contrib apps, middleware, and template rendering.
+        </p>
+    </article>
+    <article class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <header class="mb-2 flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+            {{ template "app/icon_tailwind" . }}
+            <strong class="text-base">Tailwind v4</strong>
+        </header>
+        <p class="text-sm text-gray-700 dark:text-gray-300">
+            Utility-first CSS via the standalone Tailwind CLI — auto-discovers every Burrow contrib's templates so utility scanning Just Works.
+        </p>
+    </article>
+    <article class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <header class="mb-2 flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+            {{ template "app/icon_htmx" . }}
+            <strong class="text-base">htmx</strong>
+        </header>
+        <p class="text-sm text-gray-700 dark:text-gray-300">
+            Server-driven interactivity with htmx — navigation, form submissions, and partial updates without writing JavaScript.
+        </p>
+    </article>
+</div>
+{{- end }}

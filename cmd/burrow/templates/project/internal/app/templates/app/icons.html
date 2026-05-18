@@ -1,0 +1,30 @@
+{{/*
+    Inline-SVG icon defines used across the app. Reference them as either
+    {{ icon "app/icon_<name>" }} (from layouts via NavItem.Icon / NavLink.Icon)
+    or {{ template "app/icon_<name>" . }} (from local templates).
+    Source: Bootstrap Icons (https://icons.getbootstrap.com/) — MIT licensed.
+*/}}
+
+{{ define "app/icon_home" -}}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="inline-block h-4 w-4" fill="currentColor" aria-hidden="true">
+<path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L2 8.207V13.5A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V8.207l.646.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293zM13 7.207V13.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V7.207l5-5z"/>
+</svg>
+{{- end }}
+
+{{ define "app/icon_burrow" -}}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="inline-block h-5 w-5" fill="currentColor" aria-hidden="true">
+<path d="M3.112 3.645A1.5 1.5 0 0 1 4.605 2H7a.5.5 0 0 1 .5.5v.382c0 .696-.497 1.182-.872 1.469a.5.5 0 0 0-.115.69l.31.465a.5.5 0 0 0 .416.223h.557a.5.5 0 0 0 .416-.223l.31-.465a.5.5 0 0 0-.114-.69c-.376-.287-.873-.773-.873-1.469V2.5A.5.5 0 0 1 9 2h2.395a1.5 1.5 0 0 1 1.493 1.645L12.645 6.5h.237a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-.5.5H2.618a.5.5 0 0 1-.5-.5V7a.5.5 0 0 1 .5-.5h.237zM8.557 9.5h1.16a.5.5 0 0 0 .5-.5V8h-2.6V8.5a.5.5 0 0 0 .5.5h.44z"/>
+</svg>
+{{- end }}
+
+{{ define "app/icon_tailwind" -}}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="inline-block h-5 w-5" fill="currentColor" aria-hidden="true">
+<path d="M8 5c-1.6 0-2.6.8-3 2.4.6-.8 1.3-1.1 2.1-.9.46.115.79.45 1.16.82.6.6 1.3 1.3 2.84 1.3 1.6 0 2.6-.8 3-2.4-.6.8-1.3 1.1-2.1.9-.46-.115-.79-.45-1.16-.82C10.24 5.7 9.54 5 8 5M5 8.6c-1.6 0-2.6.8-3 2.4.6-.8 1.3-1.1 2.1-.9.46.115.79.45 1.16.82.6.6 1.3 1.3 2.84 1.3 1.6 0 2.6-.8 3-2.4-.6.8-1.3 1.1-2.1.9-.46-.115-.79-.45-1.16-.82C7.24 9.3 6.54 8.6 5 8.6"/>
+</svg>
+{{- end }}
+
+{{ define "app/icon_htmx" -}}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="inline-block h-5 w-5" fill="currentColor" aria-hidden="true">
+<path d="M9.965 11.026a.494.494 0 0 1-.32-.114l-2.288-2.05a.498.498 0 0 1 0-.722l2.288-2.05a.5.5 0 1 1 .64.77L8.286 8.502l1.999 1.642a.5.5 0 0 1-.32.882M5.964 5.026a.5.5 0 0 1 .32.882l-1.999 1.642 1.999 1.642a.5.5 0 1 1-.64.77L3.356 7.912a.498.498 0 0 1 0-.722l2.288-2.05a.49.49 0 0 1 .32-.114"/>
+</svg>
+{{- end }}
