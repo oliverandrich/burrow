@@ -1,0 +1,97 @@
+[tools]
+go = "1.26"
+"go:github.com/air-verse/air" = "latest"
+"go:github.com/mfridman/tparse" = "latest"
+"golangci-lint" = "latest"
+"go:golang.org/x/tools/cmd/goimports" = "latest"
+"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+"github:tailwindlabs/tailwindcss" = "4"
+"goreleaser" = "latest"
+"pipx:pre-commit" = "latest"
+
+[tasks.css]
+description = "Build the Tailwind CSS bundle (also re-run automatically by air on every dev rebuild)"
+run = "go tool burrow tailwind -i tailwind.css -o internal/app/static/app.min.css --minify"
+
+[tasks.ensure-dev-keys]
+description = "Generate persistent dev session/CSRF keys on first run"
+hide = true
+run = '''
+#!/usr/bin/env bash
+if [ ! -f .dev-keys ]; then
+    echo "SESSION_HASH_KEY=$(openssl rand -hex 32)" > .dev-keys
+    echo "CSRF_KEY=$(openssl rand -hex 32)" >> .dev-keys
+    echo "Generated .dev-keys"
+fi
+'''
+
+[tasks.dev]
+description = "Run the development server with live reload (air, rebuilds CSS on every change)"
+depends = ["ensure-dev-keys"]
+run = '''
+#!/usr/bin/env bash
+set -a; source .dev-keys; set +a
+air
+'''
+
+[tasks.test]
+description = "Run all tests"
+run = 'go test -json "$@" ./... | tparse'
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run ./..."
+
+[tasks.fmt]
+description = "Format all Go files"
+run = [
+    "gofmt -w .",
+    "goimports -w .",
+]
+
+[tasks.coverage]
+description = "Run tests with HTML coverage report"
+run = [
+    "go test -json -coverprofile=coverage.out ./... | tparse",
+    "go tool cover -html=coverage.out -o coverage.html",
+    'echo "Coverage report: coverage.html"',
+]
+
+[tasks.tidy]
+description = "Tidy module dependencies"
+run = "go mod tidy"
+
+[tasks.vuln]
+description = "Run vulnerability check"
+run = "govulncheck ./..."
+
+[tasks.install]
+description = "Install binary to $GOPATH/bin"
+depends = ["css"]
+run = "go install -ldflags=\"-s -w -X 'main.version=$(git describe --tags --always --dirty 2>/dev/null || echo dev)'\" ./cmd/__ProjectName__"
+
+[tasks.release-snapshot]
+description = "Snapshot release (local build, no publish, no docker) — sanity-check goreleaser config"
+depends = ["css"]
+run = "goreleaser release --snapshot --clean --skip=publish,docker"
+
+[tasks.release]
+description = "Cut a release: archives for all OS/arch + multi-arch Docker image. Requires v* tag + GH/ghcr auth."
+depends = ["css"]
+run = "goreleaser release --clean"
+
+[tasks."release-no-docker"]
+description = "Cut a binaries-only release (no Docker image). Useful when ghcr auth is unavailable."
+depends = ["css"]
+run = "goreleaser release --clean --skip=docker"
+
+[tasks.setup]
+description = "Verify dev tools + install git hooks"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+echo "Installed via mise:"
+mise list --installed | sed "s/^/  /"
+echo
+echo "Run 'pre-commit install' to wire up git hooks."
+'''

@@ -1,0 +1,57 @@
+{{ define "app/layout" -}}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ if .Title }}{{ .Title }} — {{ end }}__ProjectName__</title>
+    <link rel="stylesheet" href="{{ staticURL "app/app.min.css" }}">
+    {{ template "htmx/js" . }}
+    {{ template "htmx/config" . }}
+</head>
+<body class="min-h-screen bg-white text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100" {{- csrfHxHeaders }}>
+    <nav class="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+            <ul class="flex items-center gap-4">
+                <li><a href="/" class="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">__ProjectName__</a></li>
+                {{ range navLinks -}}
+                <li>
+                    <a href="{{ .URL }}"
+                       class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm{{ if .IsActive }} bg-gray-100 dark:bg-gray-800{{ end }} hover:bg-gray-100 dark:hover:bg-gray-800"
+                       {{ if .IsActive }}aria-current="page"{{ end }}
+                       hx-get="{{ .URL }}" hx-target="main" hx-push-url="true">
+                        {{ if .Icon }}{{ icon .Icon }} {{ end }}{{ .Label }}
+                    </a>
+                </li>
+                {{- end }}
+            </ul>
+        </div>
+    </nav>
+    <main class="mx-auto max-w-6xl px-4 py-6">
+        {{ template "app/alerts" . }}
+        {{ .Content }}
+    </main>
+</body>
+</html>
+{{- end }}
+
+{{ define "app/alert_classes" -}}
+{{- $level := alertClass . -}}
+{{- if eq $level "success" -}}border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200
+{{- else if eq $level "warning" -}}border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200
+{{- else if eq $level "error" -}}border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200
+{{- else -}}border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200
+{{- end -}}
+{{- end }}
+
+{{ define "app/alerts" -}}
+<div id="alerts" class="mb-4 space-y-2 empty:hidden">{{- range messages -}}
+<div class="rounded-md border px-3 py-2 text-sm {{ template "app/alert_classes" .Level }}" role="alert">{{ .Text }}</div>
+{{- end -}}</div>
+{{- end }}
+
+{{ define "app/alerts_oob" -}}
+<div id="alerts" class="mb-4 space-y-2 empty:hidden" hx-swap-oob="innerHTML">{{- range messages -}}
+<div class="rounded-md border px-3 py-2 text-sm {{ template "app/alert_classes" .Level }}" role="alert">{{ .Text }}</div>
+{{- end -}}</div>
+{{- end }}

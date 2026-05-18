@@ -1,0 +1,8 @@
+repos:
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.4
+    hooks:
+      - id: golangci-lint-mod
+      - id: go-vulncheck-mod
+      - id: go-test-mod
+      - id: go-mod-tidy

@@ -1,0 +1,53 @@
+{{/*
+    Tailwind-styled overrides for the framework's default error templates.
+    The framework ships {{ define "error/<code>" }} blocks that render
+    {{ template "error/default" . }} by default; we override the default
+    here so all error pages share the same look. Code-specific overrides
+    (e.g. a friendly 404 illustration) can override individual blocks too.
+
+    Data shape: { .Code: int, .Title: string, .Message: string }.
+*/}}
+
+{{ define "error/default" -}}
+<section class="mx-auto max-w-xl py-16 text-center">
+    <p class="mb-2 text-sm font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Error {{ .Code }}</p>
+    <h1 class="mb-4 text-4xl font-bold tracking-tight">{{ .Title }}</h1>
+    <p class="mb-8 text-base text-gray-700 dark:text-gray-300">{{ .Message }}</p>
+    <a href="/" class="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+        {{ template "app/icon_home" . }} Back to home
+    </a>
+</section>
+{{- end }}
+
+{{ define "error/404" -}}
+<section class="mx-auto max-w-xl py-16 text-center">
+    <p class="mb-2 text-sm font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Error 404</p>
+    <h1 class="mb-4 text-4xl font-bold tracking-tight">{{ .Title }}</h1>
+    <p class="mb-8 text-base text-gray-700 dark:text-gray-300">{{ .Message }} The page may have moved, or you might have followed a stale link.</p>
+    <a href="/" class="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+        {{ template "app/icon_home" . }} Back to home
+    </a>
+</section>
+{{- end }}
+
+{{ define "error/403" -}}
+<section class="mx-auto max-w-xl py-16 text-center">
+    <p class="mb-2 text-sm font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400">Error 403</p>
+    <h1 class="mb-4 text-4xl font-bold tracking-tight">{{ .Title }}</h1>
+    <p class="mb-8 text-base text-gray-700 dark:text-gray-300">{{ .Message }} You don't have permission to view this resource.</p>
+    <a href="/" class="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+        {{ template "app/icon_home" . }} Back to home
+    </a>
+</section>
+{{- end }}
+
+{{ define "error/500" -}}
+<section class="mx-auto max-w-xl py-16 text-center">
+    <p class="mb-2 text-sm font-medium uppercase tracking-wider text-red-700 dark:text-red-400">Error 500</p>
+    <h1 class="mb-4 text-4xl font-bold tracking-tight">{{ .Title }}</h1>
+    <p class="mb-8 text-base text-gray-700 dark:text-gray-300">{{ .Message }} Something went wrong on our end; please try again in a moment.</p>
+    <a href="/" class="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+        {{ template "app/icon_home" . }} Back to home
+    </a>
+</section>
+{{- end }}
