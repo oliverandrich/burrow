@@ -6,7 +6,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
-- **`cmd/burrow` CLI** with two sub-commands: `burrow new <dir> --module <path>` scaffolds a new burrow project from an embedded template (the former go-burrow-template repo, now bundled), and `burrow tailwind <args...>` consolidates the standalone `cmd/burrow-tailwind` tool into a sub-command. Install via `go install github.com/oliverandrich/burrow/cmd/burrow@latest`. Scaffolded projects auto-pin to the burrow version that generated them (via `runtime/debug.ReadBuildInfo` with git-tag fallback).
+- **`cmd/burrow` CLI** with three sub-commands: `burrow new <dir> --module <path>` scaffolds a new burrow project from an embedded template (the former go-burrow-template repo, now bundled); `burrow generate app <name>` scaffolds a contrib-style app stub inside an existing project, default path `./internal/<name>`; `burrow tailwind <args...>` consolidates the standalone `cmd/burrow-tailwind` tool. Install via `go install github.com/oliverandrich/burrow/cmd/burrow@latest`. Scaffolded projects auto-pin to the burrow version that generated them (via `runtime/debug.ReadBuildInfo` with git-tag fallback).
 
 ### Deprecated
 

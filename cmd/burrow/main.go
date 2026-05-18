@@ -40,6 +40,7 @@ func main() {
 		Version: burrowVersion(),
 		Commands: []*cli.Command{
 			newCommand(),
+			generateCommand(),
 			tailwindCommand(),
 		},
 	}
