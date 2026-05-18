@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"os/exec"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/oliverandrich/burrow/internal/scaffold"
 	"github.com/urfave/cli/v3"
@@ -37,6 +40,10 @@ or must be empty. After scaffolding, cd into the project and run
 				Name:  "git-user",
 				Usage: "GitHub user or org (default: second segment of --module)",
 			},
+			&cli.StringFlag{
+				Name:  "author",
+				Usage: "copyright holder for LICENSE (default: `git config user.name`, then --git-user)",
+			},
 		},
 		Action: runNew,
 	}
@@ -58,11 +65,17 @@ func runNew(_ context.Context, cmd *cli.Command) error {
 	if gitUser == "" {
 		gitUser = guessGitUser(modulePath)
 	}
+	author := cmd.String("author")
+	if author == "" {
+		author = guessAuthor(gitUser)
+	}
 
 	vars := scaffold.Vars{
 		"__ProjectName__":        projectName,
 		"__ProjectDescription__": cmd.String("description"),
 		"__GitUser__":            gitUser,
+		"__Author__":             author,
+		"__Year__":               strconv.Itoa(time.Now().Year()),
 		"__BurrowVersion__":      burrowVersion(),
 	}
 	rewrite := &scaffold.ModuleRewrite{
@@ -117,4 +130,31 @@ func guessGitUser(modulePath string) string {
 		return parts[1]
 	}
 	return ""
+}
+
+// guessAuthor falls back to `git config user.name` for a human-readable
+// copyright holder, then to gitUser as a last resort. The caller can
+// override with --author for CI pipelines or org repos.
+func guessAuthor(gitUser string) string {
+	return resolveAuthor(gitUser, gitConfigUserName)
+}
+
+// resolveAuthor is the testable core of guessAuthor: it consults
+// gitNameFn for the canonical name, falling back to gitUser when the
+// git config lookup yields nothing.
+func resolveAuthor(gitUser string, gitNameFn func() string) string {
+	if name := gitNameFn(); name != "" {
+		return name
+	}
+	return gitUser
+}
+
+// gitConfigUserName returns the value of `git config user.name`, or
+// the empty string when git is unavailable or the config is unset.
+func gitConfigUserName() string {
+	out, err := exec.CommandContext(context.Background(), "git", "config", "user.name").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
