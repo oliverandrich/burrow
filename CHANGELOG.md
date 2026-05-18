@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Changed
+
+- **Dropped "Django-inspired" framing from current-state copy.** Scaffolded project's homepage and README, plus the `forms` package doc, now describe Burrow on its own terms. The broader marketing comparison in burrow's own README and `docs/index.md` ("for Go developers who want something like Django, Rails, or Flask") is kept intentionally.
+
 ## 0.21.1 — 2026-05-18
 
 ### Changed

@@ -8,7 +8,7 @@
 
 __ProjectDescription__
 
-Built on [Burrow](https://github.com/oliverandrich/burrow) (Django-inspired Go web framework), Tailwind v4 (utility-first CSS, dark mode via `prefers-color-scheme`), [htmx](https://htmx.org/) (server-driven interactivity), SQLite via [Den](https://github.com/oliverandrich/den) (pure Go, no CGO).
+Built on [Burrow](https://github.com/oliverandrich/burrow) (modular Go web framework), Tailwind v4 (utility-first CSS, dark mode via `prefers-color-scheme`), [htmx](https://htmx.org/) (server-driven interactivity), SQLite via [Den](https://github.com/oliverandrich/den) (pure Go, no CGO).
 
 ## Quick Start
 

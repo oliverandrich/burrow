@@ -1,5 +1,5 @@
-// Package forms provides Django-style form structs for creation, binding,
-// validation, and field metadata extraction.
+// Package forms provides struct-based form definitions for creation,
+// binding, validation, and field metadata extraction.
 package forms
 
 import "context"
