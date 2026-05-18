@@ -13,12 +13,8 @@ Built on [Burrow](https://github.com/oliverandrich/burrow) (modular Go web frame
 ## Quick Start
 
 ```bash
-# Create a new project from the template
-gohatch github.com/oliverandrich/go-burrow-template github.com/you/your-app
-cd your-app
-
-# Install pinned tools (Go, Tailwind, linters, goreleaser, ...) via mise
-mise install
+# Bootstrap the project (mise install + go mod tidy + dev keys + git hooks)
+mise run setup
 
 # Run the development server with live reload
 mise run dev
@@ -29,17 +25,6 @@ Server: <http://localhost:8080>.
 ## Requirements
 
 - [mise](https://mise.jdx.dev/) — installs every other tool pinned in `.mise.toml`
-- [gohatch](https://github.com/oliverandrich/gohatch) — instantiates the template
-
-## Template Variables
-
-`gohatch` replaces these placeholders during scaffolding:
-
-| Placeholder              | Replaced with                        |
-| ------------------------ | ------------------------------------ |
-| `__ProjectName__`        | Binary name (last path segment)      |
-| `__ProjectDescription__` | Project description (from `-d` flag) |
-| `__GitUser__`            | GitHub user/org (second path segment)|
 
 ## Development
 
@@ -47,7 +32,7 @@ Server: <http://localhost:8080>.
 
 | Task | What it does |
 |---|---|
-| `mise run dev` | air (live reload). Every rebuild reruns `burrow-tailwind`, so the embedded CSS bundle stays in sync with template utility classes. |
+| `mise run dev` | air (live reload). Every rebuild reruns `burrow tailwind`, so the embedded CSS bundle stays in sync with template utility classes. |
 | `mise run test` | `go test ./...` via tparse |
 | `mise run lint` | golangci-lint |
 | `mise run fmt` | gofmt + goimports |
@@ -75,7 +60,7 @@ On first `mise run dev` a `.dev-keys` file is generated with persistent `SESSION
 │               └── home.html
 ├── tailwind.css                 # Tailwind entrypoint (imports source list)
 ├── Dockerfile                   # Multi-arch image (linux/amd64 + linux/arm64)
-├── go.mod                       # Pinned to burrow v0.20+
+├── go.mod                       # Pinned burrow + Den versions
 ├── .mise.toml                   # Tool pins + task runner
 ├── .golangci.yml                # Linter config
 └── .goreleaser.yaml             # Release config (archives + Docker image)
