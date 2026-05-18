@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
+	"os"
 	"os/exec"
 	"path"
 	"strconv"
@@ -23,9 +25,10 @@ func newCommand() *cli.Command {
 		Name:      "new",
 		Usage:     "Scaffold a new burrow project",
 		ArgsUsage: "<dir>",
-		Description: `Scaffold a new burrow project at <dir>. The directory must not exist
-or must be empty. After scaffolding, cd into the project and run
-` + "`go mod tidy && go run ./cmd/<name>`.",
+		Description: `Scaffold a new burrow project at <dir>. The directory must not
+exist or must be empty. When git is on PATH, the destination is
+initialized as a git repository. The printed Next-steps adapt to
+whether mise is installed.`,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "module",
@@ -49,7 +52,7 @@ or must be empty. After scaffolding, cd into the project and run
 	}
 }
 
-func runNew(_ context.Context, cmd *cli.Command) error {
+func runNew(ctx context.Context, cmd *cli.Command) error {
 	if cmd.NArg() != 1 {
 		return fmt.Errorf("burrow new: exactly one <dir> argument is required")
 	}
@@ -92,19 +95,65 @@ func runNew(_ context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	fmt.Printf(nextStepsTemplate, destDir, destDir, projectName)
+	bootstrapGit(ctx, destDir, os.Stderr, defaultHasGit, defaultInitRepo)
+	fmt.Print(nextStepsMessage(destDir, projectName, defaultHasMise()))
 	return nil
 }
 
-const nextStepsTemplate = `Project scaffolded at %s.
+func nextStepsMessage(destDir, projectName string, miseAvailable bool) string {
+	if miseAvailable {
+		return fmt.Sprintf(nextStepsMiseTemplate, destDir)
+	}
+	return fmt.Sprintf(nextStepsPlainTemplate, destDir, projectName)
+}
+
+const nextStepsMiseTemplate = `Project scaffolded at %[1]s.
 
 Next steps:
-  cd %s
+  cd %[1]s
+  mise run setup     # installs tools, fetches deps, generates dev keys, installs git hooks
+  mise run dev       # live-reload server
+
+Docs: https://burrow.dev/
+`
+
+const nextStepsPlainTemplate = `Project scaffolded at %[1]s.
+
+Next steps:
+  cd %[1]s
   go mod tidy
-  go run ./cmd/%s
+  go run ./cmd/%[2]s
 
 Docs: https://burrow.dev/  (use "go tool burrow tailwind ..." for CSS builds)
 `
+
+// bootstrapGit warns instead of aborting — the scaffold already wrote
+// files to disk, so a missing git or failed init shouldn't undo the work.
+func bootstrapGit(ctx context.Context, destDir string, errW io.Writer, hasGit func() bool, initRepo func(context.Context, string) error) {
+	if !hasGit() {
+		_, _ = fmt.Fprintln(errW, "warning: git not on PATH — skipping `git init`")
+		return
+	}
+	if err := initRepo(ctx, destDir); err != nil {
+		_, _ = fmt.Fprintln(errW, "warning: git init failed:", err)
+	}
+}
+
+func defaultHasMise() bool {
+	_, err := exec.LookPath("mise")
+	return err == nil
+}
+
+func defaultHasGit() bool {
+	_, err := exec.LookPath("git")
+	return err == nil
+}
+
+func defaultInitRepo(ctx context.Context, dir string) error {
+	cmd := exec.CommandContext(ctx, "git", "init", "-q")
+	cmd.Dir = dir
+	return cmd.Run()
+}
 
 // validateModulePath rejects empty or obviously malformed module paths.
 // Full validation is delegated to `go mod tidy`.

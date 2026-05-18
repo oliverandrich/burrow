@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Changed
+
+- **`burrow new` bootstrap UX.** The destination is now auto-initialized as a git repo when `git` is on `PATH` (no initial commit — that's the user's choice). The printed Next-steps switches to a mise-aware two-liner (`mise run setup` + `mise run dev`) when mise is detected, falling back to `go mod tidy && go run` when it isn't. The scaffolded `.mise.toml`'s `[tasks.setup]` is now a one-stop bootstrap: `mise install` + `go mod tidy` + dev-key generation + `pre-commit install` (when `.git/` exists). Docs and README updated to lead with the mise path. No `--no-git` flag — second `git init` is a harmless no-op for users in CI.
+
 ## 0.21.0 — 2026-05-18
 
 ### Added

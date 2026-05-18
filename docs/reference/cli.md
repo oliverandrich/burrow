@@ -67,13 +67,36 @@ version that produced it. Resolution order:
 2. `git describe --tags --abbrev=0 --match 'v*'` in the cwd — covers
    `go run ./cmd/burrow` from inside the burrow source tree.
 
+### Auto `git init`
+
+When `git` is on `PATH`, the destination directory is initialized as a
+git repository (`git init -q`). The initial commit is left to the user.
+When git is missing, a stderr warning is printed and the scaffold
+continues without `.git/`.
+
+### Next-steps output
+
+The printed Next-steps adapt to whether `mise` is installed:
+
+```bash
+# With mise on PATH (recommended path — the scaffold pins mise tasks)
+cd myapp
+mise run setup     # installs tools, fetches deps, generates dev keys, installs git hooks
+mise run dev       # live-reload server
+
+# Without mise
+cd myapp
+go mod tidy
+go run ./cmd/myapp
+```
+
 ### Example
 
 ```bash
 burrow new myapp --module github.com/me/myapp --description "My demo app"
 cd myapp
-go mod tidy
-go run ./cmd/myapp
+mise run setup
+mise run dev
 # → http://localhost:8080
 ```
 
