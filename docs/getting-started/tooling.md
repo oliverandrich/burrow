@@ -20,9 +20,11 @@ go install github.com/oliverandrich/burrow/cmd/burrow@latest
 ```bash
 burrow new myapp --module github.com/you/myapp
 cd myapp
-go mod tidy
-go run ./cmd/myapp
+mise run setup     # installs tools, fetches deps, generates dev keys, installs git hooks
+mise run dev       # live-reload server
 ```
+
+When `mise` isn't installed, the scaffold prints a `go mod tidy && go run ./cmd/myapp` fallback instead.
 
 The scaffold ships:
 

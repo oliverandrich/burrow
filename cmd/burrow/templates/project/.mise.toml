@@ -86,12 +86,26 @@ depends = ["css"]
 run = "goreleaser release --clean --skip=docker"
 
 [tasks.setup]
-description = "Verify dev tools + install git hooks"
+description = "Bootstrap the project: install pinned tools, fetch deps, generate dev secrets, install git hooks"
+depends = ["ensure-dev-keys"]
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
-echo "Installed via mise:"
-mise list --installed | sed "s/^/  /"
-echo
-echo "Run 'pre-commit install' to wire up git hooks."
+
+echo "==> mise install"
+mise install
+
+echo "==> go mod tidy"
+go mod tidy
+
+if [ -d .git ]; then
+    if command -v pre-commit >/dev/null 2>&1; then
+        echo "==> pre-commit install"
+        pre-commit install
+    else
+        echo "==> pre-commit not on PATH — skipping git hooks" >&2
+    fi
+else
+    echo "==> no .git/ — skipping git hooks"
+fi
 '''

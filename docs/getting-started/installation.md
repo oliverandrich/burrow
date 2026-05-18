@@ -15,8 +15,10 @@ boilerplate:
 ```bash
 go install github.com/oliverandrich/burrow/cmd/burrow@latest
 burrow new myapp --module github.com/you/myapp
-cd myapp && go mod tidy && go run ./cmd/myapp
+cd myapp && mise run setup && mise run dev
 ```
+
+Without `mise`, use the `go mod tidy && go run ./cmd/myapp` flow the scaffold prints instead.
 
 See [Tooling](tooling.md) for the full sub-command reference.
 

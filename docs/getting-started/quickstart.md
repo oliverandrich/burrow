@@ -10,8 +10,10 @@ Build a minimal working application with a custom homepage and health check endp
     ```bash
     go install github.com/oliverandrich/burrow/cmd/burrow@latest
     burrow new myapp --module github.com/you/myapp
-    cd myapp && go run ./cmd/myapp
+    cd myapp && mise run setup && mise run dev
     ```
+
+    Without `mise`, the scaffold prints a `go mod tidy && go run ./cmd/myapp` fallback.
 
     See [Tooling](tooling.md) for the full set of flags.
 
