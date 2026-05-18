@@ -57,4 +57,4 @@ require (
 	modernc.org/sqlite v1.48.0 // indirect
 )
 
-tool github.com/oliverandrich/burrow/cmd/burrow-tailwind
+tool github.com/oliverandrich/burrow/cmd/burrow

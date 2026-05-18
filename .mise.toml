@@ -40,14 +40,14 @@ run = "beans list --no-status completed --no-status scrapped"
 [tasks."example-hello"]
 description = "Run the hello world example (builds Tailwind CSS first)"
 run = [
-    "go tool burrow-tailwind -i example/hello/tailwind.css -o example/hello/static/app.min.css --minify",
+    "go tool burrow tailwind -i example/hello/tailwind.css -o example/hello/static/app.min.css --minify",
     'go run ./example/hello "$@"',
 ]
 
 [tasks."example-notes"]
 description = "Run the notes example application (builds Tailwind CSS first)"
 run = [
-    "go tool burrow-tailwind -i example/notes/tailwind.css -o example/notes/internal/app/static/app.min.css --minify",
+    "go tool burrow tailwind -i example/notes/tailwind.css -o example/notes/internal/app/static/app.min.css --minify",
     'go run ./example/notes/cmd/server "$@"',
 ]
 
