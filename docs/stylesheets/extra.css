@@ -1,0 +1,7 @@
+/* Keep inline `code` in tables on a single line so flag names like
+ * --description or paths like internal/<name>/templates/ don't get
+ * broken in the middle by narrow columns. The table itself stays
+ * horizontally scrollable on small viewports (Material default). */
+.md-typeset table:not([class]) td code {
+    white-space: nowrap;
+}

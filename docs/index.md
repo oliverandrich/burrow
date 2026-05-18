@@ -30,6 +30,18 @@ Built on [Chi](https://go-chi.io/), [Den](https://github.com/oliverandrich/den) 
 
 ## Minimal Example
 
+The fastest path is the bundled `burrow` CLI, which scaffolds a full project with the contrib stack, Tailwind v4, live reload, CI, and goreleaser config already wired:
+
+```bash
+go install github.com/oliverandrich/burrow/cmd/burrow@latest
+burrow new myapp --module github.com/you/myapp
+cd myapp && go run ./cmd/myapp
+```
+
+See [Tooling](getting-started/tooling.md) for the full sub-command
+reference, or follow the from-scratch example below to understand what
+the CLI wires up:
+
 ```bash
 mkdir myapp && cd myapp
 go mod init myapp

@@ -1,47 +1,91 @@
 # Tooling
 
-Two companion projects speed up day-to-day work with Burrow: a project
-template that scaffolds a production-ready starter, and a Claude Code
-plugin with agents that know the framework inside out.
+Burrow ships a CLI for scaffolding and a separate Claude Code plugin
+with framework-aware agents. Both are optional — Burrow works fine
+without them.
 
-Both are optional. Burrow works fine without them.
+## CLI — `burrow`
 
-## Project Template — `go-burrow-template`
+The `burrow` binary scaffolds new projects and contrib-style apps, and
+wraps the standalone Tailwind CLI with auto-discovered template
+sources. It lives at `cmd/burrow` in the framework repo and installs
+in one line:
 
-[github.com/oliverandrich/go-burrow-template](https://github.com/oliverandrich/go-burrow-template)
+```bash
+go install github.com/oliverandrich/burrow/cmd/burrow@latest
+```
 
-A starter template that gives you a running Burrow application in one
-command. It ships with:
+### Scaffold a new project
 
-- `cmd/<name>/main.go` wiring up a typical contrib stack (`session`,
+```bash
+burrow new myapp --module github.com/you/myapp
+cd myapp
+go mod tidy
+go run ./cmd/myapp
+```
+
+The scaffold ships:
+
+- `cmd/<name>/main.go` wiring a typical contrib stack (`session`,
   `csrf`, `staticfiles`, `healthcheck`, `messages`, `htmx`) plus a
   Tailwind-classed shell app providing the homepage and layout
   overrides.
-- A `justfile` with recipes for `run`, `run-once`, `test`, `coverage`,
-  `lint`, `fmt`, `tidy`, `install`, and `setup` (checks your dev
-  tools).
-- Live reload via [air](https://github.com/air-verse/air): `just run`
-  rebuilds and restarts on every `.go` / `.html` change. On first run
-  a `.dev-keys` file is generated with persistent `SESSION_HASH_KEY`
-  and `CSRF_KEY` so sessions and CSRF tokens survive reloads.
-- `.golangci.yml`, `.goreleaser.yaml`, and a GitHub Actions CI
-  workflow — matching the conventions used in the framework itself.
+- `.mise.toml` pinning the Go toolchain, Tailwind v4, `air`,
+  `golangci-lint`, `tparse`, `goimports`, `govulncheck`, `goreleaser`,
+  and `pre-commit`.
+- `.air.toml` integration so `mise run dev` rebuilds CSS and the
+  binary on every save.
+- `.golangci.yml`, `.goreleaser.yaml`, multi-arch `Dockerfile`, and
+  GitHub Actions CI + release workflows.
+- A pre-commit config that calls the mise-installed tools (no extra
+  Go toolchains).
 
-### Using it
+The generated `go.mod` auto-pins to the burrow version that produced
+it, via `runtime/debug.ReadBuildInfo`.
 
-The template is driven by [gohatch](https://github.com/oliverandrich/gohatch),
-which replaces placeholders (`__ProjectName__`, `__GitUser__`,
-`__ProjectDescription__`) during scaffolding:
+#### Flags
+
+| Flag | Required | Default | Purpose |
+|---|---|---|---|
+| `--module` | yes | — | Target Go module path (e.g. `github.com/me/myapp`) |
+| `--description` | no | "" | Project description for README and Docker labels |
+| `--git-user` | no | second segment of `--module` | GitHub user or org |
+| `--author` | no | `git config user.name`, then `--git-user` | Copyright holder for LICENSE |
+
+### Scaffold a contrib-style app
+
+Inside an existing project:
 
 ```bash
-gohatch github.com/oliverandrich/go-burrow-template github.com/you/your-app
-cd your-app
-just setup   # verify tools
-just run     # start the dev server with live reload
+burrow generate app notes
 ```
 
-If you prefer to copy the repo directly and rename the placeholders
-yourself, that works too — gohatch is just a convenience wrapper.
+Produces `internal/notes/{app.go, app_test.go, templates/notes/index.html}`.
+The stub registers `GET /notes` and renders `notes/index`. The next-steps
+hint prints the full import path, derived from the host module's `go.mod`.
+
+Override the output base via `--path`:
+
+```bash
+burrow generate app marketing --path ./apps
+# → ./apps/marketing/...
+```
+
+App names must be valid Go identifiers — lowercase ASCII letter +
+letters/digits/underscores, not a Go keyword or predeclared identifier.
+
+### Tailwind CSS builds
+
+`burrow tailwind` invokes the standalone Tailwind v4 CLI with an
+auto-generated `@source` listing that covers every contrib and every
+project app:
+
+```bash
+go tool burrow tailwind -i tailwind.css -o internal/app/static/app.min.css --minify
+```
+
+See [Tailwind CSS](../guide/tailwind.md) for the full setup. All
+arguments are forwarded verbatim to `tailwindcss`.
 
 ## Claude Code Plugin — `burrow-claude-plugin`
 
