@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#MISE description="Smoke-test the burrow CLI: scaffold a project + generate an app, verify it builds and tests pass"
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT_DIR"
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+BURROW_BIN="$TMP/burrow"
+DEMO_DIR="$TMP/demo"
+
+echo ">>> Building burrow CLI"
+go build -o "$BURROW_BIN" ./cmd/burrow
+
+echo ">>> burrow new"
+"$BURROW_BIN" new "$DEMO_DIR" --module github.com/example/demo --description "scaffold-smoke"
+
+cd "$DEMO_DIR"
+# Pin to the local burrow source so the smoke test catches API drift
+# between the scaffolded output and unreleased burrow changes.
+go mod edit -replace="github.com/oliverandrich/burrow=$ROOT_DIR"
+go mod tidy
+go build ./...
+go test ./...
+
+echo ">>> burrow generate app"
+"$BURROW_BIN" generate app notes
+go mod tidy
+go build ./...
+go test ./...
+
+echo ">>> scaffold-smoke OK"
