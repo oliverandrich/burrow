@@ -4,6 +4,25 @@ Burrow projects style their HTML with [Tailwind CSS](https://tailwindcss.com/) v
 
 Dark mode follows the browser's `prefers-color-scheme` setting; no user-toggleable theme machinery is shipped by Burrow. If you want a toggle, write it yourself.
 
+!!! info "Migrating from `cmd/burrow-tailwind`?"
+    The standalone `cmd/burrow-tailwind` tool is deprecated in favour
+    of the `burrow tailwind` sub-command (scheduled for removal in
+    v0.22). In existing projects, rewrite the tool directive in
+    `go.mod` and the invocations in `.mise.toml` / `.air.toml`:
+
+    ```
+    - tool github.com/oliverandrich/burrow/cmd/burrow-tailwind
+    + tool github.com/oliverandrich/burrow/cmd/burrow
+    ```
+
+    ```
+    - go tool burrow-tailwind -i tailwind.css -o ...
+    + go tool burrow      tailwind -i tailwind.css -o ...
+    ```
+
+    The shim continues to work until v0.22 but prints a deprecation
+    notice on every invocation.
+
 ## What you ship
 
 A realistic Burrow project keeps the binary in `cmd/server/` and every app — including the project shell that owns the shared layout — under `internal/`. There is no project-root package:
@@ -86,8 +105,8 @@ The `app/` prefix mirrors how every Burrow contrib's assets are namespaced (htmx
 
 ## Quick start
 
-!!! tip "Or: scaffold from go-burrow-template"
-    The six steps below produce — by hand — the same layout that ships pre-wired in [**go-burrow-template**](https://github.com/oliverandrich/go-burrow-template): `cmd/server/`, `internal/app/` shell, `.mise.toml` with the toolchain pinned, `.air.toml` integration, a buildable `tailwind.css`. If you want a fresh project, use `gohatch` to scaffold from the template; see [Tooling](../getting-started/tooling.md) for the one-liner. Reading the steps below is still worthwhile to understand *what* the template wires up.
+!!! tip "Or: scaffold with `burrow new`"
+    The six steps below produce — by hand — the same layout that ships pre-wired in `burrow new`: `cmd/<name>/`, `internal/app/` shell, `.mise.toml` with the toolchain pinned, `.air.toml` integration, a buildable `tailwind.css`. For a fresh project, run `go install github.com/oliverandrich/burrow/cmd/burrow@latest && burrow new myapp --module github.com/you/myapp`; see [Tooling](../getting-started/tooling.md) for all flags. Reading the steps below is still worthwhile to understand *what* the scaffold wires up.
 
 ### 1. Pin tooling with mise
 
@@ -102,10 +121,10 @@ go = "1.26"
 mise install
 ```
 
-### 2. Add `burrow-tailwind` as a Go tool
+### 2. Add `burrow` as a Go tool
 
 ```bash
-go get -tool github.com/oliverandrich/burrow/cmd/burrow-tailwind
+go get -tool github.com/oliverandrich/burrow/cmd/burrow
 ```
 
 ### 3. Create your `tailwind.css`
@@ -115,7 +134,7 @@ go get -tool github.com/oliverandrich/burrow/cmd/burrow-tailwind
 @import "./.tailwind/sources.css";
 ```
 
-Two lines. The `./.tailwind/sources.css` import is regenerated on every `burrow-tailwind` invocation; it carries `@source` directives for both Burrow's contribs and your project's own templates. **You don't list contribs or internal apps manually.**
+Two lines. The `./.tailwind/sources.css` import is regenerated on every `burrow tailwind` invocation; it carries `@source` directives for both Burrow's contribs and your project's own templates. **You don't list contribs or internal apps manually.**
 
 ### 4. Add `.tailwind/` and the build output to `.gitignore`
 
@@ -128,7 +147,7 @@ Whether you also gitignore `internal/app/static/app.min.css` depends on your dep
 ### 5. Build CSS
 
 ```bash
-go tool burrow-tailwind -i tailwind.css -o internal/app/static/app.min.css --minify
+go tool burrow tailwind -i tailwind.css -o internal/app/static/app.min.css --minify
 ```
 
 ### 6. Link it from your layout
@@ -137,9 +156,9 @@ go tool burrow-tailwind -i tailwind.css -o internal/app/static/app.min.css --min
 <link rel="stylesheet" href="{{ staticURL "app/app.min.css" }}">
 ```
 
-## What `burrow-tailwind` does
+## What `burrow tailwind` does
 
-`burrow-tailwind` is a thin Go-tool wrapper around `tailwindcss`. On every invocation it writes `.tailwind/sources.css` with `@source "<absolute path>";` lines for:
+`burrow tailwind` is a thin sub-command that wraps `tailwindcss`. On every invocation it writes `.tailwind/sources.css` with `@source "<absolute path>";` lines for:
 
 1. Every `<burrow>/contrib/<app>/templates/` directory (resolved via `go list -m`).
 2. The project's `./templates/` if it exists (flat layout).
@@ -171,7 +190,7 @@ Tailwind utility classes are baked into each contrib's templates (e.g. `contrib/
 
 ## Development workflow with Air
 
-Use [Air](https://github.com/air-verse/air) to drive both the Go rebuild and the Tailwind rebuild as a single watcher. Air's `pre_cmd` invokes `burrow-tailwind` before every Go build, so `//go:embed` picks up the fresh CSS in the same compile pass that re-embeds the templates:
+Use [Air](https://github.com/air-verse/air) to drive both the Go rebuild and the Tailwind rebuild as a single watcher. Air's `pre_cmd` invokes `burrow tailwind` before every Go build, so `//go:embed` picks up the fresh CSS in the same compile pass that re-embeds the templates:
 
 ```toml
 # .air.toml
@@ -179,7 +198,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-pre_cmd = ["go tool burrow-tailwind -i tailwind.css -o internal/app/static/app.min.css"]
+pre_cmd = ["go tool burrow tailwind -i tailwind.css -o internal/app/static/app.min.css"]
 cmd = "go build -o ./tmp/server ./cmd/server"
 entrypoint = "./tmp/server"
 include_ext = ["go", "html", "tpl"]
@@ -212,14 +231,14 @@ On any `.go` or `.html` edit:
 2. Air runs `go build` — `//go:embed` re-embeds the templates *and* the new CSS.
 3. Air restarts the binary. The served CSS matches what the templates use.
 
-This integrated pattern is preferred over running `burrow-tailwind --watch` and `air` as two parallel watchers, because parallel watchers race: Tailwind would write a new CSS to disk while Air's running binary still serves the old `//go:embed`-ed copy until the next `.go` change triggered a rebuild.
+This integrated pattern is preferred over running `burrow tailwind --watch` and `air` as two parallel watchers, because parallel watchers race: Tailwind would write a new CSS to disk while Air's running binary still serves the old `//go:embed`-ed copy until the next `.go` change triggered a rebuild.
 
 > Note: `.tailwind/sources.css` is generated by every pre_cmd run, so a new Burrow contrib that lands via `go get -u burrow` is picked up on the next save. Same for new internal apps you add — drop `internal/<name>/templates/foo.html` somewhere and it gets scanned on the next reload.
 
 ## Production build
 
 ```bash
-go tool burrow-tailwind -i tailwind.css -o internal/app/static/app.min.css --minify
+go tool burrow tailwind -i tailwind.css -o internal/app/static/app.min.css --minify
 ```
 
 The output is minified. Combined with `contrib/staticfiles` content-hashing and `Cache-Control: immutable`, the CSS is downloaded once per release.

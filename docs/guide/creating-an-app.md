@@ -2,6 +2,20 @@
 
 This guide walks through building a custom app from scratch, using a "notes" app as the example.
 
+!!! tip "Skip the boilerplate with `burrow generate app`"
+    For a minimal stub with `app.go`, `app_test.go`, and a starter
+    template, run:
+
+    ```bash
+    burrow generate app notes
+    ```
+
+    Output lands at `./internal/notes/` (override with `--path`). The
+    stub gives you the App struct, a registered route, and an
+    embedded template — you fill in the model, repository, and
+    handlers below. See [CLI reference](../reference/cli.md#burrow-generate-app)
+    for all flags.
+
 ## The App Interface
 
 Every app implements `burrow.App`:

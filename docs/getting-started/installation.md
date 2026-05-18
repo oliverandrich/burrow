@@ -5,6 +5,21 @@
 - **Go 1.26+**
 - **CGO_ENABLED=0** — the framework uses pure-Go SQLite (`modernc.org/sqlite`), no C compiler needed
 
+## Install the CLI (optional)
+
+The `burrow` CLI scaffolds new projects, generates contrib-style apps,
+and wraps Tailwind v4 builds. It's not required to use the framework
+— you can `go get` the library directly — but it removes a lot of
+boilerplate:
+
+```bash
+go install github.com/oliverandrich/burrow/cmd/burrow@latest
+burrow new myapp --module github.com/you/myapp
+cd myapp && go mod tidy && go run ./cmd/myapp
+```
+
+See [Tooling](tooling.md) for the full sub-command reference.
+
 ## Create a Project
 
 ```bash

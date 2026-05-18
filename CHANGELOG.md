@@ -8,6 +8,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **`cmd/burrow` CLI** with three sub-commands: `burrow new <dir> --module <path>` scaffolds a new burrow project from an embedded template (the former go-burrow-template repo, now bundled); `burrow generate app <name>` scaffolds a contrib-style app stub inside an existing project, default path `./internal/<name>`; `burrow tailwind <args...>` consolidates the standalone `cmd/burrow-tailwind` tool. Install via `go install github.com/oliverandrich/burrow/cmd/burrow@latest`. Scaffolded projects auto-pin to the burrow version that generated them (via `runtime/debug.ReadBuildInfo` with git-tag fallback).
 
+### Changed
+
+- **Docs reflect the new CLI.** Quickstart and installation pages lead with `burrow new`; `docs/guide/tailwind.md` uses `burrow tailwind` throughout (with a migration callout at the top); new `docs/reference/cli.md` documents `new`, `generate app`, and `tailwind` sub-commands.
+
 ### Deprecated
 
 - **`cmd/burrow-tailwind` is deprecated** in favour of `burrow tailwind`. The standalone binary now prints a one-line deprecation notice and delegates to the new sub-command. Migrate by replacing `go tool burrow-tailwind ...` with `go tool burrow tailwind ...` in `.mise.toml`, `.air.toml`, and any other build scripts. Scheduled for removal in v0.22.

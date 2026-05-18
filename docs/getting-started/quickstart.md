@@ -3,9 +3,17 @@
 Build a minimal working application with a custom homepage and health check endpoint.
 
 !!! tip "Faster start"
-    For a ready-to-run project with a contrib stack, `justfile`, live
-    reload, CI, and goreleaser config already wired up, use the
-    [project template and Claude Code plugin](tooling.md).
+    For a ready-to-run project with a contrib stack, live reload, CI,
+    and goreleaser config already wired up, install the `burrow` CLI
+    and run `burrow new`:
+
+    ```bash
+    go install github.com/oliverandrich/burrow/cmd/burrow@latest
+    burrow new myapp --module github.com/you/myapp
+    cd myapp && go run ./cmd/myapp
+    ```
+
+    See [Tooling](tooling.md) for the full set of flags.
 
 ## 1. Create the Project
 

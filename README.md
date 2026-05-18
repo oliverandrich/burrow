@@ -31,7 +31,7 @@ Built on [Chi](https://go-chi.io/), [Den](https://github.com/oliverandrich/den) 
 - **SQLite or PostgreSQL** — embedded SQLite (pure Go, no CGO) for single-binary deploys, or PostgreSQL for scale — switch with one flag
 - **Automatic schema** — document types declared in code, tables and indexes created on startup
 - **Standard templates** — Go's `html/template` with a global template set, per-app FuncMaps, and automatic layout wrapping
-- **Tailwind v4 by default** — `contrib/admin`, `contrib/auth`, and `contrib/jobs` ship Tailwind v4 templates out of the box, and the bundled [`burrow-tailwind`](docs/guide/tailwind.md) wrapper auto-discovers every contrib's template directory so utility scanning Just Works. Prefer a different stack? Bring your own CSS and override the contrib templates via `html/template`'s last-define-wins — Burrow's core itself ships no CSS.
+- **Tailwind v4 by default** — `contrib/admin`, `contrib/auth`, and `contrib/jobs` ship Tailwind v4 templates out of the box, and the bundled [`burrow tailwind`](docs/guide/tailwind.md) sub-command auto-discovers every contrib's template directory so utility scanning Just Works. Prefer a different stack? Bring your own CSS and override the contrib templates via `html/template`'s last-define-wins — Burrow's core itself ships no CSS.
 - **Layout system** — app layout via server, admin layout via admin package
 - **CLI configuration** — flags, environment variables, and TOML config via [urfave/cli](https://github.com/urfave/cli)
 - **CSRF protection** — automatic token generation and validation
@@ -40,6 +40,16 @@ Built on [Chi](https://go-chi.io/), [Den](https://github.com/oliverandrich/den) 
 - **Contrib apps** — auth (WebAuthn/passkeys), sessions, i18n, admin, CSRF, flash messages, jobs, uploads, rate limiting, healthcheck, static files
 
 ## Quick Start
+
+The fastest path is the bundled `burrow` CLI, which scaffolds a project with the contrib stack, Tailwind v4, live reload, CI, and goreleaser config already wired:
+
+```bash
+go install github.com/oliverandrich/burrow/cmd/burrow@latest
+burrow new myapp --module github.com/you/myapp
+cd myapp && go run ./cmd/myapp
+```
+
+Or build from scratch:
 
 ```bash
 mkdir myapp && cd myapp
