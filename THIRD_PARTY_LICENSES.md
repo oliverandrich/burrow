@@ -83,6 +83,7 @@ Generated with [google/go-licenses](https://github.com/google/go-licenses).
 | github.com/wneessen/go-mail/smtp | BSD-3-Clause | [LICENSE](https://github.com/wneessen/go-mail/blob/v0.7.3/smtp/LICENSE) |
 | github.com/x448/float16 | MIT | [LICENSE](https://github.com/x448/float16/blob/v0.8.4/LICENSE) |
 | golang.org/x/crypto | BSD-3-Clause | [LICENSE](https://cs.opensource.google/go/x/crypto/+/v0.51.0:LICENSE) |
+| golang.org/x/mod | BSD-3-Clause | [LICENSE](https://cs.opensource.google/go/x/mod/+/v0.35.0:LICENSE) |
 | golang.org/x/net/idna | BSD-3-Clause | [LICENSE](https://cs.opensource.google/go/x/net/+/v0.53.0:LICENSE) |
 | golang.org/x/sys | BSD-3-Clause | [LICENSE](https://cs.opensource.google/go/x/sys/+/v0.44.0:LICENSE) |
 | golang.org/x/text | BSD-3-Clause | [LICENSE](https://cs.opensource.google/go/x/text/+/v0.37.0:LICENSE) |

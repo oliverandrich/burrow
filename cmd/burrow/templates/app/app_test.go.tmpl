@@ -1,0 +1,13 @@
+package __AppName__
+
+import "testing"
+
+func TestNew(t *testing.T) {
+	app := New()
+	if app == nil {
+		t.Fatal("New() returned nil")
+	}
+	if got, want := app.Name(), "__AppName__"; got != want {
+		t.Errorf("Name() = %q, want %q", got, want)
+	}
+}
