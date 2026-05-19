@@ -1,7 +1,7 @@
 {{ define "jobs/admin_detail" -}}
 <nav aria-label="breadcrumb" class="mb-4 text-sm">
     <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li><a href="/admin/" class="hover:underline">{{ t "Admin" }}</a></li>
         <li aria-hidden="true">/</li>
         <li><a href="/admin/jobs" class="hover:underline">{{ t "Jobs" }}</a></li>
         <li aria-hidden="true">/</li>
@@ -12,57 +12,57 @@
     <h2 class="text-2xl font-bold tracking-tight">{{ .Job.Type }} <small class="ml-2 font-mono text-base font-normal text-gray-500 dark:text-gray-400">#{{ .Job.ID }}</small></h2>
 </header>
 <article class="mb-4 rounded-lg border border-gray-200 dark:border-gray-800">
-    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800/40"><strong>{{ t "admin-job-detail-info" }}</strong></header>
+    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800/40"><strong>{{ t "Job Information" }}</strong></header>
     <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 p-4 text-sm">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-id" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "ID" }}</dt>
         <dd class="font-mono">{{ .Job.ID }}</dd>
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-type" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Type" }}</dt>
         <dd>{{ .Job.Type }}</dd>
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-status" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Status" }}</dt>
         <dd>{{ template "jobs/status_badge" .Job.Status }}</dd>
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-priority" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Priority" }}</dt>
         <dd>{{ .Job.Priority }}</dd>
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-attempts" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Attempts" }}</dt>
         <dd>{{ printf "%d/%d" .Job.Attempts .Job.MaxRetries }}</dd>
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-run-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Run At" }}</dt>
         <dd>{{ .Job.RunAt.Format "2006-01-02 15:04:05" }}</dd>
         {{ if .Job.LockedAt -}}
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-locked-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Locked At" }}</dt>
         <dd>{{ .Job.LockedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
         {{ if .Job.CompletedAt -}}
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-completed-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Completed At" }}</dt>
         <dd>{{ .Job.CompletedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
         {{ if .Job.FailedAt -}}
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-failed-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Failed At" }}</dt>
         <dd>{{ .Job.FailedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
         {{ if .Job.LastAttemptedAt -}}
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-last-attempted-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Last Attempted At" }}</dt>
         <dd>{{ .Job.LastAttemptedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-created-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Created At" }}</dt>
         <dd>{{ .Job.CreatedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{ if .Job.UpdatedAt -}}
-        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "admin-job-detail-updated-at" }}</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">{{ t "Updated At" }}</dt>
         <dd>{{ .Job.UpdatedAt.Format "2006-01-02 15:04:05" }}</dd>
         {{- end }}
     </dl>
 </article>
 <article class="mb-4 rounded-lg border border-gray-200 dark:border-gray-800">
-    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800/40"><strong>{{ t "admin-job-detail-payload" }}</strong></header>
+    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800/40"><strong>{{ t "Payload" }}</strong></header>
     <pre class="overflow-x-auto p-4 text-sm"><code>{{ prettyJSON .Job.Payload }}</code></pre>
 </article>
 {{ if .Job.Result -}}
 <article class="mb-4 rounded-lg border border-gray-200 dark:border-gray-800">
-    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800/40"><strong>{{ t "admin-job-detail-result" }}</strong></header>
+    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800/40"><strong>{{ t "Result" }}</strong></header>
     <pre class="overflow-x-auto p-4 text-sm"><code>{{ prettyJSON .Job.Result }}</code></pre>
 </article>
 {{- end }}
 {{ if .Job.LastError -}}
 <article class="mb-4 rounded-lg border border-red-200 dark:border-red-900">
-    <header class="border-b border-red-200 bg-red-50 px-4 py-2 dark:border-red-900 dark:bg-red-950/40"><strong>{{ t "admin-job-detail-last-error" }}</strong>{{ if .Job.ErrorClass }} <span class="ml-2 inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">{{ .Job.ErrorClass }}</span>{{ end }}</header>
+    <header class="border-b border-red-200 bg-red-50 px-4 py-2 dark:border-red-900 dark:bg-red-950/40"><strong>{{ t "Last Error" }}</strong>{{ if .Job.ErrorClass }} <span class="ml-2 inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">{{ .Job.ErrorClass }}</span>{{ end }}</header>
     <pre class="overflow-x-auto p-4 text-sm">{{ .Job.LastError }}</pre>
 </article>
 {{- end }}
@@ -72,7 +72,7 @@
         class="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
         hx-post="/admin/jobs/{{ .Job.ID }}/retry">
         {{ template "jobs/icon_arrow_counterclockwise" . }}
-        {{ t "admin-job-detail-action-retry" }}
+        {{ t "Retry" }}
     </button>
     {{- end }}
     {{ if or (eq (jobStatus .Job) "pending") (or (eq (jobStatus .Job) "running") (eq (jobStatus .Job) "failed")) -}}
@@ -81,7 +81,7 @@
         hx-post="/admin/jobs/{{ .Job.ID }}/cancel"
         hx-confirm="{{ t "admin-job-detail-cancel-confirm" }}">
         {{ template "jobs/icon_x_circle" . }}
-        {{ t "admin-job-detail-action-cancel" }}
+        {{ t "Cancel" }}
     </button>
     {{- end }}
     <button type="button"
@@ -89,7 +89,7 @@
         hx-delete="/admin/jobs/{{ .Job.ID }}"
         hx-confirm="{{ t "admin-job-detail-delete-confirm" }}">
         {{ template "jobs/icon_trash" . }}
-        {{ t "admin-job-detail-action-delete" }}
+        {{ t "Delete" }}
     </button>
 </div>
 {{- end }}

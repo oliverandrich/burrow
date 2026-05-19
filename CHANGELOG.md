@@ -11,6 +11,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Changed
 
 - **`forms.BoundField.Label` and `forms.Choice.Label` are now auto-translated** by `extractFields` via the same Label-as-key convention as `NavItem.Label`. Templates render `{{ .Label }}` and get the locale-appropriate string for free — no `{{ t .Label }}` wrapping needed. Contribute translations keyed by the English `verbose:` / `Choice.Label` value. Added `Form.WithContext(ctx)` for building forms outside the request lifecycle (background jobs, CLI). See [forms: Translating field labels](guide/forms.md#translating-field-labels).
+- **`contrib/{admin,auth,jobs}` short structured-key labels migrated to Label-as-key** in line with the new convention. Filter tabs, action buttons, table headers, field labels, status badges — i.e. anything that's a single-word or short-phrase UI label — now use bare English keys (`{{ t "Active" }}` instead of `{{ t "admin-users-active" }}`). Full sentences, prompts, confirmations, and plural variants keep their structured keys. Translation TOMLs now have a "Field labels" block at the top followed by structured "Messages" — see [i18n: Labels vs. Messages](guide/i18n.md#labels-vs-messages) for the rule.
 
 ## 0.21.2 — 2026-05-18
 

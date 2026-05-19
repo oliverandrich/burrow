@@ -1,7 +1,7 @@
 {{ define "jobs/admin_list" -}}
 <nav aria-label="breadcrumb" class="mb-4 text-sm">
     <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li><a href="/admin/" class="hover:underline">{{ t "Admin" }}</a></li>
         <li aria-hidden="true">/</li>
         <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "Jobs" }}</li>
     </ol>
@@ -11,24 +11,24 @@
 </header>
 {{- $status := .Status }}
 <ul class="mb-6 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-gray-200 text-sm dark:border-gray-800" role="tablist">
-    <li><a href="/admin/jobs" role="tab"{{ if eq $status "" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-all" }}</a></li>
-    <li><a href="/admin/jobs?status=pending" role="tab"{{ if eq $status "pending" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "pending" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-pending" }}</a></li>
-    <li><a href="/admin/jobs?status=running" role="tab"{{ if eq $status "running" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "running" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-running" }}</a></li>
-    <li><a href="/admin/jobs?status=failed" role="tab"{{ if eq $status "failed" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "failed" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-failed" }}</a></li>
-    <li><a href="/admin/jobs?status=dead" role="tab"{{ if eq $status "dead" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "dead" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-dead" }}</a></li>
-    <li><a href="/admin/jobs?status=completed" role="tab"{{ if eq $status "completed" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "completed" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "admin-jobs-filter-completed" }}</a></li>
+    <li><a href="/admin/jobs" role="tab"{{ if eq $status "" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "All" }}</a></li>
+    <li><a href="/admin/jobs?status=pending" role="tab"{{ if eq $status "pending" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "pending" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "Pending" }}</a></li>
+    <li><a href="/admin/jobs?status=running" role="tab"{{ if eq $status "running" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "running" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "Running" }}</a></li>
+    <li><a href="/admin/jobs?status=failed" role="tab"{{ if eq $status "failed" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "failed" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "Failed" }}</a></li>
+    <li><a href="/admin/jobs?status=dead" role="tab"{{ if eq $status "dead" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "dead" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "Dead" }}</a></li>
+    <li><a href="/admin/jobs?status=completed" role="tab"{{ if eq $status "completed" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "completed" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "Completed" }}</a></li>
 </ul>
 {{- if .Jobs }}
 <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
     <table class="w-full text-left text-sm">
         <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
             <tr>
-                <th scope="col" class="px-3 py-2">Type</th>
-                <th scope="col" class="px-3 py-2">Status</th>
-                <th scope="col" class="px-3 py-2">{{ t "admin-job-detail-priority" }}</th>
-                <th scope="col" class="px-3 py-2">Attempts</th>
-                <th scope="col" class="px-3 py-2">Created</th>
-                <th scope="col" class="px-3 py-2 text-end whitespace-nowrap">{{ t "modeladmin-actions" }}</th>
+                <th scope="col" class="px-3 py-2">{{ t "Type" }}</th>
+                <th scope="col" class="px-3 py-2">{{ t "Status" }}</th>
+                <th scope="col" class="px-3 py-2">{{ t "Priority" }}</th>
+                <th scope="col" class="px-3 py-2">{{ t "Attempts" }}</th>
+                <th scope="col" class="px-3 py-2">{{ t "Created" }}</th>
+                <th scope="col" class="px-3 py-2 text-end whitespace-nowrap">{{ t "Actions" }}</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
@@ -46,7 +46,7 @@
                         hx-post="/admin/jobs/{{ .ID }}/retry"
                         hx-swap="none">
                         {{ template "jobs/icon_arrow_counterclockwise" . }}
-                        {{ t "admin-jobs-action-retry" }}
+                        {{ t "Retry" }}
                     </button>
                     {{- end }}
                     {{- if or (eq (jobStatus .) "pending") (or (eq (jobStatus .) "running") (eq (jobStatus .) "failed")) }}
@@ -56,7 +56,7 @@
                         hx-swap="none"
                         hx-confirm="{{ t "admin-jobs-cancel-confirm" }}">
                         {{ template "jobs/icon_x_circle" . }}
-                        {{ t "admin-jobs-action-cancel" }}
+                        {{ t "Cancel" }}
                     </button>
                     {{- end }}
                     <button type="button"

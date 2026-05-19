@@ -48,7 +48,7 @@ func userFormOpts() []forms.Option[User] {
 		forms.WithReadOnly[User]("Username", "IsActive", "CreatedAt"),
 		forms.WithChoices[User]("Role", []forms.Choice{
 			{Value: RoleUser, Label: "User"},
-			{Value: RoleAdmin, Label: "Admin"},
+			{Value: RoleAdmin, Label: "Administrator"},
 		}),
 	}
 }

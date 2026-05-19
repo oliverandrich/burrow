@@ -1,7 +1,7 @@
 {{ define "auth/admin_invites" -}}
 <nav aria-label="breadcrumb" class="mb-4 text-sm">
     <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li><a href="/admin/" class="hover:underline">{{ t "Admin" }}</a></li>
         <li aria-hidden="true">/</li>
         <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "Invites" }}</li>
     </ol>
@@ -11,8 +11,8 @@
     <div class="flex items-center gap-2">
         <form action="/admin/invites" method="GET">
             <input type="search" name="q" value="{{ .SearchTerm }}"
-                placeholder="{{ t "modeladmin-search" }}"
-                aria-label="{{ t "modeladmin-search" }}"
+                placeholder="{{ t "Search…" }}"
+                aria-label="{{ t "Search…" }}"
                 class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900">
         </form>
         <button type="button"
@@ -20,21 +20,21 @@
             hx-get="/admin/invites/new"
             hx-target="#invite-form"
             hx-swap="innerHTML">
-            {{ template "auth/icon_plus_lg" . }} {{ t "modeladmin-new" }}
+            {{ template "auth/icon_plus_lg" . }} {{ t "New" }}
         </button>
     </div>
 </header>
 <div id="invite-form" class="mb-4"></div>
 {{- if .CreatedURL }}
 <div class="mb-4 rounded-md border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/40" role="alert">
-    <strong class="block mb-1">{{ t "admin-invites-created" }}</strong>
+    <strong class="block mb-1">{{ t "Created" }}</strong>
     <p class="mb-2">{{ t "admin-invites-copy-url" }}</p>
     <div class="flex gap-2">
         <input type="text" id="admin-invite-url" readonly value="{{ .CreatedURL }}"
             class="flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-mono dark:border-gray-700 dark:bg-gray-900">
         <button type="button" id="admin-invite-copy"
             class="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-            data-done-label="{{ t "admin-invites-copy-done" }}">{{ t "admin-invites-copy" }}</button>
+            data-done-label="{{ t "admin-invites-copy-done" }}">{{ t "Copy" }}</button>
     </div>
 </div>
 <script>
@@ -55,12 +55,12 @@
     <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
         <thead class="bg-gray-50 dark:bg-gray-800/40">
             <tr>
-                <th scope="col" class="px-4 py-2 text-left font-medium">Label</th>
-                <th scope="col" class="px-4 py-2 text-left font-medium">Email</th>
-                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-invites-status" }}</th>
-                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-invites-expires" }}</th>
-                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-invites-created" }}</th>
-                <th scope="col" class="px-4 py-2 text-right font-medium">{{ t "modeladmin-actions" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Label" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Email" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Status" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Expires" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Created" }}</th>
+                <th scope="col" class="px-4 py-2 text-right font-medium">{{ t "Actions" }}</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
@@ -70,11 +70,11 @@
                 <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ .Email }}</td>
                 <td class="px-4 py-2">
                     {{- if .IsUsed -}}
-                    <span class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">{{ t "admin-invites-status-used" }}</span>
+                    <span class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">{{ t "Used" }}</span>
                     {{- else if .IsExpired -}}
-                    <span class="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{{ t "admin-invites-status-expired" }}</span>
+                    <span class="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{{ t "Expired" }}</span>
                     {{- else -}}
-                    <span class="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ t "admin-invites-status-active" }}</span>
+                    <span class="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ t "Active" }}</span>
                     {{- end -}}
                 </td>
                 <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ .ExpiresAt.Format "2006-01-02 15:04" }}</td>
@@ -86,7 +86,7 @@
                         hx-delete="/admin/invites/{{ .ID }}/revoke"
                         hx-swap="none"
                         hx-confirm="{{ t "admin-invites-revoke-confirm" }}">
-                        {{ template "auth/icon_x_circle" . }} {{ t "admin-invites-revoke" }}
+                        {{ template "auth/icon_x_circle" . }} {{ t "Revoke" }}
                     </button>
                     {{- end }}
                 </td>
