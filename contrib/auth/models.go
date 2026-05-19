@@ -154,7 +154,7 @@ type EmailVerificationToken struct {
 // Invite represents an invitation to register.
 type Invite struct {
 	document.Base
-	ExpiresAt time.Time  `json:"expires_at" form:"-" verbose:"Expires at"`
+	ExpiresAt time.Time  `json:"expires_at" form:"-" verbose:"Expires At"`
 	UsedAt    *time.Time `json:"used_at,omitempty" form:"-"`
 	UsedBy    *string    `json:"used_by,omitempty" form:"-"`
 	CreatedBy *string    `json:"created_by,omitempty" form:"-"`

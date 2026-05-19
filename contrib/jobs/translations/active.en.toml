@@ -34,8 +34,7 @@ admin-jobs-empty = "No jobs found."
 admin-jobs-delete-confirm = "Are you sure you want to delete this job? This action cannot be undone."
 admin-jobs-cancel-confirm = "Are you sure you want to cancel this job?"
 
-# Admin: Job detail (breadcrumbs + duplicate confirmations for the detail page)
-admin-job-detail-title = "Job #"
+# Admin: Job detail (breadcrumb prefix + duplicate confirmations for the detail page)
 admin-job-detail-breadcrumb-job = "Job #"
 admin-job-detail-delete-confirm = "Are you sure you want to delete this job? This action cannot be undone."
 admin-job-detail-cancel-confirm = "Are you sure you want to cancel this job?"

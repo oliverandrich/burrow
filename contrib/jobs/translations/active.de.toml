@@ -15,7 +15,7 @@ Job = "Job"
 Jobs = "Jobs"
 "Last Attempted At" = "Letzter Versuch am"
 "Last Error" = "Letzter Fehler"
-"Locked At" = "Gesperrt seit"
+"Locked At" = "Gesperrt am"
 "Max Retries" = "Max. Wiederholungen"
 Payload = "Nutzdaten"
 Pending = "Ausstehend"
@@ -34,8 +34,7 @@ admin-jobs-empty = "Keine Jobs gefunden."
 admin-jobs-delete-confirm = "Möchten Sie diesen Job wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
 admin-jobs-cancel-confirm = "Möchten Sie diesen Job wirklich abbrechen?"
 
-# Admin: Job-Details (Breadcrumbs + duplizierte Confirmations für die Detail-Seite)
-admin-job-detail-title = "Job #"
+# Admin: Job-Details (Breadcrumb-Prefix + duplizierte Confirmations für die Detail-Seite)
 admin-job-detail-breadcrumb-job = "Job #"
 admin-job-detail-delete-confirm = "Möchten Sie diesen Job wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
 admin-job-detail-cancel-confirm = "Möchten Sie diesen Job wirklich abbrechen?"
