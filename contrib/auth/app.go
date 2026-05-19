@@ -407,7 +407,6 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 	return []burrow.NavItem{
 		{
 			Label:     "Users",
-			LabelKey:  "admin-nav-users",
 			URL:       "/admin/users",
 			Icon:      "auth/icon_people",
 			Position:  10,
@@ -415,7 +414,6 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 		},
 		{
 			Label:     "Invites",
-			LabelKey:  "admin-nav-invites",
 			URL:       "/admin/invites",
 			Icon:      "auth/icon_envelope",
 			Position:  20,

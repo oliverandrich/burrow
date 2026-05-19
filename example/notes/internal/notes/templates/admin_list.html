@@ -1,13 +1,13 @@
 {{ define "notes/admin_list" -}}
 <nav aria-label="breadcrumb" class="mb-4 text-sm">
     <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li><a href="/admin/" class="hover:underline">{{ t "Admin" }}</a></li>
         <li aria-hidden="true">/</li>
-        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "admin-nav-notes" }}</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "Notes" }}</li>
     </ol>
 </nav>
 <header class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <h2 class="text-2xl font-bold tracking-tight">{{ t "admin-nav-notes" }}</h2>
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "Notes" }}</h2>
     <form action="/admin/notes" method="GET">
         <input type="search" name="q" value="{{ .SearchTerm }}"
                placeholder="{{ t "admin-notes-search-placeholder" }}"
@@ -23,7 +23,7 @@
                 <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-notes-col-title" }}</th>
                 <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-notes-col-user" }}</th>
                 <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "admin-notes-col-created" }}</th>
-                <th scope="col" class="px-4 py-2 text-right font-medium">{{ t "modeladmin-actions" }}</th>
+                <th scope="col" class="px-4 py-2 text-right font-medium">{{ t "Actions" }}</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">

@@ -1,15 +1,15 @@
 {{ define "auth/admin_user_form" -}}
 <nav aria-label="breadcrumb" class="mb-4 text-sm">
     <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li><a href="/admin/" class="hover:underline">{{ t "Admin" }}</a></li>
         <li aria-hidden="true">/</li>
-        <li><a href="/admin/users" class="hover:underline">{{ t "admin-nav-users" }}</a></li>
+        <li><a href="/admin/users" class="hover:underline">{{ t "Users" }}</a></li>
         <li aria-hidden="true">/</li>
         <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ .User.Username }}</li>
     </ol>
 </nav>
 <header class="mb-4">
-    <h2 class="text-2xl font-bold tracking-tight">{{ t "modeladmin-edit" }} {{ .User.Username }}</h2>
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "Edit" }} {{ .User.Username }}</h2>
 </header>
 <form method="post" action="/admin/users/{{ .User.ID }}" class="space-y-3">
     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
@@ -97,15 +97,15 @@
     <div class="flex flex-wrap gap-2 pt-2">
         <button type="submit"
             class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">
-            {{ t "modeladmin-save" }}
+            {{ t "Save" }}
         </button>
         <button type="submit" name="_continue" value="1"
             class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
-            {{ t "modeladmin-save-continue" }}
+            {{ t "Save & continue" }}
         </button>
         <a href="/admin/users"
             class="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
-            {{ t "modeladmin-back" }}
+            {{ t "Back" }}
         </a>
     </div>
 </form>

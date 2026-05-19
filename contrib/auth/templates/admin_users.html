@@ -8,39 +8,39 @@
 {{ define "auth/admin_users" -}}
 <nav aria-label="breadcrumb" class="mb-4 text-sm">
     <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-        <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
+        <li><a href="/admin/" class="hover:underline">{{ t "Admin" }}</a></li>
         <li aria-hidden="true">/</li>
-        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "admin-nav-users" }}</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "Users" }}</li>
     </ol>
 </nav>
 <header class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <h2 class="text-2xl font-bold tracking-tight">{{ t "admin-nav-users" }}</h2>
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "Users" }}</h2>
     <form action="/admin/users" method="GET">
         {{- if .Role }}
         <input type="hidden" name="role" value="{{ .Role }}">
         {{- end }}
         <input type="search" name="q" value="{{ .SearchTerm }}"
-            placeholder="{{ t "modeladmin-search" }}"
-            aria-label="{{ t "modeladmin-search" }}"
+            placeholder="{{ t "Search…" }}"
+            aria-label="{{ t "Search…" }}"
             class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900">
     </form>
 </header>
 <ul class="mb-4 flex flex-wrap items-center gap-1 border-b border-gray-200 text-sm dark:border-gray-800" role="tablist">
-    {{ template "auth/admin_users_tab" (dict "Role" "" "Label" (t "admin-users-role-all") "Current" .Role "Q" .SearchTerm) }}
-    {{ template "auth/admin_users_tab" (dict "Role" "user" "Label" (t "admin-user-detail-role-user") "Current" .Role "Q" .SearchTerm) }}
-    {{ template "auth/admin_users_tab" (dict "Role" "admin" "Label" (t "admin-user-detail-role-admin") "Current" .Role "Q" .SearchTerm) }}
+    {{ template "auth/admin_users_tab" (dict "Role" "" "Label" (t "All") "Current" .Role "Q" .SearchTerm) }}
+    {{ template "auth/admin_users_tab" (dict "Role" "user" "Label" (t "User") "Current" .Role "Q" .SearchTerm) }}
+    {{ template "auth/admin_users_tab" (dict "Role" "admin" "Label" (t "Administrator") "Current" .Role "Q" .SearchTerm) }}
 </ul>
 {{- if .Users }}
 <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
     <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
         <thead class="bg-gray-50 dark:bg-gray-800/40">
             <tr>
-                <th scope="col" class="px-4 py-2 text-left font-medium">Username</th>
-                <th scope="col" class="px-4 py-2 text-left font-medium">Name</th>
-                <th scope="col" class="px-4 py-2 text-left font-medium">Email</th>
-                <th scope="col" class="px-4 py-2 text-left font-medium">Role</th>
-                <th scope="col" class="px-4 py-2 text-left font-medium">Active</th>
-                <th scope="col" class="px-4 py-2 text-right font-medium">{{ t "modeladmin-actions" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Username" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Name" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Email" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Role" }}</th>
+                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Active" }}</th>
+                <th scope="col" class="px-4 py-2 text-right font-medium">{{ t "Actions" }}</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
@@ -58,9 +58,9 @@
                 </td>
                 <td class="px-4 py-2">
                     {{- if .IsActive -}}
-                    <span class="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ t "admin-users-active" }}</span>
+                    <span class="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ t "Active" }}</span>
                     {{- else -}}
-                    <span class="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">{{ t "admin-users-inactive" }}</span>
+                    <span class="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">{{ t "Inactive" }}</span>
                     {{- end -}}
                 </td>
                 <td class="whitespace-nowrap px-4 py-2 text-right">
@@ -70,14 +70,14 @@
                         hx-post="/admin/users/{{ .ID }}/deactivate"
                         hx-swap="none"
                         hx-confirm="{{ t "admin-users-deactivate-confirm" }}">
-                        {{ template "auth/icon_person_slash" . }} {{ t "admin-users-action-deactivate" }}
+                        {{ template "auth/icon_person_slash" . }} {{ t "Deactivate" }}
                     </button>
                     {{- else }}
                     <button type="button"
                         class="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
                         hx-post="/admin/users/{{ .ID }}/activate"
                         hx-swap="none">
-                        {{ template "auth/icon_person_check" . }} {{ t "admin-users-action-activate" }}
+                        {{ template "auth/icon_person_check" . }} {{ t "Activate" }}
                     </button>
                     {{- end }}
                     <button type="button"
@@ -85,7 +85,7 @@
                         hx-delete="/admin/users/{{ .ID }}"
                         hx-swap="none"
                         hx-confirm="{{ t "admin-users-delete-confirm" }}">
-                        {{ template "auth/icon_trash" . }} {{ t "modeladmin-delete" }}
+                        {{ template "auth/icon_trash" . }} {{ t "Delete" }}
                     </button>
                 </td>
             </tr>

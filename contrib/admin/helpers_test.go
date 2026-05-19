@@ -67,20 +67,6 @@ func TestSortNavGroupsEmpty(t *testing.T) {
 	assert.Nil(t, sorted)
 }
 
-func TestItemLabelWithKey(t *testing.T) {
-	// Without i18n context, LabelKey is returned as-is by i18n.T,
-	// so itemLabel falls back to Label.
-	ctx := context.Background()
-	item := burrow.NavItem{Label: "Users", LabelKey: "admin-nav-users"}
-	assert.Equal(t, "Users", itemLabel(ctx, item))
-}
-
-func TestItemLabelWithoutKey(t *testing.T) {
-	ctx := context.Background()
-	item := burrow.NavItem{Label: "Dashboard"}
-	assert.Equal(t, "Dashboard", itemLabel(ctx, item))
-}
-
 func TestPrepareDashboard(t *testing.T) {
 	ctx := context.Background()
 

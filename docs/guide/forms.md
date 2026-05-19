@@ -227,14 +227,50 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
 |----------|------|-------------|
 | `Name` | `string` | Go struct field name |
 | `FormName` | `string` | HTML name attribute |
-| `Label` | `string` | Human-readable label |
+| `Label` | `string` | Human-readable label (auto-translated, see [below](#translating-field-labels)) |
 | `HelpText` | `string` | Help text for the field |
 | `Type` | `string` | HTML input type (`text`, `textarea`, `select`, etc.) |
 | `Value` | `any` | Current field value |
 | `Required` | `bool` | Whether the field is required |
 | `ReadOnly` | `bool` | Whether the field is read-only (render as disabled) |
-| `Choices` | `[]Choice` | Options for select fields |
+| `Choices` | `[]Choice` | Options for select fields — `Choice.Label` is auto-translated too |
 | `Errors` | `[]string` | Validation errors for this field |
+
+### Translating field labels
+
+`Fields()` pipes both `BoundField.Label` (from the `verbose:` / `verbose_name:` tag) and every `Choice.Label` through `i18n.T` before returning. Templates render `{{ .Label }}` and get the locale-appropriate string for free — no `{{ t .Label }}` wrapping needed.
+
+Contribute translations keyed by the English Label:
+
+```toml
+# active.de.toml
+Email = "E-Mail"
+Username = "Benutzername"
+"Display Name" = "Anzeigename"
+```
+
+If you build a form outside the request lifecycle (background job, CLI, goroutine), set the context explicitly so the translation has a locale to work with:
+
+```go
+f := forms.FromModel(user, opts...).WithContext(ctx)
+```
+
+`Bind` already sets the context from `r.Context()`, so request-handler code needs no special wiring.
+
+See [i18n: Labels as Keys](i18n.md#labels-as-keys) for the full convention (caveats, when structured keys remain a better fit).
+
+### Translating choice labels {#translating-choice-labels}
+
+Choice translations follow the same convention as `BoundField.Label`. For static choices defined via `WithChoices` or the `choices:"…"` struct tag, set the Label to the English source string:
+
+```go
+forms.WithChoices[User]("Role", []forms.Choice{
+    {Value: "user",  Label: "User"},
+    {Value: "admin", Label: "Admin"},
+}),
+```
+
+`extractFields` translates each Label as it builds the field, covering both `WithChoices` (static) and `WithChoicesFunc` (dynamic) sources.
 
 ### Example Template
 

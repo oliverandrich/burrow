@@ -13,6 +13,8 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/burrow/forms"
+	"github.com/oliverandrich/burrow/i18n"
 	"github.com/oliverandrich/den"
 
 	"github.com/stretchr/testify/assert"
@@ -1500,6 +1502,70 @@ func TestTranslationFS(t *testing.T) {
 	app := &App{}
 	fsys := app.TranslationFS()
 	require.NotNil(t, fsys)
+}
+
+// TestAdminNavItemsResolveViaLabelAsKey pins that each AdminNavItem Label
+// also exists as an i18n message ID in both translation files — so
+// buildNavLinks's i18n.T(ctx, item.Label) lookup hits a translation instead
+// of rendering the raw English string. Catches rename drift between
+// NavItem labels, template lookups, and translation keys.
+func TestAdminNavItemsResolveViaLabelAsKey(t *testing.T) {
+	bundle, err := i18n.NewTestBundle("en", translationFS)
+	require.NoError(t, err)
+
+	items := (&App{}).AdminNavItems()
+	require.NotEmpty(t, items)
+
+	expectedDE := map[string]string{
+		"Users":   "Benutzer",
+		"Invites": "Einladungen",
+	}
+
+	for _, item := range items {
+		t.Run(item.Label, func(t *testing.T) {
+			ctxEN := bundle.WithLocale(context.Background(), "en")
+			assert.Equal(t, item.Label, i18n.T(ctxEN, item.Label), "English lookup must resolve to the Label itself")
+
+			ctxDE := bundle.WithLocale(context.Background(), "de")
+			assert.Equal(t, expectedDE[item.Label], i18n.T(ctxDE, item.Label), "German lookup must resolve to the translated string, not the raw Label")
+		})
+	}
+}
+
+// TestUserEditFormLabelsTranslate pins that the User edit form's labels
+// resolve to German via the Label-as-key convention. Catches rename drift
+// between User struct verbose tags, WithChoices Labels, and translation TOMLs.
+func TestUserEditFormLabelsTranslate(t *testing.T) {
+	bundle, err := i18n.NewTestBundle("en", translationFS)
+	require.NoError(t, err)
+
+	user := &User{Role: RoleUser}
+	ctxDE := bundle.WithLocale(context.Background(), "de")
+	f := forms.FromModel(user, userFormOpts()...).WithContext(ctxDE)
+
+	expected := map[string]string{
+		"Username": "Benutzername",
+		"Email":    "E-Mail",
+		"Name":     "Name",
+		"Bio":      "Bio",
+		"Role":     "Rolle",
+		"IsActive": "Aktiv",
+	}
+	for name, want := range expected {
+		bf, ok := f.Field(name)
+		require.True(t, ok, "field %s not found", name)
+		assert.Equal(t, want, bf.Label, "BoundField %s must translate via Label-as-key", name)
+	}
+
+	roleField, ok := f.Field("Role")
+	require.True(t, ok)
+	require.NotEmpty(t, roleField.Choices, "Role field must carry choices")
+	choiceByValue := map[string]string{}
+	for _, c := range roleField.Choices {
+		choiceByValue[c.Value] = c.Label
+	}
+	assert.Equal(t, "Benutzer", choiceByValue[RoleUser], "Choice label for RoleUser must translate")
+	assert.Equal(t, "Administrator", choiceByValue[RoleAdmin], "Choice label for RoleAdmin must translate")
 }
 
 func TestTemplateFS(t *testing.T) {

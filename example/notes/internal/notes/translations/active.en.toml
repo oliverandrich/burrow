@@ -20,7 +20,6 @@ notes-search-button = "Search"
 
 # Admin sidebar
 admin-app-notes = "Notes"
-admin-nav-notes = "Notes"
 
 # Admin notes
 admin-notes-delete-confirm = "Delete this note?"

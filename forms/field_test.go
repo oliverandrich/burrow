@@ -3,8 +3,10 @@ package forms
 import (
 	"context"
 	"testing"
+	"testing/fstest"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -185,4 +187,102 @@ func TestExtractFieldsNilPointerValue(t *testing.T) {
 	require.Len(t, fields, 2)
 	assert.Empty(t, fields[0].Value, "nil *string should produce zero value")
 	assert.Equal(t, "Bob", fields[1].Value)
+}
+
+// labelI18nFS provides a minimal translation bundle covering the labels and
+// choice values used by [TestExtractFieldsTranslatesLabels].
+var labelI18nFS = fstest.MapFS{ //nolint:gochecknoglobals // test fixture
+	"translations/active.en.toml": &fstest.MapFile{
+		Data: []byte(`Title = "Title"
+Content = "Content"
+Status = "Status"
+draft = "Draft"
+published = "Published"
+`),
+	},
+	"translations/active.de.toml": &fstest.MapFile{
+		Data: []byte(`Title = "Titel"
+Content = "Inhalt"
+Status = "Status"
+draft = "Entwurf"
+published = "Veröffentlicht"
+Item = "Eintrag"
+`),
+	},
+}
+
+// findField returns the BoundField with the given Go struct field Name.
+// Tests prefer this over positional indexing so they don't break when
+// articleForm gains a new field.
+func findField(t *testing.T, fields []BoundField, name string) BoundField {
+	t.Helper()
+	for _, bf := range fields {
+		if bf.Name == name {
+			return bf
+		}
+	}
+	t.Fatalf("field %q not found in %d extracted fields", name, len(fields))
+	return BoundField{}
+}
+
+func TestExtractFieldsTranslatesLabels(t *testing.T) {
+	bundle, err := i18n.NewTestBundle("en", labelI18nFS)
+	require.NoError(t, err)
+
+	instance := &articleForm{Title: "x", Content: "y", Status: "draft"}
+
+	t.Run("German locale translates BoundField labels and Choice labels", func(t *testing.T) {
+		ctx := bundle.WithLocale(context.Background(), "de")
+		fields := extractFields(ctx, instance, nil, nil, nil, nil)
+
+		assert.Equal(t, "Titel", findField(t, fields, "Title").Label, "verbose tag must be piped through i18n.T")
+		assert.Equal(t, "Inhalt", findField(t, fields, "Content").Label)
+
+		status := findField(t, fields, "Status")
+		require.Len(t, status.Choices, 2)
+		assert.Equal(t, "Entwurf", status.Choices[0].Label, "tag-based Choice labels must translate too")
+		assert.Equal(t, "Veröffentlicht", status.Choices[1].Label)
+	})
+
+	t.Run("Dynamic choices (WithChoices/WithChoicesFunc) translate too", func(t *testing.T) {
+		ctx := bundle.WithLocale(context.Background(), "de")
+		dynamic := map[string][]Choice{
+			"Views": {{Value: "1", Label: "Item"}},
+		}
+		fields := extractFields(ctx, instance, nil, dynamic, nil, nil)
+
+		views := findField(t, fields, "Views")
+		require.Len(t, views.Choices, 1)
+		assert.Equal(t, "Eintrag", views.Choices[0].Label, "dynamic Choice labels must go through the same translation path as static ones")
+	})
+
+	t.Run("Without a localizer in context, labels fall back to the raw Label", func(t *testing.T) {
+		fields := extractFields(context.Background(), instance, nil, nil, nil, nil)
+
+		assert.Equal(t, "Title", findField(t, fields, "Title").Label, "no localizer must yield the raw verbose tag value")
+		assert.Equal(t, "draft", findField(t, fields, "Status").Choices[0].Label)
+	})
+}
+
+// TestExtractFieldsDoesNotMutateChoiceSource locks in that extractFields
+// does not mutate the caller's Choice slice in place when translating
+// labels — otherwise a second render would read the already-translated
+// string as the message ID, and any package-level slice handed to
+// WithChoices would bleed locale state between requests.
+func TestExtractFieldsDoesNotMutateChoiceSource(t *testing.T) {
+	bundle, err := i18n.NewTestBundle("en", labelI18nFS)
+	require.NoError(t, err)
+	ctx := bundle.WithLocale(context.Background(), "de")
+
+	source := []Choice{{Value: "1", Label: "Item"}}
+	dynamic := map[string][]Choice{"Views": source}
+	instance := &articleForm{}
+
+	first := extractFields(ctx, instance, nil, dynamic, nil, nil)
+	require.Equal(t, "Eintrag", findField(t, first, "Views").Choices[0].Label, "sanity: first call returns the translation")
+
+	assert.Equal(t, "Item", source[0].Label, "caller's slice must not be mutated by extractFields")
+
+	second := extractFields(ctx, instance, nil, dynamic, nil, nil)
+	assert.Equal(t, "Eintrag", findField(t, second, "Views").Choices[0].Label, "second call must translate from the original Label, not from the first call's output")
 }

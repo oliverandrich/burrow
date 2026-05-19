@@ -9,24 +9,30 @@ import (
 )
 
 // BoundField provides field metadata for template rendering.
+//
+// Label is read from the verbose_name/verbose struct tag and piped through
+// [i18n.T] by [extractFields], so the English Label doubles as the i18n
+// message ID. Templates render {{ .Label }} as-is — no {{ t }} wrapping
+// needed. See docs/guide/i18n.md for the Label-as-key convention.
 type BoundField struct { //nolint:govet // fieldalignment: readability over optimization
 	Name     string   // Go struct field name
 	FormName string   // HTML field name (from form tag or lowercase)
-	Label    string   // from verbose_name/verbose tag
+	Label    string   // translated from verbose_name/verbose tag
 	HelpText string   // from help_text tag
 	Type     string   // "text", "number", "textarea", "select", "checkbox", "date", "email", "hidden"
 	Value    any      // current value
 	Required bool     // from validate:"required"
 	ReadOnly bool     // render as plain text, not editable
-	Choices  []Choice // static or dynamic
+	Choices  []Choice // static or dynamic, with translated labels
 	Errors   []string // field-specific error messages
 }
 
-// Choice represents a single option in a select or radio field.
+// Choice represents a single option in a select or radio field. Label is
+// piped through [i18n.T] by [extractFields], following the same
+// Label-as-key convention as [BoundField.Label].
 type Choice struct {
-	Value    string
-	Label    string
-	LabelKey string // optional i18n key
+	Value string
+	Label string
 }
 
 // extractFields builds a slice of BoundField from a struct instance,
@@ -56,7 +62,7 @@ func extractFields[T any](ctx context.Context, instance *T, validationErr *burro
 		bf := BoundField{
 			Name:     sf.Name,
 			FormName: fieldFormName(sf),
-			Label:    parseLabel(sf),
+			Label:    i18n.T(ctx, parseLabel(sf)),
 			HelpText: parseHelpText(sf),
 			Value:    fieldValue(v.Field(i)),
 			Required: hasRequiredValidation(sf),
@@ -79,6 +85,19 @@ func extractFields[T any](ctx context.Context, instance *T, validationErr *burro
 			if bf.Type != "select" {
 				bf.Type = "select"
 			}
+		}
+
+		// Translate Choice labels through the same Label-as-key convention as
+		// BoundField.Label. Clone first — WithChoices and WithChoicesFunc may
+		// hand us a slice that lives on the Form config (or a package-level
+		// variable in the caller), so mutating in place would bleed translated
+		// values back into the source and corrupt subsequent renders.
+		if len(bf.Choices) > 0 {
+			translated := make([]Choice, len(bf.Choices))
+			for j, c := range bf.Choices {
+				translated[j] = Choice{Value: c.Value, Label: i18n.T(ctx, c.Label)}
+			}
+			bf.Choices = translated
 		}
 
 		// Collect field errors and translate any i18n keys.

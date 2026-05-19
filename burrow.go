@@ -164,12 +164,15 @@ type AppConfig struct {
 
 // NavItem represents a navigation entry contributed by an app.
 //
+// Label doubles as the i18n message ID: it is passed through [i18n.T] at
+// render time, so contribute translations keyed by the English Label. When
+// no translation matches, the raw Label is rendered.
+//
 // Icon is the name of a template define (e.g. "auth/icon_people") rendered by
 // the layout via {{ template .Icon . }}. Each contrib keeps its icons in
 // templates/icons.html as {{ define "<app>/icon_<name>" }} blocks.
 type NavItem struct { //nolint:govet // fieldalignment: readability over optimization
 	Label     string
-	LabelKey  string // i18n message ID; translated at render time, falls back to Label
 	URL       string
 	Icon      string
 	Position  int

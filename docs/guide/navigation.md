@@ -26,13 +26,24 @@ func (a *App) NavItems() []burrow.NavItem {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `Label` | `string` | Display text for the link |
-| `LabelKey` | `string` | i18n message ID; translated at render time, falls back to `Label` |
+| `Label` | `string` | Display text for the link; also doubles as the i18n message ID (see [Translation](#translation)) |
 | `URL` | `string` | Target path |
 | `Icon` | `string` | Name of a template define (e.g. `"notes/icon_journal_text"`); empty string for no icon |
 | `Position` | `int` | Sort order (lower = earlier, stable sort preserves insertion order for equal positions) |
 | `AuthOnly` | `bool` | Only show to authenticated users |
 | `AdminOnly` | `bool` | Only show to admin users |
+
+### Translation
+
+`navLinks` pipes `Label` through `i18n.T` at render time, so each Label is also the i18n message ID for its translations. Contribute translations keyed by the English Label:
+
+```toml
+# active.de.toml
+Notes = "Notizen"
+Settings = "Einstellungen"
+```
+
+If no translation matches the Label, the raw Label is rendered — so an app without translations Just Works in English. See [i18n: Labels as Keys](i18n.md#labels-as-keys) for the trade-off (silently invalidating translations when a Label is reworded) and when a structured i18n key is the better choice.
 
 ## Using Nav Items in Templates
 
