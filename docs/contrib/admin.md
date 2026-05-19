@@ -50,7 +50,7 @@ func (a *App) AdminRoutes(r chi.Router) {
 
 func (a *App) AdminNavItems() []burrow.NavItem {
     return []burrow.NavItem{
-        {Label: "Notes", LabelKey: "admin-nav-notes", URL: "/admin/notes", Icon: "notes/icon_journal_text", Position: 20},
+        {Label: "Notes", URL: "/admin/notes", Icon: "notes/icon_journal_text", Position: 20},
     }
 }
 ```

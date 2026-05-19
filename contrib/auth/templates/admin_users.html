@@ -10,11 +10,11 @@
     <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
         <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
         <li aria-hidden="true">/</li>
-        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "admin-nav-users" }}</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "Users" }}</li>
     </ol>
 </nav>
 <header class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <h2 class="text-2xl font-bold tracking-tight">{{ t "admin-nav-users" }}</h2>
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "Users" }}</h2>
     <form action="/admin/users" method="GET">
         {{- if .Role }}
         <input type="hidden" name="role" value="{{ .Role }}">

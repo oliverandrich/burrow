@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
@@ -39,7 +38,7 @@ func PrepareDashboard(ctx context.Context, groups []NavGroup) []DashboardGroup {
 		items := make([]DashboardItem, len(g.Items))
 		for j, item := range g.Items {
 			items[j] = DashboardItem{
-				Label: itemLabel(ctx, item),
+				Label: i18n.T(ctx, item.Label),
 				URL:   item.URL,
 				Icon:  item.Icon,
 			}
@@ -77,17 +76,4 @@ func groupLabel(ctx context.Context, appName string) string {
 		return translated
 	}
 	return strings.ToUpper(appName[:1]) + appName[1:]
-}
-
-// itemLabel returns the translated label for a nav item.
-// If LabelKey is set and translates successfully, returns the translation.
-// Otherwise returns the raw Label.
-func itemLabel(ctx context.Context, item burrow.NavItem) string {
-	if item.LabelKey != "" {
-		translated := i18n.T(ctx, item.LabelKey)
-		if translated != item.LabelKey {
-			return translated
-		}
-	}
-	return item.Label
 }

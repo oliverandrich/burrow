@@ -3,11 +3,11 @@
     <ol class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
         <li><a href="/admin/" class="hover:underline">{{ t "modeladmin-admin" }}</a></li>
         <li aria-hidden="true">/</li>
-        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "admin-nav-notes" }}</li>
+        <li aria-current="page" class="text-gray-900 dark:text-gray-100">{{ t "Notes" }}</li>
     </ol>
 </nav>
 <header class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <h2 class="text-2xl font-bold tracking-tight">{{ t "admin-nav-notes" }}</h2>
+    <h2 class="text-2xl font-bold tracking-tight">{{ t "Notes" }}</h2>
     <form action="/admin/notes" method="GET">
         <input type="search" name="q" value="{{ .SearchTerm }}"
                placeholder="{{ t "admin-notes-search-placeholder" }}"

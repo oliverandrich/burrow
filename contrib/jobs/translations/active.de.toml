@@ -1,6 +1,3 @@
-# Admin: Jobs-Navigation
-admin-nav-jobs = "Jobs"
-
 # Admin: Jobs-Liste
 admin-jobs-empty = "Keine Jobs gefunden."
 Type = "Typ"

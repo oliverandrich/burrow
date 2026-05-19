@@ -2,6 +2,16 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Breaking Changes
+
+- **`NavItem.LabelKey` and `Choice.LabelKey` removed.** Labels now double as the i18n message ID — `navLinks` pipes `NavItem.Label` through `i18n.T` directly, so contribute translations keyed by the English Label (e.g. `Users = "Benutzer"`) instead of an opaque `admin-nav-users` key. On a translation miss the raw Label is rendered. Built-in contribs (`auth`, `jobs`) and the `example/notes` app migrate their translation TOMLs accordingly. See [navigation](guide/navigation.md#translation) and [i18n: Labels as Keys](guide/i18n.md#labels-as-keys).
+
+### Changed
+
+- **`forms.BoundField.Label` and `forms.Choice.Label` are now auto-translated** by `extractFields` via the same Label-as-key convention as `NavItem.Label`. Templates render `{{ .Label }}` and get the locale-appropriate string for free — no `{{ t .Label }}` wrapping needed. Contribute translations keyed by the English `verbose:` / `Choice.Label` value. Added `Form.WithContext(ctx)` for building forms outside the request lifecycle (background jobs, CLI). See [forms: Translating field labels](guide/forms.md#translating-field-labels).
+
 ## 0.21.2 — 2026-05-18
 
 ### Changed

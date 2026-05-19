@@ -20,7 +20,6 @@ notes-search-button = "Suchen"
 
 # Admin-Seitenleiste
 admin-app-notes = "Notizen"
-admin-nav-notes = "Notizen"
 
 # Admin-Notizen
 admin-notes-delete-confirm = "Diese Notiz löschen?"

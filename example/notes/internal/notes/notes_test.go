@@ -17,6 +17,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/auth/authtest"
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/burrow/i18n"
 	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -951,11 +952,24 @@ func TestAdminNavItems(t *testing.T) {
 
 	require.Len(t, items, 1)
 	assert.Equal(t, "Notes", items[0].Label)
-	assert.Equal(t, "admin-nav-notes", items[0].LabelKey)
 	assert.Equal(t, "/admin/notes", items[0].URL)
 	assert.True(t, items[0].AdminOnly)
 	assert.Equal(t, "notes/icon_journal_text", items[0].Icon)
 	assert.Equal(t, 30, items[0].Position)
+}
+
+// TestAdminNavItemsResolveViaLabelAsKey pins that the AdminNavItem Label
+// resolves to a German translation via i18n.T using the Label as the
+// message ID.
+func TestAdminNavItemsResolveViaLabelAsKey(t *testing.T) {
+	bundle, err := i18n.NewTestBundle("en", New().TranslationFS())
+	require.NoError(t, err)
+
+	items := New().AdminNavItems()
+	require.Len(t, items, 1)
+
+	ctxDE := bundle.WithLocale(context.Background(), "de")
+	assert.Equal(t, "Notizen", i18n.T(ctxDE, items[0].Label))
 }
 
 func TestDependencies(t *testing.T) {

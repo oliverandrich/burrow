@@ -122,8 +122,7 @@ Returns navigation entries collected into the request context by the framework:
 
 ```go
 type NavItem struct {
-    Label     string
-    LabelKey  string // i18n message ID
+    Label     string // displayed and also used as the i18n message ID
     URL       string
     Icon      string // template-define name (e.g. "auth/icon_people"), empty for no icon
     Position  int

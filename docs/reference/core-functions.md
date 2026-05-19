@@ -373,8 +373,7 @@ See [Layouts & Rendering](../guide/layouts.md) for details on implementing layou
 
 ```go
 type NavItem struct {
-    Label     string
-    LabelKey  string // i18n message ID (used instead of Label when i18n is active)
+    Label     string // displayed and also used as the i18n message ID
     URL       string
     Icon      string // template-define name (e.g. "auth/icon_people"), empty for no icon
     Position  int    // sort order (lower = earlier)

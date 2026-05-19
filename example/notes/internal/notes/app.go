@@ -77,7 +77,6 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 	return []burrow.NavItem{
 		{
 			Label:     "Notes",
-			LabelKey:  "admin-nav-notes",
 			URL:       "/admin/notes",
 			Icon:      "notes/icon_journal_text",
 			Position:  30,

@@ -83,17 +83,8 @@ func buildNavLinks(ctx context.Context, requestPath string) []NavLink {
 		if item.AdminOnly && !admin {
 			continue
 		}
-		label := item.Label
-		if item.LabelKey != "" {
-			translated := i18n.T(ctx, item.LabelKey)
-			if translated != item.LabelKey {
-				label = translated
-			} else if label == "" {
-				label = item.LabelKey
-			}
-		}
 		links = append(links, NavLink{
-			Label:    label,
+			Label:    i18n.T(ctx, item.Label),
 			URL:      item.URL,
 			Icon:     item.Icon,
 			IsActive: isActivePath(requestPath, item.URL),

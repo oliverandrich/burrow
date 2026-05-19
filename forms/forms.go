@@ -26,6 +26,7 @@ type Form[T any] struct { //nolint:govet // fieldalignment: readability over opt
 func New[T any](opts ...Option[T]) *Form[T] {
 	f := &Form[T]{
 		instance: new(T),
+		ctx:      context.Background(),
 	}
 	for _, opt := range opts {
 		opt(&f.config)
@@ -38,7 +39,7 @@ func New[T any](opts ...Option[T]) *Form[T] {
 // FromModel creates a form pre-populated from an existing model instance.
 // If instance is nil, creates an empty form (for create mode).
 func FromModel[T any](instance *T, opts ...Option[T]) *Form[T] {
-	f := &Form[T]{}
+	f := &Form[T]{ctx: context.Background()}
 	if instance != nil {
 		cp := *instance
 		f.instance = &cp
@@ -126,6 +127,16 @@ func (f *Form[T]) Errors() *burrow.ValidationError {
 // NonFieldErrors returns errors not tied to a specific field (from Clean).
 func (f *Form[T]) NonFieldErrors() []string {
 	return f.nonField
+}
+
+// WithContext sets the context used when rendering the form's fields. Bind
+// already does this from the http.Request, so call WithContext only when
+// rendering a form outside the request lifecycle (background jobs, CLI,
+// templates rendered from a goroutine). The context's locale drives
+// label/choice translation in Fields.
+func (f *Form[T]) WithContext(ctx context.Context) *Form[T] {
+	f.ctx = ctx
+	return f
 }
 
 // Fields returns all visible BoundFields in struct field order.

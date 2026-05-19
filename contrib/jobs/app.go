@@ -230,7 +230,6 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 	return []burrow.NavItem{
 		{
 			Label:     "Jobs",
-			LabelKey:  "admin-nav-jobs",
 			URL:       "/admin/jobs",
 			Icon:      "jobs/icon_list_task",
 			Position:  40,
