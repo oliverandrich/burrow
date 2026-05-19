@@ -13,6 +13,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **`forms.BoundField.Label` and `forms.Choice.Label` are now auto-translated** by `extractFields` via the same Label-as-key convention as `NavItem.Label`. Templates render `{{ .Label }}` and get the locale-appropriate string for free — no `{{ t .Label }}` wrapping needed. Contribute translations keyed by the English `verbose:` / `Choice.Label` value. Added `Form.WithContext(ctx)` for building forms outside the request lifecycle (background jobs, CLI). See [forms: Translating field labels](guide/forms.md#translating-field-labels).
 - **`contrib/{admin,auth,jobs}` short structured-key labels migrated to Label-as-key** in line with the new convention. Filter tabs, action buttons, table headers, field labels, status badges — i.e. anything that's a single-word or short-phrase UI label — now use bare English keys (`{{ t "Active" }}` instead of `{{ t "admin-users-active" }}`). Full sentences, prompts, confirmations, and plural variants keep their structured keys. Translation TOMLs now have a "Field labels" block at the top followed by structured "Messages" — see [i18n: Labels vs. Messages](guide/i18n.md#labels-vs-messages) for the rule.
 
+### Added
+
+- **`forms` package: nested-struct subform support.** Struct-typed form fields now render as **subforms** — `extractFields` recurses one level into the nested struct and exposes its fields under the parent's `BoundField.SubFields`. Nested `FormName` values follow the `parent.child` convention (e.g. `profile.name`) so `burrow.Bind` decodes them and validation errors route to the correct nested field. `time.Time` is excluded (keeps the `"date"` widget); pointer-to-struct is dereferenced (nil → zero-value sub-fields); recursion is capped at one level. Templates dispatch on `Type == "subform"` and iterate `.SubFields` — see [forms: Nested struct fields](guide/forms.md#nested-struct-fields-subforms).
+
 ## 0.21.2 — 2026-05-18
 
 ### Changed

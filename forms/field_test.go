@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/i18n"
@@ -285,4 +286,133 @@ func TestExtractFieldsDoesNotMutateChoiceSource(t *testing.T) {
 
 	second := extractFields(ctx, instance, nil, dynamic, nil, nil)
 	assert.Equal(t, "Eintrag", findField(t, second, "Views").Choices[0].Label, "second call must translate from the original Label, not from the first call's output")
+}
+
+// Nested struct → subform tests.
+
+type formWithProfile struct { //nolint:govet // test fixture; field order matters for clarity
+	Title   string `form:"title" verbose:"Title"`
+	Profile struct {
+		Name string `form:"name" verbose:"Name" validate:"required"`
+		Bio  string `form:"bio" verbose:"Bio" widget:"textarea"`
+	} `form:"profile" verbose:"Profile" help_text:"About you"`
+}
+
+func TestExtractFieldsNestedStructAsSubform(t *testing.T) {
+	instance := &formWithProfile{Title: "x"}
+	instance.Profile.Name = "Alice"
+	instance.Profile.Bio = "hello"
+
+	fields := extractFields(noCtx, instance, nil, nil, nil, nil)
+
+	profile := findField(t, fields, "Profile")
+	assert.Equal(t, "subform", profile.Type, "struct-typed field must produce a subform")
+	assert.Equal(t, "profile", profile.FormName, "FormName uses the form tag, not the recursion-flattened name")
+	assert.Equal(t, "Profile", profile.Label)
+	assert.Equal(t, "About you", profile.HelpText)
+	require.Len(t, profile.SubFields, 2)
+
+	name := profile.SubFields[0]
+	assert.Equal(t, "Name", name.Name)
+	assert.Equal(t, "profile.name", name.FormName, "nested FormName follows the parent.child convention")
+	assert.Equal(t, "text", name.Type)
+	assert.Equal(t, "Alice", name.Value)
+	assert.True(t, name.Required, "nested validate:required must be detected")
+
+	bio := profile.SubFields[1]
+	assert.Equal(t, "textarea", bio.Type, "widget tag inside subform is honoured")
+}
+
+func TestExtractFieldsSubformSkippedByFormDash(t *testing.T) {
+	type formWithSkippedProfile struct {
+		Title   string `form:"title"`
+		Profile struct {
+			Name string `form:"name"`
+		} `form:"-"`
+	}
+	fields := extractFields(noCtx, &formWithSkippedProfile{}, nil, nil, nil, nil)
+	for _, bf := range fields {
+		require.NotEqual(t, "Profile", bf.Name, "form:\"-\" on a struct field must skip it entirely")
+	}
+}
+
+type profileForPointer struct {
+	Name string `form:"name" verbose:"Name"`
+}
+
+type formWithPointerProfile struct {
+	Title   string             `form:"title"`
+	Profile *profileForPointer `form:"profile" verbose:"Profile"`
+}
+
+func TestExtractFieldsSubformPointerToStruct(t *testing.T) {
+	t.Run("populated pointer", func(t *testing.T) {
+		instance := &formWithPointerProfile{Profile: &profileForPointer{Name: "Bob"}}
+		fields := extractFields(noCtx, instance, nil, nil, nil, nil)
+
+		profile := findField(t, fields, "Profile")
+		assert.Equal(t, "subform", profile.Type)
+		require.Len(t, profile.SubFields, 1)
+		assert.Equal(t, "Bob", profile.SubFields[0].Value)
+	})
+
+	t.Run("nil pointer", func(t *testing.T) {
+		instance := &formWithPointerProfile{Profile: nil}
+		fields := extractFields(noCtx, instance, nil, nil, nil, nil)
+
+		profile := findField(t, fields, "Profile")
+		assert.Equal(t, "subform", profile.Type, "nil pointer to struct still renders a subform with zero values")
+		require.Len(t, profile.SubFields, 1)
+		assert.Empty(t, profile.SubFields[0].Value, "nil pointer yields zero-value sub-field values")
+	})
+}
+
+func TestExtractFieldsTimeIsNotSubform(t *testing.T) {
+	type formWithTime struct {
+		Title     string    `form:"title"`
+		Published time.Time `form:"published" verbose:"Published"`
+	}
+	instance := &formWithTime{}
+	fields := extractFields(noCtx, instance, nil, nil, nil, nil)
+
+	published := findField(t, fields, "Published")
+	assert.Equal(t, "date", published.Type, "time.Time keeps the existing date type; no subform recursion")
+	assert.Empty(t, published.SubFields)
+}
+
+func TestExtractFieldsSubformOneLevelOnly(t *testing.T) {
+	type inner struct {
+		Detail string `form:"detail" verbose:"Detail"`
+	}
+	type outer struct {
+		Nested inner `form:"nested" verbose:"Nested"`
+	}
+	type root struct {
+		Outer outer `form:"outer" verbose:"Outer"`
+	}
+	fields := extractFields(noCtx, &root{}, nil, nil, nil, nil)
+
+	outerBF := findField(t, fields, "Outer")
+	require.Equal(t, "subform", outerBF.Type)
+	require.Len(t, outerBF.SubFields, 1)
+
+	nestedBF := outerBF.SubFields[0]
+	assert.Equal(t, "Nested", nestedBF.Name)
+	assert.Equal(t, "text", nestedBF.Type, "depth-2 struct field renders flat, not as another subform")
+	assert.Empty(t, nestedBF.SubFields, "subform recursion is one level only")
+}
+
+func TestExtractFieldsSubformValidationErrorRouting(t *testing.T) {
+	instance := &formWithProfile{}
+	ve := &burrow.ValidationError{
+		Errors: []burrow.FieldError{
+			{Field: "profile.name", Message: "name is required"},
+		},
+	}
+	fields := extractFields(noCtx, instance, ve, nil, nil, nil)
+
+	profile := findField(t, fields, "Profile")
+	require.Len(t, profile.SubFields, 2)
+	assert.Equal(t, []string{"name is required"}, profile.SubFields[0].Errors, "validation error on profile.name attaches to the nested BoundField")
+	assert.Empty(t, profile.SubFields[1].Errors)
 }

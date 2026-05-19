@@ -229,11 +229,12 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
 | `FormName` | `string` | HTML name attribute |
 | `Label` | `string` | Human-readable label (auto-translated, see [below](#translating-field-labels)) |
 | `HelpText` | `string` | Help text for the field |
-| `Type` | `string` | HTML input type (`text`, `textarea`, `select`, etc.) |
+| `Type` | `string` | HTML input type (`text`, `textarea`, `select`, `subform`, etc.; see [Nested struct fields](#nested-struct-fields-subforms)) |
 | `Value` | `any` | Current field value |
 | `Required` | `bool` | Whether the field is required |
 | `ReadOnly` | `bool` | Whether the field is read-only (render as disabled) |
 | `Choices` | `[]Choice` | Options for select fields — `Choice.Label` is auto-translated too |
+| `SubFields` | `[]BoundField` | Populated when `Type == "subform"` (see [Nested struct fields](#nested-struct-fields-subforms)) |
 | `Errors` | `[]string` | Validation errors for this field |
 
 ### Translating field labels
@@ -272,6 +273,26 @@ forms.WithChoices[User]("Role", []forms.Choice{
 
 `extractFields` translates each Label as it builds the field, covering both `WithChoices` (static) and `WithChoicesFunc` (dynamic) sources.
 
+### Nested struct fields (subforms)
+
+Struct-typed fields render as **subforms** — `Fields()` recurses one level into the nested struct and exposes its fields under the parent's `SubFields`:
+
+```go
+type ArticleForm struct {
+    Title   string `form:"title" verbose:"Title"`
+    Profile struct {
+        Name string `form:"name" verbose:"Name" validate:"required"`
+        Bio  string `form:"bio"  verbose:"Bio"  widget:"textarea"`
+    } `form:"profile" verbose:"Profile"`
+}
+```
+
+The parent `Profile` BoundField has `Type == "subform"` and `SubFields` containing two BoundFields. Nested `FormName` values follow the `parent.child` convention (`profile.name`, `profile.bio`) which matches what [`burrow.Bind`](validation.md) expects on submit. Validation errors with a dotted `Field` name (e.g. `profile.name`) attach to the nested BoundField via the same mechanism as flat fields.
+
+Pointer-to-struct (`*Profile`) is dereferenced; a nil pointer still yields a subform with zero-value sub-fields. `time.Time` is excluded (keeps the `"date"` widget). Recursion is **one level only** — a struct nested inside a subform renders flat as text. `form:"-"` on the parent struct field skips the whole subform.
+
+Templates render subforms by dispatching on `Type == "subform"` and iterating `.SubFields`. The [Example Template](#example-template) below shows the pattern: factor the per-field render into a named template (`myapp/field`) so the subform branch can call it back on each `SubField` — the one-level recursion cap guarantees those inner calls always hit a non-subform branch.
+
 ### Example Template
 
 ```html
@@ -285,49 +306,58 @@ forms.WithChoices[User]("Role", []forms.Choice{
     </div>
     {{- end }}
 
-    {{ range .Fields -}}
-    <div class="mb-3">
-        <label for="{{ .FormName }}" class="form-label">
-            {{ .Label }}{{ if .Required }} *{{ end }}
-        </label>
-
-        {{ if eq .Type "textarea" -}}
-        <textarea class="form-control{{ if .Errors }} is-invalid{{ end }}"
-            id="{{ .FormName }}" name="{{ .FormName }}" rows="3">{{ .Value }}</textarea>
-
-        {{- else if eq .Type "select" -}}
-        <select class="form-select{{ if .Errors }} is-invalid{{ end }}"
-            id="{{ .FormName }}" name="{{ .FormName }}">
-            <option value="">—</option>
-            {{ range .Choices -}}
-            <option value="{{ .Value }}"{{ if eq .Value $.Value }} selected{{ end }}>{{ .Label }}</option>
-            {{- end }}
-        </select>
-
-        {{- else if eq .Type "checkbox" -}}
-        <div class="form-check">
-            <input type="checkbox" class="form-check-input{{ if .Errors }} is-invalid{{ end }}"
-                id="{{ .FormName }}" name="{{ .FormName }}" value="true"{{ if .Value }} checked{{ end }}>
-        </div>
-
-        {{- else -}}
-        <input type="{{ .Type }}" class="form-control{{ if .Errors }} is-invalid{{ end }}"
-            id="{{ .FormName }}" name="{{ .FormName }}" value="{{ .Value }}"
-            {{ if .Required }}required{{ end }}>
-        {{- end }}
-
-        {{ if .HelpText -}}
-        <div class="form-text">{{ .HelpText }}</div>
-        {{- end }}
-
-        {{ range .Errors -}}
-        <div class="invalid-feedback">{{ . }}</div>
-        {{- end }}
-    </div>
-    {{- end }}
+    {{ range .Fields }}{{ template "myapp/field" . }}{{ end }}
 
     <button type="submit" class="btn btn-primary">Save</button>
 </form>
+{{- end }}
+
+{{ define "myapp/field" -}}
+{{ if eq .Type "subform" -}}
+<fieldset class="mb-3">
+    <legend>{{ .Label }}</legend>
+    {{ range .SubFields }}{{ template "myapp/field" . }}{{ end }}
+</fieldset>
+{{- else -}}
+<div class="mb-3">
+    <label for="{{ .FormName }}" class="form-label">
+        {{ .Label }}{{ if .Required }} *{{ end }}
+    </label>
+
+    {{ if eq .Type "textarea" -}}
+    <textarea class="form-control{{ if .Errors }} is-invalid{{ end }}"
+        id="{{ .FormName }}" name="{{ .FormName }}" rows="3">{{ .Value }}</textarea>
+
+    {{- else if eq .Type "select" -}}
+    <select class="form-select{{ if .Errors }} is-invalid{{ end }}"
+        id="{{ .FormName }}" name="{{ .FormName }}">
+        <option value="">—</option>
+        {{ range .Choices -}}
+        <option value="{{ .Value }}"{{ if eq .Value $.Value }} selected{{ end }}>{{ .Label }}</option>
+        {{- end }}
+    </select>
+
+    {{- else if eq .Type "checkbox" -}}
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input{{ if .Errors }} is-invalid{{ end }}"
+            id="{{ .FormName }}" name="{{ .FormName }}" value="true"{{ if .Value }} checked{{ end }}>
+    </div>
+
+    {{- else -}}
+    <input type="{{ .Type }}" class="form-control{{ if .Errors }} is-invalid{{ end }}"
+        id="{{ .FormName }}" name="{{ .FormName }}" value="{{ .Value }}"
+        {{ if .Required }}required{{ end }}>
+    {{- end }}
+
+    {{ if .HelpText -}}
+    <div class="form-text">{{ .HelpText }}</div>
+    {{- end }}
+
+    {{ range .Errors -}}
+    <div class="invalid-feedback">{{ . }}</div>
+    {{- end }}
+</div>
+{{- end }}
 {{- end }}
 ```
 
