@@ -67,9 +67,7 @@ func hasRequiredValidation(sf reflect.StructField) bool {
 
 // inferType maps a Go type to an HTML input type string.
 func inferType(t reflect.Type) string {
-	if t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
+	t = derefType(t)
 	//nolint:exhaustive // only handle common form field types
 	switch t.Kind() {
 	case reflect.Bool:
@@ -91,4 +89,20 @@ func inferType(t reflect.Type) string {
 // isSkipped returns true if the field has form:"-".
 func isSkipped(sf reflect.StructField) bool {
 	return sf.Tag.Get("form") == "-"
+}
+
+// isSubformType reports whether t is a struct (or pointer to struct) that
+// should be rendered as a subform. time.Time is excluded — it has its own
+// "date" widget.
+func isSubformType(t reflect.Type) bool {
+	t = derefType(t)
+	return t.Kind() == reflect.Struct && t != reflect.TypeFor[time.Time]()
+}
+
+// derefType returns t.Elem() if t is a pointer type, else t.
+func derefType(t reflect.Type) reflect.Type {
+	if t.Kind() == reflect.Pointer {
+		return t.Elem()
+	}
+	return t
 }
