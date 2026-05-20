@@ -31,6 +31,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **`forms` package: nested-struct subform support.** Struct-typed form fields now render as **subforms** — `extractFields` recurses one level into the nested struct and exposes its fields under the parent's `BoundField.SubFields`. Nested `FormName` values follow the `parent.child` convention (e.g. `profile.name`) so `burrow.Bind` decodes them and validation errors route to the correct nested field. `time.Time` is excluded (keeps the `"date"` widget); pointer-to-struct is dereferenced (nil → zero-value sub-fields); recursion is capped at one level. Templates dispatch on `Type == "subform"` and iterate `.SubFields` — see [forms: Nested struct fields](guide/forms.md#nested-struct-fields-subforms).
 - **Translation guard test** (`TestTranslationsLoadInGoI18n`) loads every contrib's `active.*.toml` through a real go-i18n bundle, so reserved-key collisions (`id`, `hash`, `description`, `leftdelim`, `rightdelim`, plural keys) surface at test time instead of at server boot.
 
+### Removed
+
+- **`cmd/burrow-tailwind` deprecation shim deleted.** The standalone binary printed a deprecation notice and delegated to `burrow tailwind` in v0.21; v0.22 removes it. Existing projects: replace the `tool github.com/oliverandrich/burrow/cmd/burrow-tailwind` directive in `go.mod` with `tool github.com/oliverandrich/burrow/cmd/burrow`, and rewrite `.mise.toml` / `.air.toml` invocations from `go tool burrow-tailwind ...` to `go tool burrow tailwind ...`. See the [Tailwind guide](guide/tailwind.md).
+
 ### Fixed
 
 - **`contrib/jobs` translation bundle no longer collides with go-i18n reserved keys.** The Label-as-key migration had introduced `ID = "ID"` in `active.{en,de}.toml`; `id` is one of go-i18n's reserved top-level fields (alongside `hash`, `description`, plural keys), so the loader rejected the file at boot. Renamed the label to "Job ID" in both TOMLs and `templates/admin_detail.html`.

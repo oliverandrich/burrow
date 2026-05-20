@@ -200,9 +200,6 @@ go tool burrow tailwind -i tailwind.css -o internal/app/static/app.min.css --wat
 
 See [Tailwind CSS](../guide/tailwind.md) for the full setup pattern.
 
-### Deprecated alternative
+### Migrating from the old `cmd/burrow-tailwind`
 
-The standalone `cmd/burrow-tailwind` binary still works as a
-deprecation shim — it prints a stderr notice and delegates to the
-`burrow tailwind` sub-command. Removal is scheduled for v0.22. See
-the migration callout at the top of [Tailwind CSS](../guide/tailwind.md).
+The standalone `cmd/burrow-tailwind` binary was a deprecation shim in v0.21 and was removed in v0.22. Replace the `tool` directive in `go.mod` and the invocations in `.mise.toml` / `.air.toml` — see the migration callout at the top of [Tailwind CSS](../guide/tailwind.md).
