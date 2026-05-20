@@ -1533,7 +1533,7 @@ func TestTranslationFS(t *testing.T) {
 // of rendering the raw English string. Catches rename drift between
 // NavItem labels, template lookups, and translation keys.
 func TestAdminNavItemsResolveViaLabelAsKey(t *testing.T) {
-	bundle, err := i18n.NewTestBundle("en", translationFS)
+	bundle, err := i18n.NewTestBundle(translationFS)
 	require.NoError(t, err)
 
 	items := (&App[EmptyProfile]{}).AdminNavItems()
@@ -1559,7 +1559,7 @@ func TestAdminNavItemsResolveViaLabelAsKey(t *testing.T) {
 // resolve to German via the Label-as-key convention. Catches rename drift
 // between User struct verbose tags, WithChoices Labels, and translation TOMLs.
 func TestUserEditFormLabelsTranslate(t *testing.T) {
-	bundle, err := i18n.NewTestBundle("en", translationFS)
+	bundle, err := i18n.NewTestBundle(translationFS)
 	require.NoError(t, err)
 
 	user := &User[EmptyProfile]{Role: RoleUser}

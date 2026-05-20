@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -272,9 +271,10 @@ func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), e
 		cfg.Server.BaseURL = cfg.ResolveBaseURL()
 	}
 
-	// Create i18n bundle from core config (before bootstrap so apps get WithLocale).
-	langs := strings.Split(cfg.I18n.SupportedLanguages, ",")
-	bundle, err := i18n.NewBundle(cfg.I18n.DefaultLanguage, langs)
+	// Create i18n bundle before bootstrap so apps get WithLocale. Supported
+	// languages are derived from each HasTranslations app's TranslationFS as
+	// they are loaded below.
+	bundle, err := i18n.NewBundle()
 	if err != nil {
 		return nil, nil, fmt.Errorf("create i18n bundle: %w", err)
 	}

@@ -974,7 +974,7 @@ func TestAdminNavItems(t *testing.T) {
 // resolves to a German translation via i18n.T using the Label as the
 // message ID.
 func TestAdminNavItemsResolveViaLabelAsKey(t *testing.T) {
-	bundle, err := i18n.NewTestBundle("en", New().TranslationFS())
+	bundle, err := i18n.NewTestBundle(New().TranslationFS())
 	require.NoError(t, err)
 
 	items := New().AdminNavItems()

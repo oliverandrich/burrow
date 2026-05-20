@@ -13,7 +13,7 @@ import (
 
 func testCtx(t *testing.T, locale string) context.Context {
 	t.Helper()
-	b, err := i18n.NewTestBundle("en", translationFS)
+	b, err := i18n.NewTestBundle(translationFS)
 	require.NoError(t, err)
 	return b.WithLocale(context.Background(), locale)
 }
@@ -368,7 +368,7 @@ func TestCustomTranslationOverride(t *testing.T) {
 			Data: []byte("humanize-today = \"this very day\"\n"),
 		},
 	}
-	b, err := i18n.NewTestBundle("en", translationFS, customFS)
+	b, err := i18n.NewTestBundle(translationFS, customFS)
 	require.NoError(t, err)
 	ctx := b.WithLocale(context.Background(), "en")
 
