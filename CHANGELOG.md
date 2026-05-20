@@ -4,6 +4,8 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+> **Migrating from v0.21.x?** See the [v0.22 migration guide](migration/v0.22.md) for the concrete before/after patterns.
+
 ### Breaking Changes
 
 - **`Seedable` interface and `--seed` flag removed; replaced by `HasMigrations` wired to Den's migrate package.** Apps that previously implemented `Seed(ctx) error` now implement `Migrations() []burrow.NamedMigration`, returning versioned migrations whose `Forward` functions take a `*den.Tx`. The server applies them automatically at boot — each migration runs exactly once across processes (tracked in the `_den_migrations` collection), namespaced by app name (`{app}/{version}`). Migration recipe: move the old `Seed` body into a `migrate.Migration{Forward: func(ctx, tx) error { ... }}` and use `den.Save(ctx, tx, doc)` / `den.NewQuery[T](tx, ...)` directly inside Forward — repos keep their `*den.DB` shape; migrations are setup code that operates in the framework-persistence layer. Drop the `--seed`/`SEED=true` invocation — booting is enough. All six tutorial-step polls apps migrated alongside.

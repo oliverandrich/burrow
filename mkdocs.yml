@@ -135,6 +135,7 @@ nav:
       - Context Helpers: reference/context-helpers.md
       - CLI: reference/cli.md
   - Migration:
+      - "v0.22": migration/v0.22.md
       - "v0.20": migration/v0.20.md
   - Contributing: contributing.md
   - Changelog: changelog.md
