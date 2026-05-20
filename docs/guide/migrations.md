@@ -51,59 +51,98 @@ Removing fields or indexes requires no special handling — unused indexes are s
 
 ## Data Migrations
 
-Schema changes (new fields, new indexes) are handled automatically. But sometimes you need to transform existing data — rename a field, split a value, backfill a computed field. For these cases, Den provides a migration registry.
+Schema changes (new fields, new indexes) are handled automatically. But sometimes you need to seed initial data, transform existing data — rename a field, split a value, backfill a computed field. For these cases, apps implement the `HasMigrations` interface and the server applies them at boot via Den's migrate package.
 
-### Defining Migrations
+### Implementing HasMigrations
 
-Create a migration registry in your app and register versioned migration functions:
+Return one or more `burrow.NamedMigration` values from `Migrations()`. The framework registers them under `{app.Name()}/{version}` (so two contribs can both ship `"001_initial"` without colliding) and runs `migrate.Up` once after every app's `Configure()` has completed.
 
 ```go
-var migrations = migrate.NewRegistry()
+import (
+    "github.com/oliverandrich/burrow"
+    "github.com/oliverandrich/den"
+    "github.com/oliverandrich/den/migrate"
+    "github.com/oliverandrich/den/where"
+)
 
-func init() {
-    migrations.Register("001_backfill_slug", migrate.Migration{
-        Forward: func(ctx context.Context, tx *den.Tx) error {
-            for note, err := range den.NewQuery[Note](tx).Iter(ctx) {
+// Implements [burrow.HasMigrations].
+func (a *App) Migrations() []burrow.NamedMigration {
+    return []burrow.NamedMigration{{
+        Version: "001_backfill_slug",
+        Migration: migrate.Migration{
+            Forward: func(ctx context.Context, tx *den.Tx) error {
+                notes, err := den.NewQuery[Note](tx,
+                    where.Field("slug").Eq(""),
+                ).All(ctx)
                 if err != nil {
                     return err
                 }
-                if note.Slug == "" {
+                for _, note := range notes {
                     note.Slug = slugify(note.Title)
                     if err := den.Save(ctx, tx, note); err != nil {
                         return err
                     }
                 }
-            }
-            return nil
+                return nil
+            },
         },
-    })
+    }}
 }
 ```
 
-### Running Migrations
+Forward functions use Den primitives (`den.Save`, `den.Delete`, `den.NewQuery`) directly with the transaction. Your app's `Repository` holds a `*den.DB` for the normal request path, but `Forward` receives a `*den.Tx` — calling `a.repo.Save(...)` would write outside the migration's transaction. The Den helpers polymorphically accept either type via an internal `Scope` interface, so passing the `*den.Tx` straight in is the correct path. Conceptually it also fits: migrations are setup code, not application code, and operating at the framework-persistence layer keeps the transaction boundary explicit.
 
-Run migrations during your app's `Configure()` phase:
+### Seeding Initial Data
+
+Seeding — inserting reference data, demo content, default lookup tables, an initial admin user — is just a forward-only migration. Same mechanism, no separate "seed" concept. The advantage over an ad-hoc seed script: the migration log records that the seed has run, so booting the app twice doesn't duplicate the rows.
 
 ```go
-func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
-    a.repo = NewRepository(cfg.DB)
-
-    // Run data migrations (idempotent — tracks applied versions)
-    if err := migrations.Up(context.Background(), cfg.DB); err != nil {
-        return fmt.Errorf("notes: run migrations: %w", err)
-    }
-
-    return nil
+func (a *App) Migrations() []burrow.NamedMigration {
+    return []burrow.NamedMigration{{
+        Version: "001_initial_polls",
+        Migration: migrate.Migration{
+            Forward: func(ctx context.Context, tx *den.Tx) error {
+                samples := []struct {
+                    text    string
+                    choices []string
+                }{
+                    {"What's your favourite Go web framework?", []string{"Burrow", "Gin", "Echo", "net/http alone"}},
+                    {"How long have you been writing Go?", []string{"<1 year", "1–3 years", "3–5 years", "5+ years"}},
+                }
+                for _, s := range samples {
+                    q := &Question{Text: s.text, PublishedAt: time.Now()}
+                    if err := den.Save(ctx, tx, q); err != nil {
+                        return err
+                    }
+                    for _, ct := range s.choices {
+                        if err := den.Save(ctx, tx, &Choice{QuestionID: q.ID, Text: ct}); err != nil {
+                            return err
+                        }
+                    }
+                }
+                return nil
+            },
+        },
+    }}
 }
 ```
+
+The example doesn't guard against duplicates (`Exists()` check, etc.) because the `_den_migrations` log already guarantees the version runs exactly once. If you ever change a seed migration's body without bumping the version, that change won't apply to apps that already ran the old version — in that case create a follow-up migration (`002_extra_polls`) rather than editing `001_initial_polls` in place.
+
+Re-seeding for local development: drop the database (`rm data/app.db`) and boot again. The fresh `_den_migrations` collection treats the seed as pending and re-runs it. There is no `--seed`-style command-line escape hatch — that's intentional; the version log is the single source of truth. If you need to keep some data (e.g. your dev user account) but re-run a specific migration, delete that row from `_den_migrations` manually and reboot.
 
 ### Key Points
 
 - Each migration runs atomically in a transaction — if it fails, nothing is applied
-- Applied migrations are tracked in a `_den_migrations` collection — running `Up()` again skips already-applied migrations
-- `Forward` receives a `*den.Tx` — pass it to `den.Save`, `den.Delete` etc. for transactional safety (since den v0.8.0, the unified `Scope` interface accepts both `*den.DB` and `*den.Tx`)
-- `Backward` is optional — define it if you need rollback support via `migrations.Down()`
-- Migrations run **after** `den.Register()` has created the schema, so your document types are always available
+- Applied migrations are tracked in a `_den_migrations` collection. Re-runs skip already-applied versions, so booting twice is a no-op
+- `Forward` is required; `Backward` is optional. Without `Backward`, the migration is forward-only — `migrate.Down` / `DownOne` return an error if asked to roll back
+- Migrations run **after** `den.Register()` has created the schema AND **after** every app's `Configure()` has wired its repo, so document types and app state are both ready
+- Within an app, migrations run in the order returned from `Migrations()`. The version string is the lexicographic key the framework registers against `_den_migrations`, so the `001_`, `002_` prefix convention keeps the slice order and the registry order aligned
+- A failed migration aborts boot: the server exits with a non-zero status and logs `migration {app}/{version} failed: {error}`. Subsequent migrations are skipped — fix the cause, redeploy, and the failed version retries on the next boot
+
+### Running Migrations Manually
+
+You don't need to call anything; the framework wires `migrate.Registry` from every `HasMigrations` app and runs `Up` during boot. If you need finer control (e.g. a custom `migrate` subcommand that calls `Down`), reach for Den's [migrate package](https://pkg.go.dev/github.com/oliverandrich/den/migrate) directly.
 
 ## Migration Order
 

@@ -91,7 +91,7 @@
 //   - [HasFlags] — CLI/ENV/TOML flag definitions
 //   - [Configurable] — app configuration and setup
 //   - [HasCLICommands] — CLI subcommands
-//   - [Seedable] — database seeding
+//   - [HasMigrations] — versioned, run-once database migrations
 //   - [HasAdmin] — admin panel routes and navigation
 //   - [HasStaticFiles] — embedded static file assets
 //   - [HasTranslations] — i18n translation files
@@ -143,6 +143,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
+	"github.com/oliverandrich/den/migrate"
 	"github.com/urfave/cli/v3"
 )
 
@@ -236,12 +237,26 @@ type HasRoutes interface {
 	Routes(r chi.Router)
 }
 
-// Seedable is implemented by apps that can seed the database with initial
-// data. Seed functions only run when the server is started with the --seed
-// flag (or SEED=true environment variable). Implementations should be
-// idempotent — safe to call multiple times without creating duplicates.
-type Seedable interface {
-	Seed(ctx context.Context) error
+// HasMigrations is implemented by apps that ship versioned, run-once
+// migrations on top of the auto-discovered document schema. The server
+// applies them automatically at boot via Den's migrate package — each
+// migration runs exactly once across processes, tracked in the
+// _den_migrations collection. Versions are namespaced by app name so two
+// contribs can both ship "001_initial" without colliding.
+type HasMigrations interface {
+	Migrations() []NamedMigration
+}
+
+// NamedMigration pairs a version label with a Den migrate.Migration. The
+// Version is the lexicographic ordering key inside an app; cross-app order
+// follows the registry's dependency-resolved app order.
+//
+// Migration.Forward is required. Migration.Backward is optional — omitting
+// it locks the migration as forward-only; rollback via migrate.Down /
+// migrate.DownOne returns an error for a migration without a Backward.
+type NamedMigration struct {
+	Version   string
+	Migration migrate.Migration
 }
 
 // AdminAuth provides authentication and authorization middleware for the

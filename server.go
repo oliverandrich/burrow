@@ -183,12 +183,6 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 		"base_url", cfg.Server.BaseURL,
 	)
 
-	if cfg.Server.Seed {
-		if err := s.registry.Seed(ctx); err != nil {
-			return fmt.Errorf("seed: %w", err)
-		}
-	}
-
 	// Register core request func map providers.
 	s.requestFuncMapProviders = append(s.requestFuncMapProviders, s.i18nBundle.RequestFuncMap)
 	s.requestFuncMapProviders = append(s.requestFuncMapProviders, coreRequestFuncMap)
@@ -255,11 +249,12 @@ func (s *Server) bootstrap(ctx context.Context, db *den.DB, cfg *Config) error {
 // boot performs the initialisation steps shared between [Server.Run] (which
 // serves HTTP) and [Server.CLICommands] (which runs framework subcommands):
 // build the Config, open storage and database, bootstrap document types, load
-// translations, and Configure all apps. Returns the parsed Config and a
-// cleanup function the caller must defer (closes the database).
+// translations, Configure all apps, and apply pending migrations. Returns
+// the parsed Config and a cleanup function the caller must defer (closes
+// the database).
 //
-// Boot does NOT run Seed, build templates, or start the HTTP server — those
-// are HTTP-server-specific and live in [Server.Run].
+// Boot does NOT build templates or start the HTTP server — those are
+// HTTP-server-specific and live in [Server.Run].
 func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), error) {
 	cfg := NewConfig(cmd)
 
@@ -318,6 +313,11 @@ func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), e
 	if err := s.registry.Configure(s.appCfg, cmd); err != nil {
 		cleanup()
 		return nil, nil, err
+	}
+
+	if err := s.registry.RunMigrations(ctx, db); err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("run migrations: %w", err)
 	}
 
 	return cfg, cleanup, nil
