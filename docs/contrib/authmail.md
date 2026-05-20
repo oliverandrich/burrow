@@ -32,7 +32,7 @@ srv := burrow.NewServer(
     session.New(),
     csrf.New(),
     smtpApp,
-    auth.New(
+    auth.New[auth.EmptyProfile](
         auth.WithEmailService(&lazyMailer{app: smtpApp}),
     ),
     // ... other apps

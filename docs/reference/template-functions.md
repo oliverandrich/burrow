@@ -79,7 +79,7 @@ These funcs **only exist when `contrib/csrf` is registered**. Templates that use
 
 | Function | Type | Example | Description |
 |----------|------|---------|-------------|
-| `currentUser` | Request | `{{ if $u := currentUser }}{{ $u.Email }}{{ end }}` | Returns the authenticated `*auth.User` or `nil`. |
+| `currentUser` | Request | `{{ if $u := currentUser }}{{ $u.Email }}{{ end }}` | Returns the authenticated `*auth.User[auth.EmptyProfile]` or `nil`. |
 | `isAuthenticated` | Request | `{{ if isAuthenticated }}...{{ end }}` | Returns `true` if a user is logged in. |
 | `authLogo` | Request | `{{ authLogo }}` | Returns the auth logo HTML. |
 

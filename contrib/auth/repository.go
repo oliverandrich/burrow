@@ -16,33 +16,33 @@ import (
 // ErrNotFound is returned when a record is not found.
 var ErrNotFound = den.ErrNotFound
 
-// Repository provides data access for auth models.
-type Repository struct {
+// Repository provides data access for auth models. The Profile type
+// parameter mirrors [User]'s — see docs/contrib/auth-profile.md.
+type Repository[P any] struct {
 	db *den.DB
 }
 
 // NewRepository creates a new auth Repository.
-func NewRepository(db *den.DB) *Repository {
-	return &Repository{db: db}
+func NewRepository[P any](db *den.DB) *Repository[P] {
+	return &Repository[P]{db: db}
 }
 
 // --- User methods ---
 
-// CreateUser creates a new user with a username and optional name.
-func (r *Repository) CreateUser(ctx context.Context, username, name string) (*User, error) {
-	user := &User{Username: username, Name: name, Role: RoleUser, IsActive: true}
+// CreateUser creates a new user with just a username (no email).
+func (r *Repository[P]) CreateUser(ctx context.Context, username string) (*User[P], error) {
+	user := &User[P]{Username: username, Role: RoleUser, IsActive: true}
 	if err := den.Save(ctx, r.db, user); err != nil {
 		return nil, fmt.Errorf("create user %q: %w", username, err)
 	}
 	return user, nil
 }
 
-// CreateUserWithEmail creates a new user with email and optional name.
-func (r *Repository) CreateUserWithEmail(ctx context.Context, email, name string) (*User, error) {
-	user := &User{
+// CreateUserWithEmail creates a new user with email (which doubles as the username).
+func (r *Repository[P]) CreateUserWithEmail(ctx context.Context, email string) (*User[P], error) {
+	user := &User[P]{
 		Username: email,
 		Email:    &email,
-		Name:     name,
 		Role:     RoleUser,
 		IsActive: true,
 	}
@@ -53,8 +53,8 @@ func (r *Repository) CreateUserWithEmail(ctx context.Context, email, name string
 }
 
 // GetUserByID retrieves a user by ID.
-func (r *Repository) GetUserByID(ctx context.Context, id string) (*User, error) {
-	user, err := den.FindByID[User](ctx, r.db, id)
+func (r *Repository[P]) GetUserByID(ctx context.Context, id string) (*User[P], error) {
+	user, err := den.FindByID[User[P]](ctx, r.db, id)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			return nil, ErrNotFound
@@ -65,7 +65,7 @@ func (r *Repository) GetUserByID(ctx context.Context, id string) (*User, error) 
 }
 
 // GetUserByIDWithCredentials retrieves a user by ID with preloaded credentials.
-func (r *Repository) GetUserByIDWithCredentials(ctx context.Context, id string) (*User, error) {
+func (r *Repository[P]) GetUserByIDWithCredentials(ctx context.Context, id string) (*User[P], error) {
 	user, err := r.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -79,8 +79,8 @@ func (r *Repository) GetUserByIDWithCredentials(ctx context.Context, id string) 
 }
 
 // GetUserByUsername retrieves a user by username.
-func (r *Repository) GetUserByUsername(ctx context.Context, username string) (*User, error) {
-	user, err := den.NewQuery[User](r.db, where.Field("username").Eq(username)).First(ctx)
+func (r *Repository[P]) GetUserByUsername(ctx context.Context, username string) (*User[P], error) {
+	user, err := den.NewQuery[User[P]](r.db, where.Field("username").Eq(username)).First(ctx)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			return nil, ErrNotFound
@@ -91,8 +91,8 @@ func (r *Repository) GetUserByUsername(ctx context.Context, username string) (*U
 }
 
 // GetUserByEmail retrieves a user by email.
-func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-	user, err := den.NewQuery[User](r.db, where.Field("email").Eq(email)).First(ctx)
+func (r *Repository[P]) GetUserByEmail(ctx context.Context, email string) (*User[P], error) {
+	user, err := den.NewQuery[User[P]](r.db, where.Field("email").Eq(email)).First(ctx)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			return nil, ErrNotFound
@@ -103,7 +103,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*User, e
 }
 
 // UpdateUser updates a user record.
-func (r *Repository) UpdateUser(ctx context.Context, user *User) error {
+func (r *Repository[P]) UpdateUser(ctx context.Context, user *User[P]) error {
 	if err := den.Save(ctx, r.db, user); err != nil {
 		return fmt.Errorf("update user %s: %w", user.ID, err)
 	}
@@ -111,8 +111,8 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User) error {
 }
 
 // SetUserRole updates a user's role.
-func (r *Repository) SetUserRole(ctx context.Context, userID string, role string) error {
-	_, err := den.NewQuery[User](r.db, where.Field("_id").Eq(userID)).
+func (r *Repository[P]) SetUserRole(ctx context.Context, userID string, role string) error {
+	_, err := den.NewQuery[User[P]](r.db, where.Field("_id").Eq(userID)).
 		UpdateOne(ctx, den.SetFields{"role": role})
 	if err != nil {
 		return fmt.Errorf("set role for user %s: %w", userID, err)
@@ -121,8 +121,8 @@ func (r *Repository) SetUserRole(ctx context.Context, userID string, role string
 }
 
 // SetUserActive sets a user's is_active flag.
-func (r *Repository) SetUserActive(ctx context.Context, userID string, active bool) error {
-	_, err := den.NewQuery[User](r.db, where.Field("_id").Eq(userID)).
+func (r *Repository[P]) SetUserActive(ctx context.Context, userID string, active bool) error {
+	_, err := den.NewQuery[User[P]](r.db, where.Field("_id").Eq(userID)).
 		UpdateOne(ctx, den.SetFields{"is_active": active})
 	if err != nil {
 		return fmt.Errorf("set active for user %s: %w", userID, err)
@@ -131,9 +131,9 @@ func (r *Repository) SetUserActive(ctx context.Context, userID string, active bo
 }
 
 // MarkEmailVerified marks a user's email as verified.
-func (r *Repository) MarkEmailVerified(ctx context.Context, userID string) error {
+func (r *Repository[P]) MarkEmailVerified(ctx context.Context, userID string) error {
 	now := time.Now()
-	_, err := den.NewQuery[User](r.db, where.Field("_id").Eq(userID)).
+	_, err := den.NewQuery[User[P]](r.db, where.Field("_id").Eq(userID)).
 		UpdateOne(ctx, den.SetFields{"email_verified": true, "email_verified_at": &now})
 	if err != nil {
 		return fmt.Errorf("mark email verified for user %s: %w", userID, err)
@@ -142,8 +142,8 @@ func (r *Repository) MarkEmailVerified(ctx context.Context, userID string) error
 }
 
 // UserExists checks if a user with the given username exists.
-func (r *Repository) UserExists(ctx context.Context, username string) (bool, error) {
-	exists, err := den.NewQuery[User](r.db, where.Field("username").Eq(username)).Exists(ctx)
+func (r *Repository[P]) UserExists(ctx context.Context, username string) (bool, error) {
+	exists, err := den.NewQuery[User[P]](r.db, where.Field("username").Eq(username)).Exists(ctx)
 	if err != nil {
 		return false, fmt.Errorf("check user exists %q: %w", username, err)
 	}
@@ -151,8 +151,8 @@ func (r *Repository) UserExists(ctx context.Context, username string) (bool, err
 }
 
 // EmailExists checks if a user with the given email exists.
-func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error) {
-	exists, err := den.NewQuery[User](r.db, where.Field("email").Eq(email)).Exists(ctx)
+func (r *Repository[P]) EmailExists(ctx context.Context, email string) (bool, error) {
+	exists, err := den.NewQuery[User[P]](r.db, where.Field("email").Eq(email)).Exists(ctx)
 	if err != nil {
 		return false, fmt.Errorf("check email exists %q: %w", email, err)
 	}
@@ -160,12 +160,12 @@ func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error
 }
 
 // ListUsers returns all users ordered by creation time ascending.
-func (r *Repository) ListUsers(ctx context.Context) ([]User, error) {
-	users, err := den.NewQuery[User](r.db).Sort("_created_at", den.Asc).All(ctx)
+func (r *Repository[P]) ListUsers(ctx context.Context) ([]User[P], error) {
+	users, err := den.NewQuery[User[P]](r.db).Sort("_created_at", den.Asc).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
-	result := make([]User, len(users))
+	result := make([]User[P], len(users))
 	for i, u := range users {
 		result[i] = *u
 	}
@@ -173,8 +173,8 @@ func (r *Repository) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 // CountUsers returns the total number of users.
-func (r *Repository) CountUsers(ctx context.Context) (int, error) {
-	count, err := den.NewQuery[User](r.db).Count(ctx)
+func (r *Repository[P]) CountUsers(ctx context.Context) (int, error) {
+	count, err := den.NewQuery[User[P]](r.db).Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count users: %w", err)
 	}
@@ -182,8 +182,8 @@ func (r *Repository) CountUsers(ctx context.Context) (int, error) {
 }
 
 // CountAdminUsers returns the number of users with the admin role.
-func (r *Repository) CountAdminUsers(ctx context.Context) (int, error) {
-	count, err := den.NewQuery[User](r.db, where.Field("role").Eq(RoleAdmin)).Count(ctx)
+func (r *Repository[P]) CountAdminUsers(ctx context.Context) (int, error) {
+	count, err := den.NewQuery[User[P]](r.db, where.Field("role").Eq(RoleAdmin)).Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count admin users: %w", err)
 	}
@@ -191,8 +191,8 @@ func (r *Repository) CountAdminUsers(ctx context.Context) (int, error) {
 }
 
 // DeleteUser permanently deletes a user by ID.
-func (r *Repository) DeleteUser(ctx context.Context, id string) error {
-	user, err := den.FindByID[User](ctx, r.db, id)
+func (r *Repository[P]) DeleteUser(ctx context.Context, id string) error {
+	user, err := den.FindByID[User[P]](ctx, r.db, id)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
 			return nil // already deleted
@@ -208,11 +208,11 @@ func (r *Repository) DeleteUser(ctx context.Context, id string) error {
 // PurgeOrphanedUsers deletes users with zero credentials that were
 // created more than the given duration ago. These are leftover from abandoned
 // WebAuthn registration flows where the client never called RegisterFinish.
-func (r *Repository) PurgeOrphanedUsers(ctx context.Context, olderThan time.Duration) (int, error) {
+func (r *Repository[P]) PurgeOrphanedUsers(ctx context.Context, olderThan time.Duration) (int, error) {
 	cutoffStr := time.Now().Add(-olderThan).Format(time.RFC3339Nano)
 
 	// Find old users only — abandoned registrations are typically very few.
-	oldUsers, err := den.NewQuery[User](r.db, where.Field("_created_at").Lt(cutoffStr)).All(ctx)
+	oldUsers, err := den.NewQuery[User[P]](r.db, where.Field("_created_at").Lt(cutoffStr)).All(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("purge orphaned users: list old users: %w", err)
 	}
@@ -236,13 +236,13 @@ func (r *Repository) PurgeOrphanedUsers(ctx context.Context, olderThan time.Dura
 // --- Paginated query methods ---
 
 // ListUsersPaged returns users with pagination and optional role filter, ordered by created_at desc.
-func (r *Repository) ListUsersPaged(ctx context.Context, pr burrow.PageRequest, role string) ([]User, burrow.PageResult, error) {
+func (r *Repository[P]) ListUsersPaged(ctx context.Context, pr burrow.PageRequest, role string) ([]User[P], burrow.PageResult, error) {
 	conditions := []where.Condition{}
 	if role != "" {
 		conditions = append(conditions, where.Field("role").Eq(role))
 	}
 
-	ptrs, count, err := den.NewQuery[User](r.db, conditions...).
+	ptrs, count, err := den.NewQuery[User[P]](r.db, conditions...).
 		Sort("_created_at", den.Desc).
 		Limit(pr.Limit).
 		Skip(pr.Offset()).
@@ -251,18 +251,17 @@ func (r *Repository) ListUsersPaged(ctx context.Context, pr burrow.PageRequest, 
 		return nil, burrow.PageResult{}, fmt.Errorf("list users paged: %w", err)
 	}
 
-	users := make([]User, len(ptrs))
+	users := make([]User[P], len(ptrs))
 	for i, p := range ptrs {
 		users[i] = *p
 	}
 	return users, burrow.OffsetResult(pr, int(count)), nil
 }
 
-// SearchUsers searches users by username, name, or email with pagination and optional role filter.
-func (r *Repository) SearchUsers(ctx context.Context, query string, pr burrow.PageRequest, role string) ([]User, burrow.PageResult, error) {
+// SearchUsers searches users by username or email with pagination and optional role filter.
+func (r *Repository[P]) SearchUsers(ctx context.Context, query string, pr burrow.PageRequest, role string) ([]User[P], burrow.PageResult, error) {
 	searchCond := where.Or(
 		where.Field("username").StringContains(query),
-		where.Field("name").StringContains(query),
 		where.Field("email").StringContains(query),
 	)
 
@@ -273,7 +272,7 @@ func (r *Repository) SearchUsers(ctx context.Context, query string, pr burrow.Pa
 		cond = searchCond
 	}
 
-	ptrs, count, err := den.NewQuery[User](r.db, cond).
+	ptrs, count, err := den.NewQuery[User[P]](r.db, cond).
 		Sort("_created_at", den.Desc).
 		Limit(pr.Limit).
 		Skip(pr.Offset()).
@@ -282,7 +281,7 @@ func (r *Repository) SearchUsers(ctx context.Context, query string, pr burrow.Pa
 		return nil, burrow.PageResult{}, fmt.Errorf("search users: %w", err)
 	}
 
-	users := make([]User, len(ptrs))
+	users := make([]User[P], len(ptrs))
 	for i, p := range ptrs {
 		users[i] = *p
 	}
@@ -290,7 +289,7 @@ func (r *Repository) SearchUsers(ctx context.Context, query string, pr burrow.Pa
 }
 
 // GetInviteByID retrieves an invite by its ID.
-func (r *Repository) GetInviteByID(ctx context.Context, id string) (*Invite, error) {
+func (r *Repository[P]) GetInviteByID(ctx context.Context, id string) (*Invite, error) {
 	invite, err := den.FindByID[Invite](ctx, r.db, id)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
@@ -303,7 +302,7 @@ func (r *Repository) GetInviteByID(ctx context.Context, id string) (*Invite, err
 
 // SearchInvitesPaged searches invites by label or email with pagination,
 // ordered by created_at desc.
-func (r *Repository) SearchInvitesPaged(ctx context.Context, query string, pr burrow.PageRequest) ([]Invite, burrow.PageResult, error) {
+func (r *Repository[P]) SearchInvitesPaged(ctx context.Context, query string, pr burrow.PageRequest) ([]Invite, burrow.PageResult, error) {
 	cond := where.Or(
 		where.Field("label").StringContains(query),
 		where.Field("email").StringContains(query),
@@ -326,7 +325,7 @@ func (r *Repository) SearchInvitesPaged(ctx context.Context, query string, pr bu
 }
 
 // ListInvitesPaged returns invites with pagination, ordered by created_at desc.
-func (r *Repository) ListInvitesPaged(ctx context.Context, pr burrow.PageRequest) ([]Invite, burrow.PageResult, error) {
+func (r *Repository[P]) ListInvitesPaged(ctx context.Context, pr burrow.PageRequest) ([]Invite, burrow.PageResult, error) {
 	ptrs, count, err := den.NewQuery[Invite](r.db).
 		Sort("_created_at", den.Desc).
 		Limit(pr.Limit).
@@ -346,7 +345,7 @@ func (r *Repository) ListInvitesPaged(ctx context.Context, pr burrow.PageRequest
 // --- Credential methods ---
 
 // CreateCredential creates a new WebAuthn credential.
-func (r *Repository) CreateCredential(ctx context.Context, cred *Credential) error {
+func (r *Repository[P]) CreateCredential(ctx context.Context, cred *Credential) error {
 	if err := den.Save(ctx, r.db, cred); err != nil {
 		return fmt.Errorf("create credential for user %s: %w", cred.UserID, err)
 	}
@@ -354,7 +353,7 @@ func (r *Repository) CreateCredential(ctx context.Context, cred *Credential) err
 }
 
 // GetCredentialsByUserID retrieves all credentials for a user.
-func (r *Repository) GetCredentialsByUserID(ctx context.Context, userID string) ([]Credential, error) {
+func (r *Repository[P]) GetCredentialsByUserID(ctx context.Context, userID string) ([]Credential, error) {
 	creds, err := den.NewQuery[Credential](r.db, where.Field("user_id").Eq(userID)).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get credentials for user %s: %w", userID, err)
@@ -367,7 +366,7 @@ func (r *Repository) GetCredentialsByUserID(ctx context.Context, userID string) 
 }
 
 // UpdateCredentialSignCount updates the sign count for a credential.
-func (r *Repository) UpdateCredentialSignCount(ctx context.Context, credentialID []byte, signCount uint32) error {
+func (r *Repository[P]) UpdateCredentialSignCount(ctx context.Context, credentialID []byte, signCount uint32) error {
 	// Encode as base64 to match JSON serialization of []byte fields.
 	credIDBase64 := base64.StdEncoding.EncodeToString(credentialID)
 	_, err := den.NewQuery[Credential](r.db, where.Field("credential_id").Eq(credIDBase64)).
@@ -379,7 +378,7 @@ func (r *Repository) UpdateCredentialSignCount(ctx context.Context, credentialID
 }
 
 // DeleteCredential deletes a credential.
-func (r *Repository) DeleteCredential(ctx context.Context, credID, userID string) error {
+func (r *Repository[P]) DeleteCredential(ctx context.Context, credID, userID string) error {
 	cred, err := den.NewQuery[Credential](r.db,
 		where.Field("_id").Eq(credID),
 		where.Field("user_id").Eq(userID),
@@ -394,7 +393,7 @@ func (r *Repository) DeleteCredential(ctx context.Context, credID, userID string
 }
 
 // CountUserCredentials counts the number of credentials for a user.
-func (r *Repository) CountUserCredentials(ctx context.Context, userID string) (int64, error) {
+func (r *Repository[P]) CountUserCredentials(ctx context.Context, userID string) (int64, error) {
 	count, err := den.NewQuery[Credential](r.db, where.Field("user_id").Eq(userID)).Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count credentials for user %s: %w", userID, err)
@@ -405,7 +404,7 @@ func (r *Repository) CountUserCredentials(ctx context.Context, userID string) (i
 // --- Recovery code methods ---
 
 // CreateRecoveryCodes creates recovery codes for a user.
-func (r *Repository) CreateRecoveryCodes(ctx context.Context, userID string, codeHashes []string) error {
+func (r *Repository[P]) CreateRecoveryCodes(ctx context.Context, userID string, codeHashes []string) error {
 	codes := make([]*RecoveryCode, len(codeHashes))
 	for i, hash := range codeHashes {
 		codes[i] = &RecoveryCode{
@@ -420,7 +419,7 @@ func (r *Repository) CreateRecoveryCodes(ctx context.Context, userID string, cod
 }
 
 // GetUnusedRecoveryCodes retrieves unused recovery codes for a user.
-func (r *Repository) GetUnusedRecoveryCodes(ctx context.Context, userID string) ([]RecoveryCode, error) {
+func (r *Repository[P]) GetUnusedRecoveryCodes(ctx context.Context, userID string) ([]RecoveryCode, error) {
 	codes, err := den.NewQuery[RecoveryCode](r.db,
 		where.Field("user_id").Eq(userID),
 		where.Field("used").Eq(false),
@@ -436,7 +435,7 @@ func (r *Repository) GetUnusedRecoveryCodes(ctx context.Context, userID string) 
 }
 
 // GetUnusedRecoveryCodeCount returns the count of unused recovery codes.
-func (r *Repository) GetUnusedRecoveryCodeCount(ctx context.Context, userID string) (int64, error) {
+func (r *Repository[P]) GetUnusedRecoveryCodeCount(ctx context.Context, userID string) (int64, error) {
 	count, err := den.NewQuery[RecoveryCode](r.db,
 		where.Field("user_id").Eq(userID),
 		where.Field("used").Eq(false),
@@ -448,7 +447,7 @@ func (r *Repository) GetUnusedRecoveryCodeCount(ctx context.Context, userID stri
 }
 
 // MarkRecoveryCodeUsed marks a recovery code as used.
-func (r *Repository) MarkRecoveryCodeUsed(ctx context.Context, codeID string) error {
+func (r *Repository[P]) MarkRecoveryCodeUsed(ctx context.Context, codeID string) error {
 	now := time.Now()
 	_, err := den.NewQuery[RecoveryCode](r.db, where.Field("_id").Eq(codeID)).
 		UpdateOne(ctx, den.SetFields{"used": true, "used_at": &now})
@@ -459,7 +458,7 @@ func (r *Repository) MarkRecoveryCodeUsed(ctx context.Context, codeID string) er
 }
 
 // DeleteRecoveryCodes deletes all recovery codes for a user.
-func (r *Repository) DeleteRecoveryCodes(ctx context.Context, userID string) error {
+func (r *Repository[P]) DeleteRecoveryCodes(ctx context.Context, userID string) error {
 	_, err := den.NewQuery[RecoveryCode](r.db, where.Field("user_id").Eq(userID)).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("delete recovery codes for user %s: %w", userID, err)
@@ -468,7 +467,7 @@ func (r *Repository) DeleteRecoveryCodes(ctx context.Context, userID string) err
 }
 
 // HasRecoveryCodes checks if a user has any recovery codes.
-func (r *Repository) HasRecoveryCodes(ctx context.Context, userID string) (bool, error) {
+func (r *Repository[P]) HasRecoveryCodes(ctx context.Context, userID string) (bool, error) {
 	exists, err := den.NewQuery[RecoveryCode](r.db, where.Field("user_id").Eq(userID)).Exists(ctx)
 	if err != nil {
 		return false, fmt.Errorf("check has recovery codes for user %s: %w", userID, err)
@@ -479,7 +478,7 @@ func (r *Repository) HasRecoveryCodes(ctx context.Context, userID string) (bool,
 // ValidateAndUseRecoveryCode validates and marks a recovery code as used.
 // It always iterates all codes to prevent timing attacks that could reveal
 // which code position matched.
-func (r *Repository) ValidateAndUseRecoveryCode(ctx context.Context, userID string, code string) (bool, error) {
+func (r *Repository[P]) ValidateAndUseRecoveryCode(ctx context.Context, userID string, code string) (bool, error) {
 	codes, err := r.GetUnusedRecoveryCodes(ctx, userID)
 	if err != nil {
 		return false, err
@@ -507,7 +506,7 @@ func (r *Repository) ValidateAndUseRecoveryCode(ctx context.Context, userID stri
 // --- Email verification methods ---
 
 // CreateEmailVerificationToken creates a new email verification token.
-func (r *Repository) CreateEmailVerificationToken(ctx context.Context, userID string, tokenHash string, expiresAt time.Time) error {
+func (r *Repository[P]) CreateEmailVerificationToken(ctx context.Context, userID string, tokenHash string, expiresAt time.Time) error {
 	token := &EmailVerificationToken{
 		UserID:    userID,
 		TokenHash: tokenHash,
@@ -520,7 +519,7 @@ func (r *Repository) CreateEmailVerificationToken(ctx context.Context, userID st
 }
 
 // GetEmailVerificationToken retrieves a token by hash.
-func (r *Repository) GetEmailVerificationToken(ctx context.Context, tokenHash string) (*EmailVerificationToken, error) {
+func (r *Repository[P]) GetEmailVerificationToken(ctx context.Context, tokenHash string) (*EmailVerificationToken, error) {
 	token, err := den.NewQuery[EmailVerificationToken](r.db, where.Field("token_hash").Eq(tokenHash)).First(ctx)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
@@ -532,7 +531,7 @@ func (r *Repository) GetEmailVerificationToken(ctx context.Context, tokenHash st
 }
 
 // DeleteEmailVerificationToken deletes a token.
-func (r *Repository) DeleteEmailVerificationToken(ctx context.Context, tokenID string) error {
+func (r *Repository[P]) DeleteEmailVerificationToken(ctx context.Context, tokenID string) error {
 	token, err := den.FindByID[EmailVerificationToken](ctx, r.db, tokenID)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
@@ -547,7 +546,7 @@ func (r *Repository) DeleteEmailVerificationToken(ctx context.Context, tokenID s
 }
 
 // DeleteUserEmailVerificationTokens deletes all tokens for a user.
-func (r *Repository) DeleteUserEmailVerificationTokens(ctx context.Context, userID string) error {
+func (r *Repository[P]) DeleteUserEmailVerificationTokens(ctx context.Context, userID string) error {
 	_, err := den.NewQuery[EmailVerificationToken](r.db, where.Field("user_id").Eq(userID)).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("delete email verification tokens for user %s: %w", userID, err)
@@ -556,7 +555,7 @@ func (r *Repository) DeleteUserEmailVerificationTokens(ctx context.Context, user
 }
 
 // DeleteExpiredEmailVerificationTokens deletes expired tokens.
-func (r *Repository) DeleteExpiredEmailVerificationTokens(ctx context.Context) error {
+func (r *Repository[P]) DeleteExpiredEmailVerificationTokens(ctx context.Context) error {
 	_, err := den.NewQuery[EmailVerificationToken](r.db, where.Field("expires_at").Lt(time.Now().Format(time.RFC3339Nano))).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("delete expired email verification tokens: %w", err)
@@ -567,7 +566,7 @@ func (r *Repository) DeleteExpiredEmailVerificationTokens(ctx context.Context) e
 // --- Invite methods ---
 
 // CreateInvite creates a new invite record.
-func (r *Repository) CreateInvite(ctx context.Context, invite *Invite) error {
+func (r *Repository[P]) CreateInvite(ctx context.Context, invite *Invite) error {
 	if err := den.Save(ctx, r.db, invite); err != nil {
 		return fmt.Errorf("create invite for %q: %w", invite.Email, err)
 	}
@@ -575,7 +574,7 @@ func (r *Repository) CreateInvite(ctx context.Context, invite *Invite) error {
 }
 
 // GetInviteByTokenHash retrieves an invite by its token hash.
-func (r *Repository) GetInviteByTokenHash(ctx context.Context, tokenHash string) (*Invite, error) {
+func (r *Repository[P]) GetInviteByTokenHash(ctx context.Context, tokenHash string) (*Invite, error) {
 	invite, err := den.NewQuery[Invite](r.db, where.Field("token_hash").Eq(tokenHash)).First(ctx)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {
@@ -587,7 +586,7 @@ func (r *Repository) GetInviteByTokenHash(ctx context.Context, tokenHash string)
 }
 
 // ListInvites returns all invites ordered by creation date descending.
-func (r *Repository) ListInvites(ctx context.Context) ([]Invite, error) {
+func (r *Repository[P]) ListInvites(ctx context.Context) ([]Invite, error) {
 	invites, err := den.NewQuery[Invite](r.db).Sort("_created_at", den.Desc).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list invites: %w", err)
@@ -605,7 +604,7 @@ var ErrInviteAlreadyUsed = errors.New("invite already used")
 // MarkInviteUsed atomically marks an invite as used by the given user.
 // The condition used_at IS NULL ensures only the first caller succeeds,
 // preventing a race condition where two registrations consume the same invite.
-func (r *Repository) MarkInviteUsed(ctx context.Context, inviteID, userID string) error {
+func (r *Repository[P]) MarkInviteUsed(ctx context.Context, inviteID, userID string) error {
 	now := time.Now()
 	_, err := den.NewQuery[Invite](r.db,
 		where.Field("_id").Eq(inviteID),
@@ -621,7 +620,7 @@ func (r *Repository) MarkInviteUsed(ctx context.Context, inviteID, userID string
 }
 
 // DeleteInvite deletes an invite (revoke).
-func (r *Repository) DeleteInvite(ctx context.Context, inviteID string) error {
+func (r *Repository[P]) DeleteInvite(ctx context.Context, inviteID string) error {
 	invite, err := den.FindByID[Invite](ctx, r.db, inviteID)
 	if err != nil {
 		if errors.Is(err, den.ErrNotFound) {

@@ -85,7 +85,7 @@ func TestRequireAuthAllowsAuthenticated(t *testing.T) {
 	// Inject user into context before RequireAuth.
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u := &User{Username: "test"}
+			u := &User[EmptyProfile]{Username: "test"}
 			u.ID = "user-1"
 			ctx := WithUser(r.Context(), u)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -118,7 +118,7 @@ func TestRequireAdmin(t *testing.T) {
 			r := chi.NewRouter()
 			r.Use(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					u := &User{Username: "test", Role: tt.role}
+					u := &User[EmptyProfile]{Username: "test", Role: tt.role}
 					u.ID = "user-1"
 					ctx := WithUser(r.Context(), u)
 					ctx = burrowtest.ErrorExecContext(ctx)

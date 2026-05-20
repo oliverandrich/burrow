@@ -16,6 +16,7 @@ import (
 	"github.com/oliverandrich/burrow/forms"
 	"github.com/oliverandrich/burrow/i18n"
 	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/document"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,30 +26,31 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ burrow.App               = (*App)(nil)
-	_ burrow.HasDocuments      = (*App)(nil)
-	_ burrow.Configurable      = (*App)(nil)
-	_ burrow.HasMiddleware     = (*App)(nil)
-	_ burrow.HasRoutes         = (*App)(nil)
-	_ burrow.HasAdmin          = (*App)(nil)
-	_ burrow.HasCLICommands    = (*App)(nil)
-	_ burrow.HasDependencies   = (*App)(nil)
-	_ burrow.HasStaticFiles    = (*App)(nil)
-	_ burrow.HasTranslations   = (*App)(nil)
-	_ burrow.HasShutdown       = (*App)(nil)
-	_ burrow.Startable         = (*App)(nil)
-	_ burrow.HasRequestFuncMap = (*App)(nil)
-	_ burrow.HasTemplates      = (*App)(nil)
-	_ burrow.HasFuncMap        = (*App)(nil)
+	_ burrow.App               = (*App[EmptyProfile])(nil)
+	_ burrow.HasDocuments      = (*App[EmptyProfile])(nil)
+	_ burrow.Configurable      = (*App[EmptyProfile])(nil)
+	_ burrow.HasMiddleware     = (*App[EmptyProfile])(nil)
+	_ burrow.HasRoutes         = (*App[EmptyProfile])(nil)
+	_ burrow.HasAdmin          = (*App[EmptyProfile])(nil)
+	_ burrow.HasCLICommands    = (*App[EmptyProfile])(nil)
+	_ burrow.HasDependencies   = (*App[EmptyProfile])(nil)
+	_ burrow.HasStaticFiles    = (*App[EmptyProfile])(nil)
+	_ burrow.HasTranslations   = (*App[EmptyProfile])(nil)
+	_ burrow.HasShutdown       = (*App[EmptyProfile])(nil)
+	_ burrow.Startable         = (*App[EmptyProfile])(nil)
+	_ burrow.HasRequestFuncMap = (*App[EmptyProfile])(nil)
+	_ burrow.HasTemplates      = (*App[EmptyProfile])(nil)
+	_ burrow.HasFuncMap        = (*App[EmptyProfile])(nil)
+	_ burrow.HasFlags          = (*App[EmptyProfile])(nil)
 )
 
 func TestAppName(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	assert.Equal(t, "auth", app.Name())
 }
 
 func TestAppFlags(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	flags := app.Flags(nil)
 
 	names := make(map[string]bool)
@@ -67,7 +69,7 @@ func TestAppFlags(t *testing.T) {
 }
 
 func TestDocuments(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	docs := app.Documents()
 	require.NotEmpty(t, docs)
 	assert.GreaterOrEqual(t, len(docs), 3, "should have at least User, Credential, and RecoveryCode")
@@ -79,7 +81,7 @@ func openTestDB(t *testing.T) *den.DB {
 	t.Helper()
 	db := burrowtest.DB(t)
 
-	app := New()
+	app := New[EmptyProfile]()
 	err := den.Register(t.Context(), db, app.Documents()...)
 	require.NoError(t, err)
 
@@ -90,14 +92,13 @@ func openTestDB(t *testing.T) *den.DB {
 
 func TestCreateAndGetUser(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "Alice")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 	require.NotEmpty(t, user.ID)
 	assert.Equal(t, "alice", user.Username)
-	assert.Equal(t, "Alice", user.Name)
 
 	got, err := repo.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
@@ -106,10 +107,10 @@ func TestCreateAndGetUser(t *testing.T) {
 
 func TestCreateUserWithEmail(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUserWithEmail(ctx, "alice@example.com", "Alice")
+	user, err := repo.CreateUserWithEmail(ctx, "alice@example.com")
 	require.NoError(t, err)
 	require.NotNil(t, user.Email)
 	assert.Equal(t, "alice@example.com", *user.Email)
@@ -121,10 +122,10 @@ func TestCreateUserWithEmail(t *testing.T) {
 
 func TestGetUserByUsername(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	_, err := repo.CreateUser(ctx, "bob", "")
+	_, err := repo.CreateUser(ctx, "bob")
 	require.NoError(t, err)
 
 	got, err := repo.GetUserByUsername(ctx, "bob")
@@ -134,7 +135,7 @@ func TestGetUserByUsername(t *testing.T) {
 
 func TestGetUserNotFound(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	_, err := repo.GetUserByID(ctx, "nonexistent")
@@ -144,14 +145,14 @@ func TestGetUserNotFound(t *testing.T) {
 
 func TestUserExistsAndCount(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	exists, err := repo.UserExists(ctx, "alice")
 	require.NoError(t, err)
 	assert.False(t, exists)
 
-	_, err = repo.CreateUser(ctx, "alice", "")
+	_, err = repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	exists, err = repo.UserExists(ctx, "alice")
@@ -165,14 +166,14 @@ func TestUserExistsAndCount(t *testing.T) {
 
 func TestCountAdminUsers(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	count, err := repo.CountAdminUsers(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 0, count)
 
-	alice, err := repo.CreateUser(ctx, "alice", "")
+	alice, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, alice.ID, RoleAdmin))
 
@@ -180,7 +181,7 @@ func TestCountAdminUsers(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 
-	bob, err := repo.CreateUser(ctx, "bob", "")
+	bob, err := repo.CreateUser(ctx, "bob")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, bob.ID, RoleAdmin))
 
@@ -191,10 +192,10 @@ func TestCountAdminUsers(t *testing.T) {
 
 func TestSetUserRole(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 	assert.Equal(t, RoleUser, user.Role)
 
@@ -209,7 +210,7 @@ func TestSetUserRole(t *testing.T) {
 
 func TestListUsers(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	t.Run("empty database", func(t *testing.T) {
@@ -219,9 +220,9 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("returns all users ordered by id asc", func(t *testing.T) {
-		_, err := repo.CreateUser(ctx, "alice", "Alice")
+		_, err := repo.CreateUser(ctx, "alice")
 		require.NoError(t, err)
-		_, err = repo.CreateUser(ctx, "bob", "Bob")
+		_, err = repo.CreateUser(ctx, "bob")
 		require.NoError(t, err)
 
 		users, err := repo.ListUsers(ctx)
@@ -234,10 +235,10 @@ func TestListUsers(t *testing.T) {
 
 func TestMarkEmailVerified(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUserWithEmail(ctx, "alice@example.com", "")
+	user, err := repo.CreateUserWithEmail(ctx, "alice@example.com")
 	require.NoError(t, err)
 	assert.False(t, user.EmailVerified)
 
@@ -253,10 +254,10 @@ func TestMarkEmailVerified(t *testing.T) {
 
 func TestCreateAndGetCredentials(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	cred := &Credential{
@@ -280,10 +281,10 @@ func TestCreateAndGetCredentials(t *testing.T) {
 
 func TestDeleteCredential(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	cred := &Credential{
@@ -307,10 +308,10 @@ func TestDeleteCredential(t *testing.T) {
 
 func TestRecoveryCodes(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	// Create bcrypt hashes for test codes.
@@ -347,10 +348,10 @@ func TestRecoveryCodes(t *testing.T) {
 
 func TestValidateRecoveryCodeMatchesLastCode(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	// Create multiple codes — the target is the last one.
@@ -376,10 +377,10 @@ func TestValidateRecoveryCodeMatchesLastCode(t *testing.T) {
 
 func TestDeleteRecoveryCodes(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	hash, _ := bcrypt.GenerateFromPassword([]byte("code"), bcrypt.MinCost)
@@ -398,10 +399,10 @@ func TestDeleteRecoveryCodes(t *testing.T) {
 
 func TestEmailVerificationToken(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	tokenHash := "abc123hash"
@@ -422,10 +423,10 @@ func TestEmailVerificationToken(t *testing.T) {
 
 func TestDeleteUserEmailVerificationTokensViaApp(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	err = repo.CreateEmailVerificationToken(ctx, user.ID, "token1", time.Now().Add(time.Hour))
@@ -444,7 +445,7 @@ func TestDeleteUserEmailVerificationTokensViaApp(t *testing.T) {
 
 func TestInviteCRUD(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	invite := &Invite{
@@ -468,10 +469,10 @@ func TestInviteCRUD(t *testing.T) {
 
 func TestInviteMarkUsed(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	invite := &Invite{
@@ -493,12 +494,12 @@ func TestInviteMarkUsed(t *testing.T) {
 
 func TestInviteMarkUsedTwiceFails(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	alice, err := repo.CreateUser(ctx, "alice", "")
+	alice, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
-	bob, err := repo.CreateUser(ctx, "bob", "")
+	bob, err := repo.CreateUser(ctx, "bob")
 	require.NoError(t, err)
 
 	invite := &Invite{
@@ -527,7 +528,7 @@ func TestInviteExpired(t *testing.T) {
 
 func TestInviteDelete(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	invite := &Invite{
@@ -548,16 +549,16 @@ func TestInviteDelete(t *testing.T) {
 // --- Middleware tests ---
 
 func TestAuthMiddlewareNoSession(t *testing.T) {
-	app := &App{config: &Config{LoginRedirect: "/dashboard"}}
+	app := &App[EmptyProfile]{config: &Config{LoginRedirect: "/dashboard"}}
 
 	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
 		r.Use(mw)
 	}
 
-	var gotUser *User
+	var gotUser *User[EmptyProfile]
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-		gotUser = CurrentUser(r.Context())
+		gotUser = CurrentUser[EmptyProfile](r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -572,7 +573,7 @@ func TestAuthMiddlewareNoSession(t *testing.T) {
 // --- CLI tests ---
 
 func TestCLICommands(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	cmds := app.CLICommands()
 
 	require.NotEmpty(t, cmds)
@@ -589,14 +590,14 @@ func TestCLICommands(t *testing.T) {
 
 func TestCLIPromote(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 	assert.Equal(t, RoleUser, user.Role)
 
-	app := &App{repo: repo}
+	app := &App[EmptyProfile]{repo: repo}
 	cmds := app.CLICommands()
 
 	var promoteCmd *cli.Command
@@ -623,14 +624,14 @@ func TestCLIPromote(t *testing.T) {
 
 func TestCLIDemote(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "bob", "")
+	user, err := repo.CreateUser(ctx, "bob")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, user.ID, RoleAdmin))
 
-	app := &App{repo: repo}
+	app := &App[EmptyProfile]{repo: repo}
 	cmds := app.CLICommands()
 
 	var demoteCmd *cli.Command
@@ -657,10 +658,10 @@ func TestCLIDemote(t *testing.T) {
 
 func TestCLICreateInvite(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	app := &App{repo: repo, globalConfig: &burrow.Config{}}
+	app := &App[EmptyProfile]{repo: repo, globalConfig: &burrow.Config{}}
 	cmds := app.CLICommands()
 
 	var createInviteCmd *cli.Command
@@ -689,7 +690,7 @@ func TestCLICreateInvite(t *testing.T) {
 // TestCLIPromoteThroughServerCLICommands is the end-to-end variant of
 // TestCLIPromote: it goes through the framework's boot lifecycle (
 // Server.CLICommands -> wrapped Action -> Server.boot -> auth.Configure ->
-// promote.Action) rather than constructing &App{repo: repo} directly. Without
+// promote.Action) rather than constructing &App[EmptyProfile]{repo: repo} directly. Without
 // the wrap, the test reproduces the user-reported regression: the promote
 // subcommand fires before Configure() runs, a.repo is nil, and the action
 // fails with "auth app not initialized".
@@ -703,17 +704,17 @@ func TestCLIPromoteThroughServerCLICommands(t *testing.T) {
 	{
 		db, err := burrow.OpenDB(ctx, dsn)
 		require.NoError(t, err)
-		app := New()
+		app := New[EmptyProfile]()
 		require.NoError(t, den.Register(ctx, db, app.Documents()...))
-		repo := NewRepository(db)
-		_, err = repo.CreateUser(ctx, "alice", "")
+		repo := NewRepository[EmptyProfile](db)
+		_, err = repo.CreateUser(ctx, "alice")
 		require.NoError(t, err)
 		require.NoError(t, db.Close())
 	}
 
 	// Wire up Server with auth registered (plus auth's declared dependencies)
 	// and invoke promote via the wrapped subcommand path.
-	srv := burrow.NewServer(session.New(), burrowtest.StubApp("csrf"), burrowtest.StubApp("staticfiles"), New())
+	srv := burrow.NewServer(session.New(), burrowtest.StubApp("csrf"), burrowtest.StubApp("staticfiles"), New[EmptyProfile]())
 	cmd := &cli.Command{
 		Name:     "test",
 		Flags:    srv.Flags(nil),
@@ -726,8 +727,8 @@ func TestCLIPromoteThroughServerCLICommands(t *testing.T) {
 	db, err := burrow.OpenDB(ctx, dsn)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
-	require.NoError(t, den.Register(ctx, db, New().Documents()...))
-	repo := NewRepository(db)
+	require.NoError(t, den.Register(ctx, db, New[EmptyProfile]().Documents()...))
+	repo := NewRepository[EmptyProfile](db)
 	user, err := repo.GetUserByUsername(ctx, "alice")
 	require.NoError(t, err)
 	assert.Equal(t, RoleAdmin, user.Role)
@@ -736,7 +737,7 @@ func TestCLIPromoteThroughServerCLICommands(t *testing.T) {
 // --- Admin tests ---
 
 func TestAdminNavItems(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	items := app.AdminNavItems()
 
 	require.NotEmpty(t, items)
@@ -752,7 +753,7 @@ func TestAdminNavItems(t *testing.T) {
 }
 
 // newTestApp creates an App with repo initialized for admin handler tests.
-func newTestApp(t *testing.T) (*App, *Repository) {
+func newTestApp(t *testing.T) (*App[EmptyProfile], *Repository[EmptyProfile]) {
 	t.Helper()
 	db := openTestDB(t)
 	registry := burrow.NewRegistry()
@@ -762,7 +763,7 @@ func newTestApp(t *testing.T) (*App, *Repository) {
 	// behaviour only, not csrf/staticfiles wiring.
 	registry.Add(burrowtest.StubApp("csrf"))
 	registry.Add(burrowtest.StubApp("staticfiles"))
-	app := New()
+	app := New[EmptyProfile]()
 	registry.Add(app)
 	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
 
@@ -788,7 +789,7 @@ func newTestApp(t *testing.T) (*App, *Repository) {
 	return app, app.repo
 }
 
-func adminUserRouter(app *App) *chi.Mux {
+func adminUserRouter(app *App[EmptyProfile]) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -804,7 +805,7 @@ func TestAdminUpdateUser(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	router := adminUserRouter(app)
@@ -820,8 +821,6 @@ func TestAdminUpdateUser(t *testing.T) {
 
 	got, err := repo.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "Alice Wonder", got.Name)
-	assert.Equal(t, "Hello World", got.Bio)
 	require.NotNil(t, got.Email)
 	assert.Equal(t, "alice@example.com", *got.Email)
 	assert.Equal(t, RoleAdmin, got.Role)
@@ -831,7 +830,7 @@ func TestAdminUpdateUserContinueEditing(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	router := adminUserRouter(app)
@@ -863,7 +862,7 @@ func TestAdminUpdateUserLastAdminDemotion(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
-	admin, err := repo.CreateUser(ctx, "admin", "")
+	admin, err := repo.CreateUser(ctx, "admin")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, admin.ID, RoleAdmin))
 
@@ -886,11 +885,11 @@ func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
-	admin1, err := repo.CreateUser(ctx, "admin1", "")
+	admin1, err := repo.CreateUser(ctx, "admin1")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, admin1.ID, RoleAdmin))
 
-	admin2, err := repo.CreateUser(ctx, "admin2", "")
+	admin2, err := repo.CreateUser(ctx, "admin2")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, admin2.ID, RoleAdmin))
 
@@ -914,7 +913,7 @@ func TestAdminUpdateUserDemoteNonLastAdmin(t *testing.T) {
 func TestAdminCreateInvite(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
-	user, _ := repo.CreateUser(ctx, "admin", "")
+	user, _ := repo.CreateUser(ctx, "admin")
 
 	body := strings.NewReader(`label=John+Doe&email=invitee@example.com`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
@@ -1013,10 +1012,10 @@ func TestRevokeInviteSuccess(t *testing.T) {
 
 func TestDeleteUser(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "Alice")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	err = repo.DeleteUser(ctx, user.ID)
@@ -1037,10 +1036,10 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
-	admin, err := repo.CreateUser(ctx, "admin", "Admin")
+	admin, err := repo.CreateUser(ctx, "admin")
 	require.NoError(t, err)
 
-	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	target, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	router := chi.NewRouter()
@@ -1070,7 +1069,7 @@ func TestAdminDeleteUserNotFound(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
-	admin, err := repo.CreateUser(ctx, "admin", "Admin")
+	admin, err := repo.CreateUser(ctx, "admin")
 	require.NoError(t, err)
 	_ = admin
 
@@ -1096,11 +1095,11 @@ func TestAdminDeleteUserNotFound(t *testing.T) {
 
 func TestPurgeOrphanedUsersDeletesUsersWithoutCredentials(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	// Create a user with no credentials (simulates abandoned registration).
-	orphan, err := repo.CreateUser(ctx, "orphan", "")
+	orphan, err := repo.CreateUser(ctx, "orphan")
 	require.NoError(t, err)
 
 	// Backdate the user's created_at so it qualifies for cleanup.
@@ -1110,7 +1109,7 @@ func TestPurgeOrphanedUsersDeletesUsersWithoutCredentials(t *testing.T) {
 	require.NoError(t, den.Save(ctx, db, orphanReloaded))
 
 	// Create a user WITH credentials (should be kept).
-	legit, err := repo.CreateUser(ctx, "legit", "")
+	legit, err := repo.CreateUser(ctx, "legit")
 	require.NoError(t, err)
 	legitReloaded, err := repo.GetUserByID(ctx, legit.ID)
 	require.NoError(t, err)
@@ -1139,11 +1138,11 @@ func TestPurgeOrphanedUsersDeletesUsersWithoutCredentials(t *testing.T) {
 
 func TestPurgeOrphanedUsersSkipsRecentUsers(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	// Create a user with no credentials (just created — not yet orphaned).
-	_, err := repo.CreateUser(ctx, "newuser", "")
+	_, err := repo.CreateUser(ctx, "newuser")
 	require.NoError(t, err)
 
 	// Purge with 5-minute threshold — should not delete the recent user.
@@ -1156,10 +1155,10 @@ func TestPurgeOrphanedUsersSkipsRecentUsers(t *testing.T) {
 
 func TestSetUserActive(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "Alice")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 	assert.True(t, user.IsActive, "new users should be active by default")
 
@@ -1177,7 +1176,7 @@ func TestSetUserActive(t *testing.T) {
 }
 
 // userActionRouter creates a chi router with a POST handler and user context.
-func userActionRouter(handler burrow.HandlerFunc, user *User) *chi.Mux {
+func userActionRouter(handler burrow.HandlerFunc, user *User[EmptyProfile]) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1195,11 +1194,11 @@ func TestDeactivateUserSuccess(t *testing.T) {
 	_, repo := newTestApp(t)
 	ctx := context.Background()
 
-	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	adminUser, err := repo.CreateUser(ctx, "admin")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
 
-	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	target, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	router := userActionRouter(deactivateUserHandler(repo), adminUser)
@@ -1221,11 +1220,11 @@ func TestActivateUserSuccess(t *testing.T) {
 	_, repo := newTestApp(t)
 	ctx := context.Background()
 
-	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	adminUser, err := repo.CreateUser(ctx, "admin")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
 
-	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	target, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserActive(ctx, target.ID, false))
 
@@ -1244,10 +1243,43 @@ func TestActivateUserSuccess(t *testing.T) {
 	assert.True(t, updated.IsActive)
 }
 
+// --- Profile-type guard tests ---
+
+type plainProfileFixture struct {
+	Name string
+}
+
+type docEmbeddingProfileFixture struct {
+	document.Base
+	Name string
+}
+
+func TestProfileTypeGuard_AcceptsEmptyProfile(t *testing.T) {
+	require.NoError(t, validateProfileType[EmptyProfile]())
+}
+
+func TestProfileTypeGuard_AcceptsPlainStruct(t *testing.T) {
+	require.NoError(t, validateProfileType[plainProfileFixture]())
+}
+
+func TestProfileTypeGuard_RejectsDocumentEmbedder(t *testing.T) {
+	err := validateProfileType[docEmbeddingProfileFixture]()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Profile type")
+	assert.Contains(t, err.Error(), "document.Base")
+	assert.Contains(t, err.Error(), "docEmbeddingProfileFixture")
+}
+
+func TestProfileTypeGuard_RejectsPointerToDocument(t *testing.T) {
+	err := validateProfileType[*docEmbeddingProfileFixture]()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "document.Base")
+}
+
 // --- WithAuthLayout option tests ---
 
 func TestWithAuthLayoutOption(t *testing.T) {
-	app := New(WithAuthLayout("test/layout"))
+	app := New[EmptyProfile](WithAuthLayout[EmptyProfile]("test/layout"))
 	assert.Equal(t, "test/layout", app.authLayout, "authLayout should be set via WithAuthLayout option")
 }
 
@@ -1256,7 +1288,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 	var capturedLayout string
 	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
-	app := &App{
+	app := &App[EmptyProfile]{
 		renderer:   mockR,
 		config:     &Config{LoginRedirect: "/"},
 		authLayout: "test/auth-layout",
@@ -1282,13 +1314,13 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 
 func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 
 	// Set up a mock renderer that captures the layout from context.
 	var capturedLayout string
 	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
-	app := &App{
+	app := &App[EmptyProfile]{
 		repo:       repo,
 		renderer:   mockR,
 		config:     &Config{LoginRedirect: "/"},
@@ -1296,7 +1328,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	}
 
 	// Create a user so the credentials handler can look up credentials.
-	user, err := repo.CreateUser(context.Background(), "alice", "Alice")
+	user, err := repo.CreateUser(context.Background(), "alice")
 	require.NoError(t, err)
 
 	r := chi.NewRouter()
@@ -1324,7 +1356,7 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 	var capturedLayout string
 	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
-	app := &App{
+	app := &App[EmptyProfile]{
 		renderer: mockR,
 		config:   &Config{LoginRedirect: "/"},
 	}
@@ -1403,7 +1435,7 @@ func (m *layoutCapturingRenderer) VerifyEmailErrorPage(w http.ResponseWriter, r 
 // --- Static files tests ---
 
 func TestStaticFS(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	prefix, fsys := app.StaticFS()
 
 	assert.Equal(t, "auth", prefix)
@@ -1417,22 +1449,13 @@ func TestStaticFS(t *testing.T) {
 // --- Model tests ---
 
 func TestUserWebAuthnMethods(t *testing.T) {
-	user := &User{
-		Username: "alice",
-		Name:     "Alice Smith",
-	}
+	user := &User[EmptyProfile]{Username: "alice"}
 	user.ID = "01ABCDEFGH123456789012"
 
 	assert.Equal(t, "alice", user.WebAuthnName())
-	assert.Equal(t, "Alice Smith", user.WebAuthnDisplayName())
+	assert.Equal(t, "alice", user.WebAuthnDisplayName(), "auth-core returns Username; richer display lives in Profile")
 	assert.NotEmpty(t, user.WebAuthnID())
 	assert.Empty(t, user.WebAuthnIcon())
-}
-
-func TestUserWebAuthnDisplayNameFallback(t *testing.T) {
-	user := &User{Username: "bob"}
-	user.ID = "01ABCDEFGH123456789013"
-	assert.Equal(t, "bob", user.WebAuthnDisplayName())
 }
 
 func TestInviteIsValid(t *testing.T) {
@@ -1448,8 +1471,8 @@ func TestInviteIsValid(t *testing.T) {
 }
 
 func TestRequestFuncMap(t *testing.T) {
-	app := &App{}
-	user := &User{Username: "alice"}
+	app := &App[EmptyProfile]{}
+	user := &User[EmptyProfile]{Username: "alice"}
 	user.ID = "01ABCDEFGH123456789014"
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
@@ -1458,7 +1481,7 @@ func TestRequestFuncMap(t *testing.T) {
 
 	fm := app.RequestFuncMap(req.Context())
 
-	currentUserFunc := fm["currentUser"].(func() *User)
+	currentUserFunc := fm["currentUser"].(func() *User[EmptyProfile])
 	assert.Equal(t, user, currentUserFunc())
 
 	isAuthFunc := fm["isAuthenticated"].(func() bool)
@@ -1466,12 +1489,12 @@ func TestRequestFuncMap(t *testing.T) {
 }
 
 func TestRequestFuncMapUnauthenticated(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
 	fm := app.RequestFuncMap(req.Context())
 
-	currentUserFunc := fm["currentUser"].(func() *User)
+	currentUserFunc := fm["currentUser"].(func() *User[EmptyProfile])
 	assert.Nil(t, currentUserFunc())
 
 	isAuthFunc := fm["isAuthenticated"].(func() bool)
@@ -1482,24 +1505,24 @@ func TestRequestFuncMapUnauthenticated(t *testing.T) {
 
 func TestWithRendererOption(t *testing.T) {
 	r := &mockRenderer{}
-	app := New(WithRenderer(r))
+	app := New[EmptyProfile](WithRenderer[EmptyProfile](r))
 	assert.Equal(t, r, app.renderer)
 }
 
 func TestWithLogoComponentOption(t *testing.T) {
 	logo := template.HTML(`<img src="logo.png"/>`)
-	app := New(WithLogoComponent(logo))
+	app := New[EmptyProfile](WithLogoComponent[EmptyProfile](logo))
 	assert.Equal(t, logo, app.logo)
 }
 
 func TestWithEmailServiceOption(t *testing.T) {
 	svc := &mockEmailService{}
-	app := New(WithEmailService(svc))
+	app := New[EmptyProfile](WithEmailService[EmptyProfile](svc))
 	assert.Equal(t, svc, app.emailService)
 }
 
 func TestTranslationFS(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	fsys := app.TranslationFS()
 	require.NotNil(t, fsys)
 }
@@ -1513,7 +1536,7 @@ func TestAdminNavItemsResolveViaLabelAsKey(t *testing.T) {
 	bundle, err := i18n.NewTestBundle("en", translationFS)
 	require.NoError(t, err)
 
-	items := (&App{}).AdminNavItems()
+	items := (&App[EmptyProfile]{}).AdminNavItems()
 	require.NotEmpty(t, items)
 
 	expectedDE := map[string]string{
@@ -1539,15 +1562,13 @@ func TestUserEditFormLabelsTranslate(t *testing.T) {
 	bundle, err := i18n.NewTestBundle("en", translationFS)
 	require.NoError(t, err)
 
-	user := &User{Role: RoleUser}
+	user := &User[EmptyProfile]{Role: RoleUser}
 	ctxDE := bundle.WithLocale(context.Background(), "de")
-	f := forms.FromModel(user, userFormOpts()...).WithContext(ctxDE)
+	f := forms.FromModel(user, userFormOpts[EmptyProfile]()...).WithContext(ctxDE)
 
 	expected := map[string]string{
 		"Username": "Benutzername",
 		"Email":    "E-Mail",
-		"Name":     "Name",
-		"Bio":      "Bio",
 		"Role":     "Rolle",
 		"IsActive": "Aktiv",
 	}
@@ -1569,13 +1590,13 @@ func TestUserEditFormLabelsTranslate(t *testing.T) {
 }
 
 func TestTemplateFS(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	fsys := app.TemplateFS()
 	require.NotNil(t, fsys)
 }
 
 func TestFuncMap(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	fm := app.FuncMap()
 	require.NotNil(t, fm)
 
@@ -1595,21 +1616,21 @@ func TestFuncMap(t *testing.T) {
 
 func TestShutdown(t *testing.T) {
 	// Shutdown with nil cancelCleanup should not panic.
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	err := app.Shutdown(context.Background())
 	require.NoError(t, err)
 
 	// Shutdown with a real cancel function.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	app2 := &App{cancelCleanup: cancel}
+	app2 := &App[EmptyProfile]{cancelCleanup: cancel}
 	err = app2.Shutdown(ctx)
 	assert.NoError(t, err)
 }
 
 func TestShutdownMultipleCalls(t *testing.T) {
 	_, cancel := context.WithCancel(context.Background())
-	app := &App{cancelCleanup: cancel}
+	app := &App[EmptyProfile]{cancelCleanup: cancel}
 
 	// First call should be fine.
 	assert.NoError(t, app.Shutdown(context.Background()))
@@ -1618,23 +1639,23 @@ func TestShutdownMultipleCalls(t *testing.T) {
 }
 
 func TestRepoAccessor(t *testing.T) {
-	repo := &Repository{}
-	app := &App{repo: repo}
+	repo := &Repository[EmptyProfile]{}
+	app := &App[EmptyProfile]{repo: repo}
 	assert.Same(t, repo, app.Repo())
 }
 
 func TestAuthMiddlewareWithValidUser(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 
-	user, err := repo.CreateUser(context.Background(), "alice", "Alice")
+	user, err := repo.CreateUser(context.Background(), "alice")
 	require.NoError(t, err)
 
-	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+	app := &App[EmptyProfile]{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
 
-	var gotUser *User
+	var gotUser *User[EmptyProfile]
 	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotUser = CurrentUser(r.Context())
+		gotUser = CurrentUser[EmptyProfile](r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -1650,17 +1671,17 @@ func TestAuthMiddlewareWithValidUser(t *testing.T) {
 
 func TestAuthMiddlewareWithInactiveUser(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 
-	user, err := repo.CreateUser(context.Background(), "inactive", "")
+	user, err := repo.CreateUser(context.Background(), "inactive")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserActive(context.Background(), user.ID, false))
 
-	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+	app := &App[EmptyProfile]{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
 
-	var gotUser *User
+	var gotUser *User[EmptyProfile]
 	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotUser = CurrentUser(r.Context())
+		gotUser = CurrentUser[EmptyProfile](r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -1675,13 +1696,13 @@ func TestAuthMiddlewareWithInactiveUser(t *testing.T) {
 
 func TestAuthMiddlewareWithNonexistentUser(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 
-	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+	app := &App[EmptyProfile]{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
 
-	var gotUser *User
+	var gotUser *User[EmptyProfile]
 	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotUser = CurrentUser(r.Context())
+		gotUser = CurrentUser[EmptyProfile](r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -1720,7 +1741,7 @@ func TestCredNameWithoutName(t *testing.T) {
 }
 
 func TestRequestFuncMapAuthLogo(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	logo := template.HTML(`<span>Logo</span>`)
@@ -1738,10 +1759,10 @@ func TestNewWithMultipleOptions(t *testing.T) {
 	emailSvc := &mockEmailService{}
 
 	app := New(
-		WithRenderer(r),
-		WithLogoComponent(logo),
-		WithEmailService(emailSvc),
-		WithAuthLayout("custom/auth-layout"),
+		WithRenderer[EmptyProfile](r),
+		WithLogoComponent[EmptyProfile](logo),
+		WithEmailService[EmptyProfile](emailSvc),
+		WithAuthLayout[EmptyProfile]("custom/auth-layout"),
 	)
 
 	assert.Equal(t, r, app.renderer)
@@ -1751,7 +1772,7 @@ func TestNewWithMultipleOptions(t *testing.T) {
 }
 
 func TestDependencies(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	assert.Equal(t, []string{"session", "csrf", "staticfiles"}, app.Dependencies())
 }
 
@@ -1764,7 +1785,7 @@ func TestAdminRoutes(t *testing.T) {
 }
 
 func TestRoutesWithLogoMiddleware(t *testing.T) {
-	app := &App{
+	app := &App[EmptyProfile]{
 		renderer: &mockRenderer{},
 		config:   &Config{LoginRedirect: "/"},
 		logo:     template.HTML(`<img src="logo.png"/>`),
@@ -1788,7 +1809,7 @@ func TestConfigure(t *testing.T) {
 	registry.Add(session.New())
 	registry.Add(burrowtest.StubApp("csrf"))
 	registry.Add(burrowtest.StubApp("staticfiles"))
-	app := New()
+	app := New[EmptyProfile]()
 	registry.Add(app)
 	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
 
@@ -1832,7 +1853,7 @@ func TestConfigureWithDefaultOrigin(t *testing.T) {
 	registry.Add(session.New())
 	registry.Add(burrowtest.StubApp("csrf"))
 	registry.Add(burrowtest.StubApp("staticfiles"))
-	app := New()
+	app := New[EmptyProfile]()
 	registry.Add(app)
 	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
 
@@ -1858,8 +1879,8 @@ func TestConfigureWithDefaultOrigin(t *testing.T) {
 
 func TestCleanupOrphanedUsersStopsOnCancel(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
-	app := &App{repo: repo}
+	repo := NewRepository[EmptyProfile](db)
+	app := &App[EmptyProfile]{repo: repo}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -1882,8 +1903,8 @@ func TestCleanupOrphanedUsersStopsOnCancel(t *testing.T) {
 
 func TestCLIPromoteNoArgs(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
-	app := &App{repo: repo}
+	repo := NewRepository[EmptyProfile](db)
+	app := &App[EmptyProfile]{repo: repo}
 	cmds := app.CLICommands()
 
 	var promoteCmd *cli.Command
@@ -1907,8 +1928,8 @@ func TestCLIPromoteNoArgs(t *testing.T) {
 
 func TestCLIPromoteUserNotFound(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
-	app := &App{repo: repo}
+	repo := NewRepository[EmptyProfile](db)
+	app := &App[EmptyProfile]{repo: repo}
 	cmds := app.CLICommands()
 
 	var promoteCmd *cli.Command
@@ -1932,8 +1953,8 @@ func TestCLIPromoteUserNotFound(t *testing.T) {
 
 func TestCLICreateInviteNoArgs(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
-	app := &App{repo: repo}
+	repo := NewRepository[EmptyProfile](db)
+	app := &App[EmptyProfile]{repo: repo}
 	cmds := app.CLICommands()
 
 	var createInviteCmd *cli.Command
@@ -1962,7 +1983,7 @@ func TestAdminCreateInviteWithEmailMode(t *testing.T) {
 	app.emailService = emailSvc
 	app.config = &Config{UseEmail: true, BaseURL: "http://localhost:8080"}
 
-	user, _ := repo.CreateUser(ctx, "admin", "")
+	user, _ := repo.CreateUser(ctx, "admin")
 
 	body := strings.NewReader(`label=Test&email=invitee@example.com`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
@@ -1983,7 +2004,7 @@ func TestAdminCreateInviteEmailModeMissingEmail(t *testing.T) {
 	body := strings.NewReader(`label=Test`)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/admin/invites", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	u := &User{Username: "test"}
+	u := &User[EmptyProfile]{Username: "test"}
 	u.ID = "test-user-1"
 	req = requestWithSession(req, u)
 	rec := httptest.NewRecorder()
@@ -1997,11 +2018,11 @@ func TestAdminCreateInviteEmailModeMissingEmail(t *testing.T) {
 
 func TestBackgroundCleanupPurgesOrphanedUsers(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	// Create an orphaned user (no credentials, created > 5 min ago).
-	user, err := repo.CreateUser(ctx, "orphan", "")
+	user, err := repo.CreateUser(ctx, "orphan")
 	require.NoError(t, err)
 
 	// Backdate the user's created_at to make it eligible for purge.
@@ -2026,7 +2047,7 @@ func TestBackgroundCleanupPurgesOrphanedUsers(t *testing.T) {
 // --- setRole: repo not initialized ---
 
 func TestSetRoleRepoNotInitialized(t *testing.T) {
-	app := &App{repo: nil}
+	app := &App[EmptyProfile]{repo: nil}
 
 	cliCmd := &cli.Command{
 		Name:      "test-set-role",
@@ -2044,7 +2065,7 @@ func TestSetRoleRepoNotInitialized(t *testing.T) {
 // --- createInviteAction: repo not initialized ---
 
 func TestCreateInviteActionRepoNotInitialized(t *testing.T) {
-	app := &App{repo: nil}
+	app := &App[EmptyProfile]{repo: nil}
 	cmds := app.CLICommands()
 
 	var createInviteCmd *cli.Command
@@ -2070,8 +2091,8 @@ func TestCreateInviteActionRepoNotInitialized(t *testing.T) {
 
 func TestCreateInviteActionSuccess(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
-	app := &App{
+	repo := NewRepository[EmptyProfile](db)
+	app := &App[EmptyProfile]{
 		repo:         repo,
 		globalConfig: &burrow.Config{},
 	}
@@ -2099,17 +2120,17 @@ func TestCreateInviteActionSuccess(t *testing.T) {
 
 func TestAuthMiddlewareWithAdminUser(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 
-	user, err := repo.CreateUser(context.Background(), "admin", "Admin")
+	user, err := repo.CreateUser(context.Background(), "admin")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(context.Background(), user.ID, RoleAdmin))
 
-	app := &App{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
+	app := &App[EmptyProfile]{repo: repo, config: &Config{LoginRedirect: "/dashboard"}}
 
-	var gotUser *User
+	var gotUser *User[EmptyProfile]
 	handler := app.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotUser = CurrentUser(r.Context())
+		gotUser = CurrentUser[EmptyProfile](r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -2128,7 +2149,7 @@ func TestAuthMiddlewareWithAdminUser(t *testing.T) {
 
 func TestDeactivateUserInvalidID(t *testing.T) {
 	_, repo := newTestApp(t)
-	adminUser := &User{Username: "admin", Role: RoleAdmin, IsActive: true}
+	adminUser := &User[EmptyProfile]{Username: "admin", Role: RoleAdmin, IsActive: true}
 	adminUser.ID = "admin-id-1"
 
 	router := userActionRouter(deactivateUserHandler(repo), adminUser)
@@ -2145,7 +2166,7 @@ func TestDeactivateUserInvalidID(t *testing.T) {
 
 func TestActivateUserInvalidID(t *testing.T) {
 	_, repo := newTestApp(t)
-	adminUser := &User{Username: "admin", Role: RoleAdmin, IsActive: true}
+	adminUser := &User[EmptyProfile]{Username: "admin", Role: RoleAdmin, IsActive: true}
 	adminUser.ID = "admin-id-2"
 
 	router := userActionRouter(activateUserHandler(repo), adminUser)
@@ -2161,14 +2182,14 @@ func TestActivateUserInvalidID(t *testing.T) {
 
 func TestDeactivateUserDBError(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	adminUser, err := repo.CreateUser(ctx, "admin")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
 
-	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	target, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	// Close the DB to force an error on SetUserActive.
@@ -2187,14 +2208,14 @@ func TestDeactivateUserDBError(t *testing.T) {
 
 func TestActivateUserDBError(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	adminUser, err := repo.CreateUser(ctx, "admin", "Admin")
+	adminUser, err := repo.CreateUser(ctx, "admin")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserRole(ctx, adminUser.ID, RoleAdmin))
 
-	target, err := repo.CreateUser(ctx, "alice", "Alice")
+	target, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 	require.NoError(t, repo.SetUserActive(ctx, target.ID, false))
 

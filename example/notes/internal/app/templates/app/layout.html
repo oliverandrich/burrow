@@ -45,7 +45,7 @@
 <li class="relative">
     <details class="group">
         <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
-            {{ template "app/icon_person_circle" . }} {{ .Username }}
+            {{ template "app/icon_person_circle" . }} {{ if .Profile.Name }}{{ .Profile.Name }}{{ else }}{{ .Username }}{{ end }}
         </summary>
         <ul class="absolute right-0 z-10 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-800 dark:bg-gray-900">
             {{ if .IsAdmin -}}

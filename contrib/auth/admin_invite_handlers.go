@@ -20,7 +20,7 @@ type CreateInviteRequest struct {
 }
 
 // adminListInvites handles GET /admin/invites — paginated invite list.
-func (a *App) adminListInvites(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) adminListInvites(w http.ResponseWriter, r *http.Request) error {
 	pr := burrow.ParsePageRequest(r)
 	searchTerm := r.URL.Query().Get("q")
 
@@ -61,14 +61,14 @@ func (a *App) adminListInvites(w http.ResponseWriter, r *http.Request) error {
 }
 
 // adminNewInviteForm handles GET /admin/invites/new — returns the invite form fragment for htmx.
-func (a *App) adminNewInviteForm(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) adminNewInviteForm(w http.ResponseWriter, r *http.Request) error {
 	return burrow.Render(w, r, http.StatusOK, "auth/admin_invite_form", map[string]any{
 		"UseEmail": a.config != nil && a.config.UseEmail,
 	})
 }
 
 // handleCreateInvite creates a new invite and optionally sends an email.
-func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 	var req CreateInviteRequest
 	if err := burrow.Bind(r, &req); err != nil {
 		return burrow.NewHTTPError(http.StatusBadRequest, "invalid request")
@@ -79,7 +79,7 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusBadRequest, "email is required")
 	}
 
-	user := CurrentUser(r.Context())
+	user := CurrentUser[P](r.Context())
 	if user == nil {
 		return burrow.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}
@@ -132,7 +132,7 @@ func (a *App) handleCreateInvite(w http.ResponseWriter, r *http.Request) error {
 const sessionKeyInviteCreatedURL = "admin-invite-created-url"
 
 // revokeInviteHandler returns a handler that revokes (hard-deletes) an invite.
-func revokeInviteHandler(repo *Repository) burrow.HandlerFunc {
+func revokeInviteHandler[P any](repo *Repository[P]) burrow.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		inviteID := chi.URLParam(r, "id")
 		if inviteID == "" {

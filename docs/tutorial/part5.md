@@ -22,7 +22,7 @@ srv := burrow.NewServer(
     healthcheck.New(),
     messages.New(),
     app.New(),
-    auth.New(),           // new
+    auth.New[auth.EmptyProfile](),           // new
     polls.New(),
 )
 ```
@@ -106,7 +106,7 @@ Logout has to be a POST to defend against CSRF, so we use a small inline `<form>
 
 `currentUser` is a template function provided by the auth app via `HasRequestFuncMap` — it returns the logged-in user (or nil) for the current request, so you don't need to plumb it through the layout data manually.
 
-The parentheses around `currentUser` are required because it's a function — `currentUser.Username` would try to look up a `Username` field on the function value itself. `(currentUser).Username` calls the function first, then accesses the field on the returned `*auth.User`.
+The parentheses around `currentUser` are required because it's a function — `currentUser.Username` would try to look up a `Username` field on the function value itself. `(currentUser).Username` calls the function first, then accesses the field on the returned `*auth.User[auth.EmptyProfile]`.
 
 We'll polish this navbar into a proper dropdown menu in [Part 7](part7.md) once we have htmx loaded — the inline `<form>` is a clean fallback that works without any client-side JavaScript.
 
@@ -121,9 +121,9 @@ Visit `/auth/register` to create an account (you'll need a browser that supports
 
 ## What You've Learnt
 
-- **`auth.New()`** — configures the auth app with built-in default renderer and layout
+- **`auth.New[auth.EmptyProfile]()`** — configures the auth app with built-in default renderer and layout
 - **`auth.RequireAuth()`** — middleware that redirects unauthenticated users to login
-- **`auth.CurrentUser()`** — retrieves the authenticated user from request context
+- **`auth.CurrentUser[auth.EmptyProfile]()`** — retrieves the authenticated user from request context
 - **`HasDependencies`** — declares inter-app dependencies for automatic ordering
 
 ## Next

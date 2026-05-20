@@ -23,12 +23,12 @@ type Renderer interface {
 }
 
 // UseEmailMode returns true if email-based authentication is enabled.
-func (a *App) UseEmailMode() bool {
+func (a *App[P]) UseEmailMode() bool {
 	return a.config != nil && a.config.UseEmail
 }
 
 // IsInviteOnly returns true if invite-only registration is enabled.
-func (a *App) IsInviteOnly() bool {
+func (a *App[P]) IsInviteOnly() bool {
 	return a.config != nil && a.config.InviteOnly
 }
 
@@ -41,7 +41,7 @@ type RegisterBeginRequest struct {
 }
 
 // RegisterPage renders the registration page.
-func (a *App) RegisterPage(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) RegisterPage(w http.ResponseWriter, r *http.Request) error {
 	inviteToken := r.URL.Query().Get("invite")
 
 	if a.IsInviteOnly() && inviteToken != "" {
@@ -56,7 +56,7 @@ func (a *App) RegisterPage(w http.ResponseWriter, r *http.Request) error {
 }
 
 // RegisterBegin starts the WebAuthn registration process.
-func (a *App) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 	var req RegisterBeginRequest
 	if err := burrow.Bind(r, &req); err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid request")
@@ -87,19 +87,19 @@ func (a *App) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	var user *User
+	var user *User[P]
 	var createErr error
 
 	if a.UseEmailMode() {
 		if req.Email == "" {
 			return errorJSON(w, http.StatusBadRequest, "email is required")
 		}
-		user, createErr = a.repo.CreateUserWithEmail(ctx, req.Email, req.Name)
+		user, createErr = a.repo.CreateUserWithEmail(ctx, req.Email)
 	} else {
 		if req.Username == "" {
 			return errorJSON(w, http.StatusBadRequest, "username is required")
 		}
-		user, createErr = a.repo.CreateUser(ctx, req.Username, req.Name)
+		user, createErr = a.repo.CreateUser(ctx, req.Username)
 	}
 
 	if createErr != nil {
@@ -150,7 +150,7 @@ func (a *App) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 }
 
 // RegisterFinish completes the WebAuthn registration process.
-func (a *App) RegisterFinish(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) RegisterFinish(w http.ResponseWriter, r *http.Request) error {
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
 		return errorJSON(w, http.StatusBadRequest, "invalid user_id")
@@ -230,12 +230,12 @@ func (a *App) RegisterFinish(w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-func (a *App) validateInviteToken(ctx context.Context, token string) (*Invite, error) {
+func (a *App[P]) validateInviteToken(ctx context.Context, token string) (*Invite, error) {
 	tokenHash := HashToken(token)
 	return a.repo.GetInviteByTokenHash(ctx, tokenHash)
 }
 
-func (a *App) isFirstUser(ctx context.Context) (bool, error) {
+func (a *App[P]) isFirstUser(ctx context.Context) (bool, error) {
 	count, err := a.repo.CountUsers(ctx)
 	if err != nil {
 		return false, err

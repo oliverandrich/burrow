@@ -19,7 +19,7 @@ srv := burrow.NewServer(
     messages.New(),
     htmx.New(),           // re-added
     app.New(),
-    auth.New(),
+    auth.New[auth.EmptyProfile](),
     polls.New(),
     admin.New(),
 )

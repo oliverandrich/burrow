@@ -39,7 +39,7 @@ func main() {
 		messages.New(),
 		htmx.New(),
 		app.New(),
-		auth.New(),
+		auth.New[auth.EmptyProfile](),
 		polls.New(),
 		admin.New(),
 	)

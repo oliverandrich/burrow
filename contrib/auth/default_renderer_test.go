@@ -27,7 +27,7 @@ func testBaseFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"t":               func(key string) string { return key },
 		"staticURL":       func(name string) string { return "/static/" + name },
-		"currentUser":     func() *User { return nil },
+		"currentUser":     func() *User[EmptyProfile] { return nil },
 		"isAuthenticated": func() bool { return false },
 		"lang":            func() string { return "en" },
 		"credName":        credName,

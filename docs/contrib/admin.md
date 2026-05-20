@@ -11,7 +11,7 @@ Admin panel coordinator that discovers and mounts admin views from other apps.
 ```go
 srv := burrow.NewServer(
     session.New(),
-    auth.New(),
+    auth.New[auth.EmptyProfile](),
     admin.New(),
     staticApp, // staticfiles.New(myStaticFS) — returns (*App, error)
     // ... other apps

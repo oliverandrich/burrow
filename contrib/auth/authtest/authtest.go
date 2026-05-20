@@ -27,7 +27,7 @@ func NewDB(t *testing.T) *den.DB {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	authApp := auth.New()
+	authApp := auth.New[auth.EmptyProfile]()
 	for _, doc := range authApp.Documents() {
 		err := den.Register(context.Background(), db, doc)
 		require.NoError(t, err)
@@ -36,47 +36,44 @@ func NewDB(t *testing.T) *den.DB {
 	return db
 }
 
-// UserOption configures a test user.
-type UserOption func(*auth.User)
+// UserOption configures a test user. authtest hard-codes
+// [auth.EmptyProfile] — apps with a custom Profile use their own seeding
+// helpers since Profile fields are app-specific.
+type UserOption func(*auth.User[auth.EmptyProfile])
 
 // WithID sets the user ID.
 func WithID(id string) UserOption {
-	return func(u *auth.User) { u.ID = id }
+	return func(u *auth.User[auth.EmptyProfile]) { u.ID = id }
 }
 
 // WithUsername sets the username.
 func WithUsername(username string) UserOption {
-	return func(u *auth.User) { u.Username = username }
+	return func(u *auth.User[auth.EmptyProfile]) { u.Username = username }
 }
 
 // WithEmail sets the email address.
 func WithEmail(email string) UserOption {
-	return func(u *auth.User) { u.Email = &email }
-}
-
-// WithName sets the display name.
-func WithName(name string) UserOption {
-	return func(u *auth.User) { u.Name = name }
+	return func(u *auth.User[auth.EmptyProfile]) { u.Email = &email }
 }
 
 // WithRole sets the user role.
 func WithRole(role string) UserOption {
-	return func(u *auth.User) { u.Role = role }
+	return func(u *auth.User[auth.EmptyProfile]) { u.Role = role }
 }
 
 // WithActive sets the active status.
 func WithActive(active bool) UserOption {
-	return func(u *auth.User) { u.IsActive = active }
+	return func(u *auth.User[auth.EmptyProfile]) { u.IsActive = active }
 }
 
 // CreateUser inserts a user into the database and returns it.
 // Default values: Username "testuser{N}", Role "user", IsActive true.
 // Each call auto-increments a counter for unique default usernames.
-func CreateUser(t *testing.T, db *den.DB, opts ...UserOption) *auth.User {
+func CreateUser(t *testing.T, db *den.DB, opts ...UserOption) *auth.User[auth.EmptyProfile] {
 	t.Helper()
 
 	n := userCounter.Add(1)
-	user := &auth.User{
+	user := &auth.User[auth.EmptyProfile]{
 		Username: fmt.Sprintf("testuser%d", n),
 		Role:     "user",
 		IsActive: true,

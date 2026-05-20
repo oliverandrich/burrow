@@ -10,12 +10,12 @@ import (
 )
 
 // VerifyPendingPage renders the "check your email" page.
-func (a *App) VerifyPendingPage(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) VerifyPendingPage(w http.ResponseWriter, r *http.Request) error {
 	return a.renderer.VerifyPendingPage(w, r)
 }
 
 // VerifyEmail handles the email verification link.
-func (a *App) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 	token := r.URL.Query().Get("token")
 	if token == "" {
 		return a.renderer.VerifyEmailErrorPage(w, r, "missing_token")
@@ -65,7 +65,7 @@ type ResendVerificationRequest struct {
 }
 
 // ResendVerification resends the verification email.
-func (a *App) ResendVerification(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) ResendVerification(w http.ResponseWriter, r *http.Request) error {
 	var req ResendVerificationRequest
 	if err := burrow.Bind(r, &req); err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid request")

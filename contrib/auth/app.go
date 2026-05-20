@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -20,6 +21,25 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// documentInterfaceType is the reflected document.Document marker
+// interface, used by validateProfileType to detect Profile types that
+// accidentally embed document.Base.
+var documentInterfaceType = reflect.TypeFor[document.Document]()
+
+// validateProfileType rejects Profile type parameters that satisfy the
+// document.Document marker — i.e. types embedding document.Base. Profile
+// is stored inline as JSON inside the user document; passing a Den
+// document type would silently include Base's _id/_created_at/... fields
+// in the inline payload and no separate table would be created. The
+// error message points to the auth-profile doc for the correct pattern.
+func validateProfileType[P any]() error {
+	profileType := reflect.TypeFor[P]()
+	if profileType.Implements(documentInterfaceType) {
+		return fmt.Errorf("auth: Profile type %s must not embed document.Base — use a plain Go struct (see docs/contrib/auth-profile.md)", profileType)
+	}
+	return nil
+}
+
 //go:embed translations
 var translationFS embed.FS
 
@@ -29,9 +49,10 @@ var staticFS embed.FS
 //go:embed templates/*.html
 var htmlTemplateFS embed.FS
 
-// App implements the auth contrib app.
-type App struct {
-	repo           *Repository
+// App implements the auth contrib app. The Profile type parameter mirrors
+// [User]'s — see docs/contrib/auth-profile.md.
+type App[P any] struct {
+	repo           *Repository[P]
 	webauthn       WebAuthnService
 	recovery       *RecoveryService
 	renderer       Renderer
@@ -57,37 +78,37 @@ type Config struct {
 }
 
 // Option configures the auth app.
-type Option func(*App)
+type Option[P any] func(*App[P])
 
 // WithRenderer sets the page renderer for auth views.
-func WithRenderer(r Renderer) Option {
-	return func(a *App) { a.renderer = r }
+func WithRenderer[P any](r Renderer) Option[P] {
+	return func(a *App[P]) { a.renderer = r }
 }
 
 // WithAuthLayout sets an optional layout template name for public (unauthenticated)
 // auth pages. When set, pages like login, register, and recovery use this layout
 // instead of the global app layout. Authenticated routes (credentials, recovery codes)
 // continue to use the global layout.
-func WithAuthLayout(name string) Option {
-	return func(a *App) { a.authLayout = name }
+func WithAuthLayout[P any](name string) Option[P] {
+	return func(a *App[P]) { a.authLayout = name }
 }
 
 // WithLogoComponent sets an optional logo HTML rendered above auth page content.
 // When set, the logo appears on login, register, and recovery pages.
-func WithLogoComponent(c template.HTML) Option {
-	return func(a *App) { a.logo = c }
+func WithLogoComponent[P any](c template.HTML) Option[P] {
+	return func(a *App[P]) { a.logo = c }
 }
 
 // WithEmailService sets the email service for the auth app.
-func WithEmailService(e EmailService) Option {
-	return func(a *App) { a.emailService = e }
+func WithEmailService[P any](e EmailService) Option[P] {
+	return func(a *App[P]) { a.emailService = e }
 }
 
 // New creates a new auth app with the given options.
 // By default, the built-in HTML renderer and auth layout are used.
 // Use WithRenderer() and WithAuthLayout() to override.
-func New(opts ...Option) *App {
-	a := &App{
+func New[P any](opts ...Option[P]) *App[P] {
+	a := &App[P]{
 		renderer:   DefaultRenderer(),
 		authLayout: DefaultAuthLayout(),
 	}
@@ -97,12 +118,16 @@ func New(opts ...Option) *App {
 	return a
 }
 
-func (a *App) Name() string { return "auth" }
+func (a *App[P]) Name() string { return "auth" }
 
-func (a *App) Dependencies() []string { return []string{"session", "csrf", "staticfiles"} }
+func (a *App[P]) Dependencies() []string { return []string{"session", "csrf", "staticfiles"} }
 
-func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
-	a.repo = NewRepository(cfg.DB)
+func (a *App[P]) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
+	if err := validateProfileType[P](); err != nil {
+		return err
+	}
+
+	a.repo = NewRepository[P](cfg.DB)
 	a.globalConfig = cfg.Config
 	a.withLocale = cfg.WithLocale
 
@@ -148,28 +173,28 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 // Start launches the background cleanup goroutine after the full boot
 // sequence completes. This ensures the goroutine only runs when the
 // server has started successfully.
-func (a *App) Start(_ *burrow.Server) error {
-	ctx, cancel := context.WithCancel(context.Background())
+func (a *App[P]) Start(_ *burrow.Server) error {
+	ctx, cancel := context.WithCancel(context.Background()) //nolint:gosec // cancel is stored on the App and invoked in Shutdown
 	a.cancelCleanup = cancel
 	go a.backgroundCleanup(ctx)
 	return nil
 }
 
 // StaticFS returns the embedded static assets (webauthn.js) under the "auth" prefix.
-func (a *App) StaticFS() (string, fs.FS) {
+func (a *App[P]) StaticFS() (string, fs.FS) {
 	sub, _ := fs.Sub(staticFS, "static")
 	return "auth", sub
 }
 
 // Documents returns the Den document types registered by this app.
-func (a *App) Documents() []document.Document {
-	return []document.Document{&User{}, &Credential{}, &RecoveryCode{}, &EmailVerificationToken{}, &Invite{}}
+func (a *App[P]) Documents() []document.Document {
+	return []document.Document{&User[P]{}, &Credential{}, &RecoveryCode{}, &EmailVerificationToken{}, &Invite{}}
 }
 
 // TranslationFS returns the embedded translation files for auto-discovery by the i18n app.
-func (a *App) TranslationFS() fs.FS { return translationFS }
+func (a *App[P]) TranslationFS() fs.FS { return translationFS }
 
-func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
+func (a *App[P]) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:    "auth-login-redirect",
@@ -221,7 +246,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 // backgroundCleanup periodically purges orphaned users and expired email
 // verification tokens. Orphaned users are leftover from abandoned WebAuthn
 // registration flows (no credentials after 5 minutes).
-func (a *App) backgroundCleanup(ctx context.Context) {
+func (a *App[P]) backgroundCleanup(ctx context.Context) {
 	const (
 		interval = 5 * time.Minute
 		maxAge   = 5 * time.Minute
@@ -250,7 +275,7 @@ func (a *App) backgroundCleanup(ctx context.Context) {
 
 // Shutdown stops the background cleanup goroutine. Safe to call multiple
 // times or if Configure was never called.
-func (a *App) Shutdown(_ context.Context) error {
+func (a *App[P]) Shutdown(_ context.Context) error {
 	if a.cancelCleanup != nil {
 		a.cancelCleanup()
 	}
@@ -261,13 +286,13 @@ func (a *App) Shutdown(_ context.Context) error {
 }
 
 // TemplateFS returns the embedded HTML template files.
-func (a *App) TemplateFS() fs.FS {
+func (a *App[P]) TemplateFS() fs.FS {
 	sub, _ := fs.Sub(htmlTemplateFS, "templates")
 	return sub
 }
 
 // FuncMap returns static template functions for auth templates.
-func (a *App) FuncMap() template.FuncMap {
+func (a *App[P]) FuncMap() template.FuncMap {
 	return template.FuncMap{
 		"credName": credName,
 		"deref": func(s *string) string {
@@ -280,22 +305,22 @@ func (a *App) FuncMap() template.FuncMap {
 }
 
 // RequestFuncMap returns request-scoped template functions for auth state.
-func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
+func (a *App[P]) RequestFuncMap(ctx context.Context) template.FuncMap {
 	return template.FuncMap{
-		"currentUser":     func() *User { return CurrentUser(ctx) },
+		"currentUser":     func() *User[P] { return CurrentUser[P](ctx) },
 		"isAuthenticated": func() bool { return IsAuthenticated(ctx) },
 		"authLogo":        func() template.HTML { return Logo(ctx) },
 	}
 }
 
-func (a *App) Middleware() []func(http.Handler) http.Handler {
+func (a *App[P]) Middleware() []func(http.Handler) http.Handler {
 	return []func(http.Handler) http.Handler{a.authMiddleware}
 }
 
 // authMiddleware loads the user from the session and sets it in the request context.
 // It also injects a burrow.AuthChecker so the core navLinks template function
 // can filter AuthOnly/AdminOnly items without importing this package.
-func (a *App) authMiddleware(next http.Handler) http.Handler {
+func (a *App[P]) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := session.GetString(r, "user_id")
 		if userID == "" {
@@ -319,7 +344,7 @@ func (a *App) authMiddleware(next http.Handler) http.Handler {
 }
 
 // Routes registers auth HTTP routes.
-func (a *App) Routes(r chi.Router) {
+func (a *App[P]) Routes(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
 		// Public routes — use auth layout and logo if set.
 		r.Group(func(r chi.Router) {
@@ -386,7 +411,7 @@ func authLogoMiddleware(logo template.HTML) func(http.Handler) http.Handler {
 
 // AdminRoutes registers admin routes for user and invite management.
 // The router is expected to already have auth middleware applied.
-func (a *App) AdminRoutes(r chi.Router) {
+func (a *App[P]) AdminRoutes(r chi.Router) {
 	// Users
 	r.Get("/users", burrow.Handle(a.adminListUsers))
 	r.Get("/users/{id}", burrow.Handle(a.adminEditUser))
@@ -403,7 +428,7 @@ func (a *App) AdminRoutes(r chi.Router) {
 }
 
 // AdminNavItems returns navigation items for the admin panel.
-func (a *App) AdminNavItems() []burrow.NavItem {
+func (a *App[P]) AdminNavItems() []burrow.NavItem {
 	return []burrow.NavItem{
 		{
 			Label:     "Users",
@@ -423,7 +448,7 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 }
 
 // CLICommands returns auth-related CLI subcommands (promote, demote, create-invite).
-func (a *App) CLICommands() []*cli.Command {
+func (a *App[P]) CLICommands() []*cli.Command {
 	return []*cli.Command{
 		{
 			Name:      "promote",
@@ -459,9 +484,9 @@ func credName(cred Credential) string {
 }
 
 // Repo returns the auth repository for external access.
-func (a *App) Repo() *Repository { return a.repo }
+func (a *App[P]) Repo() *Repository[P] { return a.repo }
 
-func (a *App) setRole(ctx context.Context, cmd *cli.Command, role string) error {
+func (a *App[P]) setRole(ctx context.Context, cmd *cli.Command, role string) error {
 	username := cmd.Args().First()
 	if username == "" {
 		return fmt.Errorf("username is required")
@@ -484,7 +509,7 @@ func (a *App) setRole(ctx context.Context, cmd *cli.Command, role string) error 
 	return nil
 }
 
-func (a *App) createInviteAction(ctx context.Context, cmd *cli.Command) error {
+func (a *App[P]) createInviteAction(ctx context.Context, cmd *cli.Command) error {
 	inviteEmail := cmd.Args().First()
 	if inviteEmail == "" {
 		return fmt.Errorf("email is required")

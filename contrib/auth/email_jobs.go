@@ -19,7 +19,7 @@ type emailJobPayload struct {
 // RegisterJobs registers auth email job handlers with the queue.
 // Skipped when no email service is configured (WithEmailService was not called),
 // since there is nothing to deliver.
-func (a *App) RegisterJobs(q burrow.Queue) {
+func (a *App[P]) RegisterJobs(q burrow.Queue) {
 	if a.emailService == nil {
 		return
 	}
@@ -29,7 +29,7 @@ func (a *App) RegisterJobs(q burrow.Queue) {
 }
 
 // handleEmailJob processes an email delivery job.
-func (a *App) handleEmailJob(ctx context.Context, p emailJobPayload) error {
+func (a *App[P]) handleEmailJob(ctx context.Context, p emailJobPayload) error {
 	ctx = a.withLocale(ctx, p.Locale)
 
 	switch p.Kind {
@@ -44,7 +44,7 @@ func (a *App) handleEmailJob(ctx context.Context, p emailJobPayload) error {
 
 // enqueueEmail enqueues an email delivery job. If no task is configured,
 // it falls back to sending the email directly (synchronous).
-func (a *App) enqueueEmail(ctx context.Context, kind, email, url string) error {
+func (a *App[P]) enqueueEmail(ctx context.Context, kind, email, url string) error {
 	if a.emailTask == nil {
 		return a.sendEmailDirect(ctx, kind, email, url)
 	}
@@ -58,7 +58,7 @@ func (a *App) enqueueEmail(ctx context.Context, kind, email, url string) error {
 }
 
 // sendEmailDirect sends an email synchronously (fallback when no queue).
-func (a *App) sendEmailDirect(ctx context.Context, kind, email, url string) error {
+func (a *App[P]) sendEmailDirect(ctx context.Context, kind, email, url string) error {
 	if a.emailService == nil {
 		return nil
 	}

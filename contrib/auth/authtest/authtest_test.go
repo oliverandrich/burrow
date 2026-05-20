@@ -15,7 +15,7 @@ func TestNewDB(t *testing.T) {
 	require.NotNil(t, db)
 
 	// Verify user collection exists by running a count query.
-	count, err := den.NewQuery[auth.User](db).Count(t.Context())
+	count, err := den.NewQuery[auth.User[auth.EmptyProfile]](db).Count(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), count)
 }
@@ -29,7 +29,6 @@ func TestCreateUserDefaults(t *testing.T) {
 	assert.Equal(t, "user", user.Role)
 	assert.True(t, user.IsActive)
 	assert.Nil(t, user.Email)
-	assert.Empty(t, user.Name)
 }
 
 func TestCreateUserOptions(t *testing.T) {
@@ -39,7 +38,6 @@ func TestCreateUserOptions(t *testing.T) {
 		WithID("custom-id-99"),
 		WithUsername("alice"),
 		WithEmail(email),
-		WithName("Alice Smith"),
 		WithRole("admin"),
 		WithActive(false),
 	)
@@ -48,7 +46,6 @@ func TestCreateUserOptions(t *testing.T) {
 	assert.Equal(t, "alice", user.Username)
 	require.NotNil(t, user.Email)
 	assert.Equal(t, "alice@example.com", *user.Email)
-	assert.Equal(t, "Alice Smith", user.Name)
 	assert.Equal(t, "admin", user.Role)
 	assert.False(t, user.IsActive)
 }

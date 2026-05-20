@@ -19,8 +19,8 @@ import (
 )
 
 // testAuthUser creates a test auth.User with the given role.
-func testAuthUser(role string) *auth.User {
-	u := &auth.User{Username: "testuser", Role: role, IsActive: true}
+func testAuthUser(role string) *auth.User[auth.EmptyProfile] {
+	u := &auth.User[auth.EmptyProfile]{Username: "testuser", Role: role, IsActive: true}
 	u.ID = "test-user-1"
 	return u
 }
@@ -53,7 +53,7 @@ func configuredRegistry(t *testing.T) *burrow.Registry {
 
 	sessionApp := session.New()
 	registry.Add(sessionApp)
-	authApp := auth.New()
+	authApp := auth.New[auth.EmptyProfile]()
 	registry.Add(authApp)
 
 	cfg := &burrow.AppConfig{Registry: registry, Config: &burrow.Config{}}
@@ -95,7 +95,7 @@ func TestAppConfigure(t *testing.T) {
 	// trip the dependency gate; this test only exercises admin's Configure.
 	registry.Add(burrowtest.StubApp("csrf"))
 	registry.Add(burrowtest.StubApp("staticfiles"))
-	authApp := auth.New()
+	authApp := auth.New[auth.EmptyProfile]()
 	registry.Add(authApp)
 
 	cfg := &burrow.AppConfig{Registry: registry}

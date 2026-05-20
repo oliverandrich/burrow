@@ -52,11 +52,11 @@ func (q *mockQueue) Dequeue(_ context.Context, id string) error {
 }
 
 // Compile-time check that App implements HasJobs.
-var _ burrow.HasJobs = (*App)(nil)
+var _ burrow.HasJobs = (*App[EmptyProfile])(nil)
 
 func TestRegisterJobs(t *testing.T) {
 	q := newMockQueue()
-	app := &App{emailService: &mockEmailService{}}
+	app := &App[EmptyProfile]{emailService: &mockEmailService{}}
 	app.RegisterJobs(q)
 
 	assert.Contains(t, q.handlers, "auth.send_email")
@@ -65,7 +65,7 @@ func TestRegisterJobs(t *testing.T) {
 
 func TestRegisterJobs_NoEmailService(t *testing.T) {
 	q := newMockQueue()
-	app := &App{}
+	app := &App[EmptyProfile]{}
 	app.RegisterJobs(q)
 
 	// No handler registered when email service is not configured.
@@ -76,7 +76,7 @@ func TestRegisterJobs_NoEmailService(t *testing.T) {
 func TestHandleEmailJob_Verification(t *testing.T) {
 	emailSvc := &mockEmailService{}
 	bundle := testI18nBundle(t)
-	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
+	app := &App[EmptyProfile]{emailService: emailSvc, withLocale: bundle.WithLocale}
 
 	err := app.handleEmailJob(context.Background(), emailJobPayload{
 		Kind:   "verification",
@@ -91,7 +91,7 @@ func TestHandleEmailJob_Verification(t *testing.T) {
 func TestHandleEmailJob_Invite(t *testing.T) {
 	emailSvc := &mockEmailService{}
 	bundle := testI18nBundle(t)
-	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
+	app := &App[EmptyProfile]{emailService: emailSvc, withLocale: bundle.WithLocale}
 
 	err := app.handleEmailJob(context.Background(), emailJobPayload{
 		Kind:   "invite",
@@ -106,7 +106,7 @@ func TestHandleEmailJob_Invite(t *testing.T) {
 func TestHandleEmailJob_UnknownKind(t *testing.T) {
 	emailSvc := &mockEmailService{}
 	bundle := testI18nBundle(t)
-	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
+	app := &App[EmptyProfile]{emailService: emailSvc, withLocale: bundle.WithLocale}
 
 	err := app.handleEmailJob(context.Background(), emailJobPayload{
 		Kind:   "unknown",
@@ -121,7 +121,7 @@ func TestHandleEmailJob_UnknownKind(t *testing.T) {
 func TestEnqueueEmail(t *testing.T) {
 	q := newMockQueue()
 	bundle := testI18nBundle(t)
-	app := &App{emailService: &mockEmailService{}, withLocale: bundle.WithLocale}
+	app := &App[EmptyProfile]{emailService: &mockEmailService{}, withLocale: bundle.WithLocale}
 	app.RegisterJobs(q)
 
 	err := app.enqueueEmail(context.Background(), "verification", "test@example.com", "http://localhost/verify")
@@ -139,7 +139,7 @@ func TestEnqueueEmail(t *testing.T) {
 func TestEnqueueEmail_FallbackDirect(t *testing.T) {
 	emailSvc := &mockEmailService{}
 	bundle := testI18nBundle(t)
-	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale} // no emailTask
+	app := &App[EmptyProfile]{emailService: emailSvc, withLocale: bundle.WithLocale} // no emailTask
 
 	err := app.enqueueEmail(context.Background(), "verification", "test@example.com", "http://localhost/verify")
 	require.NoError(t, err)
@@ -151,7 +151,7 @@ func TestEnqueueEmail_FallbackDirect(t *testing.T) {
 func TestSendEmailDirectInvite(t *testing.T) {
 	emailSvc := &mockEmailService{}
 	bundle := testI18nBundle(t)
-	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
+	app := &App[EmptyProfile]{emailService: emailSvc, withLocale: bundle.WithLocale}
 
 	err := app.sendEmailDirect(context.Background(), "invite", "test@example.com", "http://localhost/register")
 	require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestSendEmailDirectInvite(t *testing.T) {
 func TestSendEmailDirectUnknownKind(t *testing.T) {
 	emailSvc := &mockEmailService{}
 	bundle := testI18nBundle(t)
-	app := &App{emailService: emailSvc, withLocale: bundle.WithLocale}
+	app := &App[EmptyProfile]{emailService: emailSvc, withLocale: bundle.WithLocale}
 
 	err := app.sendEmailDirect(context.Background(), "unknown", "test@example.com", "http://localhost")
 	require.Error(t, err)
@@ -169,7 +169,7 @@ func TestSendEmailDirectUnknownKind(t *testing.T) {
 }
 
 func TestSendEmailDirectNilService(t *testing.T) {
-	app := &App{}
+	app := &App[EmptyProfile]{}
 
 	err := app.sendEmailDirect(context.Background(), "verification", "test@example.com", "http://localhost")
 	require.NoError(t, err)
