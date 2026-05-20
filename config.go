@@ -2,6 +2,8 @@ package burrow
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/urfave/cli/v3"
@@ -20,9 +22,23 @@ type ServerConfig struct {
 	Host            string
 	BaseURL         string
 	PIDFile         string
+	AppName         string
 	Port            int
 	MaxBodySize     int // in MB
 	ShutdownTimeout int // in seconds
+}
+
+// resolveAppName returns the explicit flag value when set, falling back to
+// the binary basename (os.Args[0]). It only returns "" when both the flag
+// and os.Args[0] are missing — a corner case in embedded contexts.
+func resolveAppName(flagValue string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	if len(os.Args) == 0 || os.Args[0] == "" {
+		return ""
+	}
+	return filepath.Base(os.Args[0])
 }
 
 // DatabaseConfig holds database settings.
@@ -64,6 +80,7 @@ func NewConfig(cmd *cli.Command) *Config {
 			Port:            int(cmd.Int("port")),
 			BaseURL:         cmd.String("base-url"),
 			PIDFile:         cmd.String("pid-file"),
+			AppName:         resolveAppName(cmd.String("app-name")),
 			MaxBodySize:     int(cmd.Int("max-body-size")),
 			ShutdownTimeout: int(cmd.Int("shutdown-timeout")),
 		},
@@ -191,6 +208,11 @@ func FlagSources(configSource func(key string) cli.ValueSource, envVar, tomlKey 
 // (e.g. a TOML file sourcer) for each flag.
 func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	return []cli.Flag{
+		&cli.StringFlag{
+			Name:    "app-name",
+			Usage:   "Human-readable application name (used by WebAuthn dialogs, SMTP From-name, the {{ appName }} template func; defaults to the binary basename)",
+			Sources: FlagSources(configSource, "APP_NAME", "server.app_name"),
+		},
 		&cli.StringFlag{
 			Name:    "host",
 			Value:   "localhost",

@@ -22,6 +22,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
+- **`--app-name` global flag** (`APP_NAME` env, `server.app_name` toml) sets a human-readable application name available as `cfg.Config.Server.AppName`. Defaults to the binary basename (e.g. `notes`, `myapp`) so it's non-empty out of the box. Three consumers wired:
+    - **WebAuthn**: `--auth-webauthn-rp-display-name` loses its `"Web App"` default and falls back to `--app-name` when not set explicitly. The browser passkey dialog now reads "Save passkey for **Notes**" instead of "Save passkey for **Web App**" by default.
+    - **SMTP From**: a bare `--smtp-from=noreply@example.com` is decorated as `"Notes <noreply@example.com>"` automatically. Pre-formatted `--smtp-from="Acme <noreply@example.com>"` is left alone.
+    - **Template func**: `{{ appName }}` returns the configured name. Use it in layout titles, email subjects, footer copy, etc.
 - **`forms` package: nested-struct subform support.** Struct-typed form fields now render as **subforms** — `extractFields` recurses one level into the nested struct and exposes its fields under the parent's `BoundField.SubFields`. Nested `FormName` values follow the `parent.child` convention (e.g. `profile.name`) so `burrow.Bind` decodes them and validation errors route to the correct nested field. `time.Time` is excluded (keeps the `"date"` widget); pointer-to-struct is dereferenced (nil → zero-value sub-fields); recursion is capped at one level. Templates dispatch on `Type == "subform"` and iterate `.SubFields` — see [forms: Nested struct fields](guide/forms.md#nested-struct-fields-subforms).
 - **Translation guard test** (`TestTranslationsLoadInGoI18n`) loads every contrib's `active.*.toml` through a real go-i18n bundle, so reserved-key collisions (`id`, `hash`, `description`, `leftdelim`, `rightdelim`, plural keys) surface at test time instead of at server boot.
 

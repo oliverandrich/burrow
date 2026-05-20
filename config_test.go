@@ -208,3 +208,13 @@ func TestConfigInAppConfig(t *testing.T) {
 	}
 	assert.Equal(t, "myhost", cfg.Config.Server.Host)
 }
+
+func TestResolveAppName_ExplicitFlagWins(t *testing.T) {
+	assert.Equal(t, "My App", resolveAppName("My App"))
+}
+
+func TestResolveAppName_FallsBackToBinaryBasename(t *testing.T) {
+	got := resolveAppName("")
+	assert.NotEmpty(t, got, "fallback should pick up the binary basename from os.Args[0]")
+	assert.NotContains(t, got, "/", "result should be a basename, not a full path")
+}
