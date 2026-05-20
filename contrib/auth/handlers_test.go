@@ -89,7 +89,7 @@ func (m *mockEmailService) SendInvite(_ context.Context, _, _ string) error {
 
 func testI18nBundle(t *testing.T) *i18n.Bundle {
 	t.Helper()
-	bundle, err := i18n.NewTestBundle("en", translationFS)
+	bundle, err := i18n.NewTestBundle(translationFS)
 	require.NoError(t, err)
 	return bundle
 }

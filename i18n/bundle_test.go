@@ -21,21 +21,27 @@ var testTranslationsFS = fstest.MapFS{
 	},
 }
 
+var badTranslationsFS = fstest.MapFS{
+	"translations/active.en.toml": &fstest.MapFile{
+		Data: []byte("= invalid toml [[["),
+	},
+}
+
 func testBundle(t *testing.T) *Bundle {
 	t.Helper()
-	b, err := NewTestBundle("en", testTranslationsFS)
+	b, err := NewTestBundle(testTranslationsFS)
 	require.NoError(t, err)
 	return b
 }
 
 func TestNewBundleCreatesBundle(t *testing.T) {
-	b, err := NewBundle("en", []string{"en", "de"})
+	b, err := NewBundle()
 	require.NoError(t, err)
 	require.NotNil(t, b.bundle)
 }
 
 func TestAddTranslations(t *testing.T) {
-	b, err := NewBundle("en", []string{"en", "de"})
+	b, err := NewBundle()
 	require.NoError(t, err)
 	require.NoError(t, b.AddTranslations(testTranslationsFS))
 
@@ -127,7 +133,7 @@ func TestRequestFuncMap(t *testing.T) {
 }
 
 func TestBuiltinValidationTranslationsEnglish(t *testing.T) {
-	b, err := NewTestBundle("en")
+	b, err := NewTestBundle()
 	require.NoError(t, err)
 
 	ctx := b.WithLocale(context.Background(), "en")
@@ -136,7 +142,7 @@ func TestBuiltinValidationTranslationsEnglish(t *testing.T) {
 }
 
 func TestBuiltinValidationTranslationsGerman(t *testing.T) {
-	b, err := NewTestBundle("en")
+	b, err := NewTestBundle()
 	require.NoError(t, err)
 
 	ctx := b.WithLocale(context.Background(), "de")
@@ -145,7 +151,7 @@ func TestBuiltinValidationTranslationsGerman(t *testing.T) {
 }
 
 func TestAutoDiscoverTranslations(t *testing.T) {
-	b, err := NewBundle("en", []string{"en", "de"})
+	b, err := NewBundle()
 	require.NoError(t, err)
 
 	appFS := fstest.MapFS{
@@ -166,7 +172,7 @@ func TestAutoDiscoverTranslations(t *testing.T) {
 }
 
 func TestNewTestBundle(t *testing.T) {
-	b, err := NewTestBundle("en", testTranslationsFS)
+	b, err := NewTestBundle(testTranslationsFS)
 	require.NoError(t, err)
 	require.NotNil(t, b)
 
@@ -181,7 +187,7 @@ func TestAppOverrideTranslations(t *testing.T) {
 		},
 	}
 
-	b, err := NewTestBundle("en", overrideFS)
+	b, err := NewTestBundle(overrideFS)
 	require.NoError(t, err)
 
 	ctx := b.WithLocale(context.Background(), "de")
@@ -210,36 +216,49 @@ func TestRequestFuncMapLang(t *testing.T) {
 }
 
 func TestAddTranslationsInvalidFile(t *testing.T) {
-	b, err := NewBundle("en", []string{"en"})
+	b, err := NewBundle()
 	require.NoError(t, err)
-
-	// A file with invalid TOML content should cause LoadMessageFileFS to fail.
-	badFS := fstest.MapFS{
-		"translations/active.en.toml": &fstest.MapFile{
-			Data: []byte("= invalid toml [[["),
-		},
-	}
-	err = b.AddTranslations(badFS)
-	assert.Error(t, err)
+	assert.Error(t, b.AddTranslations(badTranslationsFS))
 }
 
 func TestNewTestBundleWithInvalidTranslations(t *testing.T) {
-	badFS := fstest.MapFS{
-		"translations/active.en.toml": &fstest.MapFile{
-			Data: []byte("= invalid toml [[["),
-		},
-	}
-	_, err := NewTestBundle("en", badFS)
+	_, err := NewTestBundle(badTranslationsFS)
 	assert.Error(t, err)
 }
 
-func TestNewBundleSkipsEmptyAndDuplicateLanguages(t *testing.T) {
-	// Empty strings and duplicates of the default language should be silently ignored.
-	b, err := NewBundle("en", []string{"en", "", "  ", "en", "de"})
+func TestAddTranslationsExtendsMatcher(t *testing.T) {
+	b, err := NewBundle()
 	require.NoError(t, err)
-	require.NotNil(t, b)
 
-	// German should still work.
+	// "fr" is not in the builtin translations; the matcher should not
+	// resolve it to itself yet.
+	beforeCtx := b.WithLocale(context.Background(), "fr")
+	assert.NotEqual(t, "fr", Locale(beforeCtx),
+		"fr should not be reachable before any French translations are loaded")
+
+	frFS := fstest.MapFS{
+		"translations/active.fr.toml": &fstest.MapFile{
+			Data: []byte("hello = \"Bonjour\"\n"),
+		},
+	}
+	require.NoError(t, b.AddTranslations(frFS))
+
+	afterCtx := b.WithLocale(context.Background(), "fr")
+	assert.Equal(t, "fr", Locale(afterCtx),
+		"AddTranslations must extend the matcher so the new locale is reachable")
+	assert.Equal(t, "Bonjour", T(afterCtx, "hello"))
+}
+
+func TestAddTranslationsIsIdempotent(t *testing.T) {
+	b, err := NewBundle()
+	require.NoError(t, err)
+	require.NoError(t, b.AddTranslations(testTranslationsFS))
+	tagsAfterFirst := len(b.bundle.LanguageTags())
+
+	require.NoError(t, b.AddTranslations(testTranslationsFS))
+	assert.Len(t, b.bundle.LanguageTags(), tagsAfterFirst,
+		"loading the same FS twice must not duplicate registered language tags")
+
 	ctx := b.WithLocale(context.Background(), "de")
-	assert.Equal(t, "de", Locale(ctx))
+	assert.Equal(t, "Hallo", T(ctx, "hello"))
 }

@@ -73,7 +73,7 @@ func TestLocaleFromContext(t *testing.T) {
 }
 
 func TestValidationTranslateEnglish(t *testing.T) {
-	bundle, err := NewTestBundle("en")
+	bundle, err := NewTestBundle()
 	require.NoError(t, err)
 	ctx := bundle.WithLocale(context.Background(), "en")
 
@@ -82,7 +82,7 @@ func TestValidationTranslateEnglish(t *testing.T) {
 }
 
 func TestValidationTranslateGerman(t *testing.T) {
-	bundle, err := NewTestBundle("en")
+	bundle, err := NewTestBundle()
 	require.NoError(t, err)
 	ctx := bundle.WithLocale(context.Background(), "de")
 

@@ -227,7 +227,7 @@ func findField(t *testing.T, fields []BoundField, name string) BoundField {
 }
 
 func TestExtractFieldsTranslatesLabels(t *testing.T) {
-	bundle, err := i18n.NewTestBundle("en", labelI18nFS)
+	bundle, err := i18n.NewTestBundle(labelI18nFS)
 	require.NoError(t, err)
 
 	instance := &articleForm{Title: "x", Content: "y", Status: "draft"}
@@ -271,7 +271,7 @@ func TestExtractFieldsTranslatesLabels(t *testing.T) {
 // string as the message ID, and any package-level slice handed to
 // WithChoices would bleed locale state between requests.
 func TestExtractFieldsDoesNotMutateChoiceSource(t *testing.T) {
-	bundle, err := i18n.NewTestBundle("en", labelI18nFS)
+	bundle, err := i18n.NewTestBundle(labelI18nFS)
 	require.NoError(t, err)
 	ctx := bundle.WithLocale(context.Background(), "de")
 

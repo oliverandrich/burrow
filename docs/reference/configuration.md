@@ -39,10 +39,7 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 
 ### i18n
 
-| Flag | Env Var | Default | Description |
-|------|---------|---------|-------------|
-| `--i18n-default-language` | `I18N_DEFAULT_LANGUAGE` | `en` | Default language |
-| `--i18n-supported-languages` | `I18N_SUPPORTED_LANGUAGES` | `en,de` | Comma-separated supported languages |
+No flags. Supported locales are derived from each app's `HasTranslations.TranslationFS()` at boot — see [Internationalization](../guide/i18n.md).
 
 ## Contrib App Flags
 

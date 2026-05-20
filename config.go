@@ -13,13 +13,6 @@ type Config struct { //nolint:govet // fieldalignment: readability over optimiza
 	Database DatabaseConfig
 	Storage  StorageConfig
 	Server   ServerConfig
-	I18n     I18nConfig
-}
-
-// I18nConfig holds internationalization settings.
-type I18nConfig struct {
-	DefaultLanguage    string
-	SupportedLanguages string // comma-separated
 }
 
 // ServerConfig holds HTTP server settings.
@@ -88,10 +81,6 @@ func NewConfig(cmd *cli.Command) *Config {
 			Email:    cmd.String("tls-email"),
 			CertFile: cmd.String("tls-cert-file"),
 			KeyFile:  cmd.String("tls-key-file"),
-		},
-		I18n: I18nConfig{
-			DefaultLanguage:    cmd.String("i18n-default-language"),
-			SupportedLanguages: cmd.String("i18n-supported-languages"),
 		},
 	}
 }
@@ -281,18 +270,6 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Name:    "tls-key-file",
 			Usage:   "Path to TLS private key file (manual mode)",
 			Sources: FlagSources(configSource, "TLS_KEY_FILE", "tls.key_file"),
-		},
-		&cli.StringFlag{
-			Name:    "i18n-default-language",
-			Value:   "en",
-			Usage:   "Default language",
-			Sources: FlagSources(configSource, "I18N_DEFAULT_LANGUAGE", "i18n.default_language"),
-		},
-		&cli.StringFlag{
-			Name:    "i18n-supported-languages",
-			Value:   "en,de",
-			Usage:   "Comma-separated supported languages",
-			Sources: FlagSources(configSource, "I18N_SUPPORTED_LANGUAGES", "i18n.supported_languages"),
 		},
 	}
 }

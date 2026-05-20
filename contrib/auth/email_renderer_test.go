@@ -61,7 +61,7 @@ func TestDefaultEmailRendererInviteTextFallback(t *testing.T) {
 // using the auth translation files.
 func newLocalizedCtx(t *testing.T, lang string) context.Context {
 	t.Helper()
-	bundle, err := i18n.NewTestBundle("en", translationFS)
+	bundle, err := i18n.NewTestBundle(translationFS)
 	require.NoError(t, err)
 	return bundle.WithLocale(context.Background(), lang)
 }
