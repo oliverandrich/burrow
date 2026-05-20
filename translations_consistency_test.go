@@ -2,13 +2,11 @@ package burrow_test
 
 import (
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/BurntSushi/toml"
-	"github.com/stretchr/testify/require"
 )
 
 // TestTranslationsHaveNoValueDivergentDuplicates walks every TOML translation
@@ -21,37 +19,21 @@ func TestTranslationsHaveNoValueDivergentDuplicates(t *testing.T) {
 	// locale -> key -> file -> raw scalar value
 	byLocale := map[string]map[string]map[string]string{}
 
-	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			switch d.Name() {
-			case ".git", "site", "node_modules":
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, ".toml") {
-			return nil
-		}
-		if !strings.Contains(filepath.ToSlash(path), "/translations/") {
-			return nil
-		}
-
+	forEachTranslationFile(t, func(fsys fs.FS, path string) {
 		locale := extractLocale(path)
 		if locale == "" {
-			return nil
+			return
 		}
 
-		raw, err := os.ReadFile(path)
+		raw, err := fs.ReadFile(fsys, path)
 		if err != nil {
-			return err
+			t.Errorf("%s: %v", path, err)
+			return
 		}
 		var decoded map[string]any
 		if _, err := toml.Decode(string(raw), &decoded); err != nil {
 			t.Errorf("%s: %v", path, err)
-			return nil
+			return
 		}
 
 		if byLocale[locale] == nil {
@@ -70,9 +52,7 @@ func TestTranslationsHaveNoValueDivergentDuplicates(t *testing.T) {
 			}
 			byLocale[locale][key][path] = s
 		}
-		return nil
 	})
-	require.NoError(t, err)
 
 	for locale, byKey := range byLocale {
 		for key, byFile := range byKey {
