@@ -23,7 +23,6 @@ type ServerConfig struct {
 	Port            int
 	MaxBodySize     int // in MB
 	ShutdownTimeout int // in seconds
-	Seed            bool
 }
 
 // DatabaseConfig holds database settings.
@@ -67,7 +66,6 @@ func NewConfig(cmd *cli.Command) *Config {
 			PIDFile:         cmd.String("pid-file"),
 			MaxBodySize:     int(cmd.Int("max-body-size")),
 			ShutdownTimeout: int(cmd.Int("shutdown-timeout")),
-			Seed:            cmd.Bool("seed"),
 		},
 		Database: DatabaseConfig{
 			DSN: cmd.String("database-dsn"),
@@ -226,11 +224,6 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Value:   10,
 			Usage:   "Graceful shutdown timeout in seconds",
 			Sources: FlagSources(configSource, "SHUTDOWN_TIMEOUT", "server.shutdown_timeout"),
-		},
-		&cli.BoolFlag{
-			Name:    "seed",
-			Usage:   "Run seed functions for all Seedable apps before starting the server",
-			Sources: FlagSources(configSource, "SEED", "server.seed"),
 		},
 		&cli.StringFlag{
 			Name:    "database-dsn",

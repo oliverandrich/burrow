@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
+	"github.com/oliverandrich/den/migrate"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -87,8 +88,17 @@ func TestServerBootstrapCreatesAppConfig(t *testing.T) {
 	assert.Equal(t, "testhost", s.appCfg.Config.Server.Host)
 }
 
-func TestServerBootstrapDoesNotSeed(t *testing.T) {
-	app := &trackingApp{name: "seedable"}
+func TestServerBootstrapDoesNotRunMigrations(t *testing.T) {
+	var ran bool
+	app := &trackingApp{
+		name: "migrator",
+		migrations: []NamedMigration{{
+			Version: "001",
+			Migration: migrate.Migration{
+				Forward: func(_ context.Context, _ *den.Tx) error { ran = true; return nil },
+			},
+		}},
+	}
 
 	s := NewServer(app)
 	db := testDB(t)
@@ -96,7 +106,7 @@ func TestServerBootstrapDoesNotSeed(t *testing.T) {
 	err := s.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
 
-	assert.False(t, app.seeded, "bootstrap should not call Seed (moved to after Configure)")
+	assert.False(t, ran, "bootstrap only registers documents; migrations run later via Registry.RunMigrations after Configure")
 }
 
 func TestSetLayout(t *testing.T) {

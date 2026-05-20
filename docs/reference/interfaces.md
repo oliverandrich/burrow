@@ -305,25 +305,45 @@ func (a *App) CLICommands() []*cli.Command {
 }
 ```
 
-### Seedable
+### HasMigrations
 
 ```go
-type Seedable interface {
-    Seed(ctx context.Context) error
+type HasMigrations interface {
+    Migrations() []NamedMigration
+}
+
+type NamedMigration struct {
+    Version   string
+    Migration migrate.Migration
 }
 ```
 
-Seeds the database with initial data. Only runs when the server is started with the `--seed` flag (or `SEED=true`). Seeders run in app registration order and stop on the first error. Implementations should be idempotent — safe to call multiple times without creating duplicates.
+Contributes versioned, run-once database migrations. The server applies them automatically at boot via Den's [migrate package](https://pkg.go.dev/github.com/oliverandrich/den/migrate) — each migration runs exactly once across processes, tracked in the `_den_migrations` collection. Versions are namespaced by app name (`{app}/{version}`) so two contribs can both ship `"001_initial"` without colliding. The `Forward` function receives a transaction, so the migration's writes are atomic.
 
 ```go
-func (a *App) Seed(ctx context.Context) error {
-    count, _ := a.repo.CountCategories(ctx)
-    if count > 0 {
-        return nil // already seeded
-    }
-    return a.repo.CreateCategories(ctx, defaultCategories)
+import (
+    "github.com/oliverandrich/den"
+    "github.com/oliverandrich/den/migrate"
+)
+
+func (a *App) Migrations() []burrow.NamedMigration {
+    return []burrow.NamedMigration{{
+        Version: "001_initial_categories",
+        Migration: migrate.Migration{
+            Forward: func(ctx context.Context, tx *den.Tx) error {
+                for _, c := range defaultCategories {
+                    if err := den.Save(ctx, tx, &c); err != nil {
+                        return err
+                    }
+                }
+                return nil
+            },
+        },
+    }}
 }
 ```
+
+The `Backward` function is optional; provide it when the migration is meaningfully reversible. Burrow only wires the forward path at boot — if you need rollback, reach for `den/migrate`'s `Down` / `DownOne` runners directly (e.g. wrap them in your own `HasCLICommands` subcommand). There is no built-in `burrow migrate down` CLI.
 
 ### HasStaticFiles
 

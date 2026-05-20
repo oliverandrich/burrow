@@ -308,7 +308,7 @@ Your app can implement any combination of these interfaces:
 | `HasFlags` | `Flags(configSource func(key string) cli.ValueSource) []cli.Flag` | Add CLI flags |
 | `Configurable` | `Configure(cfg *AppConfig, cmd *cli.Command) error` | App initialisation and configuration |
 | `HasCLICommands` | `CLICommands() []*cli.Command` | Add CLI subcommands |
-| `Seedable` | `Seed(ctx context.Context) error` | Seed initial data |
+| `HasMigrations` | `Migrations() []NamedMigration` | Versioned, run-once database migrations applied at boot |
 | `HasDependencies` | `Dependencies() []string` | Declare required apps |
 | `HasAdmin` | `AdminRoutes(r chi.Router)` + `AdminNavItems() []NavItem` | Contribute admin panel |
 | `HasStaticFiles` | `StaticFS() (prefix string, fsys fs.FS)` | Contribute static assets |

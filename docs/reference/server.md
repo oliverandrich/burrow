@@ -111,10 +111,10 @@ func (a *App) Start(srv *burrow.Server) error {
 8. **Build `AppConfig`** — `DB`, `Registry`, `Config`, `WithLocale` ready for `Configure`
 9. **Load translations** — for each `HasTranslations` app, `bundle.AddTranslations(app.TranslationFS())`
 10. **Configure + PostConfigure** — `Registry.Configure(cfg, cmd)` runs `Configure()` on every `Configurable` app, then a second pass runs `PostConfigure()` on every `PostConfigurable` (e.g. `contrib/jobs` discovers `HasJobs` handlers here, after all `Configure()` calls have run)
+11. **Run migrations** — `Registry.RunMigrations` collects every `HasMigrations` app's migrations, namespaces each version as `{app.Name()}/{version}`, and calls `migrate.Up` once. Each pending migration runs in its own transaction; applied versions are tracked in the `_den_migrations` collection so re-boots are no-ops. A failing migration aborts boot. See [Database Migrations](../guide/migrations.md).
 
 **Run-only phase** (HTTP server):
 
-11. **Seed** — `Registry.Seed` calls `Seed()` on every `Seedable` app, but only when `--seed` is set
 12. **Register request-scoped template providers** — core registers `i18n.Bundle.RequestFuncMap` and `coreRequestFuncMap` (`navItems`, `navLinks`) before templates are parsed
 13. **Build templates** — collects `.html` files from all `HasTemplates` apps and `FuncMap()` from all `HasFuncMap` apps; parses into a single `*template.Template`. Per-request `HasRequestFuncMap` stubs are registered here too so templates parse cleanly
 14. **Create router** — Chi router with core middleware: request logger, request ID, gzip, body-size limit, locale middleware
@@ -227,13 +227,13 @@ func (r *Registry) AllCLICommands() []*cli.Command
 
 Collects CLI subcommands from all `HasCLICommands` apps **without** the boot-lifecycle wrapping that `Server.CLICommands` adds. Use this only when you need raw access to the registered subcommands — most projects should call `srv.CLICommands()` instead so contrib subcommands like `auth promote` run against a fully-configured app graph.
 
-#### Seed
+#### RunMigrations
 
 ```go
-func (r *Registry) Seed(ctx context.Context) error
+func (r *Registry) RunMigrations(ctx context.Context, db *den.DB) error
 ```
 
-Calls `Seed()` on each `Seedable` app in order. Only invoked when the server is started with the `--seed` flag.
+Builds a `migrate.Registry` from every `HasMigrations` app and applies all pending migrations against `db`. Versions are namespaced as `{app.Name()}/{version}` so two contribs can both ship `"001_initial"` without colliding. Each migration runs exactly once across processes (tracked in the `_den_migrations` collection). Called automatically during boot, after every app's `Configure`. See [Database Migrations](../guide/migrations.md) for app-side authoring.
 
 ## Render
 

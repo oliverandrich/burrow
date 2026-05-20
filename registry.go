@@ -9,6 +9,8 @@ import (
 	"sort"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/migrate"
 	"github.com/urfave/cli/v3"
 )
 
@@ -71,8 +73,8 @@ func (r *Registry) Add(app App) {
 	if _, ok := app.(HasCLICommands); ok {
 		caps = append(caps, "commands")
 	}
-	if _, ok := app.(Seedable); ok {
-		caps = append(caps, "seed")
+	if _, ok := app.(HasMigrations); ok {
+		caps = append(caps, "migrations")
 	}
 	if _, ok := app.(HasAdmin); ok {
 		caps = append(caps, "admin")
@@ -203,6 +205,25 @@ func (r *Registry) Configure(cfg *AppConfig, cmd *cli.Command) error {
 	return nil
 }
 
+// RunMigrations builds a [migrate.Registry] from every [HasMigrations]
+// app and applies all pending migrations against db. Each migration runs
+// exactly once across processes — Den tracks applied versions in the
+// _den_migrations collection. Versions are namespaced by app name so two
+// contribs can both ship "001_initial" without colliding.
+func (r *Registry) RunMigrations(ctx context.Context, db *den.DB) error {
+	reg := migrate.NewRegistry()
+	for _, app := range r.apps {
+		provider, ok := app.(HasMigrations)
+		if !ok {
+			continue
+		}
+		for _, nm := range provider.Migrations() {
+			reg.Register(app.Name()+"/"+nm.Version, nm.Migration)
+		}
+	}
+	return reg.Up(ctx, db)
+}
+
 // AllCLICommands collects CLI subcommands from all HasCLICommands apps.
 func (r *Registry) AllCLICommands() []*cli.Command {
 	var cmds []*cli.Command
@@ -254,17 +275,4 @@ func (r *Registry) Shutdown(ctx context.Context) error {
 		}
 	}
 	return errors.Join(errs...)
-}
-
-// Seed calls Seed on each Seedable app in order.
-// It stops and returns on the first error.
-func (r *Registry) Seed(ctx context.Context) error {
-	for _, app := range r.apps {
-		if provider, ok := app.(Seedable); ok {
-			if err := provider.Seed(ctx); err != nil {
-				return fmt.Errorf("seed app %q: %w", app.Name(), err)
-			}
-		}
-	}
-	return nil
 }

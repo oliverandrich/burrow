@@ -19,6 +19,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/messages"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
+	"github.com/oliverandrich/den/migrate"
 	"github.com/oliverandrich/den/where"
 	"github.com/urfave/cli/v3"
 )
@@ -510,27 +511,35 @@ func (a *App) adminDeleteChoice(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// Seed inserts a few example questions when the server is started with --seed.
-// Implements [burrow.Seedable].
-func (a *App) Seed(ctx context.Context) error {
-	samples := []struct {
-		text    string
-		choices []string
-	}{
-		{"What's your favourite Go web framework?", []string{"Burrow", "Gin", "Echo", "net/http alone"}},
-		{"How long have you been writing Go?", []string{"<1 year", "1–3 years", "3–5 years", "5+ years"}},
-		{"Which IDE do you prefer for Go?", []string{"VS Code", "GoLand", "Vim/Neovim", "Cursor"}},
-	}
-	for _, s := range samples {
-		q := &Question{Text: s.text, PublishedAt: time.Now()}
-		if err := a.repo.CreateQuestion(ctx, q); err != nil {
-			return fmt.Errorf("seed question %q: %w", s.text, err)
-		}
-		for _, ct := range s.choices {
-			if err := a.repo.CreateChoice(ctx, &Choice{QuestionID: q.ID, Text: ct}); err != nil {
-				return fmt.Errorf("seed choice %q: %w", ct, err)
-			}
-		}
-	}
-	return nil
+// Migrations populates the sample poll data on first boot. Tracked in the
+// _den_migrations collection — subsequent boots skip the version automatically.
+// Implements [burrow.HasMigrations].
+func (a *App) Migrations() []burrow.NamedMigration {
+	return []burrow.NamedMigration{{
+		Version: "001_initial_polls",
+		Migration: migrate.Migration{
+			Forward: func(ctx context.Context, tx *den.Tx) error {
+				samples := []struct {
+					text    string
+					choices []string
+				}{
+					{"What's your favourite Go web framework?", []string{"Burrow", "Gin", "Echo", "net/http alone"}},
+					{"How long have you been writing Go?", []string{"<1 year", "1–3 years", "3–5 years", "5+ years"}},
+					{"Which IDE do you prefer for Go?", []string{"VS Code", "GoLand", "Vim/Neovim", "Cursor"}},
+				}
+				for _, s := range samples {
+					q := &Question{Text: s.text, PublishedAt: time.Now()}
+					if err := den.Save(ctx, tx, q); err != nil {
+						return fmt.Errorf("seed question %q: %w", s.text, err)
+					}
+					for _, ct := range s.choices {
+						if err := den.Save(ctx, tx, &Choice{QuestionID: q.ID, Text: ct}); err != nil {
+							return fmt.Errorf("seed choice %q: %w", ct, err)
+						}
+					}
+				}
+				return nil
+			},
+		},
+	}}
 }

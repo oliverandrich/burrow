@@ -13,7 +13,9 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
+	"github.com/oliverandrich/den/migrate"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -36,7 +38,7 @@ func (a *fullApp) NavItems() []NavItem                               { return ni
 func (a *fullApp) Flags(_ func(string) cli.ValueSource) []cli.Flag   { return nil }
 func (a *fullApp) Configure(_ *AppConfig, _ *cli.Command) error      { a.configured = true; return nil }
 func (a *fullApp) CLICommands() []*cli.Command                       { return nil }
-func (a *fullApp) Seed(_ context.Context) error                      { return nil }
+func (a *fullApp) Migrations() []NamedMigration                      { return nil }
 func (a *fullApp) Routes(_ chi.Router)                               {}
 func (a *fullApp) AdminRoutes(_ chi.Router)                          {}
 func (a *fullApp) AdminNavItems() []NavItem                          { return nil }
@@ -54,8 +56,8 @@ type trackingApp struct {
 	middleware    []func(http.Handler) http.Handler
 	flags         []cli.Flag
 	commands      []*cli.Command
+	migrations    []NamedMigration
 	configured    bool
-	seeded        bool
 }
 
 func (a *trackingApp) Name() string                                    { return a.name }
@@ -69,37 +71,20 @@ func (a *trackingApp) Configure(cfg *AppConfig, _ *cli.Command) error {
 	}
 	return nil
 }
-func (a *trackingApp) CLICommands() []*cli.Command { return a.commands }
-func (a *trackingApp) Seed(_ context.Context) error {
-	a.seeded = true
-	return nil
-}
-func (a *trackingApp) AdminRoutes(_ chi.Router) {}
-func (a *trackingApp) AdminNavItems() []NavItem { return a.adminNavItems }
+func (a *trackingApp) CLICommands() []*cli.Command  { return a.commands }
+func (a *trackingApp) Migrations() []NamedMigration { return a.migrations }
+func (a *trackingApp) AdminRoutes(_ chi.Router)     {}
+func (a *trackingApp) AdminNavItems() []NavItem     { return a.adminNavItems }
 
-// failingApp returns errors from Configure or Seed.
+// failingApp returns the configured error from Configure (or nil when err is nil).
 type failingApp struct {
-	err     error
-	name    string
-	failOn  string
-	reached bool
+	err  error
+	name string
 }
 
 func (a *failingApp) Name() string                                    { return a.name }
 func (a *failingApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
-func (a *failingApp) Configure(_ *AppConfig, _ *cli.Command) error {
-	if a.failOn == "configure" {
-		return a.err
-	}
-	return nil
-}
-func (a *failingApp) Seed(_ context.Context) error {
-	a.reached = true
-	if a.failOn == "seed" {
-		return a.err
-	}
-	return nil
-}
+func (a *failingApp) Configure(_ *AppConfig, _ *cli.Command) error    { return a.err }
 
 // Compile-time interface assertions.
 var (
@@ -111,7 +96,7 @@ var (
 	_ HasFlags          = (*fullApp)(nil)
 	_ Configurable      = (*fullApp)(nil)
 	_ HasCLICommands    = (*fullApp)(nil)
-	_ Seedable          = (*fullApp)(nil)
+	_ HasMigrations     = (*fullApp)(nil)
 	_ HasRoutes         = (*fullApp)(nil)
 	_ HasAdmin          = (*fullApp)(nil)
 	_ HasDependencies   = (*dependentApp)(nil)
@@ -130,7 +115,7 @@ func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
 	_, hasNavItems := app.(HasNavItems)
 	_, isConfigurable := app.(Configurable)
 	_, hasCLI := app.(HasCLICommands)
-	_, isSeedable := app.(Seedable)
+	_, hasMigrations := app.(HasMigrations)
 	_, hasRoutes := app.(HasRoutes)
 	_, hasAdmin := app.(HasAdmin)
 
@@ -139,7 +124,7 @@ func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
 	assert.False(t, hasNavItems)
 	assert.False(t, isConfigurable)
 	assert.False(t, hasCLI)
-	assert.False(t, isSeedable)
+	assert.False(t, hasMigrations)
 	assert.False(t, hasRoutes)
 	assert.False(t, hasAdmin)
 }
@@ -153,7 +138,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	_, hasFlags := app.(HasFlags)
 	_, isConfigurable := app.(Configurable)
 	_, hasCLI := app.(HasCLICommands)
-	_, isSeedable := app.(Seedable)
+	_, hasMigrations := app.(HasMigrations)
 	_, hasRoutes := app.(HasRoutes)
 	_, hasAdmin := app.(HasAdmin)
 	_, hasTemplates := app.(HasTemplates)
@@ -167,7 +152,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 	assert.True(t, hasFlags)
 	assert.True(t, isConfigurable)
 	assert.True(t, hasCLI)
-	assert.True(t, isSeedable)
+	assert.True(t, hasMigrations)
 	assert.True(t, hasRoutes)
 	assert.True(t, hasAdmin)
 	assert.True(t, hasTemplates)
@@ -287,7 +272,7 @@ func TestRegistryAddLogsCapabilities(t *testing.T) {
 	assert.Contains(t, output, "flags")
 	assert.Contains(t, output, "config")
 	assert.Contains(t, output, "commands")
-	assert.Contains(t, output, "seed")
+	assert.Contains(t, output, "migrations")
 	assert.Contains(t, output, "admin")
 }
 
@@ -344,7 +329,7 @@ func TestRegistryConfigureAllPassesConfig(t *testing.T) {
 func TestRegistryConfigureAllStopsOnError(t *testing.T) {
 	reg := NewRegistry()
 	errBoom := errors.New("boom")
-	app1 := &failingApp{name: "bad", failOn: "configure", err: errBoom}
+	app1 := &failingApp{name: "bad", err: errBoom}
 	app2 := &trackingApp{name: "never"}
 	reg.Add(app1)
 	reg.Add(app2)
@@ -446,7 +431,7 @@ func TestRegistryConfigureCallsConfigurableApps(t *testing.T) {
 func TestRegistryConfigureStopsOnError(t *testing.T) {
 	reg := NewRegistry()
 	errCfg := errors.New("config error")
-	reg.Add(&failingApp{name: "bad-cfg", failOn: "configure", err: errCfg})
+	reg.Add(&failingApp{name: "bad-cfg", err: errCfg})
 
 	err := reg.Configure(&AppConfig{Registry: reg}, nil)
 	require.ErrorIs(t, err, errCfg)
@@ -467,32 +452,51 @@ func TestRegistryAllCLICommands(t *testing.T) {
 	assert.Equal(t, "seed", cmds[1].Name)
 }
 
-func TestRegistrySeedCallsSeedableApps(t *testing.T) {
-	reg := NewRegistry()
-	app1 := &trackingApp{name: "s1"}
-	app2 := &trackingApp{name: "s2"}
-	reg.Add(app1)
-	reg.Add(app2)
-	reg.Add(&minimalApp{}) // Not Seedable, should be skipped.
+func TestRegistryRunMigrationsAppliesPendingOnce(t *testing.T) {
+	ctx := t.Context()
+	db := testDB(t)
 
-	err := reg.Seed(context.Background())
-	require.NoError(t, err)
-	assert.True(t, app1.seeded)
-	assert.True(t, app2.seeded)
+	var ran int
+	reg := NewRegistry()
+	reg.Add(&minimalApp{}) // no migrations — should be skipped
+	reg.Add(&trackingApp{
+		name: "m1",
+		migrations: []NamedMigration{{
+			Version: "001_initial",
+			Migration: migrate.Migration{
+				Forward: func(_ context.Context, _ *den.Tx) error {
+					ran++
+					return nil
+				},
+			},
+		}},
+	})
+
+	require.NoError(t, reg.RunMigrations(ctx, db))
+	assert.Equal(t, 1, ran)
+
+	require.NoError(t, reg.RunMigrations(ctx, db))
+	assert.Equal(t, 1, ran, "second invocation must be a no-op — _den_migrations records the version")
 }
 
-func TestRegistrySeedStopsOnError(t *testing.T) {
-	reg := NewRegistry()
-	errSeed := errors.New("seed error")
-	bad := &failingApp{name: "bad-seed", failOn: "seed", err: errSeed}
-	unreached := &failingApp{name: "unreached", failOn: "seed", err: errors.New("should not happen")}
-	reg.Add(bad)
-	reg.Add(unreached)
+func TestRegistryRunMigrationsReturnsForwardError(t *testing.T) {
+	ctx := t.Context()
+	db := testDB(t)
 
-	err := reg.Seed(context.Background())
-	require.ErrorIs(t, err, errSeed)
-	assert.Contains(t, err.Error(), "bad-seed")
-	assert.False(t, unreached.reached)
+	errBoom := errors.New("forward failed")
+	reg := NewRegistry()
+	reg.Add(&trackingApp{
+		name: "broken",
+		migrations: []NamedMigration{{
+			Version: "001_initial",
+			Migration: migrate.Migration{
+				Forward: func(_ context.Context, _ *den.Tx) error { return errBoom },
+			},
+		}},
+	})
+
+	err := reg.RunMigrations(ctx, db)
+	require.ErrorIs(t, err, errBoom)
 }
 
 func TestRegistryRegisterRoutes(t *testing.T) {

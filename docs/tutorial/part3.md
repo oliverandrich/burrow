@@ -385,7 +385,7 @@ go run .
 Open `http://localhost:8080` — you'll see the homepage. Click "View Polls" to see the (empty) polls list. There are no questions yet because we haven't added a way to create them.
 
 !!! tip "Seeding test data"
-    The polls app implements `Seedable` with a `Seed(ctx)` method that inserts a few example questions. Start the server with `--seed` once to populate the database: `go run . --seed`. The seed runs every time `--seed` is passed, so re-running it duplicates the questions — drop `data/app.db` between runs if you want a clean reset.
+    The polls app implements `HasMigrations` with a `001_initial_polls` migration that inserts a few example questions. The migration runs automatically on the first boot — `_den_migrations` records the version, so subsequent boots skip it. To re-seed, drop the database file (`rm data/app.db`) and boot again. The exact code lives at the bottom of `tutorial/step03/internal/polls/polls.go`; see [Database Migrations](../guide/migrations.md#seeding-initial-data) for the full pattern.
 
 ## What You've Learnt
 
