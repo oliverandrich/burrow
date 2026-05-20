@@ -10,7 +10,7 @@ import (
 
 // redirectTarget reads "redirect_after_login" from the session and validates it,
 // falling back to the configured login redirect.
-func (a *App) redirectTarget(r *http.Request) string {
+func (a *App[P]) redirectTarget(r *http.Request) string {
 	return SafeRedirectPath(session.GetString(r, "redirect_after_login"), a.config.LoginRedirect)
 }
 

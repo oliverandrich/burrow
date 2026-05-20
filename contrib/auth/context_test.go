@@ -10,35 +10,35 @@ import (
 )
 
 func TestCurrentUser(t *testing.T) {
-	user := &User{Username: "bob"}
+	user := &User[EmptyProfile]{Username: "bob"}
 	user.ID = "user-7"
 	ctx := WithUser(context.Background(), user)
 
-	got := CurrentUser(ctx)
+	got := CurrentUser[EmptyProfile](ctx)
 	require.NotNil(t, got)
 	assert.Equal(t, "user-7", got.ID)
 	assert.Equal(t, "bob", got.Username)
 }
 
 func TestCurrentUserEmpty(t *testing.T) {
-	assert.Nil(t, CurrentUser(context.Background()))
+	assert.Nil(t, CurrentUser[EmptyProfile](context.Background()))
 }
 
 func TestIsAuthenticated(t *testing.T) {
 	assert.False(t, IsAuthenticated(context.Background()))
 
-	u := &User{Username: "test"}
+	u := &User[EmptyProfile]{Username: "test"}
 	u.ID = "user-1"
 	ctx := WithUser(context.Background(), u)
 	assert.True(t, IsAuthenticated(ctx))
 }
 
 func TestMustCurrentUser(t *testing.T) {
-	user := &User{Username: "alice"}
+	user := &User[EmptyProfile]{Username: "alice"}
 	user.ID = "user-42"
 	ctx := WithUser(context.Background(), user)
 
-	got := MustCurrentUser(ctx)
+	got := MustCurrentUser[EmptyProfile](ctx)
 	require.NotNil(t, got)
 	assert.Equal(t, "user-42", got.ID)
 	assert.Equal(t, "alice", got.Username)
@@ -47,7 +47,7 @@ func TestMustCurrentUser(t *testing.T) {
 func TestMustCurrentUserPanicsWithoutUser(t *testing.T) {
 	assert.PanicsWithValue(t,
 		"auth: MustCurrentUser called without authenticated user — is RequireAuth middleware applied?",
-		func() { MustCurrentUser(context.Background()) },
+		func() { MustCurrentUser[EmptyProfile](context.Background()) },
 	)
 }
 

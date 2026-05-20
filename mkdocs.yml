@@ -109,9 +109,11 @@ nav:
           - Healthcheck: contrib/healthcheck.md
           - Messages: contrib/messages.md
           - Session: contrib/session.md
-      - Auth & Security:
+      - Auth:
           - Auth: contrib/auth.md
+          - Extending the User: contrib/auth-profile.md
           - Auth Mail: contrib/authmail.md
+      - Security:
           - Rate Limiting: contrib/ratelimit.md
           - Security Headers: contrib/secure.md
       - UI & Templates:

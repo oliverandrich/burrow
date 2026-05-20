@@ -6,13 +6,16 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
 
 **Depends on:** `session`, `csrf`, `staticfiles` (hard — server fails at boot if any is missing). Soft-integrates with `jobs` (queued email delivery; falls back to synchronous send) and ships English + German translations via `HasTranslations` for the framework's always-on i18n bundle.
 
+!!! note "Generic over a Profile type"
+    `auth.User`, `auth.App`, `auth.Repository`, `auth.CurrentUser`, and `auth.MustCurrentUser` are all generic over a `Profile` type parameter that holds app-specific extension fields. Examples below use `auth.EmptyProfile` for apps that don't extend the user. To add display name, bio, avatar, social links, or other custom fields, see [Extending the User](auth-profile.md).
+
 ## Setup
 
 ```go
 srv := burrow.NewServer(
     session.New(),
     csrf.New(),
-    auth.New(),
+    auth.New[auth.EmptyProfile](),
     htmx.New(),
     admin.New(),
     staticApp, // staticfiles.New(emptyFS) — returns (*App, error)
@@ -20,11 +23,11 @@ srv := burrow.NewServer(
 )
 ```
 
-`auth.New()` uses built-in defaults for the renderer and auth layout. Use options to override with custom implementations:
+The constructor uses built-in defaults for the renderer and auth layout. Use options to override with custom implementations:
 
 ```go
 // With custom renderer and layout.
-auth.New(
+auth.New[auth.EmptyProfile](
     auth.WithRenderer(myCustomRenderer),
     auth.WithAuthLayout("myapp/auth-layout"),
 )
@@ -40,12 +43,12 @@ The auth app ships HTML templates via `HasTemplates`. These templates use the gl
 
 Public auth pages (login, register, recovery, email verification) use a separate layout — a minimal page without the full app navigation. This avoids showing the navbar to unauthenticated users. Authenticated routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
-By default, `auth.New()` ships its own `auth/layout` template: a Tailwind-styled, navbar-less shell that links to the host's `app/app.min.css` (per the [Pattern B convention](../guide/tailwind.md)). Registering `auth.New()` works out of the box — no `WithAuthLayout` call required — as long as your host follows Pattern B.
+By default, `auth.New[auth.EmptyProfile]()` ships its own `auth/layout` template: a Tailwind-styled, navbar-less shell that links to `{{ staticURL "app/app.min.css" }}` for the host app's compiled stylesheet. Registering `auth.New[auth.EmptyProfile]()` works out of the box — no `WithAuthLayout` call required — as long as your host serves its CSS at that static path (the convention the [Tailwind guide](../guide/tailwind.md) describes for an in-tree app shell).
 
-Hosts that don't follow Pattern B (CSS lives at a different `staticURL`, custom shell markup, etc.) override the layout with `auth.WithAuthLayout("myapp/auth-layout")`:
+Hosts that serve CSS at a different path or want a different shell override the layout with `auth.WithAuthLayout("myapp/auth-layout")`:
 
 ```go
-auth.New(
+auth.New[auth.EmptyProfile](
     auth.WithAuthLayout("myapp/auth-layout"),
 )
 ```
@@ -78,16 +81,19 @@ See [Layouts & Rendering](../guide/layouts.md) for more details on how layouts w
 
 ### User
 
+`auth.User[P]` carries the auth-core fields. Apps that need display name, bio, avatar, or other extension fields put them on the `Profile P` type — see [Extending the User](auth-profile.md).
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `ID` | `int64` | Primary key |
+| `ID` | `string` | ULID, generated on insert |
 | `Username` | `string` | Unique username |
-| `Role` | `string` | `"user"` or `"admin"` |
 | `Email` | `*string` | Optional, unique |
+| `Role` | `string` | `"user"` or `"admin"` |
+| `IsActive` | `bool` | Whether the user can log in |
 | `EmailVerified` | `bool` | Whether email is verified |
-| `Name` | `string` | Display name |
-| `Bio` | `string` | User bio |
-| `Credentials` | `[]Credential` | WebAuthn credentials (eager loaded) |
+| `EmailVerifiedAt` | `*time.Time` | When email was verified |
+| `Profile` | `P` | App-defined extension struct (see [Extending the User](auth-profile.md)) |
+| `Credentials` | `[]Credential` | WebAuthn credentials (populated by separate query) |
 
 ### Credential
 
@@ -150,10 +156,16 @@ The auth app contributes these template functions:
 
 | Function | Example | Description |
 |----------|---------|-------------|
-| `currentUser` | `{{ if $u := currentUser }}{{ $u.Email }}{{ end }}` | Returns the authenticated `*auth.User` or `nil` |
+| `currentUser` | `{{ if $u := currentUser }}{{ $u.Profile.Name }}{{ end }}` | Returns the authenticated `*User[P]` (with `Profile` populated), or `nil` |
 | `isAuthenticated` | `{{ if isAuthenticated }}Sign out{{ else }}Sign in{{ end }}` | Returns `true` if a user is logged in |
 
-These are available in all templates and are commonly used in layout navigation.
+These are available in all templates and are commonly used in layout navigation. `currentUser` returns the typed user — when `auth.New[myapp.Profile]()` is registered, `currentUser` returns `*User[myapp.Profile]` and Profile fields are reachable directly. Recommended display-name pattern (fall back to `Username` when the Profile field is empty):
+
+```html
+<span>{{ if $u := currentUser }}{{ if $u.Profile.Name }}{{ $u.Profile.Name }}{{ else }}{{ $u.Username }}{{ end }}{{ end }}</span>
+```
+
+See [Extending the User](auth-profile.md) for the full Profile story.
 
 ## Middleware
 
@@ -165,7 +177,7 @@ Registered automatically — loads the user from the session on every request:
 
 ```go
 // In any handler, after auth middleware runs:
-user := auth.CurrentUser(r.Context())  // *auth.User or nil
+user := auth.CurrentUser[auth.EmptyProfile](r.Context())  // or nil if unauthenticated
 ```
 
 ### RequireAuth
@@ -197,13 +209,16 @@ r.Route("/admin", func(r chi.Router) {
 In Go code:
 
 ```go
-user := auth.CurrentUser(r.Context())    // *auth.User or nil
+user := auth.CurrentUser[auth.EmptyProfile](r.Context())    // or nil if unauthenticated
 if auth.IsAuthenticated(r.Context()) { ... }
 ```
 
+!!! warning "Match the Profile type parameter"
+    The type parameter on `CurrentUser` / `MustCurrentUser` **must match** the one passed to `auth.New[P]()`. If you registered `auth.New[myapp.Profile]()` but read with `auth.CurrentUser[auth.EmptyProfile]`, the type assertion misses silently and returns `nil` — no panic, no log. `IsAuthenticated` still reports `true` (it only checks for context-value presence). Stick to one Profile type throughout the app and substitute it wherever you see `[auth.EmptyProfile]` in the examples below.
+
 ### MustCurrentUser
 
-`MustCurrentUser` returns the authenticated `*User` from the context or panics if no user is present. Use it **only** in handlers that are protected by `RequireAuth` middleware, where the nil case is unreachable.
+`MustCurrentUser` returns the authenticated user from the context or panics if no user is present. Use it **only** in handlers that are protected by `RequireAuth` middleware, where the nil case is unreachable.
 
 This eliminates the repetitive nil-check boilerplate:
 
@@ -211,7 +226,7 @@ This eliminates the repetitive nil-check boilerplate:
 
 ```go
 func (a *App) List(w http.ResponseWriter, r *http.Request) error {
-    user := auth.CurrentUser(r.Context())
+    user := auth.CurrentUser[auth.EmptyProfile](r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }
@@ -223,7 +238,7 @@ func (a *App) List(w http.ResponseWriter, r *http.Request) error {
 
 ```go
 func (a *App) List(w http.ResponseWriter, r *http.Request) error {
-    user := auth.MustCurrentUser(r.Context())
+    user := auth.MustCurrentUser[auth.EmptyProfile](r.Context())
     // use user ...
 }
 ```
@@ -245,7 +260,7 @@ The auth app uses a `Renderer` interface to render all user-facing HTML pages. E
 
 ### Default Renderer
 
-By default, `auth.New()` uses a built-in renderer that calls `burrow.Render()` with the shipped `auth/*` templates. These templates use Tailwind v4 utility classes and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.). `auth.DefaultAuthLayout()` returns the empty string so auth pages inherit whatever the host set via `srv.SetLayout`; override the layout via `auth.WithAuthLayout("myapp/auth-layout")` and the renderer via `auth.WithRenderer(...)` when you need a different look.
+By default, `auth.New[auth.EmptyProfile]()` uses a built-in renderer that calls `burrow.Render()` with the shipped `auth/*` templates. These templates use Tailwind v4 utility classes and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.). `auth.DefaultAuthLayout()` returns `"auth/layout"` — the shipped, navbar-less shell described in [Auth Layout](#auth-layout) — so auth pages render inside that shell by default. To make auth pages inherit the host's `srv.SetLayout` instead, pass `auth.WithAuthLayout("")`. To swap in a custom shell, pass `auth.WithAuthLayout("myapp/auth-layout")` and override the renderer via `auth.WithRenderer(...)` when you need a different look.
 
 For most applications, the default renderer works out of the box — you only need to override it if you want to fundamentally change how auth pages are rendered.
 
@@ -254,7 +269,7 @@ For most applications, the default renderer works out of the box — you only ne
 To fully control the auth page markup, implement the `Renderer` interface and pass it via `auth.WithRenderer()`:
 
 ```go
-auth.New(
+auth.New[auth.EmptyProfile](
     auth.WithRenderer(myRenderer),
 )
 ```
@@ -331,7 +346,7 @@ When a `burrow.Queue` implementation is registered (e.g., [`contrib/jobs`](jobs.
 srv := burrow.NewServer(
     session.New(),
     jobs.New(),   // register a queue — auth will use it automatically
-    auth.New(
+    auth.New[auth.EmptyProfile](
         auth.WithEmailService(mailer),
     ),
     // ...

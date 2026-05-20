@@ -25,7 +25,7 @@ func noteFormOpts() []forms.Option[Note] {
 
 // List renders the user's notes as an HTML page with offset-based pagination.
 func (a *App) List(w http.ResponseWriter, r *http.Request) error {
-	user := auth.MustCurrentUser(r.Context())
+	user := auth.MustCurrentUser[Profile](r.Context())
 
 	pr := burrow.ParsePageRequest(r)
 	searchQuery := r.URL.Query().Get("q")
@@ -65,7 +65,7 @@ func (a *App) List(w http.ResponseWriter, r *http.Request) error {
 
 // New renders the empty create form into the modal dialog.
 func (a *App) New(w http.ResponseWriter, r *http.Request) error {
-	_ = auth.MustCurrentUser(r.Context())
+	_ = auth.MustCurrentUser[Profile](r.Context())
 
 	f := forms.New[Note](noteFormOpts()...)
 	data := map[string]any{
@@ -79,7 +79,7 @@ func (a *App) New(w http.ResponseWriter, r *http.Request) error {
 
 // Create adds a new note for the authenticated user.
 func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
-	user := auth.MustCurrentUser(r.Context())
+	user := auth.MustCurrentUser[Profile](r.Context())
 
 	f := forms.New[Note](noteFormOpts()...)
 	if !f.Bind(r) {
@@ -112,7 +112,7 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
 
 // Edit renders the edit form pre-filled with an existing note into the modal.
 func (a *App) Edit(w http.ResponseWriter, r *http.Request) error {
-	user := auth.MustCurrentUser(r.Context())
+	user := auth.MustCurrentUser[Profile](r.Context())
 	id := chi.URLParam(r, "id")
 
 	note, err := a.repo.GetByID(r.Context(), id, user.ID)
@@ -135,7 +135,7 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) error {
 
 // Update binds, validates, and updates an existing note.
 func (a *App) Update(w http.ResponseWriter, r *http.Request) error {
-	user := auth.MustCurrentUser(r.Context())
+	user := auth.MustCurrentUser[Profile](r.Context())
 	id := chi.URLParam(r, "id")
 
 	note, err := a.repo.GetByID(r.Context(), id, user.ID)
@@ -180,7 +180,7 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) error {
 
 // Delete removes a note owned by the authenticated user.
 func (a *App) Delete(w http.ResponseWriter, r *http.Request) error {
-	user := auth.MustCurrentUser(r.Context())
+	user := auth.MustCurrentUser[Profile](r.Context())
 	id := chi.URLParam(r, "id")
 
 	if err := a.repo.Delete(r.Context(), id, user.ID); err != nil {

@@ -17,12 +17,12 @@ type RecoveryLoginRequest struct {
 }
 
 // RecoveryPage renders the recovery login page.
-func (a *App) RecoveryPage(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) RecoveryPage(w http.ResponseWriter, r *http.Request) error {
 	return a.renderer.RecoveryPage(w, r, a.config.LoginRedirect)
 }
 
 // RecoveryLogin authenticates a user with a recovery code.
-func (a *App) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 	var req RecoveryLoginRequest
 	if err := burrow.Bind(r, &req); err != nil {
 		return errorJSON(w, http.StatusBadRequest, "invalid request")
@@ -73,8 +73,8 @@ func (a *App) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 }
 
 // RegenerateRecoveryCodes generates new recovery codes and invalidates old ones.
-func (a *App) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
-	user := MustCurrentUser(r.Context())
+func (a *App[P]) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
+	user := MustCurrentUser[P](r.Context())
 	codes, err := a.generateAndStoreRecoveryCodes(r.Context(), user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to regenerate codes", err)
@@ -94,7 +94,7 @@ func (a *App) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) er
 }
 
 // RecoveryCodesPage renders the dedicated recovery codes page.
-func (a *App) RecoveryCodesPage(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) RecoveryCodesPage(w http.ResponseWriter, r *http.Request) error {
 	values := session.GetValues(r)
 	codesRaw, ok := values["recovery_codes"]
 	if !ok {
@@ -112,7 +112,7 @@ func (a *App) RecoveryCodesPage(w http.ResponseWriter, r *http.Request) error {
 }
 
 // AcknowledgeRecoveryCodes clears recovery codes from the session and redirects.
-func (a *App) AcknowledgeRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) AcknowledgeRecoveryCodes(w http.ResponseWriter, r *http.Request) error {
 	redirect := a.redirectTarget(r)
 
 	if err := session.Delete(w, r, "recovery_codes"); err != nil {
@@ -126,7 +126,7 @@ func (a *App) AcknowledgeRecoveryCodes(w http.ResponseWriter, r *http.Request) e
 	return nil
 }
 
-func (a *App) generateAndStoreRecoveryCodes(ctx context.Context, userID string) ([]string, error) {
+func (a *App[P]) generateAndStoreRecoveryCodes(ctx context.Context, userID string) ([]string, error) {
 	if err := a.repo.DeleteRecoveryCodes(ctx, userID); err != nil {
 		return nil, err
 	}

@@ -13,10 +13,10 @@ import (
 
 func TestGetUserByIDWithCredentials(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "Alice")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	cred := &Credential{
@@ -36,7 +36,7 @@ func TestGetUserByIDWithCredentials(t *testing.T) {
 
 func TestGetUserByIDWithCredentialsNotFound(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 
 	_, err := repo.GetUserByIDWithCredentials(context.Background(), "nonexistent")
 	require.Error(t, err)
@@ -44,10 +44,10 @@ func TestGetUserByIDWithCredentialsNotFound(t *testing.T) {
 
 func TestDeleteExpiredEmailVerificationTokens(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	// Create an expired token.
@@ -74,10 +74,10 @@ func TestDeleteExpiredEmailVerificationTokens(t *testing.T) {
 
 func TestUpdateCredentialSignCount(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	cred := &Credential{
@@ -102,10 +102,10 @@ func TestUpdateCredentialSignCount(t *testing.T) {
 
 func TestDeleteUserByID(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "orphan", "")
+	user, err := repo.CreateUser(ctx, "orphan")
 	require.NoError(t, err)
 
 	err = repo.DeleteUser(ctx, user.ID)
@@ -117,14 +117,14 @@ func TestDeleteUserByID(t *testing.T) {
 
 func TestEmailExists(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	exists, err := repo.EmailExists(ctx, "nobody@example.com")
 	require.NoError(t, err)
 	assert.False(t, exists)
 
-	_, err = repo.CreateUserWithEmail(ctx, "alice@example.com", "Alice")
+	_, err = repo.CreateUserWithEmail(ctx, "alice@example.com")
 	require.NoError(t, err)
 
 	exists, err = repo.EmailExists(ctx, "alice@example.com")
@@ -134,10 +134,10 @@ func TestEmailExists(t *testing.T) {
 
 func TestGetUserByEmail(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	_, err := repo.CreateUserWithEmail(ctx, "test@example.com", "Test")
+	_, err := repo.CreateUserWithEmail(ctx, "test@example.com")
 	require.NoError(t, err)
 
 	user, err := repo.GetUserByEmail(ctx, "test@example.com")
@@ -147,7 +147,7 @@ func TestGetUserByEmail(t *testing.T) {
 
 func TestGetUserByEmailNotFound(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 
 	_, err := repo.GetUserByEmail(context.Background(), "nonexistent@example.com")
 	require.Error(t, err)
@@ -155,28 +155,27 @@ func TestGetUserByEmailNotFound(t *testing.T) {
 
 func TestUpdateUser(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "Alice")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
-	assert.Equal(t, "Alice", user.Name)
 
-	user.Name = "Alice Updated"
-	user.Bio = "A short bio"
+	emailVal := "alice@example.com"
+	user.Email = &emailVal
 	err = repo.UpdateUser(ctx, user)
 	require.NoError(t, err)
 	assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt should be set after update")
 
 	got, err := repo.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "Alice Updated", got.Name)
-	assert.Equal(t, "A short bio", got.Bio)
+	require.NotNil(t, got.Email)
+	assert.Equal(t, "alice@example.com", *got.Email)
 }
 
 func TestCreateInvite(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	invite := &Invite{
@@ -197,7 +196,7 @@ func TestCreateInvite(t *testing.T) {
 
 func TestDeleteInvite(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	invite := &Invite{
@@ -218,17 +217,17 @@ func TestDeleteInvite(t *testing.T) {
 
 func TestListUsersPaged(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	// Create 5 users with different roles.
 	for i := range 3 {
-		u, err := repo.CreateUser(ctx, fmt.Sprintf("user%d", i), fmt.Sprintf("User %d", i))
+		u, err := repo.CreateUser(ctx, fmt.Sprintf("user%d", i))
 		require.NoError(t, err)
 		require.NoError(t, repo.SetUserRole(ctx, u.ID, RoleUser))
 	}
 	for i := range 2 {
-		u, err := repo.CreateUser(ctx, fmt.Sprintf("admin%d", i), fmt.Sprintf("Admin %d", i))
+		u, err := repo.CreateUser(ctx, fmt.Sprintf("admin%d", i))
 		require.NoError(t, err)
 		require.NoError(t, repo.SetUserRole(ctx, u.ID, RoleAdmin))
 	}
@@ -280,19 +279,19 @@ func TestListUsersPaged(t *testing.T) {
 
 func TestSearchUsers(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	alice, err := repo.CreateUser(ctx, "alice", "Alice Wonderland")
+	alice, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 	email := "alice@example.com"
 	alice.Email = &email
 	require.NoError(t, repo.UpdateUser(ctx, alice))
 
-	_, err = repo.CreateUser(ctx, "bob", "Bob Builder")
+	_, err = repo.CreateUser(ctx, "bob")
 	require.NoError(t, err)
 
-	_, err = repo.CreateUser(ctx, "charlie", "Charlie Brown")
+	_, err = repo.CreateUser(ctx, "charlie")
 	require.NoError(t, err)
 
 	pr := burrow.PageRequest{Limit: 10, Page: 1}
@@ -303,13 +302,6 @@ func TestSearchUsers(t *testing.T) {
 		assert.Len(t, users, 1)
 		assert.Equal(t, "alice", users[0].Username)
 		assert.Equal(t, 1, page.TotalCount)
-	})
-
-	t.Run("search by name", func(t *testing.T) {
-		users, _, err := repo.SearchUsers(ctx, "Brown", pr, "")
-		require.NoError(t, err)
-		assert.Len(t, users, 1)
-		assert.Equal(t, "charlie", users[0].Username)
 	})
 
 	t.Run("search by email", func(t *testing.T) {
@@ -340,7 +332,7 @@ func TestSearchUsers(t *testing.T) {
 
 func TestGetInviteByID(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	invite := &Invite{
@@ -362,7 +354,7 @@ func TestGetInviteByID(t *testing.T) {
 
 func TestListInvitesPaged(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
 	for i := range 5 {
@@ -395,10 +387,10 @@ func TestListInvitesPaged(t *testing.T) {
 
 func TestDeleteEmailVerificationToken(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewRepository(db)
+	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "alice", "")
+	user, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
 
 	err = repo.CreateEmailVerificationToken(ctx, user.ID, "token-del-hash", time.Now().Add(time.Hour))

@@ -56,8 +56,8 @@ func main() {
 		jobs.New(),
 		app.New(),
 		messages.New(),
-		auth.New(
-			auth.WithLogoComponent(app.Logo()),
+		auth.New[notes.Profile](
+			auth.WithLogoComponent[notes.Profile](app.Logo()),
 		),
 		htmx.New(),
 		humanize.New(),

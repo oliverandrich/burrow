@@ -31,9 +31,9 @@
             <tr>
                 <td class="px-4 py-2">{{ .Title }}</td>
                 <td class="px-4 py-2">
-                    {{- $username := index $.Usernames .UserID -}}
-                    {{- if $username -}}
-                    <a href="/admin/users/{{ .UserID }}" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ $username }}</a>
+                    {{- $name := index $.DisplayNames .UserID -}}
+                    {{- if $name -}}
+                    <a href="/admin/users/{{ .UserID }}" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ $name }}</a>
                     {{- else -}}
                     {{ .UserID }}
                     {{- end }}

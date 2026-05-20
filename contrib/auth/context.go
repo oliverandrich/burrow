@@ -10,12 +10,18 @@ import (
 	"html/template"
 )
 
-// ctxKeyUser is the context key for the authenticated user.
+// ctxKeyUser is the context key for the authenticated user. The value
+// stored is a *User[P] boxed as any — type-erased so middleware can stay
+// non-generic. [CurrentUser] re-types it via a type parameter at the
+// access site.
 type ctxKeyUser struct{}
 
-// CurrentUser retrieves the authenticated user from the context.
-func CurrentUser(ctx context.Context) *User {
-	if user, ok := ctx.Value(ctxKeyUser{}).(*User); ok {
+// CurrentUser retrieves the authenticated user from the context. The
+// Profile type parameter must match the type registered with [auth.New].
+// Returns nil if no user is on the context, or if the type parameter
+// disagrees with what middleware stored.
+func CurrentUser[P any](ctx context.Context) *User[P] {
+	if user, ok := ctx.Value(ctxKeyUser{}).(*User[P]); ok {
 		return user
 	}
 	return nil
@@ -23,28 +29,25 @@ func CurrentUser(ctx context.Context) *User {
 
 // MustCurrentUser returns the authenticated user from the context.
 // It panics if no user is present — only use in handlers protected by [RequireAuth] middleware.
-func MustCurrentUser(ctx context.Context) *User {
-	user := CurrentUser(ctx)
+func MustCurrentUser[P any](ctx context.Context) *User[P] {
+	user := CurrentUser[P](ctx)
 	if user == nil {
 		panic("auth: MustCurrentUser called without authenticated user — is RequireAuth middleware applied?")
 	}
 	return user
 }
 
-// UserFromContext is a deprecated alias for [CurrentUser].
-//
-//go:fix inline
-func UserFromContext(ctx context.Context) *User {
-	return CurrentUser(ctx)
-}
-
-// IsAuthenticated returns true if a user is present in the context.
+// IsAuthenticated returns true if a user is present in the context. This
+// stays non-generic by checking the context value's presence without
+// caring about the Profile type.
 func IsAuthenticated(ctx context.Context) bool {
-	return CurrentUser(ctx) != nil
+	return ctx.Value(ctxKeyUser{}) != nil
 }
 
-// WithUser returns a new context with the user set.
-func WithUser(ctx context.Context, user *User) context.Context {
+// WithUser returns a new context with the user set. The user argument is
+// typed as any so middleware and other type-erased layers don't need to
+// know the Profile type — only the [CurrentUser] read site does.
+func WithUser(ctx context.Context, user any) context.Context {
 	return context.WithValue(ctx, ctxKeyUser{}, user)
 }
 

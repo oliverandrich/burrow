@@ -97,7 +97,7 @@ registry := burrow.NewRegistry()
 registry.Add(session.New())
 registry.Add(burrowtest.StubApp("csrf"))
 registry.Add(burrowtest.StubApp("staticfiles"))
-registry.Add(auth.New())
+registry.Add(auth.New[auth.EmptyProfile]())
 ```
 
 ## Testing Handlers
@@ -203,7 +203,7 @@ func TestDeleteNote(t *testing.T) {
 Use `auth.WithUser()` to inject an authenticated user into the request context:
 
 ```go
-func requestWithUser(req *http.Request, user *auth.User) *http.Request {
+func requestWithUser(req *http.Request, user *auth.User[auth.EmptyProfile]) *http.Request {
     ctx := auth.WithUser(req.Context(), user)
     return req.WithContext(ctx)
 }
@@ -213,7 +213,7 @@ Use `session.Inject()` when your handler reads or writes session data:
 
 ```go
 req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-req = requestWithUser(req, &auth.User{ID: "01J000000000000000000042", Role: auth.RoleUser})
+req = requestWithUser(req, &auth.User[auth.EmptyProfile]{ID: "01J000000000000000000042", Role: auth.RoleUser})
 req = session.Inject(req, map[string]any{})
 ```
 
@@ -241,7 +241,7 @@ func TestListNotes(t *testing.T) {
     setup := func(t *testing.T) *http.Request {
         t.Helper()
         req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-        req = requestWithUser(req, &auth.User{ID: "01J000000000000000000042"})
+        req = requestWithUser(req, &auth.User[auth.EmptyProfile]{ID: "01J000000000000000000042"})
         req = injectTemplateExecutor(t, req)
         return req
     }
@@ -333,7 +333,7 @@ func TestRequireAuth(t *testing.T) {
         // Inject user before the middleware.
         r.Use(func(next http.Handler) http.Handler {
             return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                ctx := auth.WithUser(r.Context(), &auth.User{ID: "01J000000000000000000001"})
+                ctx := auth.WithUser(r.Context(), &auth.User[auth.EmptyProfile]{ID: "01J000000000000000000001"})
                 next.ServeHTTP(w, r.WithContext(ctx))
             })
         })
@@ -369,7 +369,7 @@ func TestRequireAdmin(t *testing.T) {
             r := chi.NewRouter()
             r.Use(func(next http.Handler) http.Handler {
                 return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                    ctx := auth.WithUser(r.Context(), &auth.User{ID: "01J000000000000000000001", Role: tt.role})
+                    ctx := auth.WithUser(r.Context(), &auth.User[auth.EmptyProfile]{ID: "01J000000000000000000001", Role: tt.role})
                     ctx = burrowtest.ErrorExecContext(ctx)
                     next.ServeHTTP(w, r.WithContext(ctx))
                 })
@@ -430,7 +430,7 @@ func TestCreateNoteIntegration(t *testing.T) {
     r.Use(session.New().Middleware()...)
     r.Use(func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            ctx := auth.WithUser(r.Context(), &auth.User{ID: "01J000000000000000000001"})
+            ctx := auth.WithUser(r.Context(), &auth.User[auth.EmptyProfile]{ID: "01J000000000000000000001"})
             next.ServeHTTP(w, r.WithContext(ctx))
         })
     })
@@ -562,7 +562,7 @@ Inject a user into the request context with `auth.WithUser`:
 
 ```go
 req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/notes", nil)
-ctx := auth.WithUser(req.Context(), &auth.User{ID: "01J000000000000000000042", Role: auth.RoleUser})
+ctx := auth.WithUser(req.Context(), &auth.User[auth.EmptyProfile]{ID: "01J000000000000000000042", Role: auth.RoleUser})
 req = req.WithContext(ctx)
 ```
 

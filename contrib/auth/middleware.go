@@ -44,12 +44,18 @@ func redirectTarget(r *http.Request) string {
 	return parsed.RequestURI()
 }
 
+// adminChecker is the minimal interface implemented by every *User[P] —
+// used here so middleware stays non-generic.
+type adminChecker interface {
+	IsAdmin() bool
+}
+
 // requireAdmin returns middleware that enforces admin access.
 func requireAdmin() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user := CurrentUser(r.Context())
-			if user == nil {
+			user, ok := r.Context().Value(ctxKeyUser{}).(adminChecker)
+			if !ok {
 				if target := redirectTarget(r); target != "" {
 					_ = session.Set(w, r, "redirect_after_login", target)
 				}
@@ -86,15 +92,17 @@ func RequireAuth() func(http.Handler) http.Handler { return requireAuth() }
 // Authenticated non-admin users see a 403 error page.
 func RequireAdmin() func(http.Handler) http.Handler { return requireAdmin() }
 
-// Compile-time check: auth.App implements burrow.AdminAuth.
-var _ burrow.AdminAuth = (*App)(nil)
+// Compile-time check: auth.App[EmptyProfile] implements burrow.AdminAuth.
+// The check holds for any P because the RequireAuth/RequireAdmin methods
+// don't depend on the type parameter.
+var _ burrow.AdminAuth = (*App[EmptyProfile])(nil)
 
 // RequireAuth satisfies the burrow.AdminAuth interface so the admin app
 // can discover auth middleware from the registry without importing this package.
-func (a *App) RequireAuth() func(http.Handler) http.Handler { return requireAuth() }
+func (a *App[P]) RequireAuth() func(http.Handler) http.Handler { return requireAuth() }
 
 // RequireAdmin satisfies the burrow.AdminAuth interface.
-func (a *App) RequireAdmin() func(http.Handler) http.Handler { return requireAdmin() }
+func (a *App[P]) RequireAdmin() func(http.Handler) http.Handler { return requireAdmin() }
 
 // SafeRedirectPath validates a redirect path, falling back to defaultPath.
 func SafeRedirectPath(next, defaultPath string) string {

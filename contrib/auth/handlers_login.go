@@ -15,12 +15,12 @@ import (
 )
 
 // LoginPage renders the login page.
-func (a *App) LoginPage(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) LoginPage(w http.ResponseWriter, r *http.Request) error {
 	return a.renderer.LoginPage(w, r, a.config.LoginRedirect)
 }
 
 // LoginBegin starts the WebAuthn discoverable login process.
-func (a *App) LoginBegin(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) LoginBegin(w http.ResponseWriter, r *http.Request) error {
 	options, sessionData, err := a.webauthn.WebAuthn().BeginDiscoverableLogin()
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to begin login", err)
@@ -36,7 +36,7 @@ func (a *App) LoginBegin(w http.ResponseWriter, r *http.Request) error {
 }
 
 // LoginFinish completes the WebAuthn discoverable login.
-func (a *App) LoginFinish(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 	sessionID := r.URL.Query().Get("session_id")
 	if sessionID == "" {
 		return errorJSON(w, http.StatusBadRequest, "session_id is required")
@@ -47,7 +47,7 @@ func (a *App) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 		return errorJSON(w, http.StatusBadRequest, "login session expired")
 	}
 
-	var foundUser *User
+	var foundUser *User[P]
 	credential, finishErr := a.webauthn.WebAuthn().FinishDiscoverableLogin(
 		func(rawID, userHandle []byte) (gowebauthn.User, error) {
 			userID := string(userHandle)
@@ -103,7 +103,7 @@ func (a *App) LoginFinish(w http.ResponseWriter, r *http.Request) error {
 }
 
 // Logout clears the session cookie.
-func (a *App) Logout(w http.ResponseWriter, r *http.Request) error {
+func (a *App[P]) Logout(w http.ResponseWriter, r *http.Request) error {
 	session.Clear(w, r)
 	htmx.SmartRedirect(w, r, a.config.LogoutRedirect)
 	return nil

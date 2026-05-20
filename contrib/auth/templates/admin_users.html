@@ -36,7 +36,6 @@
         <thead class="bg-gray-50 dark:bg-gray-800/40">
             <tr>
                 <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Username" }}</th>
-                <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Name" }}</th>
                 <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Email" }}</th>
                 <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Role" }}</th>
                 <th scope="col" class="px-4 py-2 text-left font-medium">{{ t "Active" }}</th>
@@ -47,7 +46,6 @@
             {{- range .Users }}
             <tr>
                 <td class="px-4 py-2"><a href="/admin/users/{{ .ID }}" class="text-emerald-700 hover:underline dark:text-emerald-400">{{ .Username }}</a></td>
-                <td class="px-4 py-2">{{ .Name }}</td>
                 <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ deref .Email }}</td>
                 <td class="px-4 py-2">
                     {{- if eq .Role "admin" -}}

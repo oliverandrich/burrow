@@ -97,12 +97,12 @@ If `SetLayout` is not called, content renders unwrapped (no shell).
 
 ## Setting the Auth Layout
 
-Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. By default, `auth.New()` uses `DefaultAuthLayout()` which returns the empty string, meaning auth pages inherit the layout set via `srv.SetLayout`. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
+Public auth pages (login, register, recovery) typically shouldn't show the full app navbar. By default, `auth.New[auth.EmptyProfile]()` uses `DefaultAuthLayout()` which returns the empty string, meaning auth pages inherit the layout set via `srv.SetLayout`. Authenticated auth routes (`/auth/credentials`, `/auth/recovery-codes`) continue to use the global app layout.
 
 To override the auth layout with a custom template name, use `auth.WithAuthLayout()`:
 
 ```go
-auth.New(
+auth.New[auth.EmptyProfile](
     auth.WithAuthLayout("myapp/auth-layout"),
 )
 ```

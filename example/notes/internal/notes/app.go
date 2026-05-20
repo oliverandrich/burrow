@@ -25,7 +25,7 @@ var noteTemplateFS embed.FS
 // App implements the notes contrib app.
 type App struct {
 	repo     *Repository
-	userRepo *auth.Repository
+	userRepo *auth.Repository[Profile]
 }
 
 // New creates a new notes app.
@@ -39,7 +39,7 @@ func (a *App) Dependencies() []string { return []string{"auth"} }
 
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.repo = NewRepository(cfg.DB)
-	a.userRepo = auth.NewRepository(cfg.DB)
+	a.userRepo = auth.NewRepository[Profile](cfg.DB)
 	return nil
 }
 
@@ -116,9 +116,10 @@ func (a *App) adminListNotes(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list notes")
 	}
 
-	// Resolve usernames for the notes' user IDs in one batch lookup so the
-	// admin table can show "alice" instead of "01KQJ6A23JTN2R0WWK5M11G3WG".
-	usernames := make(map[string]string)
+	// Resolve a display name (Profile.Name with Username fallback) for each
+	// note's author so the admin table can show "Alice" instead of
+	// "01KQJ6A23JTN2R0WWK5M11G3WG".
+	displayNames := make(map[string]string)
 	if a.userRepo != nil {
 		userIDs := make(map[string]struct{}, len(notes))
 		for _, n := range notes {
@@ -128,21 +129,21 @@ func (a *App) adminListNotes(w http.ResponseWriter, r *http.Request) error {
 			u, err := a.userRepo.GetUserByID(r.Context(), id)
 			switch {
 			case err == nil:
-				usernames[id] = u.Username
+				displayNames[id] = userDisplayName(u)
 			case errors.Is(err, auth.ErrNotFound):
 				// User was deleted — fall through to ID-only display.
 			default:
-				slog.Warn("notes admin: username lookup failed", "user_id", id, "error", err)
+				slog.Warn("notes admin: display-name lookup failed", "user_id", id, "error", err)
 			}
 		}
 	}
 
 	return burrow.Render(w, r, http.StatusOK, "notes/admin_list", map[string]any{
-		"Notes":      notes,
-		"Page":       page,
-		"SearchTerm": searchTerm,
-		"Usernames":  usernames,
-		"RawQuery":   r.URL.RawQuery,
+		"Notes":        notes,
+		"Page":         page,
+		"SearchTerm":   searchTerm,
+		"DisplayNames": displayNames,
+		"RawQuery":     r.URL.RawQuery,
 	})
 }
 

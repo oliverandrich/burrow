@@ -29,10 +29,10 @@ func ExampleNormalizeCode() {
 }
 
 func ExampleCurrentUser() {
-	user := &auth.User{Username: "alice", Role: "admin"}
+	user := &auth.User[auth.EmptyProfile]{Username: "alice", Role: "admin"}
 	ctx := auth.WithUser(context.Background(), user)
 
-	u := auth.CurrentUser(ctx)
+	u := auth.CurrentUser[auth.EmptyProfile](ctx)
 	fmt.Println(u.Username, u.Role)
 	// Output:
 	// alice admin
@@ -43,7 +43,7 @@ func ExampleIsAuthenticated() {
 	fmt.Println(auth.IsAuthenticated(context.Background()))
 
 	// With a user in context — authenticated.
-	ctx := auth.WithUser(context.Background(), &auth.User{Username: "bob"})
+	ctx := auth.WithUser(context.Background(), &auth.User[auth.EmptyProfile]{Username: "bob"})
 	fmt.Println(auth.IsAuthenticated(ctx))
 	// Output:
 	// false

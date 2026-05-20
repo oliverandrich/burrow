@@ -5,12 +5,14 @@ import (
 
 	"github.com/go-webauthn/webauthn/protocol"
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
+	"github.com/oliverandrich/burrow/burrowtest"
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWebAuthnCredentials(t *testing.T) {
-	user := &User{
+	user := &User[EmptyProfile]{
 		Username: "alice",
 		Credentials: []Credential{
 			{
@@ -44,7 +46,7 @@ func TestWebAuthnCredentials(t *testing.T) {
 }
 
 func TestWebAuthnCredentialsEmpty(t *testing.T) {
-	user := &User{}
+	user := &User[EmptyProfile]{}
 	creds := user.WebAuthnCredentials()
 	assert.Empty(t, creds)
 }
@@ -114,20 +116,8 @@ func TestNewCredentialFromWebAuthn(t *testing.T) {
 }
 
 func TestUserString(t *testing.T) {
-	t.Run("with name", func(t *testing.T) {
-		u := User{Name: "Alice Smith", Username: "alice"}
-		assert.Equal(t, "Alice Smith", u.String())
-	})
-
-	t.Run("without name falls back to username", func(t *testing.T) {
-		u := User{Username: "bob"}
-		assert.Equal(t, "bob", u.String())
-	})
-
-	t.Run("empty name falls back to username", func(t *testing.T) {
-		u := User{Name: "", Username: "charlie"}
-		assert.Equal(t, "charlie", u.String())
-	})
+	u := User[EmptyProfile]{Username: "bob"}
+	assert.Equal(t, "bob", u.String(), "String returns Username; display-name extensions live in Profile")
 }
 
 func TestTransportsFromWebAuthn(t *testing.T) {
@@ -136,4 +126,35 @@ func TestTransportsFromWebAuthn(t *testing.T) {
 
 	result = TransportsFromWebAuthn(nil)
 	assert.Empty(t, result)
+}
+
+// indexedProfile is a fixture for TestProfileFieldsRespectDenTags. The
+// den:"unique" tag on Slug must flow through Den's nested-struct schema
+// walk and produce a real unique index on json_extract(data,
+// '$.profile.slug').
+type indexedProfile struct {
+	Slug string `json:"slug" den:"unique"`
+}
+
+func TestProfileFieldsRespectDenTags(t *testing.T) {
+	ctx := t.Context()
+	db := burrowtest.DB(t)
+	require.NoError(t, den.Register(ctx, db, &User[indexedProfile]{}))
+
+	first := &User[indexedProfile]{
+		Username: "alice",
+		Role:     RoleUser,
+		IsActive: true,
+		Profile:  indexedProfile{Slug: "shared"},
+	}
+	require.NoError(t, den.Save(ctx, db, first))
+
+	second := &User[indexedProfile]{
+		Username: "bob",
+		Role:     RoleUser,
+		IsActive: true,
+		Profile:  indexedProfile{Slug: "shared"},
+	}
+	err := den.Save(ctx, db, second)
+	require.Error(t, err, "duplicate Profile.Slug must violate the nested unique index")
 }

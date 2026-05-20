@@ -14,78 +14,7 @@
 <form method="post" action="/admin/users/{{ .User.ID }}" class="space-y-3">
     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
     {{- range .Fields }}
-    {{- if eq .Type "hidden" }}
-    <input type="hidden" name="{{ .FormName }}" value="{{ printf "%v" .Value }}">
-    {{- else if eq .Type "textarea" }}
-    <label for="{{ .FormName }}" class="block">
-        <span class="mb-1 block text-sm font-medium">{{ .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}</span>
-        <textarea
-            id="{{ .FormName }}"
-            name="{{ .FormName }}"
-            rows="4"
-            {{ if .Required }}required{{ end }}
-            {{ if .ReadOnly }}disabled{{ end }}
-            {{ if .Errors }}aria-invalid="true"{{ end }}
-            class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }} {{ if .ReadOnly }}bg-gray-50 dark:bg-gray-800{{ end }}"
-        >{{ printf "%v" .Value }}</textarea>
-    </label>
-    {{- range .Errors }}
-    <small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
-    {{- end }}
-    {{- else if eq .Type "select" }}
-    {{- $currentVal := printf "%v" .Value }}
-    <label for="{{ .FormName }}" class="block">
-        <span class="mb-1 block text-sm font-medium">{{ .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}</span>
-        <select
-            id="{{ .FormName }}"
-            name="{{ .FormName }}"
-            {{ if .Required }}required{{ end }}
-            {{ if .ReadOnly }}disabled{{ end }}
-            {{ if .Errors }}aria-invalid="true"{{ end }}
-            class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }} {{ if .ReadOnly }}bg-gray-50 dark:bg-gray-800{{ end }}"
-        >
-            {{- range .Choices }}
-            <option value="{{ .Value }}"{{ if eq $currentVal .Value }} selected{{ end }}>{{ .Label }}</option>
-            {{- end }}
-        </select>
-    </label>
-    {{- range .Errors }}
-    <small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
-    {{- end }}
-    {{- else if eq .Type "checkbox" }}
-    <label class="inline-flex items-center gap-2 text-sm">
-        <input
-            type="checkbox"
-            id="{{ .FormName }}"
-            name="{{ .FormName }}"
-            {{ if .Value }}checked{{ end }}
-            {{ if .ReadOnly }}disabled{{ end }}
-            {{ if .Errors }}aria-invalid="true"{{ end }}
-            class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-        >
-        {{ .Label }}
-    </label>
-    {{- range .Errors }}
-    <small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
-    {{- end }}
-    {{- else }}
-    <label for="{{ .FormName }}" class="block">
-        <span class="mb-1 block text-sm font-medium">{{ .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}</span>
-        <input
-            type="{{ if eq .Type "email" }}email{{ else if eq .Type "number" }}number{{ else }}text{{ end }}"
-            id="{{ .FormName }}"
-            name="{{ .FormName }}"
-            value="{{ printf "%v" .Value }}"
-            {{ if .Required }}required{{ end }}
-            {{ if .ReadOnly }}disabled{{ end }}
-            {{ if .Errors }}aria-invalid="true"{{ end }}
-            class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }} {{ if .ReadOnly }}bg-gray-50 dark:bg-gray-800{{ end }}"
-        >
-    </label>
-    {{- range .Errors }}
-    <small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
-    {{- end }}
-    {{- end }}
+    {{- template "auth/admin_user_field" . }}
     {{- end }}
     {{- if .NonFieldErrors }}
     <div class="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200" role="alert">
@@ -109,4 +38,94 @@
         </a>
     </div>
 </form>
+{{- end }}
+
+{{ define "auth/admin_user_field" -}}
+{{- if eq .Type "hidden" }}
+<input type="hidden" name="{{ .FormName }}" value="{{ printf "%v" .Value }}">
+{{- else if eq .Type "subform" }}
+<fieldset class="rounded-md border border-gray-200 p-4 dark:border-gray-800">
+    <legend class="px-2 text-sm font-medium">{{ .Label }}</legend>
+    <div class="space-y-3">
+        {{- range .SubFields }}
+        {{- template "auth/admin_user_field" . }}
+        {{- end }}
+    </div>
+</fieldset>
+{{- else if eq .Type "textarea" }}
+<label for="{{ .FormName }}" class="block">
+    <span class="mb-1 block text-sm font-medium">{{ .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}</span>
+    <textarea
+        id="{{ .FormName }}"
+        name="{{ .FormName }}"
+        rows="4"
+        {{ if .Required }}required{{ end }}
+        {{ if .ReadOnly }}disabled{{ end }}
+        {{ if .Errors }}aria-invalid="true"{{ end }}
+        class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }} {{ if .ReadOnly }}bg-gray-50 dark:bg-gray-800{{ end }}"
+    >{{ printf "%v" .Value }}</textarea>
+</label>
+{{- range .Errors }}
+<small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
+{{- end }}
+{{- else if eq .Type "select" }}
+{{- $currentVal := printf "%v" .Value }}
+<label for="{{ .FormName }}" class="block">
+    <span class="mb-1 block text-sm font-medium">{{ .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}</span>
+    <div class="grid grid-cols-1">
+        <select
+            id="{{ .FormName }}"
+            name="{{ .FormName }}"
+            {{ if .Required }}required{{ end }}
+            {{ if .ReadOnly }}disabled{{ end }}
+            {{ if .Errors }}aria-invalid="true"{{ end }}
+            class="col-start-1 row-start-1 w-full appearance-none rounded-md border bg-white px-3 py-1.5 pr-8 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 dark:*:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }} {{ if .ReadOnly }}bg-gray-50 dark:bg-gray-800{{ end }}"
+        >
+            {{- range .Choices }}
+            <option value="{{ .Value }}"{{ if eq $currentVal .Value }} selected{{ end }}>{{ .Label }}</option>
+            {{- end }}
+        </select>
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"
+            class="pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-gray-500 dark:text-gray-400">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" />
+        </svg>
+    </div>
+</label>
+{{- range .Errors }}
+<small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
+{{- end }}
+{{- else if eq .Type "checkbox" }}
+<label class="inline-flex items-center gap-2 text-sm">
+    <input
+        type="checkbox"
+        id="{{ .FormName }}"
+        name="{{ .FormName }}"
+        {{ if .Value }}checked{{ end }}
+        {{ if .ReadOnly }}disabled{{ end }}
+        {{ if .Errors }}aria-invalid="true"{{ end }}
+        class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+    >
+    {{ .Label }}
+</label>
+{{- range .Errors }}
+<small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
+{{- end }}
+{{- else }}
+<label for="{{ .FormName }}" class="block">
+    <span class="mb-1 block text-sm font-medium">{{ .Label }}{{ if .Required }} <span class="text-red-600 dark:text-red-400">*</span>{{ end }}</span>
+    <input
+        type="{{ if eq .Type "email" }}email{{ else if eq .Type "number" }}number{{ else }}text{{ end }}"
+        id="{{ .FormName }}"
+        name="{{ .FormName }}"
+        value="{{ printf "%v" .Value }}"
+        {{ if .Required }}required{{ end }}
+        {{ if .ReadOnly }}disabled{{ end }}
+        {{ if .Errors }}aria-invalid="true"{{ end }}
+        class="w-full rounded-md border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 dark:bg-gray-900 {{ if .Errors }}border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-700{{ else }}border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700{{ end }} {{ if .ReadOnly }}bg-gray-50 dark:bg-gray-800{{ end }}"
+    >
+</label>
+{{- range .Errors }}
+<small class="mt-1 block text-xs text-red-600 dark:text-red-400">{{ . }}</small>
+{{- end }}
+{{- end }}
 {{- end }}

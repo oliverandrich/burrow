@@ -36,8 +36,8 @@ var (
 )
 
 // testUser returns an auth.User with a fixed test ID for use in test contexts.
-func testUser() *auth.User {
-	u := &auth.User{Username: "testuser"}
+func testUser() *auth.User[Profile] {
+	u := &auth.User[Profile]{Username: "testuser"}
 	u.ID = "user-42"
 	return u
 }
@@ -209,37 +209,49 @@ func testTemplateExecutor(t *testing.T) burrow.TemplateExecutor {
 	app := New()
 	// Stubs for request-scoped functions and pagination helpers.
 	fm := template.FuncMap{
-		"t":         func(key string) string { return key },
-		"csrfToken": func() string { return "test-token" },
-		"csrfField": func() template.HTML { return `<input type="hidden" name="csrf" value="test-token">` },
-		"staticURL": func(name string) string { return "/static/" + name },
-		"add":       func(a, b int) int { return a + b },
-		"sub":       func(a, b int) int { return a - b },
+		"t":           func(key string) string { return key },
+		"csrfToken":   func() string { return "test-token" },
+		"csrfField":   func() template.HTML { return `<input type="hidden" name="csrf" value="test-token">` },
+		"staticURL":   func(name string) string { return "/static/" + name },
+		"add":         func(a, b int) int { return a + b },
+		"sub":         func(a, b int) int { return a - b },
+		"naturaltime": func(_ any) string { return "moments ago" },
+		"dict": func(values ...any) map[string]any {
+			d := make(map[string]any, len(values)/2)
+			for i := 0; i+1 < len(values); i += 2 {
+				k, _ := values[i].(string)
+				d[k] = values[i+1]
+			}
+			return d
+		},
 	}
 
 	tmpl := template.New("").Funcs(fm)
 
-	// Parse notes templates.
+	// Parse all notes templates (admin_list.html at root + notes/* subdir).
 	fsys := app.TemplateFS()
-	entries, err := fs.ReadDir(fsys, "notes")
-	require.NoError(t, err)
-	for _, e := range entries {
-		data, readErr := fs.ReadFile(fsys, "notes/"+e.Name())
+	require.NoError(t, fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil || d.IsDir() || !strings.HasSuffix(path, ".html") {
+			return walkErr
+		}
+		data, readErr := fs.ReadFile(fsys, path)
 		require.NoError(t, readErr)
 		_, parseErr := tmpl.Parse(string(data))
 		require.NoError(t, parseErr)
-	}
+		return nil
+	}))
 
 	// Minimal stubs for shell-app templates the notes templates depend on.
 	// The real definitions live in example/notes/internal/app/templates/app/.
-	_, err = tmpl.Parse(`
+	_, parseErr := tmpl.Parse(`
 {{ define "app/alerts_oob" -}}<div id="alerts" hx-swap-oob="true">{{ range .Messages -}}<div class="alert alert-{{ .Level }}">{{ .Text }}</div>{{- end }}</div>{{- end }}
 {{ define "app/icon_trash" -}}<svg>trash</svg>{{- end }}
 {{ define "app/icon_plus_lg" -}}<svg>plus</svg>{{- end }}
 {{ define "app/icon_pencil" -}}<svg>pencil</svg>{{- end }}
 {{ define "app/icon_journal_text" -}}<svg>journal</svg>{{- end }}
+{{ define "admin/pagination" -}}<nav class="pagination"></nav>{{- end }}
 `)
-	require.NoError(t, err)
+	require.NoError(t, parseErr)
 
 	return func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		var buf strings.Builder
@@ -1206,6 +1218,50 @@ func TestDeleteByID_NonExistent(t *testing.T) {
 }
 
 // --- Admin handler ---
+
+// --- Profile / display-name tests ---
+
+func TestUserDisplayName_PrefersProfileName(t *testing.T) {
+	u := &auth.User[Profile]{Username: "alice42", Profile: Profile{Name: "Alice Anders"}}
+	assert.Equal(t, "Alice Anders", userDisplayName(u))
+}
+
+func TestUserDisplayName_FallsBackToUsername(t *testing.T) {
+	u := &auth.User[Profile]{Username: "alice42"}
+	assert.Equal(t, "alice42", userDisplayName(u))
+}
+
+func TestUserDisplayName_NilUser(t *testing.T) {
+	assert.Empty(t, userDisplayName(nil))
+}
+
+func TestAdminListNotes_RendersProfileName(t *testing.T) {
+	db := openTestDB(t)
+	require.NoError(t, den.Register(t.Context(), db, &auth.User[Profile]{}))
+	repo := NewRepository(db)
+	userRepo := auth.NewRepository[Profile](db)
+	ctx := t.Context()
+
+	alice := &auth.User[Profile]{
+		Username: "alice42",
+		Role:     "user",
+		IsActive: true,
+		Profile:  Profile{Name: "Alice Anders"},
+	}
+	alice.ID = "user-alice"
+	require.NoError(t, den.Save(ctx, db, alice))
+	require.NoError(t, repo.Create(ctx, &Note{Title: "Profile Demo", Content: "hi", UserID: "user-alice"}))
+
+	h := &App{repo: repo, userRepo: userRepo}
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/admin/notes", nil)
+	req = injectTemplateExecutor(t, req)
+	rec := httptest.NewRecorder()
+
+	require.NoError(t, h.adminListNotes(rec, req))
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Alice Anders", "admin_list should render Profile.Name when set")
+	assert.NotContains(t, rec.Body.String(), ">alice42<", "Username fallback must not appear when Profile.Name is set")
+}
 
 func TestAdminListNotes(t *testing.T) {
 	db := openTestDB(t)

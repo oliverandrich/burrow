@@ -36,7 +36,7 @@ func main() {
 		healthcheck.New(),
 		messages.New(),
 		app.New(),
-		auth.New(),
+		auth.New[auth.EmptyProfile](),
 		polls.New(),
 	)
 

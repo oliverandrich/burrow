@@ -14,7 +14,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
     }
 
     // Type-assert to access the auth app's repository.
-    if provider, ok := authApp.(interface{ Repo() *auth.Repository }); ok {
+    if provider, ok := authApp.(interface{ Repo() *auth.Repository[auth.EmptyProfile] }); ok {
         a.authRepo = provider.Repo()
     }
 
@@ -41,11 +41,11 @@ If a dependency is missing when `NewServer` processes your app, it panics at sta
 
 ## Using Auth Context
 
-The auth app sets the current user in the request context via middleware. Other apps read it with `auth.CurrentUser()`:
+The auth app sets the current user in the request context via middleware. Other apps read it with `auth.CurrentUser[auth.EmptyProfile]()`:
 
 ```go
 func (a *App) List(w http.ResponseWriter, r *http.Request) error {
-    user := auth.CurrentUser(r.Context())
+    user := auth.CurrentUser[auth.EmptyProfile](r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }

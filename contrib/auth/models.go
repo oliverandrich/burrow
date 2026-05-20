@@ -15,50 +15,57 @@ const (
 	RoleAdmin = "admin"
 )
 
-// User represents an authenticated user with WebAuthn credentials.
-type User struct {
+// EmptyProfile is the default Profile type for [User]. Apps that don't
+// need user-extension fields parameterise with EmptyProfile; apps that do
+// define their own Profile struct (see docs/contrib/auth-profile.md).
+type EmptyProfile struct{}
+
+// User represents an authenticated user with WebAuthn credentials. The
+// Profile type parameter holds app-specific extension fields (display
+// name, bio, avatar, social links, etc.) stored inline as a nested JSON
+// object. Apps without extensions use [EmptyProfile].
+//
+// den: tags on Profile fields (index, unique, fts, index_together) are
+// honoured — Den walks named struct fields and emits dotted JSON-path
+// indexes (e.g. $.profile.slug). See docs/contrib/auth-profile.md.
+type User[P any] struct {
 	document.Base
 	EmailVerifiedAt *time.Time   `json:"email_verified_at,omitempty" form:"-"`
 	Email           *string      `json:"email,omitempty" den:"unique" form:"email" verbose:"Email"`
-	Name            string       `json:"name,omitempty" form:"name" verbose:"Name"`
-	Bio             string       `json:"bio,omitempty" form:"bio" verbose:"Bio"`
 	Role            string       `json:"role" den:"index" form:"role" verbose:"Role"`
 	Username        string       `json:"username" den:"unique" form:"username" verbose:"Username"`
+	Profile         P            `json:"profile,omitempty" form:"profile" verbose:"Profile"`
 	Credentials     []Credential `json:"credentials,omitempty" form:"-"` // populated by separate query, not embedded
 	EmailVerified   bool         `json:"email_verified" form:"-"`
 	IsActive        bool         `json:"is_active" form:"is_active" verbose:"Active"`
 }
 
-// String returns the user's display name (Name if set, otherwise Username).
-func (u User) String() string {
-	if u.Name != "" {
-		return u.Name
-	}
+// String returns the username. For a richer display name, read the
+// Profile fields directly — see docs/contrib/auth-profile.md.
+func (u User[P]) String() string {
 	return u.Username
 }
 
 // IsAdmin returns true if the user has the admin role.
-func (u *User) IsAdmin() bool { return u.Role == RoleAdmin }
+func (u *User[P]) IsAdmin() bool { return u.Role == RoleAdmin }
 
 // WebAuthnID returns the user ID as bytes for the WebAuthn protocol.
 // The ULID string is unique and stable, so we use it directly.
-func (u *User) WebAuthnID() []byte {
+func (u *User[P]) WebAuthnID() []byte {
 	return []byte(u.ID)
 }
 
 // WebAuthnName returns the username.
-func (u *User) WebAuthnName() string { return u.Username }
+func (u *User[P]) WebAuthnName() string { return u.Username }
 
-// WebAuthnDisplayName returns the display name or falls back to username.
-func (u *User) WebAuthnDisplayName() string {
-	if u.Name != "" {
-		return u.Name
-	}
-	return u.Username
-}
+// WebAuthnDisplayName returns the username. Apps that want a richer
+// display name in WebAuthn dialogs should override the relying-party
+// configuration; auth-core does not know about app-specific Profile
+// fields and the WebAuthn UX impact of switching display names is small.
+func (u *User[P]) WebAuthnDisplayName() string { return u.Username }
 
 // WebAuthnCredentials returns the user's WebAuthn credentials.
-func (u *User) WebAuthnCredentials() []webauthn.Credential {
+func (u *User[P]) WebAuthnCredentials() []webauthn.Credential {
 	creds := make([]webauthn.Credential, len(u.Credentials))
 	for i := range u.Credentials {
 		creds[i] = u.Credentials[i].ToWebAuthn()
@@ -67,7 +74,7 @@ func (u *User) WebAuthnCredentials() []webauthn.Credential {
 }
 
 // WebAuthnIcon returns an empty string (deprecated by the spec).
-func (u *User) WebAuthnIcon() string { return "" }
+func (u *User[P]) WebAuthnIcon() string { return "" }
 
 // Credential stores a WebAuthn credential for a user.
 type Credential struct {

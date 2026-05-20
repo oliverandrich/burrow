@@ -147,7 +147,7 @@ import (
 )
 
 func (a *App) List(w http.ResponseWriter, r *http.Request) error {
-    user := auth.CurrentUser(r.Context())
+    user := auth.CurrentUser[auth.EmptyProfile](r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }
@@ -163,7 +163,7 @@ func (a *App) List(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *App) Create(w http.ResponseWriter, r *http.Request) error {
-    user := auth.CurrentUser(r.Context())
+    user := auth.CurrentUser[auth.EmptyProfile](r.Context())
     if user == nil {
         return burrow.NewHTTPError(http.StatusUnauthorized, "not authenticated")
     }
@@ -283,7 +283,7 @@ Small apps can keep everything in `app.go` — split only when a file grows larg
 ```go
 srv := burrow.NewServer(
     session.New(),
-    auth.New(),
+    auth.New[auth.EmptyProfile](),
     healthcheck.New(),
     notes.New(), // Add your app here
 )

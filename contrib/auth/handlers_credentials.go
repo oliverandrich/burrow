@@ -9,8 +9,8 @@ import (
 )
 
 // CredentialsPage renders the credentials management page.
-func (a *App) CredentialsPage(w http.ResponseWriter, r *http.Request) error {
-	user := MustCurrentUser(r.Context())
+func (a *App[P]) CredentialsPage(w http.ResponseWriter, r *http.Request) error {
+	user := MustCurrentUser[P](r.Context())
 	creds, err := a.repo.GetCredentialsByUserID(r.Context(), user.ID)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to get credentials", err)
@@ -19,8 +19,8 @@ func (a *App) CredentialsPage(w http.ResponseWriter, r *http.Request) error {
 }
 
 // AddCredentialBegin starts the process of adding a new credential.
-func (a *App) AddCredentialBegin(w http.ResponseWriter, r *http.Request) error {
-	user := MustCurrentUser(r.Context())
+func (a *App[P]) AddCredentialBegin(w http.ResponseWriter, r *http.Request) error {
+	user := MustCurrentUser[P](r.Context())
 	options, sessionData, err := a.webauthn.WebAuthn().BeginRegistration(user)
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to begin registration", err)
@@ -31,8 +31,8 @@ func (a *App) AddCredentialBegin(w http.ResponseWriter, r *http.Request) error {
 }
 
 // AddCredentialFinish completes adding a new credential.
-func (a *App) AddCredentialFinish(w http.ResponseWriter, r *http.Request) error {
-	user := MustCurrentUser(r.Context())
+func (a *App[P]) AddCredentialFinish(w http.ResponseWriter, r *http.Request) error {
+	user := MustCurrentUser[P](r.Context())
 	sessionData, err := a.webauthn.GetRegistrationSession(user.ID)
 	if err != nil {
 		return errorJSON(w, http.StatusBadRequest, "registration session expired")
@@ -53,8 +53,8 @@ func (a *App) AddCredentialFinish(w http.ResponseWriter, r *http.Request) error 
 }
 
 // DeleteCredential removes a credential.
-func (a *App) DeleteCredential(w http.ResponseWriter, r *http.Request) error {
-	user := MustCurrentUser(r.Context())
+func (a *App[P]) DeleteCredential(w http.ResponseWriter, r *http.Request) error {
+	user := MustCurrentUser[P](r.Context())
 	credID := chi.URLParam(r, "id")
 	if credID == "" {
 		return errorJSON(w, http.StatusBadRequest, "invalid credential id")
