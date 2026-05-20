@@ -68,6 +68,28 @@ func TestAppFlags(t *testing.T) {
 	assert.True(t, names["auth-webauthn-rp-origin"])
 }
 
+// --- WebAuthn RP-ID derivation tests ---
+
+func TestResolveRPID_ExplicitFlagWins(t *testing.T) {
+	assert.Equal(t, "example.com", resolveRPID("example.com", "https://app.example.com"))
+}
+
+func TestResolveRPID_FallsBackToBaseURLHost(t *testing.T) {
+	assert.Equal(t, "app.example.com", resolveRPID("", "https://app.example.com"))
+}
+
+func TestResolveRPID_StripsPortFromBaseURL(t *testing.T) {
+	assert.Equal(t, "localhost", resolveRPID("", "http://localhost:8080"))
+}
+
+func TestResolveRPID_EmptyWhenBothMissing(t *testing.T) {
+	assert.Empty(t, resolveRPID("", ""))
+}
+
+func TestResolveRPID_EmptyOnMalformedBaseURL(t *testing.T) {
+	assert.Empty(t, resolveRPID("", "://not a url"))
+}
+
 func TestDocuments(t *testing.T) {
 	app := &App[EmptyProfile]{}
 	docs := app.Documents()
