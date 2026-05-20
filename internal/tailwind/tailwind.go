@@ -3,9 +3,7 @@
 // directory in the project — Burrow's contribs plus the project's own
 // templates.
 //
-// It is the engine behind both `burrow tailwind` (the canonical
-// invocation) and the legacy `burrow-tailwind` standalone tool (kept
-// as a deprecation shim that calls [Run] directly).
+// It is the engine behind `burrow tailwind`.
 //
 // On every invocation [Run] writes `.tailwind/sources.css` next to
 // the input CSS file passed via `-i` (or relative to the working

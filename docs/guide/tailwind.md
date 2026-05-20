@@ -4,11 +4,8 @@ Burrow projects style their HTML with [Tailwind CSS](https://tailwindcss.com/) v
 
 Dark mode follows the browser's `prefers-color-scheme` setting; no user-toggleable theme machinery is shipped by Burrow. If you want a toggle, write it yourself.
 
-!!! info "Migrating from `cmd/burrow-tailwind`?"
-    The standalone `cmd/burrow-tailwind` tool is deprecated in favour
-    of the `burrow tailwind` sub-command (scheduled for removal in
-    v0.22). In existing projects, rewrite the tool directive in
-    `go.mod` and the invocations in `.mise.toml` / `.air.toml`:
+!!! info "Coming from `cmd/burrow-tailwind`?"
+    The standalone `cmd/burrow-tailwind` tool was removed in v0.22 (after a one-cycle deprecation shim in v0.21). Replace the `tool` directive in `go.mod` and the invocations in `.mise.toml` / `.air.toml`:
 
     ```
     - tool github.com/oliverandrich/burrow/cmd/burrow-tailwind
@@ -17,11 +14,8 @@ Dark mode follows the browser's `prefers-color-scheme` setting; no user-toggleab
 
     ```
     - go tool burrow-tailwind -i tailwind.css -o ...
-    + go tool burrow      tailwind -i tailwind.css -o ...
+    + go tool burrow tailwind -i tailwind.css -o ...
     ```
-
-    The shim continues to work until v0.22 but prints a deprecation
-    notice on every invocation.
 
 ## What you ship
 
@@ -50,7 +44,7 @@ myapp/
         └── templates/notes/list.html
 ```
 
-A flat single-file project (one `main.go`, one `templates/`, one `static/` at the root) is also fine for demos and prototypes. Both layouts use the same `tailwind.css` and the same toolchain — `burrow-tailwind` auto-discovers either one (see below).
+A flat single-file project (one `main.go`, one `templates/`, one `static/` at the root) is also fine for demos and prototypes. Both layouts use the same `tailwind.css` and the same toolchain — `burrow tailwind` auto-discovers either one (see below).
 
 ## Why the shell is in `internal/app/`
 
