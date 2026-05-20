@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"reflect"
 	"time"
 
@@ -20,6 +21,25 @@ import (
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/urfave/cli/v3"
 )
+
+// resolveRPID picks the WebAuthn Relying-Party ID: the explicit flag value
+// wins when non-empty, otherwise the host part of baseURL is derived
+// automatically (port stripped). Returns "" only when both inputs are
+// empty or baseURL fails to parse with no flag override — in which case
+// gowebauthn.New rejects the config with a clear error.
+func resolveRPID(flagValue, baseURL string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	if baseURL == "" {
+		return ""
+	}
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
+}
 
 // documentInterfaceType is the reflected document.Document marker
 // interface, used by validateProfileType to detect Profile types that
@@ -151,11 +171,12 @@ func (a *App[P]) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	if rpOrigin == "" {
 		rpOrigin = baseURL
 	}
+	rpID := resolveRPID(cmd.String("auth-webauthn-rp-id"), baseURL)
 	waCtx, waCancel := context.WithCancel(context.Background())
 	waSvc, err := NewWebAuthnService(
 		waCtx,
 		cmd.String("auth-webauthn-rp-display-name"),
-		cmd.String("auth-webauthn-rp-id"),
+		rpID,
 		rpOrigin,
 	)
 	if err != nil {
@@ -225,8 +246,7 @@ func (a *App[P]) Flags(configSource func(key string) cli.ValueSource) []cli.Flag
 		},
 		&cli.StringFlag{
 			Name:    "auth-webauthn-rp-id",
-			Value:   "localhost",
-			Usage:   "WebAuthn Relying Party ID (domain name)",
+			Usage:   "WebAuthn Relying Party ID (defaults to the host of the base URL; override for registrable-suffix setups)",
 			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_ID", "auth.webauthn_rp_id"),
 		},
 		&cli.StringFlag{
