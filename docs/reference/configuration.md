@@ -11,6 +11,7 @@ Complete list of all configuration flags, environment variables, and TOML keys.
 | `--host` | `HOST` | `server.host` | `localhost` | Host to bind to |
 | `--port` | `PORT` | `server.port` | `8080` | Port to listen on |
 | `--base-url` | `BASE_URL` | `server.base_url` | (auto-resolved) | Base URL for the application |
+| `--app-name` | `APP_NAME` | `server.app_name` | (binary basename) | Human-readable application name. Surfaces in WebAuthn passkey dialogs, SMTP `From`-name decoration, and the `{{ appName }}` template func. |
 | `--max-body-size` | `MAX_BODY_SIZE` | `server.max_body_size` | `1` | Maximum request body size in MB |
 | `--shutdown-timeout` | `SHUTDOWN_TIMEOUT` | `server.shutdown_timeout` | `10` | Graceful shutdown timeout in seconds |
 | `--pid-file` | `PID_FILE` | `server.pid_file` | (none) | Path to PID file (for systemd/supervisor) |
@@ -67,8 +68,8 @@ No flags. Supported locales are derived from each app's `HasTranslations.Transla
 | `--auth-use-email` | `AUTH_USE_EMAIL` | `false` | Use email instead of username |
 | `--auth-require-verification` | `AUTH_REQUIRE_VERIFICATION` | `false` | Require email verification before login |
 | `--auth-invite-only` | `AUTH_INVITE_ONLY` | `false` | Require invite to register |
-| `--auth-webauthn-rp-id` | `WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (domain name) |
-| `--auth-webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | `Web App` | WebAuthn RP display name |
+| `--auth-webauthn-rp-id` | `WEBAUTHN_RP_ID` | (URL host) | WebAuthn Relying Party ID; falls back to the host of `--base-url` |
+| `--auth-webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | (`--app-name`) | WebAuthn RP display name; falls back to `--app-name` (binary basename) when unset |
 | `--auth-webauthn-rp-origin` | `WEBAUTHN_RP_ORIGIN` | (base URL) | WebAuthn RP origin |
 
 ### Jobs

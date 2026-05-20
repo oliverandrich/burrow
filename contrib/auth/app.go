@@ -172,10 +172,14 @@ func (a *App[P]) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 		rpOrigin = baseURL
 	}
 	rpID := resolveRPID(cmd.String("auth-webauthn-rp-id"), baseURL)
+	rpDisplayName := cmd.String("auth-webauthn-rp-display-name")
+	if rpDisplayName == "" && a.globalConfig != nil {
+		rpDisplayName = a.globalConfig.Server.AppName
+	}
 	waCtx, waCancel := context.WithCancel(context.Background())
 	waSvc, err := NewWebAuthnService(
 		waCtx,
-		cmd.String("auth-webauthn-rp-display-name"),
+		rpDisplayName,
 		rpID,
 		rpOrigin,
 	)
@@ -251,8 +255,7 @@ func (a *App[P]) Flags(configSource func(key string) cli.ValueSource) []cli.Flag
 		},
 		&cli.StringFlag{
 			Name:    "auth-webauthn-rp-display-name",
-			Value:   "Web App",
-			Usage:   "WebAuthn Relying Party display name",
+			Usage:   "WebAuthn Relying Party display name (override; defaults to --app-name)",
 			Sources: burrow.FlagSources(configSource, "WEBAUTHN_RP_DISPLAY_NAME", "auth.webauthn_rp_display_name"),
 		},
 		&cli.StringFlag{

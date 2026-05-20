@@ -164,6 +164,15 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 		}
 		return template.HTML(buf.String()) //nolint:gosec // template output, contextually escaped
 	}
+	// appName returns the configured human-readable application name (from
+	// --app-name or the binary basename). Static across the process lifetime,
+	// so it lives in the boot-time FuncMap rather than per-request.
+	funcMap["appName"] = func() string {
+		if s.appCfg == nil || s.appCfg.Config == nil {
+			return ""
+		}
+		return s.appCfg.Config.Server.AppName
+	}
 	baseKeys := make(map[string]bool, len(funcMap))
 	for k := range funcMap {
 		baseKeys[k] = true

@@ -89,3 +89,23 @@ func TestConfigureWithCustomFlags(t *testing.T) {
 	assert.Equal(t, "noreply@example.com", m.config.From)
 	assert.Equal(t, "tls", m.config.TLS)
 }
+
+func TestDecorateFrom_BareEmailGetsDecorated(t *testing.T) {
+	assert.Equal(t, "Notes <noreply@example.com>", decorateFrom("noreply@example.com", "Notes"))
+}
+
+func TestDecorateFrom_AlreadyDecoratedStaysAlone(t *testing.T) {
+	assert.Equal(t, "Acme <noreply@example.com>", decorateFrom("Acme <noreply@example.com>", "Notes"))
+}
+
+func TestDecorateFrom_EmptyAppNamePassThrough(t *testing.T) {
+	assert.Equal(t, "noreply@example.com", decorateFrom("noreply@example.com", ""))
+}
+
+func TestDecorateFrom_EmptyFromPassThrough(t *testing.T) {
+	assert.Empty(t, decorateFrom("", "Notes"))
+}
+
+func TestDecorateFrom_UnparseableFromPassThrough(t *testing.T) {
+	assert.Equal(t, "not an address", decorateFrom("not an address", "Notes"))
+}

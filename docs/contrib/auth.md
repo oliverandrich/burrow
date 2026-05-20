@@ -319,8 +319,8 @@ The auth app implements `HasAdmin` to provide user and invite management in the 
 | `--auth-use-email` | `AUTH_USE_EMAIL` | `false` | Use email instead of username |
 | `--auth-require-verification` | `AUTH_REQUIRE_VERIFICATION` | `false` | Require email verification |
 | `--auth-invite-only` | `AUTH_INVITE_ONLY` | `false` | Require invite to register |
-| `--auth-webauthn-rp-id` | `WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (domain) |
-| `--auth-webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | `Web App` | WebAuthn RP display name |
+| `--auth-webauthn-rp-id` | `WEBAUTHN_RP_ID` | (URL host) | WebAuthn Relying Party ID; falls back to the host of `--base-url` |
+| `--auth-webauthn-rp-display-name` | `WEBAUTHN_RP_DISPLAY_NAME` | (`--app-name`) | Display name shown in the browser passkey dialog. Falls back to the global `--app-name` (binary basename by default), so most apps don't set this explicitly. |
 | `--auth-webauthn-rp-origin` | `WEBAUTHN_RP_ORIGIN` | (base URL) | WebAuthn RP origin |
 
 ## Email Service

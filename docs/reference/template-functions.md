@@ -23,6 +23,7 @@ Provided by the framework itself. Always available.
 | `mediaURL` | `{{ mediaURL .Hero }}` | Returns the public URL for a `document.Attachment`. Auto-registered when Den is opened with `den.WithStorage(...)`; unregistered (and a parse-time error) when no Storage is configured. |
 | `icon` | `{{ icon "auth/icon_people" }}` | Looks up the named template define and returns its rendered HTML. Returns empty when the name is empty or unknown. Used by layouts to render `NavItem.Icon` / `NavLink.Icon` / `admin.DashboardItem.Icon` (all hold template-define names). See [Navigation › Icon convention](../guide/navigation.md#icon-convention). |
 | `dict` | `{{ template "x" (dict "Page" .Page "BasePath" "/x") }}` | Builds a `map[string]any` from alternating key/value pairs. Useful for passing multiple values to a sub-template. Keys must be strings. |
+| `appName` | `<title>{{ appName }}</title>` | The configured application name (from `--app-name`, env `APP_NAME`, toml `server.app_name`; defaults to the binary basename). Same source feeds WebAuthn passkey dialogs and SMTP `From`-name decoration. |
 
 **Navigation (request-scoped, provided by the framework):**
 

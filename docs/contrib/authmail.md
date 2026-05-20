@@ -104,7 +104,7 @@ mailer.SendInvite(ctx, "bob@example.com", "https://example.com/auth/register?inv
 | `--smtp-port` | `SMTP_PORT` | `587` | SMTP server port |
 | `--smtp-username` | `SMTP_USERNAME` | (none) | SMTP username |
 | `--smtp-password` | `SMTP_PASSWORD` | (none) | SMTP password |
-| `--smtp-from` | `SMTP_FROM` | `noreply@localhost` | Sender email address |
+| `--smtp-from` | `SMTP_FROM` | `noreply@localhost` | Sender email address. A bare address is decorated with the global `--app-name` automatically (`Notes <noreply@example.com>`); pre-formatted `"Name <addr>"` values pass through unchanged. |
 | `--smtp-tls` | `SMTP_TLS` | `starttls` | TLS mode: `starttls`, `tls`, or `none` |
 
 ### TLS Modes

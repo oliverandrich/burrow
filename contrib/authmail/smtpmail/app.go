@@ -1,10 +1,28 @@
 package smtpmail
 
 import (
+	"fmt"
+	"net/mail"
+
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/authmail"
 	"github.com/urfave/cli/v3"
 )
+
+// decorateFrom prefixes a bare SMTP From address with appName so the
+// rendered "From" header reads "AppName <user@example.com>" instead of a
+// raw address. If from is already in "Name <addr>" form (parsed name
+// non-empty) or is unparseable, the input is returned unchanged.
+func decorateFrom(from, appName string) string {
+	if appName == "" || from == "" {
+		return from
+	}
+	addr, err := mail.ParseAddress(from)
+	if err != nil || addr == nil || addr.Name != "" {
+		return from
+	}
+	return fmt.Sprintf("%s <%s>", appName, addr.Address)
+}
 
 // App implements the authmail SMTP contrib app.
 type App struct {
@@ -72,13 +90,17 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	}
 }
 
-func (a *App) Configure(_ *burrow.AppConfig, cmd *cli.Command) error {
+func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
+	from := cmd.String("smtp-from")
+	if cfg != nil && cfg.Config != nil {
+		from = decorateFrom(from, cfg.Config.Server.AppName)
+	}
 	config := SMTPConfig{
 		Host:     cmd.String("smtp-host"),
 		Port:     int(cmd.Int("smtp-port")),
 		Username: cmd.String("smtp-username"),
 		Password: cmd.String("smtp-password"),
-		From:     cmd.String("smtp-from"),
+		From:     from,
 		TLS:      cmd.String("smtp-tls"),
 	}
 
