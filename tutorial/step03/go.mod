@@ -7,7 +7,7 @@ replace github.com/oliverandrich/burrow => ../..
 require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/oliverandrich/burrow v0.0.0
-	github.com/oliverandrich/den v0.14.0
+	github.com/oliverandrich/den v0.15.0
 	github.com/urfave/cli/v3 v3.9.0
 )
 
@@ -21,13 +21,11 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.2 // indirect
-	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
-	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
