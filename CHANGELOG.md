@@ -18,6 +18,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Added
 
 - **`forms` package: nested-struct subform support.** Struct-typed form fields now render as **subforms** — `extractFields` recurses one level into the nested struct and exposes its fields under the parent's `BoundField.SubFields`. Nested `FormName` values follow the `parent.child` convention (e.g. `profile.name`) so `burrow.Bind` decodes them and validation errors route to the correct nested field. `time.Time` is excluded (keeps the `"date"` widget); pointer-to-struct is dereferenced (nil → zero-value sub-fields); recursion is capped at one level. Templates dispatch on `Type == "subform"` and iterate `.SubFields` — see [forms: Nested struct fields](guide/forms.md#nested-struct-fields-subforms).
+- **Translation guard test** (`TestTranslationsLoadInGoI18n`) loads every contrib's `active.*.toml` through a real go-i18n bundle, so reserved-key collisions (`id`, `hash`, `description`, `leftdelim`, `rightdelim`, plural keys) surface at test time instead of at server boot.
 
 ### Fixed
 
