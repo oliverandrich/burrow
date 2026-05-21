@@ -2,6 +2,23 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+> **Upgrading from v0.22?** See the [v0.23 migration guide](migration/v0.23.md).
+
+### Breaking Changes
+
+- **Three-tier role model in `contrib/auth`.** `RoleStaff = "staff"` joins `RoleUser` and `RoleAdmin`; admins are implicit staff (`User.IsStaff()` true for both). The `/admin/` frame now opens to staff and admins via `RequireAuth + RequireStaff`.
+- **`HasAdmin` apps self-gate admin-only routes.** Wrap them in `r.Group(func(r chi.Router) { r.Use(auth.RequireAdmin()); … })` inside `AdminRoutes`. Built-in `contrib/auth` and `contrib/jobs` already do this.
+- **`burrow.AdminAuth` interface gains `RequireStaff()`.** Custom providers must add the method (one-line stub: return `RequireAdmin()` to preserve v0.22 frame semantics).
+- **`auth promote` / `auth demote` CLI removed.** Replaced by `auth set-role <username> <user|staff|admin>` with role validation.
+
+### Added
+
+- **`burrow.NavItem.StaffOnly` flag** sitting next to `AuthOnly`/`AdminOnly`.
+- **`burrow.IsAuthenticated` / `IsStaff` / `IsAdmin` helpers** plus `AuthChecker.IsStaff` so app code can query auth state without importing `contrib/auth`.
+- **`auth.RequireStaff()` middleware** for staff-only routes outside `/admin/` (e.g. a `/studio` shell).
+
 ## 0.22.1 — 2026-05-21
 
 ### Fixed

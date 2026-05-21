@@ -88,12 +88,23 @@ See [Layouts & Rendering](../guide/layouts.md) for more details on how layouts w
 | `ID` | `string` | ULID, generated on insert |
 | `Username` | `string` | Unique username |
 | `Email` | `*string` | Optional, unique |
-| `Role` | `string` | `"user"` or `"admin"` |
+| `Role` | `string` | One of `RoleUser` / `RoleStaff` / `RoleAdmin` (string values `"user"`, `"staff"`, `"admin"`) |
 | `IsActive` | `bool` | Whether the user can log in |
 | `EmailVerified` | `bool` | Whether email is verified |
 | `EmailVerifiedAt` | `*time.Time` | When email was verified |
 | `Profile` | `P` | App-defined extension struct (see [Extending the User](auth-profile.md)) |
 | `Credentials` | `[]Credential` | WebAuthn credentials (populated by separate query) |
+
+#### Role predicates
+
+Roles form a monotonic hierarchy: `admin` implies `staff` implies `authenticated`. Two helpers encode that — always prefer them over direct `u.Role == "..."` comparisons so calling code keeps working if the role set is extended later.
+
+| Method | Returns true when |
+|--------|-------------------|
+| `User.IsStaff()` | `Role` is `RoleStaff` or `RoleAdmin` |
+| `User.IsAdmin()` | `Role` is `RoleAdmin` |
+
+The framework reads the same predicates via `burrow.IsStaff(ctx)` / `burrow.IsAdmin(ctx)` (set up by the auth middleware via `burrow.AuthChecker`) so template-level filtering (`NavItem.StaffOnly`, `AdminOnly`) and middleware (`RequireStaff`, `RequireAdmin`) stay consistent with what `u.IsStaff()` reports.
 
 ### Credential
 
@@ -135,7 +146,7 @@ All routes are registered under `/auth`:
 
 When `POST /auth/recovery` consumes the user's final unused recovery code, the handler auto-regenerates a fresh set and redirects to `/auth/recovery-codes` (the same ack flow as `POST /auth/recovery-codes/regenerate`), so a passkey-only account never reaches a "logged in with zero codes left" state.
 
-Admin routes (registered via `HasAdmin`, require auth + admin role):
+Admin routes (registered via `HasAdmin`). The `/admin/` frame is gated by `RequireAuth + RequireStaff`; `contrib/auth` self-gates every route below with `RequireAdmin()` because user and invite management is admin-only:
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -195,15 +206,28 @@ r.Route("/notes", func(r chi.Router) {
 
 The original URL is preserved via a `?next=` parameter for post-login redirect.
 
-### RequireAdmin
+### RequireStaff
 
-Returns 403 if the user is not an admin:
+Redirects to login if unauthenticated; returns 403 if the user is neither `staff` nor `admin`. The `contrib/admin` coordinator uses this to gate the `/admin/` frame, but you can apply it to your own routes too (e.g. a `/studio/` shell):
 
 ```go
-r.Route("/admin", func(r chi.Router) {
-    r.Use(auth.RequireAuth(), auth.RequireAdmin())
+r.Route("/studio", func(r chi.Router) {
+    r.Use(auth.RequireStaff())
     // ... routes
 })
+```
+
+### RequireAdmin
+
+Redirects to login if unauthenticated; returns 403 if the user is not an admin. Use this inside `HasAdmin.AdminRoutes` to gate admin-only sub-groups (the `/admin/` frame itself is staff-gated; admin-only routes self-gate):
+
+```go
+func (a *App) AdminRoutes(r chi.Router) {
+    r.Group(func(r chi.Router) {
+        r.Use(auth.RequireAdmin())
+        r.Get("/settings", a.settings)
+    })
+}
 ```
 
 ## Context Helpers
@@ -384,5 +408,5 @@ Without the i18n app, templates fall back to displaying translation keys (which 
 | `Configurable` | Auth and WebAuthn flags |
 | `HasDependencies` | Requires `session` |
 | `HasJobs` | Registers `auth.send_email` job handler for email delivery via queue |
-| `HasCLICommands` | Provides `promote`, `demote`, `create-invite` subcommands |
+| `HasCLICommands` | Provides `set-role`, `create-invite` subcommands |
 | `HasShutdown` | Stops the background WebAuthn challenge cleanup goroutine |

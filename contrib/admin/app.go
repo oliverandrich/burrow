@@ -149,15 +149,16 @@ func (a *App) RequestFuncMap(ctx context.Context) template.FuncMap {
 	}
 }
 
-// Routes creates the /admin group with auth middleware and delegates
-// to all HasAdmin apps.
+// Routes mounts the /admin/ group with RequireAuth + RequireStaff,
+// filters the collected nav groups per request by the user's admin
+// status, and delegates to every HasAdmin app.
 func (a *App) Routes(r chi.Router) {
 	if a.registry == nil {
 		return
 	}
 
 	r.Route("/admin", func(r chi.Router) {
-		r.Use(a.authMiddleware.RequireAuth(), a.authMiddleware.RequireAdmin())
+		r.Use(a.authMiddleware.RequireAuth(), a.authMiddleware.RequireStaff())
 
 		groups := a.buildNavGroups()
 
@@ -167,7 +168,7 @@ func (a *App) Routes(r chi.Router) {
 				if a.layout != "" {
 					ctx = burrow.WithLayout(ctx, a.layout)
 				}
-				ctx = WithNavGroups(ctx, groups)
+				ctx = WithNavGroups(ctx, filterNavGroups(groups, burrow.IsAdmin(ctx)))
 				next.ServeHTTP(w, r.WithContext(ctx))
 			})
 		})

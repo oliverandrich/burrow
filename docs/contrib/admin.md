@@ -59,13 +59,27 @@ Admin handlers follow the same patterns as regular handlers — use Den queries 
 
 ## Routes
 
-The admin app creates the `/admin` route group with `auth.RequireAuth()` and `auth.RequireAdmin()` middleware, then delegates to each `HasAdmin` app.
+The admin app creates the `/admin` route group with `auth.RequireAuth()` and `auth.RequireStaff()` — any logged-in user with the `staff` or `admin` role passes the frame gate. Apps that ship admin-only routes wrap them inside their own `AdminRoutes` with `auth.RequireAdmin()`:
 
-The dashboard is available at `GET /admin/`.
+```go
+func (a *App) AdminRoutes(r chi.Router) {
+    // Open to any staff member.
+    r.Get("/posts", burrow.Handle(a.adminListPosts))
+    r.Get("/drafts/{id}", burrow.Handle(a.adminEditDraft))
+
+    // Admin-only group.
+    r.Group(func(r chi.Router) {
+        r.Use(auth.RequireAdmin())
+        r.Get("/settings", burrow.Handle(a.adminSettings))
+    })
+}
+```
+
+The dashboard at `GET /admin/` lists every nav item contributed via `AdminNavItems()`, filtered per request: `NavItem.AdminOnly: true` hides the entry from non-admin staff. Groups whose items all become hidden disappear from the dashboard too.
 
 ## CLI Commands
 
-The CLI subcommands for user management (`promote`, `demote`, `create-invite`) are contributed by the **auth** app via `HasCLICommands`, not by the admin app itself. See [Auth docs](auth.md) for details.
+The CLI subcommands for user management (`set-role`, `create-invite`) are contributed by the **auth** app via `HasCLICommands`, not by the admin app itself. See [Auth docs](auth.md) for details.
 
 To wire up CLI commands from all apps, add them to your `cli.Command` via `srv.CLICommands()`:
 
@@ -78,7 +92,7 @@ cmd := &cli.Command{
 }
 ```
 
-`srv.CLICommands()` wraps each subcommand's `Action` so the framework's boot lifecycle (database open, `Configure()` on every app) runs before the subcommand fires. The raw `srv.Registry().AllCLICommands()` skips that step and is wrong for contrib subcommands that depend on configured state (e.g. `auth promote`).
+`srv.CLICommands()` wraps each subcommand's `Action` so the framework's boot lifecycle (database open, `Configure()` on every app) runs before the subcommand fires. The raw `srv.Registry().AllCLICommands()` skips that step and is wrong for contrib subcommands that depend on configured state (e.g. `auth set-role`).
 
 ## HasAdmin Interface
 
@@ -91,7 +105,7 @@ type HasAdmin interface {
 }
 ```
 
-The admin app collects all `HasAdmin` implementations and mounts their routes under `/admin` with `auth.RequireAuth()` and `auth.RequireAdmin()` middleware.
+The admin app collects all `HasAdmin` implementations and mounts their routes under `/admin` with `auth.RequireAuth()` + `auth.RequireStaff()` — the frame is staff-gated. Routes that must stay admin-only are the contributing app's responsibility: wrap them in a sub-group with `auth.RequireAdmin()` and tag the matching `AdminNavItems()` entries with `AdminOnly: true` so non-admin staff don't see them in the dashboard.
 
 ## Interfaces Implemented
 

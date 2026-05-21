@@ -326,8 +326,9 @@ func (a *App) AdminNavItems() []burrow.NavItem {
 }
 
 // AdminRoutes mounts the admin views under /admin/polls.
-// The chi router passed in is already prefixed with /admin and protected
-// by the admin auth middleware.
+// The chi router passed in is already prefixed with /admin and gated by
+// the admin frame (RequireAuth + RequireStaff). Wrap any sub-routes that
+// should be admin-only in a `r.Group(func(r chi.Router) { r.Use(auth.RequireAdmin()); … })`.
 // Implements [burrow.HasAdmin].
 func (a *App) AdminRoutes(r chi.Router) {
 	r.Route("/polls", func(r chi.Router) {

@@ -24,7 +24,7 @@ srv := burrow.NewServer(
 
 The admin app:
 
-- Provides routes under `/admin/` protected by `auth.RequireAdmin()` middleware
+- Provides routes under `/admin/` gated by `auth.RequireAuth() + auth.RequireStaff()`; individual `HasAdmin` apps wrap admin-only routes in their own `RequireAdmin()` group
 - Collects nav items and routes from all `HasAdmin` apps
 - Applies its own top-nav layout with a dashboard at `/admin/` that lists all admin sections as cards
 
@@ -45,7 +45,7 @@ Items with `AdminOnly: true` are automatically hidden from non-admin users. The 
 
 ## Wire the Auth CLI Subcommands
 
-The auth app contributes CLI subcommands like `promote`, `demote`, and `create-invite` via `HasCLICommands`, but they're only reachable when you wire them into your top-level `cli.Command`. Update `main.go` to add `Commands: srv.CLICommands()`:
+The auth app contributes CLI subcommands like `set-role` and `create-invite` via `HasCLICommands`, but they're only reachable when you wire them into your top-level `cli.Command`. Update `main.go` to add `Commands: srv.CLICommands()`:
 
 ```go
 cmd := &cli.Command{
@@ -58,7 +58,7 @@ cmd := &cli.Command{
 }
 ```
 
-`srv.CLICommands()` wraps each contrib subcommand so the framework's boot lifecycle (open DB, run `Configure()` on every app) runs before the subcommand's Action fires. Without that wrapping, `promote` would hit an uninitialised auth app and fail.
+`srv.CLICommands()` wraps each contrib subcommand so the framework's boot lifecycle (open DB, run `Configure()` on every app) runs before the subcommand's Action fires. Without that wrapping, `set-role` would hit an uninitialised auth app and fail.
 
 ## Run It
 
@@ -67,10 +67,10 @@ go mod tidy
 go run .
 ```
 
-Register a user, then promote them to admin (the `promote` subcommand takes the username as a positional argument):
+Register a user, then promote them to admin (the `set-role` subcommand takes a username and a role: `user`, `staff`, or `admin`):
 
 ```bash
-./polls promote your-username
+./polls set-role your-username admin
 ```
 
 Visit `/admin/` to see the dashboard. The auth app automatically contributes its own admin views — user and invite management are available out of the box. (`contrib/jobs` ships an admin UI too; register `jobs.New()` whenever you want to use it.)

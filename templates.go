@@ -72,12 +72,16 @@ func isActivePath(requestPath, itemURL string) bool {
 // returning template-ready NavLink values.
 func buildNavLinks(ctx context.Context, requestPath string) []NavLink {
 	items := NavItems(ctx)
-	authenticated := isAuthenticated(ctx)
-	admin := isAdmin(ctx)
+	authenticated := IsAuthenticated(ctx)
+	staff := IsStaff(ctx)
+	admin := IsAdmin(ctx)
 
 	var links []NavLink
 	for _, item := range items {
 		if item.AuthOnly && !authenticated {
+			continue
+		}
+		if item.StaffOnly && !staff {
 			continue
 		}
 		if item.AdminOnly && !admin {

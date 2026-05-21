@@ -100,31 +100,51 @@ func TestWithAuthChecker(t *testing.T) {
 	ctx := context.Background()
 	checker := AuthChecker{
 		IsAuthenticated: func() bool { return true },
+		IsStaff:         func() bool { return false },
 		IsAdmin:         func() bool { return false },
 	}
 
 	ctx = WithAuthChecker(ctx, checker)
 
-	assert.True(t, isAuthenticated(ctx))
-	assert.False(t, isAdmin(ctx))
+	assert.True(t, IsAuthenticated(ctx))
+	assert.False(t, IsStaff(ctx))
+	assert.False(t, IsAdmin(ctx))
+}
+
+func TestAuthCheckerStaff(t *testing.T) {
+	ctx := context.Background()
+	checker := AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsStaff:         func() bool { return true },
+		IsAdmin:         func() bool { return false },
+	}
+
+	ctx = WithAuthChecker(ctx, checker)
+
+	assert.True(t, IsAuthenticated(ctx))
+	assert.True(t, IsStaff(ctx))
+	assert.False(t, IsAdmin(ctx))
 }
 
 func TestAuthCheckerAdmin(t *testing.T) {
 	ctx := context.Background()
 	checker := AuthChecker{
 		IsAuthenticated: func() bool { return true },
+		IsStaff:         func() bool { return true },
 		IsAdmin:         func() bool { return true },
 	}
 
 	ctx = WithAuthChecker(ctx, checker)
 
-	assert.True(t, isAuthenticated(ctx))
-	assert.True(t, isAdmin(ctx))
+	assert.True(t, IsAuthenticated(ctx))
+	assert.True(t, IsStaff(ctx))
+	assert.True(t, IsAdmin(ctx))
 }
 
 func TestAuthCheckerMissing(t *testing.T) {
 	ctx := context.Background()
 
-	assert.False(t, isAuthenticated(ctx))
-	assert.False(t, isAdmin(ctx))
+	assert.False(t, IsAuthenticated(ctx))
+	assert.False(t, IsStaff(ctx))
+	assert.False(t, IsAdmin(ctx))
 }

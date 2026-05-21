@@ -150,7 +150,7 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
 
 	r := chi.NewRouter()
-	// Inject admin user for RequireAuth + RequireAdmin.
+	// Inject admin user for RequireAuth + RequireStaff.
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithUser(r.Context(), testAuthUser(auth.RoleAdmin))
@@ -191,7 +191,7 @@ func TestRoutesRequiresAuth(t *testing.T) {
 	assert.Contains(t, rec.Header().Get("Location"), "/auth/login")
 }
 
-func TestRoutesRequiresAdmin(t *testing.T) {
+func TestRoutesRejectsRegularUser(t *testing.T) {
 	registry := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
@@ -202,7 +202,6 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
 
 	r := chi.NewRouter()
-	// Inject non-admin user and TemplateExecutor.
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithUser(r.Context(), testAuthUser(auth.RoleUser))
@@ -216,7 +215,33 @@ func TestRoutesRequiresAdmin(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Equal(t, http.StatusForbidden, rec.Code, "regular RoleUser must not reach /admin/")
+}
+
+func TestRoutesAllowsStaff(t *testing.T) {
+	registry := configuredRegistry(t)
+
+	provider := &hasAdminApp{}
+	registry.Add(provider)
+
+	app := New()
+	registry.Add(app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := auth.WithUser(r.Context(), testAuthUser(auth.RoleStaff))
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+	app.Routes(r)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/test-resource", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code, "RoleStaff must reach a non-gated HasAdmin route")
 }
 
 func TestRoutesNoRegistryNoPanic(t *testing.T) {
@@ -406,4 +431,200 @@ func TestRequestFuncMap(t *testing.T) {
 	fm := app.RequestFuncMap(req.Context())
 
 	assert.Contains(t, fm, "adminDashboard")
+}
+
+func TestFilterNavGroups(t *testing.T) {
+	groups := []NavGroup{
+		{
+			AppName: "content",
+			Items: []burrow.NavItem{
+				{Label: "Posts", URL: "/admin/posts"},
+				{Label: "Drafts", URL: "/admin/drafts"},
+			},
+		},
+		{
+			AppName: "users",
+			Items: []burrow.NavItem{
+				{Label: "Users", URL: "/admin/users", AdminOnly: true},
+				{Label: "Invites", URL: "/admin/invites", AdminOnly: true},
+			},
+		},
+		{
+			AppName: "mixed",
+			Items: []burrow.NavItem{
+				{Label: "Public", URL: "/admin/mixed/public"},
+				{Label: "Secret", URL: "/admin/mixed/secret", AdminOnly: true},
+			},
+		},
+	}
+
+	t.Run("admin sees everything", func(t *testing.T) {
+		out := filterNavGroups(groups, true)
+		require.Len(t, out, 3)
+		assert.Len(t, out[1].Items, 2)
+	})
+
+	t.Run("staff drops admin-only items and empty groups", func(t *testing.T) {
+		out := filterNavGroups(groups, false)
+		require.Len(t, out, 2, "users group must disappear because all items are AdminOnly")
+		assert.Equal(t, "content", out[0].AppName)
+		assert.Equal(t, "mixed", out[1].AppName)
+		require.Len(t, out[1].Items, 1)
+		assert.Equal(t, "Public", out[1].Items[0].Label)
+	})
+
+	t.Run("empty input returns nil", func(t *testing.T) {
+		assert.Nil(t, filterNavGroups(nil, true))
+		assert.Nil(t, filterNavGroups([]NavGroup{}, true))
+	})
+}
+
+// withAuthCtx mirrors what contrib/auth's authMiddleware does at runtime:
+// inject both the user value and the burrow.AuthChecker so admin's
+// per-request nav filter can read IsAdmin/IsStaff.
+func withAuthCtx(role string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			u := testAuthUser(role)
+			ctx := auth.WithUser(r.Context(), u)
+			ctx = burrow.WithAuthChecker(ctx, burrow.AuthChecker{
+				IsAuthenticated: func() bool { return true },
+				IsStaff:         func() bool { return u.IsStaff() },
+				IsAdmin:         func() bool { return u.IsAdmin() },
+			})
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// navItemsApp contributes admin nav items with mixed AdminOnly flags so
+// tests can pin per-request filtering behaviour.
+type navItemsApp struct{}
+
+func (a *navItemsApp) Name() string { return "nav-items-fixture" }
+func (a *navItemsApp) AdminRoutes(r chi.Router) {
+	r.Get("/probe", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+}
+func (a *navItemsApp) AdminNavItems() []burrow.NavItem {
+	return []burrow.NavItem{
+		{Label: "Open", URL: "/admin/probe"},
+		{Label: "Locked", URL: "/admin/locked", AdminOnly: true},
+	}
+}
+
+func TestRoutesFiltersAdminOnlyNavForStaff(t *testing.T) {
+	registry := configuredRegistry(t)
+
+	provider := &navItemsApp{}
+	registry.Add(provider)
+
+	checker := &navGroupsCheckApp{}
+	registry.Add(checker)
+
+	app := New()
+	registry.Add(app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+
+	t.Run("staff", func(t *testing.T) {
+		checker.gotGroups = nil
+		r := chi.NewRouter()
+		r.Use(withAuthCtx(auth.RoleStaff))
+		app.Routes(r)
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/nav-groups-check", nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		var fixture NavGroup
+		for _, g := range checker.gotGroups {
+			if g.AppName == "nav-items-fixture" {
+				fixture = g
+			}
+		}
+		require.Equal(t, "nav-items-fixture", fixture.AppName, "fixture group must be present for staff")
+		require.Len(t, fixture.Items, 1, "AdminOnly items must be filtered out for staff")
+		assert.Equal(t, "Open", fixture.Items[0].Label)
+	})
+
+	t.Run("admin", func(t *testing.T) {
+		checker.gotGroups = nil
+		r := chi.NewRouter()
+		r.Use(withAuthCtx(auth.RoleAdmin))
+		app.Routes(r)
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/nav-groups-check", nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		var fixture NavGroup
+		for _, g := range checker.gotGroups {
+			if g.AppName == "nav-items-fixture" {
+				fixture = g
+			}
+		}
+		require.Equal(t, "nav-items-fixture", fixture.AppName)
+		require.Len(t, fixture.Items, 2, "admin sees AdminOnly items")
+	})
+}
+
+// adminGatedApp self-gates its admin routes with auth.RequireAdmin(), the
+// pattern contribs are expected to follow after the frame opens to staff.
+type adminGatedApp struct{}
+
+func (a *adminGatedApp) Name() string { return "admin-gated-fixture" }
+func (a *adminGatedApp) AdminRoutes(r chi.Router) {
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAdmin())
+		r.Get("/gated", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+	})
+}
+func (a *adminGatedApp) AdminNavItems() []burrow.NavItem {
+	return []burrow.NavItem{{Label: "Gated", URL: "/admin/gated", AdminOnly: true}}
+}
+
+func TestRoutesGatedRouteAdmin(t *testing.T) {
+	registry := configuredRegistry(t)
+	registry.Add(&adminGatedApp{})
+
+	app := New()
+	registry.Add(app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+
+	t.Run("staff is forbidden on admin-only route", func(t *testing.T) {
+		r := chi.NewRouter()
+		r.Use(withAuthCtx(auth.RoleStaff))
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				ctx := burrowtest.ErrorExecContext(r.Context())
+				next.ServeHTTP(w, r.WithContext(ctx))
+			})
+		})
+		app.Routes(r)
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/gated", nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
+
+	t.Run("admin passes through", func(t *testing.T) {
+		r := chi.NewRouter()
+		r.Use(withAuthCtx(auth.RoleAdmin))
+		app.Routes(r)
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/admin/gated", nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
 }

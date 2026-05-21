@@ -327,7 +327,7 @@ func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), e
 // wrapped to run inside the framework's boot lifecycle: the wrapped Action
 // calls [Server.boot] (open DB, bootstrap, Configure all apps) before the
 // original Action fires, and closes the database afterwards. Without this
-// wrapping, contrib subcommands like `auth promote` would run against
+// wrapping, contrib subcommands like `auth set-role` would run against
 // uninitialised apps and fail with errors like "auth app not initialized".
 //
 // Use this in place of `srv.Registry().AllCLICommands()` when wiring

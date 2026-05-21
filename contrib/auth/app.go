@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -360,6 +362,7 @@ func (a *App[P]) authMiddleware(next http.Handler) http.Handler {
 		ctx := WithUser(r.Context(), user)
 		ctx = burrow.WithAuthChecker(ctx, burrow.AuthChecker{
 			IsAuthenticated: func() bool { return true },
+			IsStaff:         func() bool { return user.IsStaff() },
 			IsAdmin:         func() bool { return user.IsAdmin() },
 		})
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -432,22 +435,27 @@ func authLogoMiddleware(logo template.HTML) func(http.Handler) http.Handler {
 	}
 }
 
-// AdminRoutes registers admin routes for user and invite management.
-// The router is expected to already have auth middleware applied.
+// AdminRoutes registers admin routes for user and invite management. Every
+// route is admin-only — the /admin/ frame itself is open to staff, so this
+// app gates its own group with RequireAdmin().
 func (a *App[P]) AdminRoutes(r chi.Router) {
-	// Users
-	r.Get("/users", burrow.Handle(a.adminListUsers))
-	r.Get("/users/{id}", burrow.Handle(a.adminEditUser))
-	r.Post("/users/{id}", burrow.Handle(a.adminUpdateUser))
-	r.Delete("/users/{id}", burrow.Handle(a.adminDeleteUser))
-	r.Post("/users/{id}/deactivate", burrow.Handle(deactivateUserHandler(a.repo)))
-	r.Post("/users/{id}/activate", burrow.Handle(activateUserHandler(a.repo)))
+	r.Group(func(r chi.Router) {
+		r.Use(RequireAdmin())
 
-	// Invites
-	r.Get("/invites", burrow.Handle(a.adminListInvites))
-	r.Get("/invites/new", burrow.Handle(a.adminNewInviteForm))
-	r.Post("/invites", burrow.Handle(a.handleCreateInvite))
-	r.Delete("/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(a.repo)))
+		// Users
+		r.Get("/users", burrow.Handle(a.adminListUsers))
+		r.Get("/users/{id}", burrow.Handle(a.adminEditUser))
+		r.Post("/users/{id}", burrow.Handle(a.adminUpdateUser))
+		r.Delete("/users/{id}", burrow.Handle(a.adminDeleteUser))
+		r.Post("/users/{id}/deactivate", burrow.Handle(deactivateUserHandler(a.repo)))
+		r.Post("/users/{id}/activate", burrow.Handle(activateUserHandler(a.repo)))
+
+		// Invites
+		r.Get("/invites", burrow.Handle(a.adminListInvites))
+		r.Get("/invites/new", burrow.Handle(a.adminNewInviteForm))
+		r.Post("/invites", burrow.Handle(a.handleCreateInvite))
+		r.Delete("/invites/{id}/revoke", burrow.Handle(revokeInviteHandler(a.repo)))
+	})
 }
 
 // AdminNavItems returns navigation items for the admin panel.
@@ -470,24 +478,14 @@ func (a *App[P]) AdminNavItems() []burrow.NavItem {
 	}
 }
 
-// CLICommands returns auth-related CLI subcommands (promote, demote, create-invite).
+// CLICommands returns auth-related CLI subcommands (set-role, create-invite).
 func (a *App[P]) CLICommands() []*cli.Command {
 	return []*cli.Command{
 		{
-			Name:      "promote",
-			Usage:     "Promote a user to admin",
-			ArgsUsage: "<username>",
-			Action: func(ctx context.Context, cmd *cli.Command) error {
-				return a.setRole(ctx, cmd, RoleAdmin)
-			},
-		},
-		{
-			Name:      "demote",
-			Usage:     "Demote an admin to regular user",
-			ArgsUsage: "<username>",
-			Action: func(ctx context.Context, cmd *cli.Command) error {
-				return a.setRole(ctx, cmd, RoleUser)
-			},
+			Name:      "set-role",
+			Usage:     "Set a user's role to one of: user, staff, admin",
+			ArgsUsage: "<username> <role>",
+			Action:    a.setRoleAction,
 		},
 		{
 			Name:      "create-invite",
@@ -509,10 +507,23 @@ func credName(cred Credential) string {
 // Repo returns the auth repository for external access.
 func (a *App[P]) Repo() *Repository[P] { return a.repo }
 
-func (a *App[P]) setRole(ctx context.Context, cmd *cli.Command, role string) error {
-	username := cmd.Args().First()
-	if username == "" {
-		return fmt.Errorf("username is required")
+// validRoles lists every role accepted by [App.setRoleAction]. Order matches
+// the hierarchy from least to most privileged.
+var validRoles = []string{RoleUser, RoleStaff, RoleAdmin}
+
+func isValidRole(role string) bool {
+	return slices.Contains(validRoles, role)
+}
+
+func (a *App[P]) setRoleAction(ctx context.Context, cmd *cli.Command) error {
+	args := cmd.Args()
+	if args.Len() < 2 {
+		return fmt.Errorf("username and role are required")
+	}
+	username := args.Get(0)
+	role := args.Get(1)
+	if !isValidRole(role) {
+		return fmt.Errorf("invalid role %q (expected one of: %s)", role, strings.Join(validRoles, ", "))
 	}
 
 	if a.repo == nil {

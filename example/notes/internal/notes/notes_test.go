@@ -943,6 +943,15 @@ func TestAdminRoutes_Delete(t *testing.T) {
 
 	r := chi.NewRouter()
 	r.Use(burrowtest.ErrorExecMiddleware)
+	// AdminRoutes self-gates with auth.RequireAdmin(); inject an admin user
+	// in context so the middleware lets the request through.
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			u := &auth.User[Profile]{Username: "admin-fixture", Role: auth.RoleAdmin, IsActive: true}
+			u.ID = "admin-fixture-id"
+			next.ServeHTTP(w, r.WithContext(auth.WithUser(r.Context(), u)))
+		})
+	})
 	app.AdminRoutes(r)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/notes/"+note.ID, nil)
