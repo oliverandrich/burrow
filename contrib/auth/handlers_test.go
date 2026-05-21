@@ -830,6 +830,97 @@ func TestRecoveryLoginSuccess(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "remaining_codes")
 }
 
+func TestRecoveryLoginLastCodeTriggersRegenerate(t *testing.T) {
+	h, repo, _ := setupTestApp(t)
+	user, _ := repo.CreateUser(context.Background(), "alice")
+
+	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
+	codes, hashes, err := svc.GenerateCodes(CodeCount)
+	require.NoError(t, err)
+	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes[:1]))
+	consumedCode := codes[0]
+
+	body := strings.NewReader(`{"username":"alice","code":"` + consumedCode + `"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err = h.RecoveryLogin(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"redirect":"/auth/recovery-codes"`)
+	assert.NotContains(t, rec.Body.String(), "remaining_codes")
+
+	values := session.GetValues(req)
+	require.NotNil(t, values)
+	assert.Equal(t, user.ID, values["user_id"])
+	storedCodes, ok := values["recovery_codes"].([]string)
+	require.True(t, ok, "expected recovery_codes in session")
+	assert.Len(t, storedCodes, CodeCount)
+	assert.NotContains(t, storedCodes, consumedCode, "regenerated codes must differ from the consumed one")
+	assert.Equal(t, h.config.LoginRedirect, values["redirect_after_login"])
+
+	freshCodes, err := repo.GetUnusedRecoveryCodes(context.Background(), user.ID)
+	require.NoError(t, err)
+	assert.Len(t, freshCodes, CodeCount)
+}
+
+func TestRecoveryLoginPenultimateCodeKeepsHappyPath(t *testing.T) {
+	h, repo, _ := setupTestApp(t)
+	user, _ := repo.CreateUser(context.Background(), "alice")
+
+	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
+	codes, hashes, err := svc.GenerateCodes(CodeCount)
+	require.NoError(t, err)
+	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes[:2]))
+
+	body := strings.NewReader(`{"username":"alice","code":"` + codes[0] + `"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err = h.RecoveryLogin(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"remaining_codes":1`)
+	assert.Contains(t, rec.Body.String(), `"redirect":"`+h.config.LoginRedirect+`"`)
+
+	values := session.GetValues(req)
+	require.NotNil(t, values)
+	assert.Equal(t, user.ID, values["user_id"])
+	_, hasCodes := values["recovery_codes"]
+	assert.False(t, hasCodes, "session must not stash recovery_codes on happy path")
+	_, hasRedirect := values["redirect_after_login"]
+	assert.False(t, hasRedirect, "session must not stash redirect_after_login on happy path")
+}
+
+func TestRecoveryLoginLastCodePreservesSessionRedirect(t *testing.T) {
+	h, repo, _ := setupTestApp(t)
+	user, _ := repo.CreateUser(context.Background(), "alice")
+
+	svc := &RecoveryService{BcryptCost: bcrypt.MinCost}
+	codes, hashes, err := svc.GenerateCodes(CodeCount)
+	require.NoError(t, err)
+	require.NoError(t, repo.CreateRecoveryCodes(context.Background(), user.ID, hashes[:1]))
+
+	body := strings.NewReader(`{"username":"alice","code":"` + codes[0] + `"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/recovery", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = session.Inject(req, map[string]any{"redirect_after_login": "/custom-page"})
+	rec := httptest.NewRecorder()
+
+	err = h.RecoveryLogin(rec, req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"redirect":"/auth/recovery-codes"`)
+
+	values := session.GetValues(req)
+	require.NotNil(t, values)
+	assert.Equal(t, "/custom-page", values["redirect_after_login"], "original redirect target must survive the regenerate")
+}
+
 // --- RegenerateRecoveryCodes tests ---
 
 func TestRegenerateRecoveryCodes(t *testing.T) {

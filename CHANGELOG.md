@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Fixed
+
+- **`contrib/auth` recovery flow auto-regenerates on last-code consumption.** When `RecoveryLogin` consumes the user's final unused code, the handler now routes through the `/auth/recovery-codes` ack flow so passkey-only accounts can't end up at `remaining_codes: 0` without a fresh safety net. Happy path with `remaining > 0` is unchanged.
+
 ## 0.22.0 — 2026-05-20
 
 > **Migrating from v0.21.x?** See the [v0.22 migration guide](migration/v0.22.md) for the concrete before/after patterns.

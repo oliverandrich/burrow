@@ -133,6 +133,8 @@ All routes are registered under `/auth`:
 | GET | `/auth/verify-email` | Verify email via token |
 | POST | `/auth/resend-verification` | Resend verification email |
 
+When `POST /auth/recovery` consumes the user's final unused recovery code, the handler auto-regenerates a fresh set and redirects to `/auth/recovery-codes` (the same ack flow as `POST /auth/recovery-codes/regenerate`), so a passkey-only account never reaches a "logged in with zero codes left" state.
+
 Admin routes (registered via `HasAdmin`, require auth + admin role):
 
 | Method | Path | Description |
