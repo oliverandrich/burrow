@@ -463,6 +463,7 @@ func TestBuildNavLinks_ShowsAdminOnlyForAdmins(t *testing.T) {
 	})
 	ctx = WithAuthChecker(ctx, AuthChecker{
 		IsAuthenticated: func() bool { return true },
+		IsStaff:         func() bool { return true },
 		IsAdmin:         func() bool { return true },
 	})
 
@@ -470,6 +471,55 @@ func TestBuildNavLinks_ShowsAdminOnlyForAdmins(t *testing.T) {
 
 	require.Len(t, links, 1)
 	assert.Equal(t, "Admin", links[0].Label)
+}
+
+func TestBuildNavLinks_FiltersStaffOnly(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Studio", URL: "/studio", StaffOnly: true},
+	})
+	ctx = WithAuthChecker(ctx, AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsStaff:         func() bool { return false },
+		IsAdmin:         func() bool { return false },
+	})
+
+	links := buildNavLinks(ctx, "/")
+
+	assert.Empty(t, links, "non-staff users must not see StaffOnly nav items")
+}
+
+func TestBuildNavLinks_ShowsStaffOnlyForStaff(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Studio", URL: "/studio", StaffOnly: true},
+	})
+	ctx = WithAuthChecker(ctx, AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsStaff:         func() bool { return true },
+		IsAdmin:         func() bool { return false },
+	})
+
+	links := buildNavLinks(ctx, "/")
+
+	require.Len(t, links, 1)
+	assert.Equal(t, "Studio", links[0].Label)
+}
+
+func TestBuildNavLinks_ShowsStaffOnlyForAdmins(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithNavItems(ctx, []NavItem{
+		{Label: "Studio", URL: "/studio", StaffOnly: true},
+	})
+	ctx = WithAuthChecker(ctx, AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsStaff:         func() bool { return true },
+		IsAdmin:         func() bool { return true },
+	})
+
+	links := buildNavLinks(ctx, "/")
+
+	require.Len(t, links, 1, "admins are implicit staff and must see StaffOnly nav items")
 }
 
 func TestBuildNavLinks_PreservesIcon(t *testing.T) {

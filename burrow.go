@@ -178,6 +178,7 @@ type NavItem struct { //nolint:govet // fieldalignment: readability over optimiz
 	Icon      string
 	Position  int
 	AuthOnly  bool
+	StaffOnly bool
 	AdminOnly bool
 }
 
@@ -263,8 +264,14 @@ type NamedMigration struct {
 // admin panel. The admin app discovers an AdminAuth provider from the
 // registry during Configure and uses its middleware to protect /admin routes.
 // contrib/auth implements this interface.
+//
+// RequireAuth gates "logged in or not"; RequireStaff gates "may enter the
+// admin shell" (used by the admin coordinator for the /admin/ frame);
+// RequireAdmin gates "full admin privileges" (used per-route by apps).
+// Roles form a hierarchy: admin implies staff implies authenticated.
 type AdminAuth interface {
 	RequireAuth() func(http.Handler) http.Handler
+	RequireStaff() func(http.Handler) http.Handler
 	RequireAdmin() func(http.Handler) http.Handler
 }
 

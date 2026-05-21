@@ -9,9 +9,13 @@ import (
 	"github.com/oliverandrich/den/document"
 )
 
-// Role constants.
+// Role constants. Roles form a hierarchy: admin implies staff implies
+// authenticated. RoleUser is the default for newly registered users and
+// grants no admin-shell access; RoleStaff grants entry to /admin/ with
+// per-route gating; RoleAdmin unlocks every admin-only route.
 const (
 	RoleUser  = "user"
+	RoleStaff = "staff"
 	RoleAdmin = "admin"
 )
 
@@ -48,6 +52,10 @@ func (u User[P]) String() string {
 
 // IsAdmin returns true if the user has the admin role.
 func (u *User[P]) IsAdmin() bool { return u.Role == RoleAdmin }
+
+// IsStaff returns true if the user can enter the admin shell. Admins are
+// implicit staff.
+func (u *User[P]) IsStaff() bool { return u.Role == RoleStaff || u.Role == RoleAdmin }
 
 // WebAuthnID returns the user ID as bytes for the WebAuthn protocol.
 // The ULID string is unique and stable, so we use it directly.

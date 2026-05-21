@@ -65,7 +65,7 @@ Boots and starts the HTTP server. This is a `cli.ActionFunc` — pass it directl
 func (s *Server) CLICommands() []*cli.Command
 ```
 
-Returns the CLI subcommands from all `HasCLICommands` apps, each wrapped to run inside the framework's boot lifecycle. The wrapped `Action` opens the database, runs `Configure()` on every app, then invokes the original Action; the database is closed when it returns. Use this in place of `srv.Registry().AllCLICommands()` when wiring contrib subcommands like `auth promote`:
+Returns the CLI subcommands from all `HasCLICommands` apps, each wrapped to run inside the framework's boot lifecycle. The wrapped `Action` opens the database, runs `Configure()` on every app, then invokes the original Action; the database is closed when it returns. Use this in place of `srv.Registry().AllCLICommands()` when wiring contrib subcommands like `auth set-role`:
 
 ```go
 cmd := &cli.Command{
@@ -225,7 +225,7 @@ Test convenience: calls only the `Configure()` phase (no `PostConfigure`), passi
 func (r *Registry) AllCLICommands() []*cli.Command
 ```
 
-Collects CLI subcommands from all `HasCLICommands` apps **without** the boot-lifecycle wrapping that `Server.CLICommands` adds. Use this only when you need raw access to the registered subcommands — most projects should call `srv.CLICommands()` instead so contrib subcommands like `auth promote` run against a fully-configured app graph.
+Collects CLI subcommands from all `HasCLICommands` apps **without** the boot-lifecycle wrapping that `Server.CLICommands` adds. Use this only when you need raw access to the registered subcommands — most projects should call `srv.CLICommands()` instead so contrib subcommands like `auth set-role` run against a fully-configured app graph.
 
 #### RunMigrations
 

@@ -605,77 +605,79 @@ func TestCLICommands(t *testing.T) {
 		names[cmd.Name] = true
 	}
 
-	assert.True(t, names["promote"], "should have promote command")
-	assert.True(t, names["demote"], "should have demote command")
+	assert.True(t, names["set-role"], "should have set-role command")
 	assert.True(t, names["create-invite"], "should have create-invite command")
 }
 
-func TestCLIPromote(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewRepository[EmptyProfile](db)
-	ctx := context.Background()
-
-	user, err := repo.CreateUser(ctx, "alice")
-	require.NoError(t, err)
-	assert.Equal(t, RoleUser, user.Role)
-
-	app := &App[EmptyProfile]{repo: repo}
-	cmds := app.CLICommands()
-
-	var promoteCmd *cli.Command
-	for _, cmd := range cmds {
-		if cmd.Name == "promote" {
-			promoteCmd = cmd
-			break
+func findSetRoleCmd(t *testing.T, app *App[EmptyProfile]) *cli.Command {
+	t.Helper()
+	for _, cmd := range app.CLICommands() {
+		if cmd.Name == "set-role" {
+			return cmd
 		}
 	}
-	require.NotNil(t, promoteCmd)
-
-	cliCmd := &cli.Command{
-		Name:     "test",
-		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
-		Commands: []*cli.Command{promoteCmd},
-	}
-	err = cliCmd.Run(ctx, []string{"test", "promote", "alice"})
-	require.NoError(t, err)
-
-	got, err := repo.GetUserByID(ctx, user.ID)
-	require.NoError(t, err)
-	assert.Equal(t, RoleAdmin, got.Role)
+	t.Fatal("set-role command not found")
+	return nil
 }
 
-func TestCLIDemote(t *testing.T) {
+func TestCLISetRoleTransitions(t *testing.T) {
+	cases := []struct {
+		name      string
+		fromRole  string
+		targetArg string
+		wantRole  string
+	}{
+		{"user → admin", RoleUser, "admin", RoleAdmin},
+		{"admin → user", RoleAdmin, "user", RoleUser},
+		{"user → staff", RoleUser, "staff", RoleStaff},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := openTestDB(t)
+			repo := NewRepository[EmptyProfile](db)
+			ctx := context.Background()
+
+			user, err := repo.CreateUser(ctx, "subject")
+			require.NoError(t, err)
+			if tc.fromRole != user.Role {
+				require.NoError(t, repo.SetUserRole(ctx, user.ID, tc.fromRole))
+			}
+
+			app := &App[EmptyProfile]{repo: repo}
+			setRoleCmd := findSetRoleCmd(t, app)
+			cliCmd := &cli.Command{
+				Name:     "test",
+				Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
+				Commands: []*cli.Command{setRoleCmd},
+			}
+
+			err = cliCmd.Run(ctx, []string{"test", "set-role", "subject", tc.targetArg})
+			require.NoError(t, err)
+
+			got, err := repo.GetUserByID(ctx, user.ID)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantRole, got.Role)
+		})
+	}
+}
+
+// TestCLISetRoleStaffPredicates pins the IsStaff/IsAdmin invariants for the
+// new tier — covered separately from the transition table so the assertion
+// names show up clearly.
+func TestCLISetRoleStaffPredicates(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository[EmptyProfile](db)
 	ctx := context.Background()
 
-	user, err := repo.CreateUser(ctx, "bob")
+	user, err := repo.CreateUser(ctx, "carol")
 	require.NoError(t, err)
-	require.NoError(t, repo.SetUserRole(ctx, user.ID, RoleAdmin))
-
-	app := &App[EmptyProfile]{repo: repo}
-	cmds := app.CLICommands()
-
-	var demoteCmd *cli.Command
-	for _, cmd := range cmds {
-		if cmd.Name == "demote" {
-			demoteCmd = cmd
-			break
-		}
-	}
-	require.NotNil(t, demoteCmd)
-
-	cliCmd := &cli.Command{
-		Name:     "test",
-		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
-		Commands: []*cli.Command{demoteCmd},
-	}
-	err = cliCmd.Run(ctx, []string{"test", "demote", "bob"})
-	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, user.ID, RoleStaff))
 
 	got, err := repo.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
-	assert.Equal(t, RoleUser, got.Role)
+	assert.True(t, got.IsStaff(), "staff role must report IsStaff() true")
+	assert.False(t, got.IsAdmin(), "staff role must not report IsAdmin() true")
 }
 
 func TestCLICreateInvite(t *testing.T) {
@@ -709,14 +711,13 @@ func TestCLICreateInvite(t *testing.T) {
 	assert.Equal(t, "test@example.com", invites[0].Email)
 }
 
-// TestCLIPromoteThroughServerCLICommands is the end-to-end variant of
-// TestCLIPromote: it goes through the framework's boot lifecycle (
-// Server.CLICommands -> wrapped Action -> Server.boot -> auth.Configure ->
-// promote.Action) rather than constructing &App[EmptyProfile]{repo: repo} directly. Without
-// the wrap, the test reproduces the user-reported regression: the promote
-// subcommand fires before Configure() runs, a.repo is nil, and the action
-// fails with "auth app not initialized".
-func TestCLIPromoteThroughServerCLICommands(t *testing.T) {
+// TestCLISetRoleThroughServerCLICommands is the end-to-end variant of
+// TestCLISetRolePromote: it goes through the framework's boot lifecycle
+// (Server.CLICommands -> wrapped Action -> Server.boot -> auth.Configure ->
+// set-role.Action) rather than constructing &App[EmptyProfile]{repo: repo}
+// directly. Without the wrap, the subcommand fires before Configure() runs,
+// a.repo is nil, and the action fails with "auth app not initialized".
+func TestCLISetRoleThroughServerCLICommands(t *testing.T) {
 	dsn := burrowtest.TempDSN(t)
 	ctx := t.Context()
 
@@ -735,15 +736,15 @@ func TestCLIPromoteThroughServerCLICommands(t *testing.T) {
 	}
 
 	// Wire up Server with auth registered (plus auth's declared dependencies)
-	// and invoke promote via the wrapped subcommand path.
+	// and invoke set-role via the wrapped subcommand path.
 	srv := burrow.NewServer(session.New(), burrowtest.StubApp("csrf"), burrowtest.StubApp("staticfiles"), New[EmptyProfile]())
 	cmd := &cli.Command{
 		Name:     "test",
 		Flags:    srv.Flags(nil),
 		Commands: srv.CLICommands(),
 	}
-	err := cmd.Run(ctx, []string{"test", "--database-dsn", dsn, "promote", "alice"})
-	require.NoError(t, err, "promote subcommand must succeed when wrapped by Server.CLICommands")
+	err := cmd.Run(ctx, []string{"test", "--database-dsn", dsn, "set-role", "alice", "admin"})
+	require.NoError(t, err, "set-role subcommand must succeed when wrapped by Server.CLICommands")
 
 	// Verify alice's role is admin in the database.
 	db, err := burrow.OpenDB(ctx, dsn)
@@ -815,7 +816,13 @@ func adminUserRouter(app *App[EmptyProfile]) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rctx := burrowtest.ErrorExecContext(r.Context())
+			// AdminRoutes self-gates with RequireAdmin(); inject a stub
+			// admin user so the handler-level tests can exercise behaviour
+			// without re-implementing the admin coordinator's setup.
+			admin := &User[EmptyProfile]{Username: "admin-fixture", Role: RoleAdmin, IsActive: true}
+			admin.ID = "admin-fixture-id"
+			rctx := WithUser(r.Context(), admin)
+			rctx = burrowtest.ErrorExecContext(rctx)
 			next.ServeHTTP(w, r.WithContext(rctx))
 		})
 	})
@@ -1060,6 +1067,8 @@ func TestAdminDeleteUserSuccess(t *testing.T) {
 
 	admin, err := repo.CreateUser(ctx, "admin")
 	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, admin.ID, RoleAdmin))
+	admin.Role = RoleAdmin
 
 	target, err := repo.CreateUser(ctx, "alice")
 	require.NoError(t, err)
@@ -1093,7 +1102,8 @@ func TestAdminDeleteUserNotFound(t *testing.T) {
 
 	admin, err := repo.CreateUser(ctx, "admin")
 	require.NoError(t, err)
-	_ = admin
+	require.NoError(t, repo.SetUserRole(ctx, admin.ID, RoleAdmin))
+	admin.Role = RoleAdmin
 
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
@@ -1923,52 +1933,34 @@ func TestCleanupOrphanedUsersStopsOnCancel(t *testing.T) {
 	}
 }
 
-func TestCLIPromoteNoArgs(t *testing.T) {
+func TestCLISetRoleNoArgs(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository[EmptyProfile](db)
 	app := &App[EmptyProfile]{repo: repo}
-	cmds := app.CLICommands()
-
-	var promoteCmd *cli.Command
-	for _, cmd := range cmds {
-		if cmd.Name == "promote" {
-			promoteCmd = cmd
-			break
-		}
-	}
-	require.NotNil(t, promoteCmd)
+	setRoleCmd := findSetRoleCmd(t, app)
 
 	cliCmd := &cli.Command{
 		Name:     "test",
 		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
-		Commands: []*cli.Command{promoteCmd},
+		Commands: []*cli.Command{setRoleCmd},
 	}
-	err := cliCmd.Run(context.Background(), []string{"test", "promote"})
+	err := cliCmd.Run(context.Background(), []string{"test", "set-role"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "username is required")
+	assert.Contains(t, err.Error(), "username and role are required")
 }
 
-func TestCLIPromoteUserNotFound(t *testing.T) {
+func TestCLISetRoleUserNotFound(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository[EmptyProfile](db)
 	app := &App[EmptyProfile]{repo: repo}
-	cmds := app.CLICommands()
-
-	var promoteCmd *cli.Command
-	for _, cmd := range cmds {
-		if cmd.Name == "promote" {
-			promoteCmd = cmd
-			break
-		}
-	}
-	require.NotNil(t, promoteCmd)
+	setRoleCmd := findSetRoleCmd(t, app)
 
 	cliCmd := &cli.Command{
 		Name:     "test",
 		Action:   func(ctx context.Context, cmd *cli.Command) error { return nil },
-		Commands: []*cli.Command{promoteCmd},
+		Commands: []*cli.Command{setRoleCmd},
 	}
-	err := cliCmd.Run(context.Background(), []string{"test", "promote", "nonexistent"})
+	err := cliCmd.Run(context.Background(), []string{"test", "set-role", "nonexistent", "admin"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 }
@@ -2066,22 +2058,48 @@ func TestBackgroundCleanupPurgesOrphanedUsers(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// --- setRole: repo not initialized ---
+// --- set-role: repo not initialized ---
 
 func TestSetRoleRepoNotInitialized(t *testing.T) {
 	app := &App[EmptyProfile]{repo: nil}
 
 	cliCmd := &cli.Command{
 		Name:      "test-set-role",
-		ArgsUsage: "<username>",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return app.setRole(ctx, cmd, RoleAdmin)
-		},
+		ArgsUsage: "<username> <role>",
+		Action:    app.setRoleAction,
+	}
+
+	err := cliCmd.Run(context.Background(), []string{"test-set-role", "alice", "admin"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "auth app not initialized")
+}
+
+func TestSetRoleActionInvalidArgs(t *testing.T) {
+	app := &App[EmptyProfile]{repo: nil}
+
+	cliCmd := &cli.Command{
+		Name:      "test-set-role",
+		ArgsUsage: "<username> <role>",
+		Action:    app.setRoleAction,
 	}
 
 	err := cliCmd.Run(context.Background(), []string{"test-set-role", "alice"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "auth app not initialized")
+	assert.Contains(t, err.Error(), "username and role are required")
+}
+
+func TestSetRoleActionInvalidRole(t *testing.T) {
+	app := &App[EmptyProfile]{repo: nil}
+
+	cliCmd := &cli.Command{
+		Name:      "test-set-role",
+		ArgsUsage: "<username> <role>",
+		Action:    app.setRoleAction,
+	}
+
+	err := cliCmd.Run(context.Background(), []string{"test-set-role", "alice", "robot"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid role "robot"`)
 }
 
 // --- createInviteAction: repo not initialized ---

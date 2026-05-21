@@ -103,30 +103,29 @@ func TestRequireAuthAllowsAuthenticated(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
-func TestRequireAdmin(t *testing.T) {
-	tests := []struct {
-		name       string
-		role       string
-		wantStatus int
-	}{
-		{"forbids non-admin", RoleUser, http.StatusForbidden},
-		{"allows admin", RoleAdmin, http.StatusOK},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+// runRoleGateCases exercises a role-based middleware against the three
+// roles. The shared shape lets one helper cover both RequireAdmin and
+// RequireStaff without duplicating the router wiring.
+func runRoleGateCases(t *testing.T, mw func(http.Handler) http.Handler, cases []struct {
+	name       string
+	role       string
+	wantStatus int
+}) {
+	t.Helper()
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
 			r := chi.NewRouter()
 			r.Use(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					u := &User[EmptyProfile]{Username: "test", Role: tt.role}
+					u := &User[EmptyProfile]{Username: "test", Role: tc.role}
 					u.ID = "user-1"
 					ctx := WithUser(r.Context(), u)
 					ctx = burrowtest.ErrorExecContext(ctx)
 					next.ServeHTTP(w, r.WithContext(ctx))
 				})
 			})
-			r.Use(RequireAdmin())
-			r.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
+			r.Use(mw)
+			r.Get("/admin", func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 
@@ -134,14 +133,47 @@ func TestRequireAdmin(t *testing.T) {
 			rec := httptest.NewRecorder()
 			r.ServeHTTP(rec, req)
 
-			assert.Equal(t, tt.wantStatus, rec.Code)
+			assert.Equal(t, tc.wantStatus, rec.Code)
 		})
 	}
 }
 
+func TestRequireAdmin(t *testing.T) {
+	runRoleGateCases(t, RequireAdmin(), []struct {
+		name       string
+		role       string
+		wantStatus int
+	}{
+		{"forbids regular user", RoleUser, http.StatusForbidden},
+		{"forbids staff", RoleStaff, http.StatusForbidden},
+		{"allows admin", RoleAdmin, http.StatusOK},
+	})
+}
+
+func TestRequireStaff(t *testing.T) {
+	runRoleGateCases(t, RequireStaff(), []struct {
+		name       string
+		role       string
+		wantStatus int
+	}{
+		{"forbids regular user", RoleUser, http.StatusForbidden},
+		{"allows staff", RoleStaff, http.StatusOK},
+		{"allows admin", RoleAdmin, http.StatusOK},
+	})
+}
+
 func TestRequireAdminRedirectsUnauthenticated(t *testing.T) {
+	assertRedirectsUnauthenticated(t, RequireAdmin())
+}
+
+func TestRequireStaffRedirectsUnauthenticated(t *testing.T) {
+	assertRedirectsUnauthenticated(t, RequireStaff())
+}
+
+func assertRedirectsUnauthenticated(t *testing.T, mw func(http.Handler) http.Handler) {
+	t.Helper()
 	r := chi.NewRouter()
-	r.Use(RequireAdmin())
+	r.Use(mw)
 	r.Get("/admin", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})

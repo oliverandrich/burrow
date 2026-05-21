@@ -67,10 +67,14 @@ func (a *App) NavItems() []burrow.NavItem {
 	}
 }
 
-// AdminRoutes registers admin routes for notes management.
+// AdminRoutes registers admin routes for notes management. The /admin/
+// frame is open to staff, so this app self-gates with auth.RequireAdmin().
 func (a *App) AdminRoutes(r chi.Router) {
-	r.Get("/notes", burrow.Handle(a.adminListNotes))
-	r.Delete("/notes/{id}", burrow.Handle(a.adminDeleteNote))
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAdmin())
+		r.Get("/notes", burrow.Handle(a.adminListNotes))
+		r.Delete("/notes/{id}", burrow.Handle(a.adminDeleteNote))
+	})
 }
 
 func (a *App) AdminNavItems() []burrow.NavItem {

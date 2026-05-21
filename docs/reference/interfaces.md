@@ -278,7 +278,7 @@ type HasCLICommands interface {
 }
 ```
 
-Returns CLI subcommands (e.g., `promote`, `demote`). Wire them into the top-level `cli.Command` via `srv.CLICommands()`:
+Returns CLI subcommands (e.g., `set-role`, `create-invite`). Wire them into the top-level `cli.Command` via `srv.CLICommands()`:
 
 ```go
 cmd := &cli.Command{
@@ -289,7 +289,7 @@ cmd := &cli.Command{
 }
 ```
 
-`srv.CLICommands()` wraps each subcommand's `Action` with the server's boot sequence (open DB, run `Configure()` on all apps) and tears it down afterwards, so a subcommand like `promote alice` runs against a fully-configured app graph. Use `srv.Registry().AllCLICommands()` only as a low-level escape hatch when you need the raw, unwrapped commands and want to manage the boot lifecycle yourself.
+`srv.CLICommands()` wraps each subcommand's `Action` with the server's boot sequence (open DB, run `Configure()` on all apps) and tears it down afterwards, so a subcommand like `set-role alice admin` runs against a fully-configured app graph. Use `srv.Registry().AllCLICommands()` only as a low-level escape hatch when you need the raw, unwrapped commands and want to manage the boot lifecycle yourself.
 
 ```go
 func (a *App) CLICommands() []*cli.Command {
@@ -380,12 +380,13 @@ Contributes admin panel routes and navigation items. `AdminRoutes` receives a Ch
 
 ```go
 type AdminAuth interface {
-    RequireAuth() func(http.Handler) http.Handler
+    RequireAuth()  func(http.Handler) http.Handler
+    RequireStaff() func(http.Handler) http.Handler
     RequireAdmin() func(http.Handler) http.Handler
 }
 ```
 
-Provides authentication and authorization middleware for the admin panel. The `admin` contrib app discovers an `AdminAuth` provider from the registry during `Configure` and uses its middleware to protect `/admin` routes. `contrib/auth` implements this interface — custom auth systems can provide their own implementation.
+Provides authentication and authorization middleware for the admin panel. The `admin` contrib app discovers an `AdminAuth` provider from the registry during `Configure` and uses `RequireAuth + RequireStaff` to gate the `/admin/` frame; individual `HasAdmin` apps add `RequireAdmin` on top of admin-only routes. `contrib/auth` implements this interface — custom auth systems must provide all three methods (admin implies staff implies authenticated).
 
 ```go
 func (a *App) AdminRoutes(r chi.Router) {

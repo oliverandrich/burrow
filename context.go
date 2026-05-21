@@ -15,8 +15,12 @@ type TemplateExecutor func(ctx context.Context, name string, data map[string]any
 // This allows the core framework to filter nav items by auth state without
 // importing contrib/auth. Auth apps inject an AuthChecker into the context;
 // the framework reads it when building NavLinks.
+//
+// Roles form a hierarchy: IsAdmin implies IsStaff implies IsAuthenticated.
+// Auth providers must keep that invariant when wiring the closures.
 type AuthChecker struct {
 	IsAuthenticated func() bool
+	IsStaff         func() bool
 	IsAdmin         func() bool
 }
 
@@ -116,19 +120,30 @@ func RequestPath(ctx context.Context) string {
 	return ""
 }
 
-// isAuthenticated returns true if the AuthChecker in context reports
+// IsAuthenticated returns true if the AuthChecker in context reports
 // authentication. Returns false if no AuthChecker is set.
-func isAuthenticated(ctx context.Context) bool {
-	if checker, ok := ctx.Value(ctxKeyAuthChecker{}).(AuthChecker); ok {
+func IsAuthenticated(ctx context.Context) bool {
+	if checker, ok := ctx.Value(ctxKeyAuthChecker{}).(AuthChecker); ok && checker.IsAuthenticated != nil {
 		return checker.IsAuthenticated()
 	}
 	return false
 }
 
-// isAdmin returns true if the AuthChecker in context reports admin status.
+// IsStaff returns true if the AuthChecker in context reports staff status.
+// Returns false if no AuthChecker is set. Admins are implicit staff: a
+// well-formed AuthChecker returns true here whenever [AuthChecker.IsAdmin]
+// would.
+func IsStaff(ctx context.Context) bool {
+	if checker, ok := ctx.Value(ctxKeyAuthChecker{}).(AuthChecker); ok && checker.IsStaff != nil {
+		return checker.IsStaff()
+	}
+	return false
+}
+
+// IsAdmin returns true if the AuthChecker in context reports admin status.
 // Returns false if no AuthChecker is set.
-func isAdmin(ctx context.Context) bool {
-	if checker, ok := ctx.Value(ctxKeyAuthChecker{}).(AuthChecker); ok {
+func IsAdmin(ctx context.Context) bool {
+	if checker, ok := ctx.Value(ctxKeyAuthChecker{}).(AuthChecker); ok && checker.IsAdmin != nil {
 		return checker.IsAdmin()
 	}
 	return false

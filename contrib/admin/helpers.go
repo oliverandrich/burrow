@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
@@ -23,6 +24,37 @@ type DashboardItem struct {
 	Label string
 	URL   string
 	Icon  string
+}
+
+// filterNavGroups drops items the current user is not allowed to see and
+// removes groups whose items become empty. StaffOnly items pass unchanged
+// because the /admin/ frame is staff-gated; AdminOnly items are filtered
+// out when isAdmin is false.
+//
+// burrow.NavItem.AuthOnly is irrelevant inside /admin/ — reaching this
+// helper already implies an authenticated request — so it is not checked.
+func filterNavGroups(groups []NavGroup, isAdmin bool) []NavGroup {
+	if len(groups) == 0 {
+		return nil
+	}
+	filtered := make([]NavGroup, 0, len(groups))
+	for _, g := range groups {
+		items := make([]burrow.NavItem, 0, len(g.Items))
+		for _, item := range g.Items {
+			if item.AdminOnly && !isAdmin {
+				continue
+			}
+			items = append(items, item)
+		}
+		if len(items) == 0 {
+			continue
+		}
+		filtered = append(filtered, NavGroup{AppName: g.AppName, Items: items})
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	return filtered
 }
 
 // PrepareDashboard pre-computes dashboard groups with translated labels,

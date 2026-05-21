@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/urfave/cli/v3"
@@ -216,13 +217,17 @@ func (a *App) Dequeue(ctx context.Context, id string) error {
 	return a.repo.Cancel(ctx, id)
 }
 
-// AdminRoutes registers admin routes for job management.
+// AdminRoutes registers admin routes for job management. The /admin/ frame
+// is open to staff, so this app self-gates with auth.RequireAdmin().
 func (a *App) AdminRoutes(r chi.Router) {
-	r.Get("/jobs", burrow.Handle(a.adminListJobs))
-	r.Get("/jobs/{id}", burrow.Handle(a.adminJobDetail))
-	r.Delete("/jobs/{id}", burrow.Handle(a.adminDeleteJob))
-	r.Post("/jobs/{id}/retry", burrow.Handle(retryHandler(a.repo)))
-	r.Post("/jobs/{id}/cancel", burrow.Handle(cancelHandler(a.repo)))
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAdmin())
+		r.Get("/jobs", burrow.Handle(a.adminListJobs))
+		r.Get("/jobs/{id}", burrow.Handle(a.adminJobDetail))
+		r.Delete("/jobs/{id}", burrow.Handle(a.adminDeleteJob))
+		r.Post("/jobs/{id}/retry", burrow.Handle(retryHandler(a.repo)))
+		r.Post("/jobs/{id}/cancel", burrow.Handle(cancelHandler(a.repo)))
+	})
 }
 
 // AdminNavItems returns navigation items for the admin panel.

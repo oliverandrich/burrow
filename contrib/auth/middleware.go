@@ -44,17 +44,22 @@ func redirectTarget(r *http.Request) string {
 	return parsed.RequestURI()
 }
 
-// adminChecker is the minimal interface implemented by every *User[P] —
-// used here so middleware stays non-generic.
-type adminChecker interface {
+// roleChecker is the minimal interface implemented by every *User[P] —
+// the middleware stays non-generic by reading the user via this interface
+// rather than the parameterised User type.
+type roleChecker interface {
+	IsStaff() bool
 	IsAdmin() bool
 }
 
-// requireAdmin returns middleware that enforces admin access.
-func requireAdmin() func(http.Handler) http.Handler {
+// requireRole returns middleware that loads the request's user from
+// context and applies pass to decide access. Unauthenticated requests
+// redirect to login; authenticated requests where pass returns false get a
+// 403 error page.
+func requireRole(pass func(roleChecker) bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, ok := r.Context().Value(ctxKeyUser{}).(adminChecker)
+			user, ok := r.Context().Value(ctxKeyUser{}).(roleChecker)
 			if !ok {
 				if target := redirectTarget(r); target != "" {
 					_ = session.Set(w, r, "redirect_after_login", target)
@@ -62,13 +67,21 @@ func requireAdmin() func(http.Handler) http.Handler {
 				redirectToLogin(w, r)
 				return
 			}
-			if !user.IsAdmin() {
+			if !pass(user) {
 				burrow.RenderError(w, r, http.StatusForbidden, "forbidden")
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func requireStaff() func(http.Handler) http.Handler {
+	return requireRole(roleChecker.IsStaff)
+}
+
+func requireAdmin() func(http.Handler) http.Handler {
+	return requireRole(roleChecker.IsAdmin)
 }
 
 // redirectToLogin sends the user to the login page. For HTMX requests it uses
@@ -87,19 +100,26 @@ func redirectToLogin(w http.ResponseWriter, r *http.Request) {
 // back is always a GET, storing a POST-only URL would cause a 405.
 func RequireAuth() func(http.Handler) http.Handler { return requireAuth() }
 
+// RequireStaff returns middleware that enforces staff (or admin) access.
+// Unauthenticated users are redirected to login (like [RequireAuth]).
+// Authenticated non-staff users see a 403 error page.
+func RequireStaff() func(http.Handler) http.Handler { return requireStaff() }
+
 // RequireAdmin returns middleware that enforces admin access.
 // Unauthenticated users are redirected to login (like [RequireAuth]).
 // Authenticated non-admin users see a 403 error page.
 func RequireAdmin() func(http.Handler) http.Handler { return requireAdmin() }
 
 // Compile-time check: auth.App[EmptyProfile] implements burrow.AdminAuth.
-// The check holds for any P because the RequireAuth/RequireAdmin methods
-// don't depend on the type parameter.
+// The check holds for any P because the methods don't depend on P.
 var _ burrow.AdminAuth = (*App[EmptyProfile])(nil)
 
 // RequireAuth satisfies the burrow.AdminAuth interface so the admin app
 // can discover auth middleware from the registry without importing this package.
 func (a *App[P]) RequireAuth() func(http.Handler) http.Handler { return requireAuth() }
+
+// RequireStaff satisfies the burrow.AdminAuth interface.
+func (a *App[P]) RequireStaff() func(http.Handler) http.Handler { return requireStaff() }
 
 // RequireAdmin satisfies the burrow.AdminAuth interface.
 func (a *App[P]) RequireAdmin() func(http.Handler) http.Handler { return requireAdmin() }
