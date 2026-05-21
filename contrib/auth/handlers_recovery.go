@@ -63,7 +63,29 @@ func (a *App[P]) RecoveryLogin(w http.ResponseWriter, r *http.Request) error {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to create session", err)
 	}
 
-	remaining, _ := a.repo.GetUnusedRecoveryCodeCount(r.Context(), user.ID)
+	remaining, err := a.repo.GetUnusedRecoveryCodeCount(r.Context(), user.ID)
+	if err != nil {
+		return errorJSONLog(w, http.StatusInternalServerError, "failed to count recovery codes", err)
+	}
+
+	if remaining == 0 {
+		// Last code was just consumed — regenerate and route through the
+		// ack flow so the user cannot proceed without a fresh safety net.
+		codes, err := a.generateAndStoreRecoveryCodes(r.Context(), user.ID)
+		if err != nil {
+			return errorJSONLog(w, http.StatusInternalServerError, "failed to regenerate codes", err)
+		}
+		if err := session.Set(w, r, "recovery_codes", codes); err != nil {
+			return errorJSONLog(w, http.StatusInternalServerError, "failed to store recovery codes", err)
+		}
+		if err := session.Set(w, r, "redirect_after_login", redirect); err != nil {
+			return errorJSONLog(w, http.StatusInternalServerError, "failed to store redirect", err)
+		}
+		return burrow.JSON(w, http.StatusOK, map[string]any{
+			"status":   "ok",
+			"redirect": "/auth/recovery-codes",
+		})
+	}
 
 	return burrow.JSON(w, http.StatusOK, map[string]any{
 		"status":          "ok",
