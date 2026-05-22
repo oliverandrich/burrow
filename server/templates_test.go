@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
@@ -88,7 +89,7 @@ func TestCollectFuncMap_MediaURLFromStorage(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	s := &Server{registry: registry.New(), appCfg: &AppConfig{DB: db}}
+	s := &Server{registry: registry.New(), appCfg: &burrowapp.AppConfig{DB: db}}
 	fm, _ := s.collectFuncMap()
 
 	fn, ok := fm["mediaURL"].(func(document.Attachment) string)
@@ -101,7 +102,7 @@ func TestCollectFuncMap_NoMediaURLWithoutStorage(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	s := &Server{registry: registry.New(), appCfg: &AppConfig{DB: db}}
+	s := &Server{registry: registry.New(), appCfg: &burrowapp.AppConfig{DB: db}}
 	fm, _ := s.collectFuncMap()
 
 	_, ok := fm["mediaURL"]
@@ -398,11 +399,11 @@ func TestIsActivePath(t *testing.T) {
 
 func TestBuildNavLinks_PublicItems(t *testing.T) {
 	ctx := context.Background()
-	items := []NavItem{
+	items := []burrowapp.NavItem{
 		{Label: "Home", URL: "/", Position: 1},
 		{Label: "About", URL: "/about", Position: 2},
 	}
-	ctx = WithNavItems(ctx, items)
+	ctx = burrowapp.WithNavItems(ctx, items)
 
 	links := buildNavLinks(ctx, "/about")
 
@@ -415,7 +416,7 @@ func TestBuildNavLinks_PublicItems(t *testing.T) {
 
 func TestBuildNavLinks_FiltersAuthOnly(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Home", URL: "/"},
 		{Label: "Notes", URL: "/notes", AuthOnly: true},
 	})
@@ -428,11 +429,11 @@ func TestBuildNavLinks_FiltersAuthOnly(t *testing.T) {
 
 func TestBuildNavLinks_ShowsAuthOnlyWhenAuthenticated(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Home", URL: "/"},
 		{Label: "Notes", URL: "/notes", AuthOnly: true},
 	})
-	ctx = WithAuthChecker(ctx, AuthChecker{
+	ctx = burrowapp.WithAuthChecker(ctx, burrowapp.AuthChecker{
 		IsAuthenticated: func() bool { return true },
 		IsAdmin:         func() bool { return false },
 	})
@@ -444,10 +445,10 @@ func TestBuildNavLinks_ShowsAuthOnlyWhenAuthenticated(t *testing.T) {
 
 func TestBuildNavLinks_FiltersAdminOnly(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Admin", URL: "/admin", AdminOnly: true},
 	})
-	ctx = WithAuthChecker(ctx, AuthChecker{
+	ctx = burrowapp.WithAuthChecker(ctx, burrowapp.AuthChecker{
 		IsAuthenticated: func() bool { return true },
 		IsAdmin:         func() bool { return false },
 	})
@@ -459,10 +460,10 @@ func TestBuildNavLinks_FiltersAdminOnly(t *testing.T) {
 
 func TestBuildNavLinks_ShowsAdminOnlyForAdmins(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Admin", URL: "/admin", AdminOnly: true},
 	})
-	ctx = WithAuthChecker(ctx, AuthChecker{
+	ctx = burrowapp.WithAuthChecker(ctx, burrowapp.AuthChecker{
 		IsAuthenticated: func() bool { return true },
 		IsStaff:         func() bool { return true },
 		IsAdmin:         func() bool { return true },
@@ -476,10 +477,10 @@ func TestBuildNavLinks_ShowsAdminOnlyForAdmins(t *testing.T) {
 
 func TestBuildNavLinks_FiltersStaffOnly(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Studio", URL: "/studio", StaffOnly: true},
 	})
-	ctx = WithAuthChecker(ctx, AuthChecker{
+	ctx = burrowapp.WithAuthChecker(ctx, burrowapp.AuthChecker{
 		IsAuthenticated: func() bool { return true },
 		IsStaff:         func() bool { return false },
 		IsAdmin:         func() bool { return false },
@@ -492,10 +493,10 @@ func TestBuildNavLinks_FiltersStaffOnly(t *testing.T) {
 
 func TestBuildNavLinks_ShowsStaffOnlyForStaff(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Studio", URL: "/studio", StaffOnly: true},
 	})
-	ctx = WithAuthChecker(ctx, AuthChecker{
+	ctx = burrowapp.WithAuthChecker(ctx, burrowapp.AuthChecker{
 		IsAuthenticated: func() bool { return true },
 		IsStaff:         func() bool { return true },
 		IsAdmin:         func() bool { return false },
@@ -509,10 +510,10 @@ func TestBuildNavLinks_ShowsStaffOnlyForStaff(t *testing.T) {
 
 func TestBuildNavLinks_ShowsStaffOnlyForAdmins(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Studio", URL: "/studio", StaffOnly: true},
 	})
-	ctx = WithAuthChecker(ctx, AuthChecker{
+	ctx = burrowapp.WithAuthChecker(ctx, burrowapp.AuthChecker{
 		IsAuthenticated: func() bool { return true },
 		IsStaff:         func() bool { return true },
 		IsAdmin:         func() bool { return true },
@@ -525,7 +526,7 @@ func TestBuildNavLinks_ShowsStaffOnlyForAdmins(t *testing.T) {
 
 func TestBuildNavLinks_PreservesIcon(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Home", URL: "/", Icon: "app/icon_home"},
 	})
 
@@ -571,7 +572,7 @@ func TestIconFunc(t *testing.T) {
 
 func TestBuildNavLinks_LabelAsKey(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Home", URL: "/"},
 	})
 
@@ -583,14 +584,14 @@ func TestBuildNavLinks_LabelAsKey(t *testing.T) {
 
 func TestCoreRequestFuncMap_NavLinks(t *testing.T) {
 	ctx := context.Background()
-	ctx = WithNavItems(ctx, []NavItem{
+	ctx = burrowapp.WithNavItems(ctx, []burrowapp.NavItem{
 		{Label: "Home", URL: "/", Position: 1},
 	})
-	ctx = WithRequestPath(ctx, "/")
+	ctx = burrowapp.WithRequestPath(ctx, "/")
 
 	fm := coreRequestFuncMap(ctx)
 
-	navLinksFn, ok := fm["navLinks"].(func() []NavLink)
+	navLinksFn, ok := fm["navLinks"].(func() []burrowapp.NavLink)
 	require.True(t, ok)
 	links := navLinksFn()
 	require.Len(t, links, 1)
@@ -611,9 +612,9 @@ func TestTemplateMiddleware(t *testing.T) {
 	err := s.buildTemplates()
 	require.NoError(t, err)
 
-	var gotExec TemplateExecutor
+	var gotExec burrowapp.TemplateExecutor
 	handler := s.templateMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotExec = TemplateExec(r.Context())
+		gotExec = burrowapp.TemplateExec(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 

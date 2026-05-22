@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"bytes"
@@ -11,33 +11,37 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v3"
 )
 
-// minimalApp implements only the required App interface.
+// minimalApp implements only the required burrowapp.App interface.
 type minimalApp struct{}
 
 func (a *minimalApp) Name() string { return "minimal" }
 
-// fullApp implements App + all optional interfaces.
+// fullApp implements burrowapp.App + all optional interfaces.
 type fullApp struct {
 	configured bool
 }
 
-func (a *fullApp) Name() string                                      { return "full" }
-func (a *fullApp) Documents() []document.Document                    { return nil }
-func (a *fullApp) Middleware() []func(http.Handler) http.Handler     { return nil }
-func (a *fullApp) NavItems() []NavItem                               { return nil }
-func (a *fullApp) Flags(_ func(string) cli.ValueSource) []cli.Flag   { return nil }
-func (a *fullApp) Configure(_ *AppConfig, _ *cli.Command) error      { a.configured = true; return nil }
+func (a *fullApp) Name() string                                    { return "full" }
+func (a *fullApp) Documents() []document.Document                  { return nil }
+func (a *fullApp) Middleware() []func(http.Handler) http.Handler   { return nil }
+func (a *fullApp) NavItems() []burrowapp.NavItem                   { return nil }
+func (a *fullApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
+func (a *fullApp) Configure(_ *burrowapp.AppConfig, _ *cli.Command) error {
+	a.configured = true
+	return nil
+}
 func (a *fullApp) CLICommands() []*cli.Command                       { return nil }
-func (a *fullApp) Migrations() []NamedMigration                      { return nil }
+func (a *fullApp) Migrations() []burrowapp.NamedMigration            { return nil }
 func (a *fullApp) Routes(_ chi.Router)                               {}
 func (a *fullApp) AdminRoutes(_ chi.Router)                          {}
-func (a *fullApp) AdminNavItems() []NavItem                          { return nil }
+func (a *fullApp) AdminNavItems() []burrowapp.NavItem                { return nil }
 func (a *fullApp) TemplateFS() fs.FS                                 { return nil }
 func (a *fullApp) FuncMap() template.FuncMap                         { return nil }
 func (a *fullApp) RequestFuncMap(_ context.Context) template.FuncMap { return nil }
@@ -45,32 +49,32 @@ func (a *fullApp) Start(_ *Server) error                             { return ni
 
 // trackingApp records calls and provides test data for lifecycle methods.
 type trackingApp struct {
-	configureFn   func(cfg *AppConfig) error
+	configureFn   func(cfg *burrowapp.AppConfig) error
 	name          string
-	navItems      []NavItem
-	adminNavItems []NavItem
+	navItems      []burrowapp.NavItem
+	adminNavItems []burrowapp.NavItem
 	middleware    []func(http.Handler) http.Handler
 	flags         []cli.Flag
 	commands      []*cli.Command
-	migrations    []NamedMigration
+	migrations    []burrowapp.NamedMigration
 	configured    bool
 }
 
 func (a *trackingApp) Name() string                                    { return a.name }
-func (a *trackingApp) NavItems() []NavItem                             { return a.navItems }
+func (a *trackingApp) NavItems() []burrowapp.NavItem                   { return a.navItems }
 func (a *trackingApp) Middleware() []func(http.Handler) http.Handler   { return a.middleware }
 func (a *trackingApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return a.flags }
-func (a *trackingApp) Configure(cfg *AppConfig, _ *cli.Command) error {
+func (a *trackingApp) Configure(cfg *burrowapp.AppConfig, _ *cli.Command) error {
 	a.configured = true
 	if a.configureFn != nil {
 		return a.configureFn(cfg)
 	}
 	return nil
 }
-func (a *trackingApp) CLICommands() []*cli.Command  { return a.commands }
-func (a *trackingApp) Migrations() []NamedMigration { return a.migrations }
-func (a *trackingApp) AdminRoutes(_ chi.Router)     {}
-func (a *trackingApp) AdminNavItems() []NavItem     { return a.adminNavItems }
+func (a *trackingApp) CLICommands() []*cli.Command            { return a.commands }
+func (a *trackingApp) Migrations() []burrowapp.NamedMigration { return a.migrations }
+func (a *trackingApp) AdminRoutes(_ chi.Router)               {}
+func (a *trackingApp) AdminNavItems() []burrowapp.NavItem     { return a.adminNavItems }
 
 // failingApp returns the configured error from Configure (or nil when err is nil).
 type failingApp struct {
@@ -78,11 +82,11 @@ type failingApp struct {
 	name string
 }
 
-func (a *failingApp) Name() string                                    { return a.name }
-func (a *failingApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
-func (a *failingApp) Configure(_ *AppConfig, _ *cli.Command) error    { return a.err }
+func (a *failingApp) Name() string                                           { return a.name }
+func (a *failingApp) Flags(_ func(string) cli.ValueSource) []cli.Flag        { return nil }
+func (a *failingApp) Configure(_ *burrowapp.AppConfig, _ *cli.Command) error { return a.err }
 
-// dependentApp implements App + HasDependencies with a configurable name.
+// dependentApp implements burrowapp.App + registry.HasDependencies with a configurable name.
 type dependentApp struct {
 	name string
 	deps []string
@@ -93,36 +97,36 @@ func (a *dependentApp) Dependencies() []string { return a.deps }
 
 // Compile-time interface assertions.
 var (
-	_ App               = (*minimalApp)(nil)
-	_ App               = (*fullApp)(nil)
-	_ HasDocuments      = (*fullApp)(nil)
-	_ HasMiddleware     = (*fullApp)(nil)
-	_ HasNavItems       = (*fullApp)(nil)
-	_ HasFlags          = (*fullApp)(nil)
-	_ Configurable      = (*fullApp)(nil)
-	_ HasCLICommands    = (*fullApp)(nil)
-	_ HasMigrations     = (*fullApp)(nil)
-	_ HasRoutes         = (*fullApp)(nil)
-	_ HasAdmin          = (*fullApp)(nil)
-	_ HasDependencies   = (*dependentApp)(nil)
-	_ HasTemplates      = (*fullApp)(nil)
-	_ HasFuncMap        = (*fullApp)(nil)
-	_ HasRequestFuncMap = (*fullApp)(nil)
-	_ Startable         = (*fullApp)(nil)
+	_ burrowapp.App               = (*minimalApp)(nil)
+	_ burrowapp.App               = (*fullApp)(nil)
+	_ burrowapp.HasDocuments      = (*fullApp)(nil)
+	_ burrowapp.HasMiddleware     = (*fullApp)(nil)
+	_ burrowapp.HasNavItems       = (*fullApp)(nil)
+	_ burrowapp.HasFlags          = (*fullApp)(nil)
+	_ burrowapp.Configurable      = (*fullApp)(nil)
+	_ burrowapp.HasCLICommands    = (*fullApp)(nil)
+	_ burrowapp.HasMigrations     = (*fullApp)(nil)
+	_ burrowapp.HasRoutes         = (*fullApp)(nil)
+	_ burrowapp.HasAdmin          = (*fullApp)(nil)
+	_ registry.HasDependencies    = (*dependentApp)(nil)
+	_ burrowapp.HasTemplates      = (*fullApp)(nil)
+	_ burrowapp.HasFuncMap        = (*fullApp)(nil)
+	_ burrowapp.HasRequestFuncMap = (*fullApp)(nil)
+	_ Startable                   = (*fullApp)(nil)
 )
 
 func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
-	var app App = &minimalApp{}
+	var app burrowapp.App = &minimalApp{}
 	assert.Equal(t, "minimal", app.Name())
 
-	_, hasDocuments := app.(HasDocuments)
-	_, hasMiddleware := app.(HasMiddleware)
-	_, hasNavItems := app.(HasNavItems)
-	_, isConfigurable := app.(Configurable)
-	_, hasCLI := app.(HasCLICommands)
-	_, hasMigrations := app.(HasMigrations)
-	_, hasRoutes := app.(HasRoutes)
-	_, hasAdmin := app.(HasAdmin)
+	_, hasDocuments := app.(burrowapp.HasDocuments)
+	_, hasMiddleware := app.(burrowapp.HasMiddleware)
+	_, hasNavItems := app.(burrowapp.HasNavItems)
+	_, isConfigurable := app.(burrowapp.Configurable)
+	_, hasCLI := app.(burrowapp.HasCLICommands)
+	_, hasMigrations := app.(burrowapp.HasMigrations)
+	_, hasRoutes := app.(burrowapp.HasRoutes)
+	_, hasAdmin := app.(burrowapp.HasAdmin)
 
 	assert.False(t, hasDocuments)
 	assert.False(t, hasMiddleware)
@@ -135,20 +139,20 @@ func TestMinimalAppSatisfiesOnlyApp(t *testing.T) {
 }
 
 func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
-	var app App = &fullApp{}
+	var app burrowapp.App = &fullApp{}
 
-	_, hasDocuments := app.(HasDocuments)
-	_, hasMiddleware := app.(HasMiddleware)
-	_, hasNavItems := app.(HasNavItems)
-	_, hasFlags := app.(HasFlags)
-	_, isConfigurable := app.(Configurable)
-	_, hasCLI := app.(HasCLICommands)
-	_, hasMigrations := app.(HasMigrations)
-	_, hasRoutes := app.(HasRoutes)
-	_, hasAdmin := app.(HasAdmin)
-	_, hasTemplates := app.(HasTemplates)
-	_, hasFuncMap := app.(HasFuncMap)
-	_, hasRequestFuncMap := app.(HasRequestFuncMap)
+	_, hasDocuments := app.(burrowapp.HasDocuments)
+	_, hasMiddleware := app.(burrowapp.HasMiddleware)
+	_, hasNavItems := app.(burrowapp.HasNavItems)
+	_, hasFlags := app.(burrowapp.HasFlags)
+	_, isConfigurable := app.(burrowapp.Configurable)
+	_, hasCLI := app.(burrowapp.HasCLICommands)
+	_, hasMigrations := app.(burrowapp.HasMigrations)
+	_, hasRoutes := app.(burrowapp.HasRoutes)
+	_, hasAdmin := app.(burrowapp.HasAdmin)
+	_, hasTemplates := app.(burrowapp.HasTemplates)
+	_, hasFuncMap := app.(burrowapp.HasFuncMap)
+	_, hasRequestFuncMap := app.(burrowapp.HasRequestFuncMap)
 	_, isStartable := app.(Startable)
 
 	assert.True(t, hasDocuments)
@@ -167,7 +171,7 @@ func TestFullAppSatisfiesAllInterfaces(t *testing.T) {
 }
 
 func TestNavItemFields(t *testing.T) {
-	item := NavItem{
+	item := burrowapp.NavItem{
 		Label:    "Dashboard",
 		URL:      "/dashboard",
 		Icon:     "app/icon_dashboard",
@@ -183,7 +187,7 @@ func TestNavItemFields(t *testing.T) {
 }
 
 func TestNavItemsSortStable(t *testing.T) {
-	items := []NavItem{
+	items := []burrowapp.NavItem{
 		{Label: "B", Position: 10},
 		{Label: "A", Position: 10},
 		{Label: "C", Position: 5},
@@ -199,7 +203,7 @@ func TestNavItemsSortStable(t *testing.T) {
 
 // --- sortApps tests ---
 
-func appNames(apps []App) []string {
+func appNames(apps []burrowapp.App) []string {
 	names := make([]string, len(apps))
 	for i, app := range apps {
 		names[i] = app.Name()
@@ -208,7 +212,7 @@ func appNames(apps []App) []string {
 }
 
 func TestSortApps_NoDependencies_PreservesOrder(t *testing.T) {
-	apps := []App{
+	apps := []burrowapp.App{
 		&dependentApp{name: "a"},
 		&dependentApp{name: "b"},
 		&dependentApp{name: "c"},
@@ -220,7 +224,7 @@ func TestSortApps_NoDependencies_PreservesOrder(t *testing.T) {
 }
 
 func TestSortApps_ReordersDependencies(t *testing.T) {
-	apps := []App{
+	apps := []burrowapp.App{
 		&dependentApp{name: "admin", deps: []string{"auth"}},
 		&dependentApp{name: "auth", deps: []string{"session"}},
 		&dependentApp{name: "session"},
@@ -234,7 +238,7 @@ func TestSortApps_ReordersDependencies(t *testing.T) {
 }
 
 func TestSortApps_PreservesRelativeOrderForIndependentApps(t *testing.T) {
-	apps := []App{
+	apps := []burrowapp.App{
 		&dependentApp{name: "i18n"},
 		&dependentApp{name: "staticfiles"},
 		&dependentApp{name: "bootstrap", deps: []string{"staticfiles"}},
@@ -250,7 +254,7 @@ func TestSortApps_PreservesRelativeOrderForIndependentApps(t *testing.T) {
 }
 
 func TestSortApps_PanicsOnMissingDependency(t *testing.T) {
-	apps := []App{
+	apps := []burrowapp.App{
 		&dependentApp{name: "auth", deps: []string{"session"}},
 	}
 
@@ -261,7 +265,7 @@ func TestSortApps_PanicsOnMissingDependency(t *testing.T) {
 }
 
 func TestSortApps_PanicsOnCycle(t *testing.T) {
-	apps := []App{
+	apps := []burrowapp.App{
 		&dependentApp{name: "a", deps: []string{"b"}},
 		&dependentApp{name: "b", deps: []string{"a"}},
 	}
@@ -270,7 +274,7 @@ func TestSortApps_PanicsOnCycle(t *testing.T) {
 }
 
 func TestSortApps_TransitiveDependencies(t *testing.T) {
-	apps := []App{
+	apps := []burrowapp.App{
 		&dependentApp{name: "d", deps: []string{"c"}},
 		&dependentApp{name: "c", deps: []string{"b"}},
 		&dependentApp{name: "b", deps: []string{"a"}},
@@ -283,7 +287,7 @@ func TestSortApps_TransitiveDependencies(t *testing.T) {
 }
 
 func TestSortApps_MultipleDependencies(t *testing.T) {
-	apps := []App{
+	apps := []burrowapp.App{
 		&dependentApp{name: "admin", deps: []string{"auth", "bootstrap"}},
 		&dependentApp{name: "auth", deps: []string{"session"}},
 		&dependentApp{name: "bootstrap", deps: []string{"staticfiles"}},
@@ -302,7 +306,7 @@ func TestSortApps_MultipleDependencies(t *testing.T) {
 
 func TestNewServer_SortsAppsAutomatically(t *testing.T) {
 	// Pass apps in wrong order — NewServer should sort them.
-	srv := NewServer(
+	srv := New(
 		&dependentApp{name: "admin", deps: []string{"auth"}},
 		&dependentApp{name: "auth", deps: []string{"session"}},
 		&dependentApp{name: "session"},
@@ -319,7 +323,7 @@ func TestSortApps_LogsWarningWhenReordered(t *testing.T) {
 	slog.SetDefault(slog.New(handler))
 	t.Cleanup(func() { slog.SetDefault(oldLogger) })
 
-	apps := []App{
+	apps := []burrowapp.App{
 		&dependentApp{name: "auth", deps: []string{"session"}},
 		&dependentApp{name: "session"},
 	}
@@ -339,7 +343,7 @@ func TestSortApps_NoWarningWhenOrderCorrect(t *testing.T) {
 	slog.SetDefault(slog.New(handler))
 	t.Cleanup(func() { slog.SetDefault(oldLogger) })
 
-	apps := []App{
+	apps := []burrowapp.App{
 		&dependentApp{name: "session"},
 		&dependentApp{name: "auth", deps: []string{"session"}},
 	}

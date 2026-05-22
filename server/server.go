@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"context"
@@ -11,11 +11,23 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v3"
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/i18n"
 	"github.com/oliverandrich/burrow/registry"
+	"github.com/oliverandrich/burrow/web"
 	"github.com/oliverandrich/den"
 	"github.com/urfave/cli/v3"
 )
+
+// Startable is implemented by apps that need to start background processes
+// after the full boot sequence completes (templates built, middleware and
+// routes registered). It is the counterpart to [app.HasShutdown].
+//
+// Startable lives next to [Server] because it references the concrete
+// *Server handle that background workers need.
+type Startable interface {
+	Start(srv *Server) error
+}
 
 // Server is the main framework entry point that orchestrates the full
 // application lifecycle. Typical usage:
@@ -25,7 +37,7 @@ import (
 //  3. Collect CLI flags with [Server.Flags]
 //  4. Start with [Server.Run] (opens DB, migrates, bootstraps, serves HTTP)
 type Server struct { //nolint:govet // fieldalignment: readability over optimization
-	registry  *Registry
+	registry  *registry.Registry
 	layout    string
 	templates *template.Template
 	// iconTemplates is a Clone of templates kept separately so the `icon`
@@ -35,15 +47,16 @@ type Server struct { //nolint:govet // fieldalignment: readability over optimiza
 	iconTemplates           *template.Template
 	requestFuncMapProviders []func(ctx context.Context) template.FuncMap
 	i18nBundle              *i18n.Bundle
-	appCfg                  *AppConfig
+	appCfg                  *burrowapp.AppConfig
 }
 
-// NewServer creates a Server and registers the given apps.
-// Apps are automatically sorted so that dependencies are registered
-// before the apps that need them. The relative order of independent
-// apps is preserved. NewServer panics if a dependency is missing
-// from the input or if there is a dependency cycle.
-func NewServer(apps ...App) *Server {
+// New creates a Server and registers the given apps. Apps are automatically
+// sorted so that dependencies are registered before the apps that need them.
+// The relative order of independent apps is preserved. New panics if a
+// dependency is missing from the input or if there is a dependency cycle.
+//
+// The burrow root package re-exports this as burrow.NewServer.
+func New(apps ...burrowapp.App) *Server {
 	sorted := sortApps(apps)
 	reg := registry.New()
 	for _, app := range sorted {
@@ -56,7 +69,7 @@ func NewServer(apps ...App) *Server {
 // declared dependencies (HasDependencies interface). Apps without
 // dependencies keep their original relative order. Panics if a
 // required dependency is not in the input or if a cycle is detected.
-func sortApps(apps []App) []App {
+func sortApps(apps []burrowapp.App) []burrowapp.App {
 	// Build index and in-degree map.
 	byName := make(map[string]int, len(apps)) // name → original index
 	for i, app := range apps {
@@ -67,7 +80,7 @@ func sortApps(apps []App) []App {
 	dependents := make([][]int, len(apps)) // dependents[i] = apps that depend on apps[i]
 
 	for i, app := range apps {
-		dep, ok := app.(HasDependencies)
+		dep, ok := app.(registry.HasDependencies)
 		if !ok {
 			continue
 		}
@@ -89,7 +102,7 @@ func sortApps(apps []App) []App {
 		}
 	}
 
-	sorted := make([]App, 0, len(apps))
+	sorted := make([]burrowapp.App, 0, len(apps))
 	for len(queue) > 0 {
 		idx := queue[0]
 		queue = queue[1:]
@@ -140,9 +153,9 @@ func sortApps(apps []App) []App {
 
 // TemplateExecutor returns the server's template executor function.
 // Use this after boot to obtain an executor for non-HTTP rendering via
-// [WithTemplateExecutor] and [RenderFragment]. Returns nil if templates
-// have not been built yet (i.e., before [Server.Run]).
-func (s *Server) TemplateExecutor() TemplateExecutor {
+// [app.WithTemplateExecutor] and [web.RenderFragment]. Returns nil if
+// templates have not been built yet (i.e., before [Server.Run]).
+func (s *Server) TemplateExecutor() burrowapp.TemplateExecutor {
 	if s.templates == nil {
 		return nil
 	}
@@ -155,7 +168,7 @@ func (s *Server) SetLayout(name string) {
 }
 
 // Registry returns the server's app registry.
-func (s *Server) Registry() *Registry {
+func (s *Server) Registry() *registry.Registry {
 	return s.registry
 }
 
@@ -163,7 +176,7 @@ func (s *Server) Registry() *Registry {
 // flags from all Configurable apps. Pass a configSource to enable
 // TOML file sourcing (or nil for ENV-only).
 func (s *Server) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
-	flags := CoreFlags(configSource)
+	flags := burrowapp.CoreFlags(configSource)
 	flags = append(flags, allFlags(s.registry, configSource)...)
 	return flags
 }
@@ -212,11 +225,11 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	registerMiddleware(s.registry, r)
 	registerRoutes(s.registry, r)
 
-	r.NotFound(Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return NewHTTPError(http.StatusNotFound, "page not found")
+	r.NotFound(web.Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return web.NewHTTPError(http.StatusNotFound, "page not found")
 	}))
-	r.MethodNotAllowed(Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return NewHTTPError(http.StatusMethodNotAllowed, "method not allowed")
+	r.MethodNotAllowed(web.Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return web.NewHTTPError(http.StatusMethodNotAllowed, "method not allowed")
 	}))
 
 	// Start background processes (e.g., job workers).
@@ -232,12 +245,12 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 }
 
 // bootstrap registers document types and prepares the shared AppConfig.
-func (s *Server) bootstrap(ctx context.Context, db *den.DB, cfg *Config) error {
+func (s *Server) bootstrap(ctx context.Context, db *den.DB, cfg *burrowapp.Config) error {
 	if err := registerDocuments(ctx, s.registry, db); err != nil {
 		return fmt.Errorf("register documents: %w", err)
 	}
 
-	s.appCfg = &AppConfig{
+	s.appCfg = &burrowapp.AppConfig{
 		DB:         db,
 		Registry:   s.registry,
 		Config:     cfg,
@@ -256,8 +269,8 @@ func (s *Server) bootstrap(ctx context.Context, db *den.DB, cfg *Config) error {
 //
 // Boot does NOT build templates or start the HTTP server — those are
 // HTTP-server-specific and live in [Server.Run].
-func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), error) {
-	cfg := NewConfig(cmd)
+func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*burrowapp.Config, func(), error) {
+	cfg := burrowapp.NewConfig(cmd)
 
 	if err := cfg.ValidateTLS(cmd); err != nil {
 		return nil, nil, err
@@ -303,7 +316,7 @@ func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), e
 
 	// Load translations from all HasTranslations apps.
 	for _, app := range registry.Apps(s.registry) {
-		if p, ok := app.(HasTranslations); ok {
+		if p, ok := app.(burrowapp.HasTranslations); ok {
 			if err := s.i18nBundle.AddTranslations(p.TranslationFS()); err != nil {
 				cleanup()
 				return nil, nil, fmt.Errorf("load translations from %q: %w", app.Name(), err)
@@ -371,23 +384,23 @@ func (s *Server) CLICommands() []*cli.Command {
 func layoutMiddleware(name string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := WithLayout(r.Context(), name)
+			ctx := burrowapp.WithLayout(r.Context(), name)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func navItemsMiddleware(items []NavItem) func(http.Handler) http.Handler {
+func navItemsMiddleware(items []burrowapp.NavItem) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := WithNavItems(r.Context(), items)
+			ctx := burrowapp.WithNavItems(r.Context(), items)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
 // shutdownServers performs graceful shutdown of the HTTP servers and registry.
-func shutdownServers(cfg *Config, reg *Registry, server *http.Server, httpServer *http.Server) error {
+func shutdownServers(cfg *burrowapp.Config, reg *registry.Registry, server *http.Server, httpServer *http.Server) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Server.ShutdownTimeout)*time.Second)
 	defer cancel()
 

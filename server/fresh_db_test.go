@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"net/http"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow/registry"
+	"github.com/oliverandrich/burrow/web"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +45,7 @@ func TestFreshDB_EmptyTableReturnsEmptyResults(t *testing.T) {
 	assert.Empty(t, items)
 }
 
-// docApp is a test helper implementing App + HasDocuments.
+// docApp is a test helper implementing App + burrowapp.HasDocuments.
 type docApp struct {
 	name string
 	docs []document.Document
@@ -57,7 +58,7 @@ func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
 	appA := &docApp{name: "app_a", docs: []document.Document{&testItem{}}}
 	appB := &minimalApp{} // no documents
 
-	srv := NewServer(appA, appB)
+	srv := New(appA, appB)
 	db := testDB(t)
 
 	err := srv.bootstrap(t.Context(), db, nil)
@@ -75,7 +76,7 @@ func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
 
 func TestFreshDB_ServerBootstrapWithNoDocuments(t *testing.T) {
 	app := &minimalApp{}
-	srv := NewServer(app)
+	srv := New(app)
 	db := testDB(t)
 
 	err := srv.bootstrap(t.Context(), db, nil)
@@ -94,12 +95,12 @@ func TestFreshDB_EmptyListEndpointReturnsOK(t *testing.T) {
 
 	// Build a handler that counts items from the empty table.
 	r := chi.NewRouter()
-	r.Get("/items", Handle(func(w http.ResponseWriter, r *http.Request) error {
+	r.Get("/items", web.Handle(func(w http.ResponseWriter, r *http.Request) error {
 		count, err := den.NewQuery[testItem](db).Count(r.Context())
 		if err != nil {
-			return NewHTTPError(http.StatusInternalServerError, "query failed")
+			return web.NewHTTPError(http.StatusInternalServerError, "query failed")
 		}
-		return JSON(w, http.StatusOK, map[string]int64{"count": count})
+		return web.JSON(w, http.StatusOK, map[string]int64{"count": count})
 	}))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/items", nil)
@@ -128,7 +129,7 @@ func TestFreshDB_RegisterDocumentsIdempotent(t *testing.T) {
 
 func TestFreshDB_BootstrapAndHandleRequestsCleanly(t *testing.T) {
 	appA := &docApp{name: "things", docs: []document.Document{&testItem{}}}
-	srv := NewServer(appA)
+	srv := New(appA)
 	db := testDB(t)
 
 	err := srv.bootstrap(t.Context(), db, nil)
@@ -136,12 +137,12 @@ func TestFreshDB_BootstrapAndHandleRequestsCleanly(t *testing.T) {
 
 	// Simulate a request to a fresh (empty) table.
 	r := chi.NewRouter()
-	r.Get("/things", Handle(func(w http.ResponseWriter, r *http.Request) error {
+	r.Get("/things", web.Handle(func(w http.ResponseWriter, r *http.Request) error {
 		count, err := den.NewQuery[testItem](db).Count(r.Context())
 		if err != nil {
-			return NewHTTPError(http.StatusInternalServerError, "query failed")
+			return web.NewHTTPError(http.StatusInternalServerError, "query failed")
 		}
-		return JSON(w, http.StatusOK, map[string]int64{"count": count})
+		return web.JSON(w, http.StatusOK, map[string]int64{"count": count})
 	}))
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/things", nil)

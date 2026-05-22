@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
@@ -26,7 +27,7 @@ type testWidget struct {
 	Color string `json:"color"`
 }
 
-// shutdownApp implements App + HasShutdown and records call order.
+// shutdownApp implements App + burrowapp.HasShutdown and records call order.
 type shutdownApp struct { //nolint:govet // fieldalignment: readability over optimization
 	name  string
 	order *[]string
@@ -46,7 +47,7 @@ type configurableApp struct { //nolint:govet // fieldalignment: readability over
 }
 
 func (a *configurableApp) Name() string { return a.name }
-func (a *configurableApp) Configure(_ *AppConfig, _ *cli.Command) error {
+func (a *configurableApp) Configure(_ *burrowapp.AppConfig, _ *cli.Command) error {
 	*a.order = append(*a.order, a.name+".Configure")
 	return nil
 }
@@ -58,11 +59,11 @@ type postConfigurableApp struct { //nolint:govet // fieldalignment: readability 
 }
 
 func (a *postConfigurableApp) Name() string { return a.name }
-func (a *postConfigurableApp) Configure(_ *AppConfig, _ *cli.Command) error {
+func (a *postConfigurableApp) Configure(_ *burrowapp.AppConfig, _ *cli.Command) error {
 	*a.order = append(*a.order, a.name+".Configure")
 	return nil
 }
-func (a *postConfigurableApp) PostConfigure(_ *AppConfig, _ *cli.Command) error {
+func (a *postConfigurableApp) PostConfigure(_ *burrowapp.AppConfig, _ *cli.Command) error {
 	*a.order = append(*a.order, a.name+".PostConfigure")
 	return nil
 }
@@ -72,13 +73,13 @@ type postConfigErrorApp struct {
 	name string
 }
 
-func (a *postConfigErrorApp) Name() string                                 { return a.name }
-func (a *postConfigErrorApp) Configure(_ *AppConfig, _ *cli.Command) error { return nil }
-func (a *postConfigErrorApp) PostConfigure(_ *AppConfig, _ *cli.Command) error {
+func (a *postConfigErrorApp) Name() string                                           { return a.name }
+func (a *postConfigErrorApp) Configure(_ *burrowapp.AppConfig, _ *cli.Command) error { return nil }
+func (a *postConfigErrorApp) PostConfigure(_ *burrowapp.AppConfig, _ *cli.Command) error {
 	return errors.New("boom")
 }
 
-// routeApp implements App + HasRoutes for routes tests.
+// routeApp implements App + burrowapp.HasRoutes for routes tests.
 type routeApp struct {
 	name string
 }
@@ -142,7 +143,7 @@ func TestConfigureAll_CallsConfigure(t *testing.T) {
 	registry.Add(reg, app1)
 	registry.Add(reg, app2)
 
-	err := configureAll(reg, &AppConfig{Registry: reg})
+	err := configureAll(reg, &burrowapp.AppConfig{Registry: reg})
 	require.NoError(t, err)
 	assert.True(t, app1.configured)
 	assert.True(t, app2.configured)
@@ -150,17 +151,17 @@ func TestConfigureAll_CallsConfigure(t *testing.T) {
 
 func TestConfigureAll_PassesConfig(t *testing.T) {
 	reg := registry.New()
-	var received *AppConfig
+	var received *burrowapp.AppConfig
 	app := &trackingApp{
 		name: "checker",
-		configureFn: func(cfg *AppConfig) error {
+		configureFn: func(cfg *burrowapp.AppConfig) error {
 			received = cfg
 			return nil
 		},
 	}
 	registry.Add(reg, app)
 
-	appCfg := &AppConfig{Registry: reg}
+	appCfg := &burrowapp.AppConfig{Registry: reg}
 	err := configureAll(reg, appCfg)
 	require.NoError(t, err)
 	require.NotNil(t, received)
@@ -175,7 +176,7 @@ func TestConfigureAll_StopsOnError(t *testing.T) {
 	registry.Add(reg, app1)
 	registry.Add(reg, app2)
 
-	err := configureAll(reg, &AppConfig{Registry: reg})
+	err := configureAll(reg, &burrowapp.AppConfig{Registry: reg})
 	require.ErrorIs(t, err, errBoom)
 	assert.Contains(t, err.Error(), "bad")
 	assert.False(t, app2.configured)
@@ -189,9 +190,9 @@ func TestConfigure_CallsConfigurableApps(t *testing.T) {
 	app2 := &trackingApp{name: "conf2"}
 	registry.Add(reg, app1)
 	registry.Add(reg, app2)
-	registry.Add(reg, &minimalApp{}) // Not Configurable, should be skipped.
+	registry.Add(reg, &minimalApp{}) // Not burrowapp.Configurable, should be skipped.
 
-	err := configure(reg, &AppConfig{Registry: reg}, nil)
+	err := configure(reg, &burrowapp.AppConfig{Registry: reg}, nil)
 	require.NoError(t, err)
 	assert.True(t, app1.configured)
 	assert.True(t, app2.configured)
@@ -202,7 +203,7 @@ func TestConfigure_StopsOnError(t *testing.T) {
 	errCfg := errors.New("config error")
 	registry.Add(reg, &failingApp{name: "bad-cfg", err: errCfg})
 
-	err := configure(reg, &AppConfig{Registry: reg}, nil)
+	err := configure(reg, &burrowapp.AppConfig{Registry: reg}, nil)
 	require.ErrorIs(t, err, errCfg)
 	assert.Contains(t, err.Error(), "bad-cfg")
 }
@@ -218,7 +219,7 @@ func TestConfigure_PostConfigureRunsAfterAllConfigure(t *testing.T) {
 	registry.Add(reg, a2)
 	registry.Add(reg, a3)
 
-	err := configure(reg, &AppConfig{Registry: reg}, nil)
+	err := configure(reg, &burrowapp.AppConfig{Registry: reg}, nil)
 	require.NoError(t, err)
 
 	// All Configure calls must happen before any PostConfigure call.
@@ -238,7 +239,7 @@ func TestConfigure_PostConfigureError(t *testing.T) {
 	registry.Add(reg, a1)
 	registry.Add(reg, &postConfigErrorApp{name: "failing"})
 
-	err := configure(reg, &AppConfig{Registry: reg}, nil)
+	err := configure(reg, &burrowapp.AppConfig{Registry: reg}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "post-configure app \"failing\"")
 }
@@ -252,7 +253,7 @@ func TestConfigure_SkipsNonPostConfigurable(t *testing.T) {
 	registry.Add(reg, a1)
 	registry.Add(reg, a2)
 
-	err := configure(reg, &AppConfig{Registry: reg}, nil)
+	err := configure(reg, &burrowapp.AppConfig{Registry: reg}, nil)
 	require.NoError(t, err)
 
 	// Only Configure calls, no PostConfigure.
@@ -318,7 +319,7 @@ func TestRunMigrations_AppliesPendingOnce(t *testing.T) {
 	registry.Add(reg, &minimalApp{}) // no migrations — should be skipped
 	registry.Add(reg, &trackingApp{
 		name: "m1",
-		migrations: []NamedMigration{{
+		migrations: []burrowapp.NamedMigration{{
 			Version: "001_initial",
 			Migration: migrate.Migration{
 				Forward: func(_ context.Context, _ *den.Tx) error {
@@ -344,7 +345,7 @@ func TestRunMigrations_ReturnsForwardError(t *testing.T) {
 	reg := registry.New()
 	registry.Add(reg, &trackingApp{
 		name: "broken",
-		migrations: []NamedMigration{{
+		migrations: []burrowapp.NamedMigration{{
 			Version: "001_initial",
 			Migration: migrate.Migration{
 				Forward: func(_ context.Context, _ *den.Tx) error { return errBoom },
@@ -380,7 +381,7 @@ func TestRegisterDocuments_SkipsNonDocumentApps(t *testing.T) {
 	reg := registry.New()
 
 	registry.Add(reg, &docApp{name: "docapp", docs: []document.Document{&testWidget{}}})
-	registry.Add(reg, &minimalApp{}) // Not HasDocuments, should be skipped.
+	registry.Add(reg, &minimalApp{}) // Not burrowapp.HasDocuments, should be skipped.
 
 	err := registerDocuments(t.Context(), reg, db)
 	require.NoError(t, err)
@@ -464,7 +465,7 @@ func TestAllFlags(t *testing.T) {
 	flag2 := &cli.BoolFlag{Name: "debug"}
 	registry.Add(reg, &trackingApp{name: "app1", flags: []cli.Flag{flag1}})
 	registry.Add(reg, &trackingApp{name: "app2", flags: []cli.Flag{flag2}})
-	registry.Add(reg, &minimalApp{}) // Not HasFlags, should be skipped.
+	registry.Add(reg, &minimalApp{}) // Not burrowapp.HasFlags, should be skipped.
 
 	flags := allFlags(reg, nil)
 	require.Len(t, flags, 2)
@@ -478,18 +479,18 @@ func TestAllNavItems_SortedByPosition(t *testing.T) {
 	reg := registry.New()
 	registry.Add(reg, &trackingApp{
 		name: "app1",
-		navItems: []NavItem{
+		navItems: []burrowapp.NavItem{
 			{Label: "Settings", Position: 30},
 			{Label: "Dashboard", Position: 10},
 		},
 	})
 	registry.Add(reg, &trackingApp{
 		name: "app2",
-		navItems: []NavItem{
+		navItems: []burrowapp.NavItem{
 			{Label: "Profile", Position: 20},
 		},
 	})
-	// minimalApp doesn't implement HasNavItems - should be skipped.
+	// minimalApp doesn't implement burrowapp.HasNavItems - should be skipped.
 	registry.Add(reg, &minimalApp{})
 
 	items := allNavItems(reg)
@@ -511,14 +512,14 @@ func TestAllAdminNavItems_SortedByPosition(t *testing.T) {
 	reg := registry.New()
 	registry.Add(reg, &trackingApp{
 		name: "app1",
-		adminNavItems: []NavItem{
+		adminNavItems: []burrowapp.NavItem{
 			{Label: "Users", Position: 10},
 			{Label: "Settings", Position: 30},
 		},
 	})
 	registry.Add(reg, &trackingApp{
 		name: "app2",
-		adminNavItems: []NavItem{
+		adminNavItems: []burrowapp.NavItem{
 			{Label: "Invites", Position: 20},
 		},
 	})

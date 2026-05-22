@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/storage"
 	_ "github.com/oliverandrich/den/storage/file" // register file:// scheme
@@ -51,7 +52,7 @@ func wrapUnregisteredBackend(dsn string, err error) error {
 	return fmt.Errorf("%w — add `_ \"github.com/oliverandrich/den/backend/%s\"` to your main.go", err, strings.ToLower(scheme))
 }
 
-// openStorage constructs a den.Storage from a Burrow StorageConfig.
+// openStorage constructs a den.Storage from a Burrow burrowapp.StorageConfig.
 // Returns (nil, nil) when cfg.DSN is empty — callers treat that as
 // "Storage disabled" and skip den.WithStorage.
 //
@@ -59,7 +60,7 @@ func wrapUnregisteredBackend(dsn string, err error) error {
 // side-effect imports (the file:// scheme is registered at the top of
 // this file). Schemes like s3:// become available once the
 // corresponding backend sub-package is imported.
-func openStorage(cfg StorageConfig) (den.Storage, error) {
+func openStorage(cfg burrowapp.StorageConfig) (den.Storage, error) {
 	if cfg.DSN == "" {
 		return nil, nil
 	}

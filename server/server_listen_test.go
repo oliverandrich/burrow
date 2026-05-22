@@ -1,6 +1,6 @@
 //go:build !windows
 
-package burrow
+package server
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 
 	"syscall"
 
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -89,7 +90,7 @@ func TestServeAndWait_WithOnReady(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
+	cfg := &burrowapp.Config{Server: burrowapp.ServerConfig{ShutdownTimeout: 1}}
 	registry := registry.New()
 	done := make(chan struct{})
 
@@ -138,7 +139,7 @@ func TestServeAndWait_WithHTTPRedirectServer(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
+	cfg := &burrowapp.Config{Server: burrowapp.ServerConfig{ShutdownTimeout: 1}}
 	registry := registry.New()
 	done := make(chan struct{})
 
@@ -181,7 +182,7 @@ func TestServeAndWait_DoneChannelTriggersShutdown(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
+	cfg := &burrowapp.Config{Server: burrowapp.ServerConfig{ShutdownTimeout: 1}}
 	registry := registry.New()
 	done := make(chan struct{})
 
@@ -211,7 +212,7 @@ func TestServeAndWait_OnReadyError(t *testing.T) {
 
 	setup := &tlsSetup{addr: ln.Addr().String()}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {})
-	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
+	cfg := &burrowapp.Config{Server: burrowapp.ServerConfig{ShutdownTimeout: 1}}
 	registry := registry.New()
 	done := make(chan struct{})
 
@@ -227,14 +228,14 @@ func TestStartServer_GracefulShutdown(t *testing.T) {
 	pidFile := t.TempDir() + "/test.pid"
 	port := findFreePort(t)
 
-	cfg := &Config{
-		Server: ServerConfig{
+	cfg := &burrowapp.Config{
+		Server: burrowapp.ServerConfig{
 			Host:            "127.0.0.1",
 			Port:            port,
 			PIDFile:         pidFile,
 			ShutdownTimeout: 5,
 		},
-		TLS: TLSConfig{Mode: "off"},
+		TLS: burrowapp.TLSConfig{Mode: "off"},
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

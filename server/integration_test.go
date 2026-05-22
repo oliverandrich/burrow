@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"context"
@@ -12,12 +12,14 @@ import (
 	"testing/fstest"
 
 	"github.com/go-chi/chi/v5"
+	burrowapp "github.com/oliverandrich/burrow/app"
+	"github.com/oliverandrich/burrow/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 )
 
-// integrationApp implements HasRoutes, HasTemplates, HasFuncMap, and HasNavItems.
+// integrationApp implements burrowapp.HasRoutes, burrowapp.HasTemplates, burrowapp.HasFuncMap, and burrowapp.HasNavItems.
 type integrationApp struct{}
 
 func (a *integrationApp) Name() string { return "integration" }
@@ -42,21 +44,21 @@ func (a *integrationApp) FuncMap() template.FuncMap {
 	}
 }
 
-func (a *integrationApp) NavItems() []NavItem {
-	return []NavItem{
+func (a *integrationApp) NavItems() []burrowapp.NavItem {
+	return []burrowapp.NavItem{
 		{Label: "Home", URL: "/", Position: 1},
 		{Label: "About", URL: "/about", Position: 2},
 	}
 }
 
 func (a *integrationApp) Routes(r chi.Router) {
-	r.Get("/", Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return Render(w, r, http.StatusOK, "integration/home", map[string]any{
+	r.Get("/", web.Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return web.Render(w, r, http.StatusOK, "integration/home", map[string]any{
 			"Greeting": "hello world",
 		})
 	}))
-	r.Get("/fragment", Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return Render(w, r, http.StatusOK, "integration/fragment", nil)
+	r.Get("/fragment", web.Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return web.Render(w, r, http.StatusOK, "integration/fragment", nil)
 	}))
 }
 
@@ -67,12 +69,12 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	t.Helper()
 
 	app := &integrationApp{}
-	srv := NewServer(app)
+	srv := New(app)
 	srv.SetLayout("integration/layout")
 
 	// Drive boot through srv.boot so future changes to the framework's
 	// initialisation sequence (DB open, i18n, bootstrap, Configure) apply
-	// here automatically. boot needs a *cli.Command for NewConfig(cmd) —
+	// here automatically. boot needs a *cli.Command for burrowapp.NewConfig(cmd) —
 	// a no-op Run populates the flag values which boot then reads.
 	ctx := t.Context()
 	cmd := &cli.Command{
@@ -104,11 +106,11 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	registerMiddleware(srv.registry, r)
 	registerRoutes(srv.registry, r)
 
-	r.NotFound(Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return NewHTTPError(http.StatusNotFound, "page not found")
+	r.NotFound(web.Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return web.NewHTTPError(http.StatusNotFound, "page not found")
 	}))
-	r.MethodNotAllowed(Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return NewHTTPError(http.StatusMethodNotAllowed, "method not allowed")
+	r.MethodNotAllowed(web.Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return web.NewHTTPError(http.StatusMethodNotAllowed, "method not allowed")
 	}))
 
 	return r

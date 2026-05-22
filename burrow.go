@@ -90,8 +90,10 @@ import (
 	"github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/pagination"
 	"github.com/oliverandrich/burrow/registry"
+	"github.com/oliverandrich/burrow/server"
 	"github.com/oliverandrich/burrow/tasks"
 	"github.com/oliverandrich/burrow/web"
+	"github.com/oliverandrich/den"
 	"github.com/urfave/cli/v3"
 )
 
@@ -220,6 +222,15 @@ type HasFuncMap = app.HasFuncMap
 // template functions. Alias for [app.HasRequestFuncMap].
 type HasRequestFuncMap = app.HasRequestFuncMap
 
+// Server is the framework's main orchestrator. Alias for [server.Server].
+// Construct with [NewServer]; configure layout via [server.Server.SetLayout];
+// start with [server.Server.Run] inside a urfave/cli action.
+type Server = server.Server
+
+// Startable is implemented by apps that need to start background processes
+// after the boot sequence completes. Alias for [server.Startable].
+type Startable = server.Startable
+
 // Queue provides job handler registration, enqueueing, and cancellation.
 // Alias for [tasks.Queue].
 type Queue = tasks.Queue
@@ -288,14 +299,15 @@ const CacheControlImmutable = web.CacheControlImmutable
 // Alias for [web.ErrNoTemplateExecutor].
 var ErrNoTemplateExecutor = web.ErrNoTemplateExecutor
 
-// Startable is implemented by apps that need to start background processes
-// after the full boot sequence completes (templates built, middleware and
-// routes registered). It is the counterpart to HasShutdown.
-//
-// Startable references [*Server] directly, so it stays in this package until
-// Server itself moves into a sub-package.
-type Startable interface {
-	Start(srv *Server) error
+// NewServer creates a Server and registers the given apps. Apps are
+// auto-sorted to satisfy [HasDependencies] declarations. Wrapper around
+// [server.New].
+func NewServer(apps ...App) *Server { return server.New(apps...) }
+
+// OpenDB opens a database from a URL-style DSN. Wrapper around
+// [server.OpenDB].
+func OpenDB(ctx context.Context, dsn string, opts ...den.Option) (*den.DB, error) {
+	return server.OpenDB(ctx, dsn, opts...)
 }
 
 // NewConfig creates a Config from a parsed CLI command. Wrapper around

@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"bytes"
@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"strings"
 
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/i18n"
+	"github.com/oliverandrich/burrow/pagination"
 	"github.com/oliverandrich/burrow/registry"
 )
 
@@ -42,18 +44,18 @@ func baseFuncMap() template.FuncMap {
 		},
 		"add":         func(a, b int) int { return a + b },
 		"sub":         func(a, b int) int { return a - b },
-		"pageNumbers": PageNumbers,
-		"pageURL":     PageURL,
+		"pageNumbers": pagination.PageNumbers,
+		"pageURL":     pagination.PageURL,
 	}
 }
 
 // coreRequestFuncMap provides context-scoped template functions for core
 // framework values like navigation items.
 func coreRequestFuncMap(ctx context.Context) template.FuncMap {
-	requestPath := RequestPath(ctx)
+	requestPath := burrowapp.RequestPath(ctx)
 	return template.FuncMap{
-		"navItems": func() []NavItem { return NavItems(ctx) },
-		"navLinks": func() []NavLink { return buildNavLinks(ctx, requestPath) },
+		"navItems": func() []burrowapp.NavItem { return burrowapp.NavItems(ctx) },
+		"navLinks": func() []burrowapp.NavLink { return buildNavLinks(ctx, requestPath) },
 	}
 }
 
@@ -70,14 +72,14 @@ func isActivePath(requestPath, itemURL string) bool {
 }
 
 // buildNavLinks filters NavItems by auth state and computes active status,
-// returning template-ready NavLink values.
-func buildNavLinks(ctx context.Context, requestPath string) []NavLink {
-	items := NavItems(ctx)
-	authenticated := IsAuthenticated(ctx)
-	staff := IsStaff(ctx)
-	admin := IsAdmin(ctx)
+// returning template-ready burrowapp.NavLink values.
+func buildNavLinks(ctx context.Context, requestPath string) []burrowapp.NavLink {
+	items := burrowapp.NavItems(ctx)
+	authenticated := burrowapp.IsAuthenticated(ctx)
+	staff := burrowapp.IsStaff(ctx)
+	admin := burrowapp.IsAdmin(ctx)
 
-	var links []NavLink
+	var links []burrowapp.NavLink
 	for _, item := range items {
 		if item.AuthOnly && !authenticated {
 			continue
@@ -88,7 +90,7 @@ func buildNavLinks(ctx context.Context, requestPath string) []NavLink {
 		if item.AdminOnly && !admin {
 			continue
 		}
-		links = append(links, NavLink{
+		links = append(links, burrowapp.NavLink{
 			Label:    i18n.T(ctx, item.Label),
 			URL:      item.URL,
 			Icon:     item.Icon,
@@ -149,7 +151,7 @@ func (s *Server) buildTemplates() error {
 func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 	funcMap := baseFuncMap()
 	// icon renders an icon template by name. Used by layouts to render
-	// NavItem.Icon / NavLink.Icon / DashboardItem.Icon, all of which hold
+	// NavItem.Icon / burrowapp.NavLink.Icon / DashboardItem.Icon, all of which hold
 	// a template-define name (e.g. "auth/icon_people"). Apps keep their
 	// icons in templates/icons.html as {{ define "<app>/icon_<name>" }} blocks.
 	//
@@ -202,13 +204,13 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 	var templateFSes []fs.FS
 
 	for _, app := range registry.Apps(s.registry) {
-		if provider, ok := app.(HasFuncMap); ok {
+		if provider, ok := app.(burrowapp.HasFuncMap); ok {
 			for k, v := range provider.FuncMap() {
 				checkDuplicate(k, fmt.Sprintf("app %q", app.Name()))
 				funcMap[k] = v
 			}
 		}
-		if provider, ok := app.(HasRequestFuncMap); ok {
+		if provider, ok := app.(burrowapp.HasRequestFuncMap); ok {
 			s.requestFuncMapProviders = append(s.requestFuncMapProviders, provider.RequestFuncMap)
 			// Register stub functions so templates can be parsed.
 			// The real implementations are injected per request via Clone()+Funcs().
@@ -217,7 +219,7 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 				funcMap[k] = func() string { return "" }
 			}
 		}
-		if provider, ok := app.(HasTemplates); ok {
+		if provider, ok := app.(burrowapp.HasTemplates); ok {
 			templateFSes = append(templateFSes, provider.TemplateFS())
 		}
 	}
@@ -288,14 +290,14 @@ func (s *Server) executeTemplate(ctx context.Context, name string, data map[stri
 	return template.HTML(buf.String()), nil //nolint:gosec // template output is trusted
 }
 
-// templateMiddleware returns middleware that injects the TemplateExecutor
+// templateMiddleware returns middleware that injects the burrowapp.TemplateExecutor
 // and request path into the request context.
 func (s *Server) templateMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			ctx = WithRequestPath(ctx, r.URL.Path)
-			ctx = WithTemplateExecutor(ctx, s.executeTemplate)
+			ctx = burrowapp.WithRequestPath(ctx, r.URL.Path)
+			ctx = burrowapp.WithTemplateExecutor(ctx, s.executeTemplate)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

@@ -1,6 +1,6 @@
 //go:build !windows
 
-package burrow
+package server
 
 import (
 	"context"
@@ -16,9 +16,11 @@ import (
 	"time"
 
 	"github.com/cloudflare/tableflip"
+	burrowapp "github.com/oliverandrich/burrow/app"
+	"github.com/oliverandrich/burrow/registry"
 )
 
-func startServer(ctx context.Context, handler http.Handler, cfg *Config, registry *Registry) error {
+func startServer(ctx context.Context, handler http.Handler, cfg *burrowapp.Config, registry *registry.Registry) error {
 	setup, err := configureTLS(cfg)
 	if err != nil {
 		return fmt.Errorf("configure TLS: %w", err)
@@ -49,8 +51,8 @@ func startServerTableflip(
 	upg *tableflip.Upgrader,
 	setup *tlsSetup,
 	handler http.Handler,
-	cfg *Config,
-	registry *Registry,
+	cfg *burrowapp.Config,
+	registry *registry.Registry,
 ) error {
 	// Trigger an upgrade on SIGHUP.
 	go func() {
@@ -86,8 +88,8 @@ func startServerSimple(
 	ctx context.Context,
 	setup *tlsSetup,
 	handler http.Handler,
-	cfg *Config,
-	registry *Registry,
+	cfg *burrowapp.Config,
+	registry *registry.Registry,
 ) error {
 	var lc net.ListenConfig
 
@@ -116,8 +118,8 @@ func serveAndWait(
 	httpLn net.Listener,
 	setup *tlsSetup,
 	handler http.Handler,
-	cfg *Config,
-	registry *Registry,
+	cfg *burrowapp.Config,
+	registry *registry.Registry,
 	onReady func() error,
 	done <-chan struct{},
 	doneMsg string,

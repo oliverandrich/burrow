@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -17,7 +18,7 @@ func runCommand(t *testing.T, args ...string) *cli.Command {
 	t.Helper()
 	cmd := &cli.Command{
 		Name:   "test",
-		Flags:  CoreFlags(nil),
+		Flags:  burrowapp.CoreFlags(nil),
 		Action: func(_ context.Context, _ *cli.Command) error { return nil },
 	}
 	err := cmd.Run(t.Context(), append([]string{"test"}, args...))
@@ -27,7 +28,7 @@ func runCommand(t *testing.T, args ...string) *cli.Command {
 
 func TestConfigureTLS_Off(t *testing.T) {
 	cmd := runCommand(t, "--tls-mode", "off", "--host", "localhost", "--port", "9090")
-	cfg := NewConfig(cmd)
+	cfg := burrowapp.NewConfig(cmd)
 
 	setup, err := configureTLS(cfg)
 	require.NoError(t, err)
@@ -41,7 +42,7 @@ func TestConfigureTLS_Off(t *testing.T) {
 func TestConfigureTLS_SelfSigned(t *testing.T) {
 	certDir := t.TempDir()
 	cmd := runCommand(t, "--tls-mode", "selfsigned", "--host", "myhost.local", "--tls-cert-dir", certDir)
-	cfg := NewConfig(cmd)
+	cfg := burrowapp.NewConfig(cmd)
 
 	setup, err := configureTLS(cfg)
 	require.NoError(t, err)
@@ -58,7 +59,7 @@ func TestConfigureTLS_SelfSigned(t *testing.T) {
 func TestConfigureTLS_SelfSignedReusesExisting(t *testing.T) {
 	certDir := t.TempDir()
 	cmd := runCommand(t, "--tls-mode", "selfsigned", "--host", "myhost.local", "--tls-cert-dir", certDir)
-	cfg := NewConfig(cmd)
+	cfg := burrowapp.NewConfig(cmd)
 
 	// First call generates certs.
 	_, err := configureTLS(cfg)
@@ -92,7 +93,7 @@ func TestConfigureTLS_Manual(t *testing.T) {
 		"--host", "manual.local",
 		"--port", "8443",
 	)
-	cfg := NewConfig(cmd)
+	cfg := burrowapp.NewConfig(cmd)
 
 	setup, err := configureTLS(cfg)
 	require.NoError(t, err)
@@ -111,7 +112,7 @@ func TestConfigureTLS_ACME(t *testing.T) {
 		"--tls-cert-dir", certDir,
 		"--tls-email", "admin@example.com",
 	)
-	cfg := NewConfig(cmd)
+	cfg := burrowapp.NewConfig(cmd)
 
 	setup, err := configureTLS(cfg)
 	require.NoError(t, err)
@@ -124,7 +125,7 @@ func TestConfigureTLS_ACME(t *testing.T) {
 
 func TestConfigureTLS_AutoLocalhost(t *testing.T) {
 	cmd := runCommand(t, "--host", "localhost")
-	cfg := NewConfig(cmd)
+	cfg := burrowapp.NewConfig(cmd)
 
 	setup, err := configureTLS(cfg)
 	require.NoError(t, err)
@@ -135,7 +136,7 @@ func TestConfigureTLS_AutoLocalhost(t *testing.T) {
 
 func TestConfigureTLS_AutoRemote(t *testing.T) {
 	cmd := runCommand(t, "--host", "example.com")
-	cfg := NewConfig(cmd)
+	cfg := burrowapp.NewConfig(cmd)
 
 	setup, err := configureTLS(cfg)
 	require.NoError(t, err)
@@ -147,7 +148,7 @@ func TestConfigureTLS_AutoRemote(t *testing.T) {
 
 func TestConfigureTLS_UnknownMode(t *testing.T) {
 	cmd := runCommand(t, "--tls-mode", "bogus")
-	cfg := NewConfig(cmd)
+	cfg := burrowapp.NewConfig(cmd)
 
 	_, err := configureTLS(cfg)
 	require.Error(t, err)

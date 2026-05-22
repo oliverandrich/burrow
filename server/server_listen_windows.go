@@ -1,6 +1,6 @@
 //go:build windows
 
-package burrow
+package server
 
 import (
 	"context"
@@ -12,9 +12,12 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	burrowapp "github.com/oliverandrich/burrow/app"
+	"github.com/oliverandrich/burrow/registry"
 )
 
-func startServer(ctx context.Context, handler http.Handler, cfg *Config, registry *Registry) error {
+func startServer(ctx context.Context, handler http.Handler, cfg *burrowapp.Config, registry *registry.Registry) error {
 	setup, err := configureTLS(cfg)
 	if err != nil {
 		return fmt.Errorf("configure TLS: %w", err)

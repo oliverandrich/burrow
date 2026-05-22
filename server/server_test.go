@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
@@ -21,7 +22,7 @@ func TestNewServer(t *testing.T) {
 	app1 := &minimalApp{}
 	app2 := &fullApp{}
 
-	s := NewServer(app1, app2)
+	s := New(app1, app2)
 
 	require.NotNil(t, s)
 	apps := registry.Apps(s.Registry())
@@ -35,7 +36,7 @@ func TestServerFlags(t *testing.T) {
 		name:  "flaggy",
 		flags: []cli.Flag{&cli.StringFlag{Name: "flaggy-key"}},
 	}
-	s := NewServer(appWithFlags)
+	s := New(appWithFlags)
 
 	flags := s.Flags(nil)
 
@@ -63,7 +64,7 @@ type testThing struct {
 func TestServerBootstrap(t *testing.T) {
 	app := &docApp{name: "things", docs: []document.Document{&testThing{}}}
 
-	s := NewServer(app)
+	s := New(app)
 	db := testDB(t)
 
 	err := s.bootstrap(t.Context(), db, nil)
@@ -77,10 +78,10 @@ func TestServerBootstrap(t *testing.T) {
 }
 
 func TestServerBootstrapCreatesAppConfig(t *testing.T) {
-	s := NewServer(&minimalApp{})
+	s := New(&minimalApp{})
 	db := testDB(t)
 
-	cfg := &Config{Server: ServerConfig{Host: "testhost", Port: 9090}}
+	cfg := &burrowapp.Config{Server: burrowapp.ServerConfig{Host: "testhost", Port: 9090}}
 	err := s.bootstrap(t.Context(), db, cfg)
 	require.NoError(t, err)
 
@@ -93,7 +94,7 @@ func TestServerBootstrapDoesNotRunMigrations(t *testing.T) {
 	var ran bool
 	app := &trackingApp{
 		name: "migrator",
-		migrations: []NamedMigration{{
+		migrations: []burrowapp.NamedMigration{{
 			Version: "001",
 			Migration: migrate.Migration{
 				Forward: func(_ context.Context, _ *den.Tx) error { ran = true; return nil },
@@ -101,7 +102,7 @@ func TestServerBootstrapDoesNotRunMigrations(t *testing.T) {
 		}},
 	}
 
-	s := NewServer(app)
+	s := New(app)
 	db := testDB(t)
 
 	err := s.bootstrap(t.Context(), db, nil)
@@ -111,7 +112,7 @@ func TestServerBootstrapDoesNotRunMigrations(t *testing.T) {
 }
 
 func TestSetLayout(t *testing.T) {
-	s := NewServer(&minimalApp{})
+	s := New(&minimalApp{})
 
 	s.SetLayout("app/layout")
 	assert.Equal(t, "app/layout", s.layout)
@@ -123,7 +124,7 @@ func TestLayoutMiddleware(t *testing.T) {
 
 	var got string
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-		got = Layout(r.Context())
+		got = burrowapp.Layout(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -136,7 +137,7 @@ func TestLayoutMiddleware(t *testing.T) {
 }
 
 func TestNavItemsMiddleware(t *testing.T) {
-	items := []NavItem{
+	items := []burrowapp.NavItem{
 		{Label: "Home", URL: "/", Position: 1},
 		{Label: "About", URL: "/about", Position: 2},
 	}
@@ -144,9 +145,9 @@ func TestNavItemsMiddleware(t *testing.T) {
 	r := chi.NewRouter()
 	r.Use(navItemsMiddleware(items))
 
-	var gotItems []NavItem
+	var gotItems []burrowapp.NavItem
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-		gotItems = NavItems(r.Context())
+		gotItems = burrowapp.NavItems(r.Context())
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
@@ -163,7 +164,7 @@ func TestNavItemsMiddleware(t *testing.T) {
 
 func TestServerRunAction(t *testing.T) {
 	app := &trackingApp{name: "testapp"}
-	s := NewServer(app)
+	s := New(app)
 
 	// Build a CLI command that exercises the full Run path. Cancel the
 	// context shortly after Run starts so the database opens, apps configure,
@@ -191,7 +192,7 @@ func TestServerRunAction(t *testing.T) {
 
 // TestServerCLICommandsConfigureBeforeAction pins the contract that subcommands
 // returned by Server.CLICommands() run inside the framework's boot lifecycle —
-// i.e. Configure() runs on every Configurable app before any subcommand Action
+// i.e. Configure() runs on every burrowapp.Configurable app before any subcommand Action
 // fires. Without the wrap (raw allCLICommands), Action runs against
 // uninitialised apps (a.repo == nil etc.).
 func TestServerCLICommandsConfigureBeforeAction(t *testing.T) {
@@ -209,7 +210,7 @@ func TestServerCLICommandsConfigureBeforeAction(t *testing.T) {
 		},
 	}
 
-	s := NewServer(app)
+	s := New(app)
 
 	cmd := &cli.Command{
 		Name:     "test",

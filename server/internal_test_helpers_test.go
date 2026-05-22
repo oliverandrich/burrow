@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"path/filepath"

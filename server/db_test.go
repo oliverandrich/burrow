@@ -1,8 +1,9 @@
-package burrow
+package server
 
 import (
 	"testing"
 
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +72,7 @@ func TestOpenDB_ValidationEnabled(t *testing.T) {
 }
 
 func TestOpenStorage_EmptyDSNReturnsNil(t *testing.T) {
-	s, err := openStorage(StorageConfig{})
+	s, err := openStorage(burrowapp.StorageConfig{})
 	require.NoError(t, err)
 	assert.Nil(t, s)
 }
@@ -82,7 +83,7 @@ func TestOpenStorage_FileScheme(t *testing.T) {
 	// convention that is relative; to keep the path absolute we use
 	// "file:///" + absPath, which yields "file:////abs/..." (4 slashes).
 	dir := t.TempDir()
-	s, err := openStorage(StorageConfig{
+	s, err := openStorage(burrowapp.StorageConfig{
 		DSN: "file:///" + dir + "?url_prefix=/media/",
 	})
 	require.NoError(t, err)
@@ -94,19 +95,19 @@ func TestOpenStorage_FileScheme(t *testing.T) {
 }
 
 func TestOpenStorage_MissingScheme(t *testing.T) {
-	_, err := openStorage(StorageConfig{DSN: "./data/media"})
+	_, err := openStorage(burrowapp.StorageConfig{DSN: "./data/media"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "missing scheme")
 }
 
 func TestOpenStorage_UnregisteredScheme(t *testing.T) {
-	_, err := openStorage(StorageConfig{DSN: "s3://bucket/prefix"})
+	_, err := openStorage(burrowapp.StorageConfig{DSN: "s3://bucket/prefix"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no backend registered")
 }
 
 func TestOpenStorage_FileSchemeWithoutPath(t *testing.T) {
-	_, err := openStorage(StorageConfig{DSN: "file://"})
+	_, err := openStorage(burrowapp.StorageConfig{DSN: "file://"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires a path")
 }

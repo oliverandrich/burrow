@@ -1,4 +1,4 @@
-package burrow
+package server
 
 import (
 	"crypto/ecdsa"
@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"time"
 
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -29,7 +30,7 @@ type tlsSetup struct {
 
 // configureTLS resolves the TLS mode and returns the appropriate setup.
 // ValidateTLS must be called before this function.
-func configureTLS(cfg *Config) (*tlsSetup, error) {
+func configureTLS(cfg *burrowapp.Config) (*tlsSetup, error) {
 	mode := cfg.ResolvedTLSMode()
 
 	switch mode {
@@ -46,13 +47,13 @@ func configureTLS(cfg *Config) (*tlsSetup, error) {
 	}
 }
 
-func configureTLSOff(cfg *Config) (*tlsSetup, error) {
+func configureTLSOff(cfg *burrowapp.Config) (*tlsSetup, error) {
 	return &tlsSetup{
 		addr: fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
 	}, nil
 }
 
-func configureTLSSelfSigned(cfg *Config) (*tlsSetup, error) {
+func configureTLSSelfSigned(cfg *burrowapp.Config) (*tlsSetup, error) {
 	certFile := filepath.Join(cfg.TLS.CertDir, "selfsigned-cert.pem")
 	keyFile := filepath.Join(cfg.TLS.CertDir, "selfsigned-key.pem")
 
@@ -77,7 +78,7 @@ func configureTLSSelfSigned(cfg *Config) (*tlsSetup, error) {
 	}, nil
 }
 
-func configureTLSManual(cfg *Config) (*tlsSetup, error) {
+func configureTLSManual(cfg *burrowapp.Config) (*tlsSetup, error) {
 	cert, err := tls.LoadX509KeyPair(cfg.TLS.CertFile, cfg.TLS.KeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("load TLS cert: %w", err)
@@ -92,7 +93,7 @@ func configureTLSManual(cfg *Config) (*tlsSetup, error) {
 	}, nil
 }
 
-func configureTLSACME(cfg *Config) (*tlsSetup, error) {
+func configureTLSACME(cfg *burrowapp.Config) (*tlsSetup, error) {
 	m := &autocert.Manager{
 		Cache:      autocert.DirCache(cfg.TLS.CertDir),
 		Prompt:     autocert.AcceptTOS,

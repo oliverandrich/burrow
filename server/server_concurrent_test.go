@@ -1,6 +1,6 @@
 //go:build !windows
 
-package burrow
+package server
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	burrowapp "github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,7 @@ func TestConcurrentRequests(t *testing.T) {
 	})
 
 	setup := &tlsSetup{addr: ln.Addr().String()}
-	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 5}}
+	cfg := &burrowapp.Config{Server: burrowapp.ServerConfig{ShutdownTimeout: 5}}
 	registry := registry.New()
 	done := make(chan struct{})
 
