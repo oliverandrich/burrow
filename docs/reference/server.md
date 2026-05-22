@@ -135,9 +135,9 @@ This means you cannot start the server with a different CLI framework (cobra, ko
 
 ## Registry
 
-The `registry` package holds the apps that make up a server — pure storage, no lifecycle. The `Server` constructs one in `NewServer` and exposes it as `cfg.Registry` to every app's `Configure` method. Lifecycle orchestration (Configure, RegisterMiddleware, RegisterRoutes, RunMigrations, Shutdown) lives inside `package burrow` and runs automatically during boot — application code does not call those helpers directly.
+The `registry` package holds the apps that make up a server — pure storage, no lifecycle. The `Server` constructs one in `NewServer` and exposes it as `cfg.Registry` to every app's `Configure` method. Lifecycle orchestration (Configure, RegisterMiddleware, RegisterRoutes, RunMigrations, Shutdown) lives inside `burrow/server` as private helpers and runs automatically during boot — application code does not call those helpers directly.
 
-`burrow.Registry` is a type alias for `*registry.Registry`; both names refer to the same type. `burrow.App` is a type alias for `registry.App`.
+`burrow.Registry` is a type alias for `*registry.Registry`; both names refer to the same type. `burrow.App` is a type alias for `app.App`, which is itself an alias for `registry.App`.
 
 ### Storage API (`package registry`)
 

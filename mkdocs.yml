@@ -128,13 +128,19 @@ nav:
   - Reference:
       - Core Interfaces: reference/interfaces.md
       - Core Functions: reference/core-functions.md
-      - Server & Registry: reference/server.md
+      - Sub-packages:
+          - app: reference/app.md
+          - server & registry: reference/server.md
+          - web: reference/web.md
+          - tasks: reference/tasks.md
+          - pagination: reference/pagination.md
       - Configuration Reference: reference/configuration.md
       - Template Functions: reference/template-functions.md
       - Reusable Templates: reference/reusable-templates.md
       - Context Helpers: reference/context-helpers.md
       - CLI: reference/cli.md
   - Migration:
+      - "v0.24": migration/v0.24.md
       - "v0.23": migration/v0.23.md
       - "v0.22": migration/v0.22.md
       - "v0.20": migration/v0.20.md
