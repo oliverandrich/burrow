@@ -125,7 +125,7 @@
 //   - i18n — locale detection and translations (go-i18n)
 //   - admin — admin panel with generic CRUD via ModelAdmin
 //   - htmx — HTMX asset serving and request/response helpers
-//   - jobs — SQLite-backed in-process job queue with retry
+//   - jobs — Den-backed in-process job queue with retry (SQLite + Postgres)
 //   - sse — Server-Sent Events with in-memory pub/sub broker
 //   - uploads — pluggable file upload storage
 //   - messages — flash messages via session storage

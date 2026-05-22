@@ -118,7 +118,7 @@ contrib/        Reusable apps
   healthcheck/  Liveness and readiness probes
   htmx/         htmx static asset + request/response helpers
   i18n/         Locale detection and translations
-  jobs/         SQLite-backed background job queue
+  jobs/         Den-backed background job queue (SQLite + Postgres)
   messages/     Flash messages
   ratelimit/    Per-client rate limiting
   session/      Cookie-based sessions

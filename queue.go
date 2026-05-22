@@ -40,7 +40,9 @@ type Enqueuer interface {
 }
 
 // Queue provides job handler registration, enqueueing, and cancellation.
-// contrib/jobs provides a SQLite-backed implementation.
+// contrib/jobs provides a Den-backed implementation that works on both
+// SQLite and Postgres, and optionally against a database separate from
+// the application's shared DB (see the jobs-database-dsn flag).
 type Queue interface {
 	Enqueuer
 	Handle(typeName string, fn JobHandlerFunc, opts ...JobOption)

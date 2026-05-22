@@ -16,6 +16,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **`docs/guide/inter-app-communication.md` documents three lookup patterns** — Hard-Dependency, Optional-Service, Soft-Discovery — with the registry function each one uses and the failure mode it carries.
 - **`sse.BrokerFromRegistry` simplified to `registry.Get[*App]`.** Behaviour unchanged (still returns nil when SSE is not registered); the old name-lookup-plus-type-assert is gone.
+- **`contrib/jobs` docs corrected to "Den-backed (SQLite + Postgres)".** Doc comments and READMEs called it "SQLite-backed" — that was true in v0.1 but the repository has been Postgres-aware since Den arrived. Code behaviour unchanged.
 
 ## 0.23.0 — 2026-05-21
 

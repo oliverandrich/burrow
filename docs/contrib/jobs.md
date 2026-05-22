@@ -1,6 +1,6 @@
 # Jobs
 
-In-process, SQLite-backed background job queue with a worker pool, retry logic, and admin UI.
+In-process, Den-backed background job queue with a worker pool, retry logic, and admin UI. Runs on SQLite or Postgres, optionally against a database separate from the application's shared DB.
 
 **Package:** `github.com/oliverandrich/burrow/contrib/jobs`
 
