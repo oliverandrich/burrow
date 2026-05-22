@@ -1,6 +1,7 @@
 package burrow
 
 import (
+	"context"
 	"encoding/json"
 	"html/template"
 	"io/fs"
@@ -13,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v3"
 )
 
 // integrationApp implements HasRoutes, HasTemplates, HasFuncMap, and HasNavItems.
@@ -73,7 +75,11 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	// here automatically. boot needs a *cli.Command for NewConfig(cmd) —
 	// a no-op Run populates the flag values which boot then reads.
 	ctx := t.Context()
-	cmd := testCommand(srv.Flags(nil))
+	cmd := &cli.Command{
+		Name:   "test",
+		Flags:  srv.Flags(nil),
+		Action: func(_ context.Context, _ *cli.Command) error { return nil },
+	}
 	require.NoError(t, cmd.Run(ctx, []string{"test", "--database-dsn", "sqlite://:memory:"}))
 
 	_, cleanup, err := srv.boot(ctx, cmd)

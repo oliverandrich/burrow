@@ -1,4 +1,4 @@
-package burrow
+package app
 
 import (
 	"context"

@@ -1,7 +1,6 @@
-package burrow
+package app
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,20 +27,8 @@ func TestCoreFlags(t *testing.T) {
 	}
 }
 
-func testCommand(flags []cli.Flag) *cli.Command {
-	return &cli.Command{
-		Name:   "test",
-		Flags:  flags,
-		Action: func(_ context.Context, _ *cli.Command) error { return nil },
-	}
-}
-
 func TestCoreDefaultValues(t *testing.T) {
-	cmd := testCommand(CoreFlags(nil))
-
-	err := cmd.Run(t.Context(), []string{"test"})
-	require.NoError(t, err)
-
+	cmd := runCommand(t)
 	cfg := NewConfig(cmd)
 	assert.Equal(t, "localhost", cfg.Server.Host)
 	assert.Equal(t, 8080, cfg.Server.Port)
@@ -56,16 +43,11 @@ func TestCoreDefaultValues(t *testing.T) {
 }
 
 func TestCoreFlagOverrides(t *testing.T) {
-	cmd := testCommand(CoreFlags(nil))
-
-	err := cmd.Run(t.Context(), []string{
-		"test",
+	cmd := runCommand(t,
 		"--host", "0.0.0.0",
 		"--port", "3000",
 		"--database-dsn", "/tmp/test.db",
-	})
-	require.NoError(t, err)
-
+	)
 	cfg := NewConfig(cmd)
 	assert.Equal(t, "0.0.0.0", cfg.Server.Host)
 	assert.Equal(t, 3000, cfg.Server.Port)
@@ -73,11 +55,7 @@ func TestCoreFlagOverrides(t *testing.T) {
 }
 
 func TestShutdownTimeoutOverride(t *testing.T) {
-	cmd := testCommand(CoreFlags(nil))
-
-	err := cmd.Run(t.Context(), []string{"test", "--shutdown-timeout", "30"})
-	require.NoError(t, err)
-
+	cmd := runCommand(t, "--shutdown-timeout", "30")
 	cfg := NewConfig(cmd)
 	assert.Equal(t, 30, cfg.Server.ShutdownTimeout)
 }

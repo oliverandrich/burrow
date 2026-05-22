@@ -1,4 +1,4 @@
-package burrow
+package app
 
 import (
 	"fmt"
@@ -135,7 +135,7 @@ func (c *Config) ResolveBaseURL() string {
 // ValidateTLS checks that the TLS configuration is consistent.
 // Call this early (before opening the database) to fail fast on misconfigurations.
 func (c *Config) ValidateTLS(cmd *cli.Command) error {
-	mode := c.resolvedTLSMode()
+	mode := c.ResolvedTLSMode()
 
 	switch mode {
 	case "off", "selfsigned":
@@ -158,8 +158,9 @@ func (c *Config) ValidateTLS(cmd *cli.Command) error {
 	}
 }
 
-// resolvedTLSMode returns the effective TLS mode after resolving "auto".
-func (c *Config) resolvedTLSMode() string {
+// ResolvedTLSMode returns the effective TLS mode after resolving "auto".
+// "auto" maps to "off" on localhost-style hosts and "acme" otherwise.
+func (c *Config) ResolvedTLSMode() string {
 	mode := strings.ToLower(c.TLS.Mode)
 	if mode == "" || mode == "auto" {
 		if IsLocalhost(c.Server.Host) {
@@ -194,7 +195,7 @@ func IsLocalhost(host string) bool {
 // and an optional TOML key. If configSource is nil, only the env var is used.
 // This is the standard way for contrib apps to wire up flag sources:
 //
-//	src := burrow.FlagSources(configSource, "MY_ENV_VAR", "app.toml_key")
+//	src := app.FlagSources(configSource, "MY_ENV_VAR", "app.toml_key")
 func FlagSources(configSource func(key string) cli.ValueSource, envVar, tomlKey string) cli.ValueSourceChain {
 	sources := []cli.ValueSource{cli.EnvVar(envVar)}
 	if configSource != nil {

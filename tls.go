@@ -30,7 +30,7 @@ type tlsSetup struct {
 // configureTLS resolves the TLS mode and returns the appropriate setup.
 // ValidateTLS must be called before this function.
 func configureTLS(cfg *Config) (*tlsSetup, error) {
-	mode := cfg.resolvedTLSMode()
+	mode := cfg.ResolvedTLSMode()
 
 	switch mode {
 	case "off":

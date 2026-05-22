@@ -1,4 +1,4 @@
-package burrow
+package app
 
 import (
 	"context"
@@ -87,13 +87,6 @@ func TemplateExec(ctx context.Context) TemplateExecutor {
 		return exec
 	}
 	return nil
-}
-
-// TemplateExecutorFromContext is a deprecated alias for [TemplateExec].
-//
-//go:fix inline
-func TemplateExecutorFromContext(ctx context.Context) TemplateExecutor {
-	return TemplateExec(ctx)
 }
 
 // WithAuthChecker stores an AuthChecker in the context. This is typically

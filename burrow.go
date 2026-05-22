@@ -1,6 +1,17 @@
-// Package burrow is a Go web framework built on chi, Den/SQLite, and html/template.
+// Package burrow is a Go web framework built on chi, Den, and html/template.
 // It provides a modular architecture where features are packaged as "apps" that
 // plug into a shared server.
+//
+// The root burrow package re-exports the most-used names from the sub-packages
+// as type aliases and thin wrapper functions, so downstream code can keep
+// writing burrow.App, burrow.AppConfig, burrow.NewServer, burrow.Handle and so
+// on. Less-frequent names live in their proper sub-package:
+//
+//   - [github.com/oliverandrich/burrow/app] — App interface, capability
+//     interfaces (HasRoutes, HasMiddleware, …), AppConfig, NavItem, NavLink,
+//     Config and TLS/Server/Database/Storage sub-configs, context helpers
+//   - [github.com/oliverandrich/burrow/registry] — the app registry with
+//     typed lookup (Get[T], MustGet[T], …)
 //
 // # Getting Started
 //
@@ -44,75 +55,12 @@
 //
 //	return burrow.NewHTTPError(http.StatusNotFound, "item not found")
 //
-// # Response Helpers
-//
-// [JSON], [Text], and [HTML] write responses with correct Content-Type headers.
-// [Render] writes pre-rendered template.HTML (useful for HTMX fragments).
-// [RenderTemplate] executes a named template and wraps it in the layout for
-// full-page requests, or returns the fragment alone for HTMX requests.
-//
-// # Request Binding and Validation
-//
-// [Bind] parses a request body (JSON, multipart, or form-encoded) into a struct
-// and validates it using "validate" struct tags. On validation failure it returns
-// a [*ValidationError] containing per-field errors:
-//
-//	type CreateItem struct {
-//	    Name  string `form:"name"  validate:"required"`
-//	    Email string `form:"email" validate:"required,email"`
-//	}
-//
-//	func create(w http.ResponseWriter, r *http.Request) error {
-//	    var input CreateItem
-//	    if err := burrow.Bind(r, &input); err != nil {
-//	        var ve *burrow.ValidationError
-//	        if errors.As(err, &ve) {
-//	            return burrow.JSON(w, 422, ve.Errors)
-//	        }
-//	        return err
-//	    }
-//	    // input is valid
-//	}
-//
-// [Validate] can be called standalone on any struct.
-//
 // # App Interface
 //
 // Every app implements [App] (Name only). Apps gain additional capabilities
-// by implementing optional interfaces:
-//
-//   - [HasDocuments] — document type registration
-//   - [HasRoutes] — HTTP route registration on a chi.Router
-//   - [HasMiddleware] — global middleware
-//   - [HasNavItems] — main navigation entries
-//   - [HasTemplates] — .html template files parsed into the global template set
-//   - [HasFuncMap] — static template functions
-//   - [HasRequestFuncMap] — per-request template functions
-//   - [HasFlags] — CLI/ENV/TOML flag definitions
-//   - [Configurable] — app configuration and setup
-//   - [HasCLICommands] — CLI subcommands
-//   - [HasMigrations] — versioned, run-once database migrations
-//   - [HasAdmin] — admin panel routes and navigation
-//   - [HasStaticFiles] — embedded static file assets
-//   - [HasTranslations] — i18n translation files
-//   - [HasDependencies] — declared app dependencies for ordering
-//   - [PostConfigurable] — second-pass configuration after all apps are configured
-//   - [Startable] — start background processes after boot (counterpart to HasShutdown)
-//   - [HasShutdown] — graceful shutdown hooks
-//
-// # Templates
-//
-// Apps contribute .html files via [HasTemplates]. All templates are parsed into a
-// single global [html/template.Template] at boot time. Templates use
-// {{ define "appname/templatename" }} blocks for namespacing. Apps can add
-// template functions via [HasFuncMap] (static) and [HasRequestFuncMap]
-// (per-request, e.g. for CSRF tokens or the current user).
-//
-// # Pagination
-//
-// [ParsePageRequest] extracts limit and page from the query string.
-// Use QuerySet.Limit().Skip() + [OffsetResult] for offset-based pagination.
-// [PageResponse] wraps items and pagination metadata for JSON APIs.
+// by implementing optional interfaces such as [HasRoutes], [HasMiddleware],
+// [HasMigrations], [Configurable], [HasShutdown], and others — all defined
+// in the [github.com/oliverandrich/burrow/app] package.
 //
 // # Contrib Apps
 //
@@ -136,233 +84,240 @@ package burrow
 
 import (
 	"context"
-	"html/template"
-	"io/fs"
-	"net/http"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/registry"
-	"github.com/oliverandrich/den"
-	"github.com/oliverandrich/den/document"
-	"github.com/oliverandrich/den/migrate"
 	"github.com/urfave/cli/v3"
 )
 
-// App is the required interface that all apps must implement.
-// An app has a unique name used for identification in the registry,
-// migrations, and logging.
-//
-// App is an alias for [registry.App]; the two are the same type.
-type App = registry.App
+// App is the required interface that every burrow app implements. Alias for
+// [app.App].
+type App = app.App
 
-// Registry stores the apps that make up a Server. It is an alias for
-// [registry.Registry]; the two are the same type. Construct one with
-// [registry.New] and operate on it with the free functions in package
-// registry: [registry.Add], [registry.Get], [registry.MustGet],
-// [registry.GetByName], [registry.MustGetByName], [registry.Apps].
+// AppConfig is passed to each app's Configure method, providing access to
+// shared framework resources. Alias for [app.AppConfig].
+type AppConfig = app.AppConfig
+
+// Registry stores the apps that make up a Server. Alias for
+// [registry.Registry] — operate on it with the free functions in package
+// registry: [registry.New], [registry.Add], [registry.Get], etc.
 type Registry = registry.Registry
 
-// AppConfig is passed to each app's Configure method, providing
-// access to shared framework resources.
-type AppConfig struct {
-	DB         *den.DB
-	Registry   *Registry
-	Config     *Config
-	WithLocale func(ctx context.Context, lang string) context.Context
-}
-
-// NavItem represents a navigation entry contributed by an app.
-//
-// Label doubles as the i18n message ID: it is passed through [i18n.T] at
-// render time, so contribute translations keyed by the English Label. When
-// no translation matches, the raw Label is rendered.
-//
-// Icon is the name of a template define (e.g. "auth/icon_people") rendered by
-// the layout via {{ template .Icon . }}. Each contrib keeps its icons in
-// templates/icons.html as {{ define "<app>/icon_<name>" }} blocks.
-type NavItem struct { //nolint:govet // fieldalignment: readability over optimization
-	Label     string
-	URL       string
-	Icon      string
-	Position  int
-	AuthOnly  bool
-	StaffOnly bool
-	AdminOnly bool
-}
+// NavItem represents a navigation entry contributed by an app. Alias for
+// [app.NavItem].
+type NavItem = app.NavItem
 
 // NavLink is a template-ready navigation item with pre-computed active state.
-// It is produced by the navLinks template function from the registered NavItems,
-// filtered by the current user's authentication/authorization state.
-//
-// Icon is a template name; see [NavItem].
-type NavLink struct {
-	Label    string
-	URL      string
-	Icon     string
-	IsActive bool
-}
+// Alias for [app.NavLink].
+type NavLink = app.NavLink
+
+// Config holds core framework configuration. Alias for [app.Config].
+type Config = app.Config
+
+// ServerConfig holds HTTP server settings. Alias for [app.ServerConfig].
+type ServerConfig = app.ServerConfig
+
+// DatabaseConfig holds database settings. Alias for [app.DatabaseConfig].
+type DatabaseConfig = app.DatabaseConfig
+
+// StorageConfig holds file-storage settings. Alias for [app.StorageConfig].
+type StorageConfig = app.StorageConfig
+
+// TLSConfig holds TLS settings. Alias for [app.TLSConfig].
+type TLSConfig = app.TLSConfig
+
+// TemplateExecutor executes a named template with the given data. Alias for
+// [app.TemplateExecutor].
+type TemplateExecutor = app.TemplateExecutor
+
+// AuthChecker carries auth-state closures in the request context. Alias for
+// [app.AuthChecker].
+type AuthChecker = app.AuthChecker
 
 // HasDocuments is implemented by apps that register Den document types.
-// The returned slice should contain zero-value pointers, e.g. &User{}, &Job{}.
-// [document.Document] is Den's sealed marker interface — only types that
-// embed [document.Base] satisfy it, so non-document types fail at compile
-// time. Den's Register() creates tables and indexes automatically from the
-// struct tags.
-type HasDocuments interface {
-	Documents() []document.Document
-}
+// Alias for [app.HasDocuments].
+type HasDocuments = app.HasDocuments
 
 // HasMiddleware is implemented by apps that contribute HTTP middleware.
-type HasMiddleware interface {
-	Middleware() []func(http.Handler) http.Handler
-}
+// Alias for [app.HasMiddleware].
+type HasMiddleware = app.HasMiddleware
 
 // HasNavItems is implemented by apps that contribute navigation items.
-type HasNavItems interface {
-	NavItems() []NavItem
-}
+// Alias for [app.HasNavItems].
+type HasNavItems = app.HasNavItems
 
-// HasFlags is implemented by apps that define CLI flags.
-// The configSource parameter enables TOML file sourcing; it may be nil
-// when only ENV/CLI sources are used.
-type HasFlags interface {
-	Flags(configSource func(key string) cli.ValueSource) []cli.Flag
-}
+// HasFlags is implemented by apps that define CLI flags. Alias for
+// [app.HasFlags].
+type HasFlags = app.HasFlags
 
-// Configurable is implemented by apps that need to read their configuration
-// and perform setup (create repositories, register icons, wire handlers).
-// Configure receives the shared [AppConfig] and the parsed CLI command.
-type Configurable interface {
-	Configure(cfg *AppConfig, cmd *cli.Command) error
-}
+// Configurable is implemented by apps that need to read configuration and
+// perform setup. Alias for [app.Configurable].
+type Configurable = app.Configurable
 
-// HasCLICommands is implemented by apps that contribute subcommands.
-type HasCLICommands interface {
-	CLICommands() []*cli.Command
-}
+// HasCLICommands is implemented by apps that contribute CLI subcommands.
+// Alias for [app.HasCLICommands].
+type HasCLICommands = app.HasCLICommands
 
-// HasRoutes is implemented by apps that register HTTP routes.
-type HasRoutes interface {
-	Routes(r chi.Router)
-}
+// HasRoutes is implemented by apps that register HTTP routes. Alias for
+// [app.HasRoutes].
+type HasRoutes = app.HasRoutes
 
-// HasMigrations is implemented by apps that ship versioned, run-once
-// migrations on top of the auto-discovered document schema. The server
-// applies them automatically at boot via Den's migrate package — each
-// migration runs exactly once across processes, tracked in the
-// _den_migrations collection. Versions are namespaced by app name so two
-// contribs can both ship "001_initial" without colliding.
-type HasMigrations interface {
-	Migrations() []NamedMigration
-}
+// HasMigrations is implemented by apps that ship versioned migrations.
+// Alias for [app.HasMigrations].
+type HasMigrations = app.HasMigrations
 
-// NamedMigration pairs a version label with a Den migrate.Migration. The
-// Version is the lexicographic ordering key inside an app; cross-app order
-// follows the registry's dependency-resolved app order.
-//
-// Migration.Forward is required. Migration.Backward is optional — omitting
-// it locks the migration as forward-only; rollback via migrate.Down /
-// migrate.DownOne returns an error for a migration without a Backward.
-type NamedMigration struct {
-	Version   string
-	Migration migrate.Migration
-}
+// NamedMigration pairs a version label with a Den migration. Alias for
+// [app.NamedMigration].
+type NamedMigration = app.NamedMigration
 
-// AdminAuth provides authentication and authorization middleware for the
-// admin panel. The admin app discovers an AdminAuth provider from the
-// registry during Configure and uses its middleware to protect /admin routes.
-// contrib/auth implements this interface.
-//
-// RequireAuth gates "logged in or not"; RequireStaff gates "may enter the
-// admin shell" (used by the admin coordinator for the /admin/ frame);
-// RequireAdmin gates "full admin privileges" (used per-route by apps).
-// Roles form a hierarchy: admin implies staff implies authenticated.
-type AdminAuth interface {
-	RequireAuth() func(http.Handler) http.Handler
-	RequireStaff() func(http.Handler) http.Handler
-	RequireAdmin() func(http.Handler) http.Handler
-}
+// AdminAuth provides middleware for the admin panel. Alias for
+// [app.AdminAuth].
+type AdminAuth = app.AdminAuth
 
-// HasAdmin is implemented by apps that contribute admin panel routes
-// and navigation items. AdminRoutes receives a chi router already
-// prefixed with /admin and protected by auth middleware.
-type HasAdmin interface {
-	AdminRoutes(r chi.Router)
-	AdminNavItems() []NavItem
-}
+// HasAdmin is implemented by apps that contribute admin routes and nav items.
+// Alias for [app.HasAdmin].
+type HasAdmin = app.HasAdmin
 
-// HasStaticFiles is implemented by apps that contribute static file
-// assets. The returned prefix namespaces the files under the static
-// URL path (e.g., prefix "admin" serves files at /static/admin/...).
-type HasStaticFiles interface {
-	StaticFS() (prefix string, fsys fs.FS)
-}
+// HasStaticFiles is implemented by apps that contribute static assets.
+// Alias for [app.HasStaticFiles].
+type HasStaticFiles = app.HasStaticFiles
 
-// HasTranslations is implemented by apps that contribute translation
-// files. The returned fs.FS must contain a "translations/" directory
-// with TOML files (e.g., "translations/active.en.toml").
-type HasTranslations interface {
-	TranslationFS() fs.FS
-}
+// HasTranslations is implemented by apps that contribute translation files.
+// Alias for [app.HasTranslations].
+type HasTranslations = app.HasTranslations
 
-// HasDependencies is implemented by apps that require other apps
-// to be registered first. Dependencies() returns the names of
-// required apps; registration panics if any are missing.
-//
-// HasDependencies is an alias for [registry.HasDependencies]; the two
-// are the same type.
+// HasDependencies is implemented by apps that require other apps to be
+// registered first. Alias for [registry.HasDependencies].
 type HasDependencies = registry.HasDependencies
 
 // PostConfigurable is implemented by apps that need a second configuration
-// pass after all [Configurable] apps have been configured. This is useful
-// when an app needs to interact with other apps' state that is only available
-// after Configure() has run (e.g., the jobs app discovering HasJobs handlers).
-// PostConfigure is called once, after all Configure() calls have completed.
-type PostConfigurable interface {
-	PostConfigure(cfg *AppConfig, cmd *cli.Command) error
-}
+// pass after Configure has run on every Configurable app. Alias for
+// [app.PostConfigurable].
+type PostConfigurable = app.PostConfigurable
 
-// HasShutdown is implemented by apps that need to perform cleanup
-// during graceful shutdown (e.g., stopping background goroutines,
-// flushing buffers). Called in reverse registration order before
-// the HTTP server stops.
-type HasShutdown interface {
-	Shutdown(ctx context.Context) error
-}
+// HasShutdown is implemented by apps that need cleanup during graceful
+// shutdown. Alias for [app.HasShutdown].
+type HasShutdown = app.HasShutdown
 
-// ReadinessChecker is implemented by apps that contribute to the
-// readiness probe. ReadinessCheck returns nil when the app is ready
-// to serve traffic, or an error describing what is not ready.
-type ReadinessChecker interface {
-	ReadinessCheck(ctx context.Context) error
-}
+// ReadinessChecker is implemented by apps that contribute to the readiness
+// probe. Alias for [app.ReadinessChecker].
+type ReadinessChecker = app.ReadinessChecker
+
+// HasTemplates is implemented by apps that provide HTML template files.
+// Alias for [app.HasTemplates].
+type HasTemplates = app.HasTemplates
+
+// HasFuncMap is implemented by apps that provide static template functions.
+// Alias for [app.HasFuncMap].
+type HasFuncMap = app.HasFuncMap
+
+// HasRequestFuncMap is implemented by apps that provide context-scoped
+// template functions. Alias for [app.HasRequestFuncMap].
+type HasRequestFuncMap = app.HasRequestFuncMap
 
 // Startable is implemented by apps that need to start background processes
 // after the full boot sequence completes (templates built, middleware and
 // routes registered). It is the counterpart to HasShutdown.
+//
+// Startable references [*Server] directly, so it stays in this package until
+// Server itself moves into a sub-package.
 type Startable interface {
 	Start(srv *Server) error
 }
 
-// HasTemplates is implemented by apps that provide HTML template files.
-// The returned fs.FS should contain .html files with {{ define "appname/..." }}
-// blocks. Templates are parsed once at boot time into the global template set.
-type HasTemplates interface {
-	TemplateFS() fs.FS
+// NewConfig creates a Config from a parsed CLI command. Wrapper around
+// [app.NewConfig].
+func NewConfig(cmd *cli.Command) *Config { return app.NewConfig(cmd) }
+
+// CoreFlags returns the CLI flags for core framework configuration. Wrapper
+// around [app.CoreFlags].
+func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
+	return app.CoreFlags(configSource)
 }
 
-// HasFuncMap is implemented by apps that provide static template functions.
-// These are added once at boot time and available in all templates.
-type HasFuncMap interface {
-	FuncMap() template.FuncMap
+// FlagSources builds a cli.ValueSourceChain from an environment variable and
+// an optional TOML key. Wrapper around [app.FlagSources].
+func FlagSources(configSource func(key string) cli.ValueSource, envVar, tomlKey string) cli.ValueSourceChain {
+	return app.FlagSources(configSource, envVar, tomlKey)
 }
 
-// HasRequestFuncMap is implemented by apps that provide context-scoped
-// template functions (e.g., CSRF tokens, current user, translations).
-// These are added per request via middleware using template.Clone().
-// The context carries all request-scoped values needed by the functions;
-// this enables template rendering outside HTTP handlers (background jobs,
-// SSE broadcasts, CLI commands).
-type HasRequestFuncMap interface {
-	RequestFuncMap(ctx context.Context) template.FuncMap
+// IsLocalhost reports whether the host string refers to a localhost address.
+// Wrapper around [app.IsLocalhost].
+func IsLocalhost(host string) bool { return app.IsLocalhost(host) }
+
+// WithLayout stores the layout template name in the context. Wrapper around
+// [app.WithLayout].
+func WithLayout(ctx context.Context, name string) context.Context {
+	return app.WithLayout(ctx, name)
+}
+
+// Layout retrieves the layout template name from the context. Wrapper around
+// [app.Layout].
+func Layout(ctx context.Context) string { return app.Layout(ctx) }
+
+// WithNavItems stores navigation items in the context. Wrapper around
+// [app.WithNavItems].
+func WithNavItems(ctx context.Context, items []NavItem) context.Context {
+	return app.WithNavItems(ctx, items)
+}
+
+// NavItems retrieves the navigation items from the context. Wrapper around
+// [app.NavItems].
+func NavItems(ctx context.Context) []NavItem { return app.NavItems(ctx) }
+
+// WithTemplateExecutor stores the template executor in the context. Wrapper
+// around [app.WithTemplateExecutor].
+func WithTemplateExecutor(ctx context.Context, exec TemplateExecutor) context.Context {
+	return app.WithTemplateExecutor(ctx, exec)
+}
+
+// TemplateExec retrieves the template executor from the context. Wrapper
+// around [app.TemplateExec].
+func TemplateExec(ctx context.Context) TemplateExecutor { return app.TemplateExec(ctx) }
+
+// TemplateExecutorFromContext is a deprecated alias for [TemplateExec].
+//
+//go:fix inline
+func TemplateExecutorFromContext(ctx context.Context) TemplateExecutor {
+	return app.TemplateExec(ctx)
+}
+
+// WithAuthChecker stores an AuthChecker in the context. Wrapper around
+// [app.WithAuthChecker].
+func WithAuthChecker(ctx context.Context, checker AuthChecker) context.Context {
+	return app.WithAuthChecker(ctx, checker)
+}
+
+// WithRequestPath stores the request path in the context. Wrapper around
+// [app.WithRequestPath].
+func WithRequestPath(ctx context.Context, path string) context.Context {
+	return app.WithRequestPath(ctx, path)
+}
+
+// RequestPath retrieves the request path from the context. Wrapper around
+// [app.RequestPath].
+func RequestPath(ctx context.Context) string { return app.RequestPath(ctx) }
+
+// IsAuthenticated returns true if the AuthChecker in context reports
+// authentication. Wrapper around [app.IsAuthenticated].
+func IsAuthenticated(ctx context.Context) bool { return app.IsAuthenticated(ctx) }
+
+// IsStaff returns true if the AuthChecker in context reports staff status.
+// Wrapper around [app.IsStaff].
+func IsStaff(ctx context.Context) bool { return app.IsStaff(ctx) }
+
+// IsAdmin returns true if the AuthChecker in context reports admin status.
+// Wrapper around [app.IsAdmin].
+func IsAdmin(ctx context.Context) bool { return app.IsAdmin(ctx) }
+
+// WithContextValue stores a value in the context under the given key. Wrapper
+// around [app.WithContextValue].
+func WithContextValue(ctx context.Context, key, val any) context.Context {
+	return app.WithContextValue(ctx, key, val)
+}
+
+// ContextValue retrieves a typed value from the context. Wrapper around
+// [app.ContextValue].
+func ContextValue[T any](ctx context.Context, key any) (T, bool) {
+	return app.ContextValue[T](ctx, key)
 }
