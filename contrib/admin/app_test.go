@@ -12,6 +12,7 @@ import (
 	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/session"
+	"github.com/oliverandrich/burrow/registry"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,28 +36,28 @@ var (
 	_ burrow.HasRequestFuncMap = (*App)(nil)
 )
 
-// configuredRegistry returns a registry with session and auth apps
+// configuredRegistry returns a reg with session and auth apps
 // properly configured via CLI commands (required because Configure
 // reads flag values from the cli.Command).
 func configuredRegistry(t *testing.T) *burrow.Registry {
 	t.Helper()
-	registry := burrow.NewRegistry()
+	reg := registry.New()
 
-	// Stub the contribs admin declares as Dependencies so registry.Add(admin)
+	// Stub the contribs admin declares as Dependencies so registry.Add(reg, admin)
 	// doesn't trip the dependency gate during tests. session and auth are real
 	// because the test fixtures (e.g. TestAdminUsersListRoute) need a working
 	// auth middleware.
-	registry.Add(burrowtest.StubApp("staticfiles"))
-	registry.Add(burrowtest.StubApp("htmx"))
-	registry.Add(burrowtest.StubApp("messages"))
-	registry.Add(burrowtest.StubApp("csrf"))
+	registry.Add(reg, burrowtest.StubApp("staticfiles"))
+	registry.Add(reg, burrowtest.StubApp("htmx"))
+	registry.Add(reg, burrowtest.StubApp("messages"))
+	registry.Add(reg, burrowtest.StubApp("csrf"))
 
 	sessionApp := session.New()
-	registry.Add(sessionApp)
+	registry.Add(reg, sessionApp)
 	authApp := auth.New[auth.EmptyProfile]()
-	registry.Add(authApp)
+	registry.Add(reg, authApp)
 
-	cfg := &burrow.AppConfig{Registry: registry, Config: &burrow.Config{}}
+	cfg := &burrow.AppConfig{Registry: reg, Config: &burrow.Config{}}
 
 	cmd := &cli.Command{
 		Name:  "test",
@@ -78,7 +79,7 @@ func configuredRegistry(t *testing.T) *burrow.Registry {
 	// Clean up auth's background goroutine.
 	t.Cleanup(func() { _ = authApp.Shutdown(context.Background()) })
 
-	return registry
+	return reg
 }
 
 func TestAppName(t *testing.T) {
@@ -88,17 +89,17 @@ func TestAppName(t *testing.T) {
 
 func TestAppConfigure(t *testing.T) {
 	app := New()
-	registry := burrow.NewRegistry()
+	reg := registry.New()
 
-	registry.Add(session.New())
-	// Stub auth's declared dependencies so registry.Add(authApp) doesn't
+	registry.Add(reg, session.New())
+	// Stub auth's declared dependencies so registry.Add(reg, authApp) doesn't
 	// trip the dependency gate; this test only exercises admin's Configure.
-	registry.Add(burrowtest.StubApp("csrf"))
-	registry.Add(burrowtest.StubApp("staticfiles"))
+	registry.Add(reg, burrowtest.StubApp("csrf"))
+	registry.Add(reg, burrowtest.StubApp("staticfiles"))
 	authApp := auth.New[auth.EmptyProfile]()
-	registry.Add(authApp)
+	registry.Add(reg, authApp)
 
-	cfg := &burrow.AppConfig{Registry: registry}
+	cfg := &burrow.AppConfig{Registry: reg}
 	err := app.Configure(cfg, nil)
 
 	require.NoError(t, err)
@@ -106,14 +107,14 @@ func TestAppConfigure(t *testing.T) {
 }
 
 func TestAppConfigureWithoutAuthReturnsError(t *testing.T) {
-	// An empty registry — admin's Configure should error because no
+	// An empty reg — admin's Configure should error because no
 	// AdminAuth provider is registered. (We don't add admin to the
-	// registry here because that would trip the Dependencies check
+	// reg here because that would trip the Dependencies check
 	// for staticfiles/htmx/messages, which is unrelated to this test.)
-	registry := burrow.NewRegistry()
+	reg := registry.New()
 
 	app := New()
-	cfg := &burrow.AppConfig{Registry: registry, Config: &burrow.Config{}}
+	cfg := &burrow.AppConfig{Registry: reg, Config: &burrow.Config{}}
 
 	err := app.Configure(cfg, &cli.Command{Name: "test"})
 	require.Error(t, err)
@@ -140,14 +141,14 @@ func (a *hasAdminApp) AdminNavItems() []burrow.NavItem {
 }
 
 func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
-	registry := configuredRegistry(t)
+	reg := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
-	registry.Add(provider)
+	registry.Add(reg, provider)
 
 	app := New()
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	r := chi.NewRouter()
 	// Inject admin user for RequireAuth + RequireStaff.
@@ -170,14 +171,14 @@ func TestRoutesCoordinatesHasAdminApps(t *testing.T) {
 }
 
 func TestRoutesRequiresAuth(t *testing.T) {
-	registry := configuredRegistry(t)
+	reg := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
-	registry.Add(provider)
+	registry.Add(reg, provider)
 
 	app := New()
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	r := chi.NewRouter()
 	app.Routes(r)
@@ -192,14 +193,14 @@ func TestRoutesRequiresAuth(t *testing.T) {
 }
 
 func TestRoutesRejectsRegularUser(t *testing.T) {
-	registry := configuredRegistry(t)
+	reg := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
-	registry.Add(provider)
+	registry.Add(reg, provider)
 
 	app := New()
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
@@ -219,14 +220,14 @@ func TestRoutesRejectsRegularUser(t *testing.T) {
 }
 
 func TestRoutesAllowsStaff(t *testing.T) {
-	registry := configuredRegistry(t)
+	reg := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
-	registry.Add(provider)
+	registry.Add(reg, provider)
 
 	app := New()
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
@@ -247,7 +248,7 @@ func TestRoutesAllowsStaff(t *testing.T) {
 func TestRoutesNoRegistryNoPanic(t *testing.T) {
 	app := New()
 	r := chi.NewRouter()
-	// Routes should not panic when registry is nil.
+	// Routes should not panic when reg is nil.
 	assert.NotPanics(t, func() { app.Routes(r) })
 }
 
@@ -325,14 +326,14 @@ func (a *layoutCheckApp) AdminRoutes(r chi.Router) {
 func (a *layoutCheckApp) AdminNavItems() []burrow.NavItem { return nil }
 
 func TestRoutesInjectLayoutInGroup(t *testing.T) {
-	registry := configuredRegistry(t)
+	reg := configuredRegistry(t)
 
 	checker := &layoutCheckApp{}
-	registry.Add(checker)
+	registry.Add(reg, checker)
 
 	app := New(WithLayout("custom/admin-layout"))
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	r := chi.NewRouter()
 	// Inject admin user for RequireAuth + RequireAdmin.
@@ -353,14 +354,14 @@ func TestRoutesInjectLayoutInGroup(t *testing.T) {
 }
 
 func TestBuildNavGroups(t *testing.T) {
-	registry := configuredRegistry(t)
+	reg := configuredRegistry(t)
 
 	provider := &hasAdminApp{}
-	registry.Add(provider)
+	registry.Add(reg, provider)
 
 	app := New()
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	groups := app.buildNavGroups()
 
@@ -392,14 +393,14 @@ func (a *navGroupsCheckApp) AdminNavItems() []burrow.NavItem {
 }
 
 func TestRoutesInjectNavGroups(t *testing.T) {
-	registry := configuredRegistry(t)
+	reg := configuredRegistry(t)
 
 	checker := &navGroupsCheckApp{}
-	registry.Add(checker)
+	registry.Add(reg, checker)
 
 	app := New()
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
@@ -515,17 +516,17 @@ func (a *navItemsApp) AdminNavItems() []burrow.NavItem {
 }
 
 func TestRoutesFiltersAdminOnlyNavForStaff(t *testing.T) {
-	registry := configuredRegistry(t)
+	reg := configuredRegistry(t)
 
 	provider := &navItemsApp{}
-	registry.Add(provider)
+	registry.Add(reg, provider)
 
 	checker := &navGroupsCheckApp{}
-	registry.Add(checker)
+	registry.Add(reg, checker)
 
 	app := New()
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	t.Run("staff", func(t *testing.T) {
 		checker.gotGroups = nil
@@ -591,12 +592,12 @@ func (a *adminGatedApp) AdminNavItems() []burrow.NavItem {
 }
 
 func TestRoutesGatedRouteAdmin(t *testing.T) {
-	registry := configuredRegistry(t)
-	registry.Add(&adminGatedApp{})
+	reg := configuredRegistry(t)
+	registry.Add(reg, &adminGatedApp{})
 
 	app := New()
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	t.Run("staff is forbidden on admin-only route", func(t *testing.T) {
 		r := chi.NewRouter()

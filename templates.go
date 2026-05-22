@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/oliverandrich/burrow/i18n"
+	"github.com/oliverandrich/burrow/registry"
 )
 
 //go:embed templates/*.html
@@ -200,7 +201,7 @@ func (s *Server) collectFuncMap() (template.FuncMap, []fs.FS) {
 
 	var templateFSes []fs.FS
 
-	for _, app := range s.registry.Apps() {
+	for _, app := range registry.Apps(s.registry) {
 		if provider, ok := app.(HasFuncMap); ok {
 			for k, v := range provider.FuncMap() {
 				checkDuplicate(k, fmt.Sprintf("app %q", app.Name()))

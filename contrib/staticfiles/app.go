@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/urfave/cli/v3"
 )
 
@@ -60,7 +61,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	if cfg.Registry == nil {
 		return nil
 	}
-	for _, app := range cfg.Registry.Apps() {
+	for _, app := range registry.Apps(cfg.Registry) {
 		if provider, ok := app.(burrow.HasStaticFiles); ok {
 			prefix, fsys := provider.StaticFS()
 			m, f, err := buildManifest(fsys)

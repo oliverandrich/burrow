@@ -91,12 +91,12 @@ func buildIntegrationRouter(t *testing.T) chi.Router {
 	// Build router with middleware (mirrors Run()).
 	r := chi.NewRouter()
 	r.Use(srv.i18nBundle.LocaleMiddleware())
-	navItems := srv.registry.AllNavItems()
+	navItems := allNavItems(srv.registry)
 	r.Use(navItemsMiddleware(navItems))
 	r.Use(layoutMiddleware(srv.layout))
 	r.Use(srv.templateMiddleware())
-	srv.registry.RegisterMiddleware(r)
-	srv.registry.RegisterRoutes(r)
+	registerMiddleware(srv.registry, r)
+	registerRoutes(srv.registry, r)
 
 	r.NotFound(Handle(func(w http.ResponseWriter, r *http.Request) error {
 		return NewHTTPError(http.StatusNotFound, "page not found")

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,29 +51,29 @@ func TestBroker_Missing(t *testing.T) {
 }
 
 func TestBrokerFromRegistry_NotRegistered(t *testing.T) {
-	registry := burrow.NewRegistry()
-	got := BrokerFromRegistry(registry)
+	reg := registry.New()
+	got := BrokerFromRegistry(reg)
 	assert.Nil(t, got)
 }
 
 func TestBrokerFromRegistry_BeforeConfigure(t *testing.T) {
-	registry := burrow.NewRegistry()
-	registry.Add(New())
+	reg := registry.New()
+	registry.Add(reg, New())
 
-	got := BrokerFromRegistry(registry)
+	got := BrokerFromRegistry(reg)
 	assert.Nil(t, got)
 }
 
 func TestBrokerFromRegistry_AfterConfigure(t *testing.T) {
 	app := New()
-	registry := burrow.NewRegistry()
-	registry.Add(app)
+	reg := registry.New()
+	registry.Add(reg, app)
 
 	// Simulate Configure by setting the broker directly.
 	app.broker = NewEventBroker(16)
 	defer app.broker.Close()
 
-	got := BrokerFromRegistry(registry)
+	got := BrokerFromRegistry(reg)
 	require.NotNil(t, got)
 	assert.Equal(t, app.broker, got)
 }

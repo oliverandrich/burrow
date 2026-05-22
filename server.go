@@ -12,6 +12,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v3"
 	"github.com/oliverandrich/burrow/i18n"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/urfave/cli/v3"
 )
@@ -44,9 +45,9 @@ type Server struct { //nolint:govet // fieldalignment: readability over optimiza
 // from the input or if there is a dependency cycle.
 func NewServer(apps ...App) *Server {
 	sorted := sortApps(apps)
-	reg := NewRegistry()
+	reg := registry.New()
 	for _, app := range sorted {
-		reg.Add(app)
+		registry.Add(reg, app)
 	}
 	return &Server{registry: reg}
 }
@@ -163,7 +164,7 @@ func (s *Server) Registry() *Registry {
 // TOML file sourcing (or nil for ENV-only).
 func (s *Server) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 	flags := CoreFlags(configSource)
-	flags = append(flags, s.registry.AllFlags(configSource)...)
+	flags = append(flags, allFlags(s.registry, configSource)...)
 	return flags
 }
 
@@ -200,7 +201,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	r.Use(chimw.Compress(5))
 	r.Use(chimw.RequestSize(int64(cfg.Server.MaxBodySize) * 1024 * 1024))
 	r.Use(s.i18nBundle.LocaleMiddleware())
-	navItems := s.registry.AllNavItems()
+	navItems := allNavItems(s.registry)
 	r.Use(navItemsMiddleware(navItems))
 	if s.layout != "" {
 		r.Use(layoutMiddleware(s.layout))
@@ -208,8 +209,8 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	if s.templates != nil {
 		r.Use(s.templateMiddleware())
 	}
-	s.registry.RegisterMiddleware(r)
-	s.registry.RegisterRoutes(r)
+	registerMiddleware(s.registry, r)
+	registerRoutes(s.registry, r)
 
 	r.NotFound(Handle(func(w http.ResponseWriter, r *http.Request) error {
 		return NewHTTPError(http.StatusNotFound, "page not found")
@@ -219,7 +220,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	}))
 
 	// Start background processes (e.g., job workers).
-	for _, app := range s.registry.Apps() {
+	for _, app := range registry.Apps(s.registry) {
 		if starter, ok := app.(Startable); ok {
 			if err := starter.Start(s); err != nil {
 				return fmt.Errorf("start %s: %w", app.Name(), err)
@@ -232,7 +233,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 
 // bootstrap registers document types and prepares the shared AppConfig.
 func (s *Server) bootstrap(ctx context.Context, db *den.DB, cfg *Config) error {
-	if err := s.registry.RegisterDocuments(ctx, db); err != nil {
+	if err := registerDocuments(ctx, s.registry, db); err != nil {
 		return fmt.Errorf("register documents: %w", err)
 	}
 
@@ -301,7 +302,7 @@ func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), e
 	}
 
 	// Load translations from all HasTranslations apps.
-	for _, app := range s.registry.Apps() {
+	for _, app := range registry.Apps(s.registry) {
 		if p, ok := app.(HasTranslations); ok {
 			if err := s.i18nBundle.AddTranslations(p.TranslationFS()); err != nil {
 				cleanup()
@@ -310,12 +311,12 @@ func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), e
 		}
 	}
 
-	if err := s.registry.Configure(s.appCfg, cmd); err != nil {
+	if err := configure(s.registry, s.appCfg, cmd); err != nil {
 		cleanup()
 		return nil, nil, err
 	}
 
-	if err := s.registry.RunMigrations(ctx, db); err != nil {
+	if err := runMigrations(ctx, s.registry, db); err != nil {
 		cleanup()
 		return nil, nil, fmt.Errorf("run migrations: %w", err)
 	}
@@ -330,8 +331,7 @@ func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), e
 // wrapping, contrib subcommands like `auth set-role` would run against
 // uninitialised apps and fail with errors like "auth app not initialized".
 //
-// Use this in place of `srv.Registry().AllCLICommands()` when wiring
-// subcommands into a [cli.Command]:
+// Use this to wire framework-aware CLI subcommands into a [cli.Command]:
 //
 //	cmd := &cli.Command{
 //	    Flags:    srv.Flags(nil),
@@ -347,7 +347,7 @@ func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*Config, func(), e
 // are not recursively wrapped, and the top-level Action must be non-nil
 // (a command that only forwards to sub-subcommands is not supported here).
 func (s *Server) CLICommands() []*cli.Command {
-	raw := s.registry.AllCLICommands()
+	raw := allCLICommands(s.registry)
 	out := make([]*cli.Command, len(raw))
 	for i, c := range raw {
 		wrapped := *c
@@ -387,11 +387,11 @@ func navItemsMiddleware(items []NavItem) func(http.Handler) http.Handler {
 }
 
 // shutdownServers performs graceful shutdown of the HTTP servers and registry.
-func shutdownServers(cfg *Config, registry *Registry, server *http.Server, httpServer *http.Server) error {
+func shutdownServers(cfg *Config, reg *Registry, server *http.Server, httpServer *http.Server) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Server.ShutdownTimeout)*time.Second)
 	defer cancel()
 
-	if err := registry.Shutdown(shutdownCtx); err != nil {
+	if err := shutdownApps(shutdownCtx, reg); err != nil {
 		slog.Error("app shutdown errors", "error", err)
 	}
 

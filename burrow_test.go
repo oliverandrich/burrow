@@ -3,21 +3,17 @@ package burrow
 import (
 	"bytes"
 	"context"
-	"errors"
 	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
-	"net/http/httptest"
 	"sort"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den/document"
-	"github.com/oliverandrich/den/migrate"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 )
 
@@ -85,6 +81,15 @@ type failingApp struct {
 func (a *failingApp) Name() string                                    { return a.name }
 func (a *failingApp) Flags(_ func(string) cli.ValueSource) []cli.Flag { return nil }
 func (a *failingApp) Configure(_ *AppConfig, _ *cli.Command) error    { return a.err }
+
+// dependentApp implements App + HasDependencies with a configurable name.
+type dependentApp struct {
+	name string
+	deps []string
+}
+
+func (a *dependentApp) Name() string           { return a.name }
+func (a *dependentApp) Dependencies() []string { return a.deps }
 
 // Compile-time interface assertions.
 var (
@@ -175,392 +180,6 @@ func TestNavItemFields(t *testing.T) {
 	assert.Equal(t, "app/icon_dashboard", item.Icon)
 	assert.Equal(t, 10, item.Position)
 	assert.True(t, item.AuthOnly)
-}
-
-func TestRegistryAddAndGet(t *testing.T) {
-	reg := NewRegistry()
-	app := &minimalApp{}
-
-	reg.Add(app)
-
-	got, ok := reg.Get("minimal")
-	require.True(t, ok)
-	assert.Equal(t, app, got)
-}
-
-func TestRegistryGetMissing(t *testing.T) {
-	reg := NewRegistry()
-
-	_, ok := reg.Get("nonexistent")
-	assert.False(t, ok)
-}
-
-func TestRegistryAppsPreservesOrder(t *testing.T) {
-	reg := NewRegistry()
-	app1 := &minimalApp{}
-	app2 := &fullApp{}
-
-	reg.Add(app1)
-	reg.Add(app2)
-
-	apps := reg.Apps()
-	require.Len(t, apps, 2)
-	assert.Equal(t, "minimal", apps[0].Name())
-	assert.Equal(t, "full", apps[1].Name())
-}
-
-func TestRegistryAddDuplicatePanics(t *testing.T) {
-	reg := NewRegistry()
-	reg.Add(&minimalApp{})
-
-	assert.PanicsWithValue(t,
-		`burrow: duplicate app name "minimal"`,
-		func() { reg.Add(&minimalApp{}) },
-	)
-}
-
-// dependentApp implements App + HasDependencies with a configurable name.
-type dependentApp struct {
-	name string
-	deps []string
-}
-
-func (a *dependentApp) Name() string           { return a.name }
-func (a *dependentApp) Dependencies() []string { return a.deps }
-
-func TestRegistryAddPanicsOnMissingDependency(t *testing.T) {
-	reg := NewRegistry()
-
-	assert.PanicsWithValue(t,
-		`burrow: app "dependent" requires "session" to be registered first`,
-		func() {
-			reg.Add(&dependentApp{name: "dependent", deps: []string{"session"}})
-		},
-	)
-}
-
-func TestRegistryAddSucceedsWhenDependencySatisfied(t *testing.T) {
-	reg := NewRegistry()
-	reg.Add(&minimalApp{}) // name = "minimal"
-
-	assert.NotPanics(t, func() {
-		reg.Add(&dependentApp{name: "dependent", deps: []string{"minimal"}})
-	})
-
-	_, ok := reg.Get("dependent")
-	assert.True(t, ok)
-}
-
-func TestRegistryAddLogsCapabilities(t *testing.T) {
-	// Capture slog output.
-	var buf bytes.Buffer
-	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
-	oldLogger := slog.Default()
-	slog.SetDefault(slog.New(handler))
-	t.Cleanup(func() { slog.SetDefault(oldLogger) })
-
-	reg := NewRegistry()
-	reg.Add(&fullApp{})
-
-	output := buf.String()
-	assert.Contains(t, output, "app registered")
-	assert.Contains(t, output, "full")
-	assert.Contains(t, output, "documents")
-	assert.Contains(t, output, "routes")
-	assert.Contains(t, output, "middleware")
-	assert.Contains(t, output, "nav")
-	assert.Contains(t, output, "flags")
-	assert.Contains(t, output, "config")
-	assert.Contains(t, output, "commands")
-	assert.Contains(t, output, "migrations")
-	assert.Contains(t, output, "admin")
-}
-
-func TestRegistryAddLogsMinimalCapabilities(t *testing.T) {
-	var buf bytes.Buffer
-	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
-	oldLogger := slog.Default()
-	slog.SetDefault(slog.New(handler))
-	t.Cleanup(func() { slog.SetDefault(oldLogger) })
-
-	reg := NewRegistry()
-	reg.Add(&minimalApp{})
-
-	output := buf.String()
-	assert.Contains(t, output, "app registered")
-	assert.Contains(t, output, "minimal")
-	// Minimal app has no capabilities — shouldn't list any.
-	assert.NotContains(t, output, "migrations")
-	assert.NotContains(t, output, "routes")
-}
-
-func TestRegistryConfigureAllCallsConfigure(t *testing.T) {
-	reg := NewRegistry()
-	app1 := &trackingApp{name: "first"}
-	app2 := &trackingApp{name: "second"}
-	reg.Add(app1)
-	reg.Add(app2)
-
-	err := reg.ConfigureAll(&AppConfig{Registry: reg})
-	require.NoError(t, err)
-	assert.True(t, app1.configured)
-	assert.True(t, app2.configured)
-}
-
-func TestRegistryConfigureAllPassesConfig(t *testing.T) {
-	reg := NewRegistry()
-	var received *AppConfig
-	app := &trackingApp{
-		name: "checker",
-		configureFn: func(cfg *AppConfig) error {
-			received = cfg
-			return nil
-		},
-	}
-	reg.Add(app)
-
-	appCfg := &AppConfig{Registry: reg}
-	err := reg.ConfigureAll(appCfg)
-	require.NoError(t, err)
-	require.NotNil(t, received)
-	assert.Equal(t, reg, received.Registry)
-}
-
-func TestRegistryConfigureAllStopsOnError(t *testing.T) {
-	reg := NewRegistry()
-	errBoom := errors.New("boom")
-	app1 := &failingApp{name: "bad", err: errBoom}
-	app2 := &trackingApp{name: "never"}
-	reg.Add(app1)
-	reg.Add(app2)
-
-	err := reg.ConfigureAll(&AppConfig{Registry: reg})
-	require.ErrorIs(t, err, errBoom)
-	assert.Contains(t, err.Error(), "bad")
-	assert.False(t, app2.configured)
-}
-
-func TestRegistryAllNavItemsSortedByPosition(t *testing.T) {
-	reg := NewRegistry()
-	reg.Add(&trackingApp{
-		name: "app1",
-		navItems: []NavItem{
-			{Label: "Settings", Position: 30},
-			{Label: "Dashboard", Position: 10},
-		},
-	})
-	reg.Add(&trackingApp{
-		name: "app2",
-		navItems: []NavItem{
-			{Label: "Profile", Position: 20},
-		},
-	})
-	// minimalApp doesn't implement HasNavItems - should be skipped.
-	reg.Add(&minimalApp{})
-
-	items := reg.AllNavItems()
-	require.Len(t, items, 3)
-	assert.Equal(t, "Dashboard", items[0].Label)
-	assert.Equal(t, "Profile", items[1].Label)
-	assert.Equal(t, "Settings", items[2].Label)
-}
-
-func TestRegistryAllNavItemsEmpty(t *testing.T) {
-	reg := NewRegistry()
-	reg.Add(&minimalApp{})
-
-	items := reg.AllNavItems()
-	assert.Empty(t, items)
-}
-
-func TestRegistryRegisterMiddleware(t *testing.T) {
-	reg := NewRegistry()
-
-	called := false
-	mw := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			called = true
-			next.ServeHTTP(w, r)
-		})
-	}
-	reg.Add(&trackingApp{name: "mw-app", middleware: []func(http.Handler) http.Handler{mw}})
-	reg.Add(&minimalApp{}) // No middleware, should be skipped.
-
-	r := chi.NewRouter()
-	reg.RegisterMiddleware(r)
-
-	r.Get("/test", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	assert.True(t, called)
-}
-
-func TestRegistryAllFlags(t *testing.T) {
-	reg := NewRegistry()
-	flag1 := &cli.StringFlag{Name: "auth-key"}
-	flag2 := &cli.BoolFlag{Name: "debug"}
-	reg.Add(&trackingApp{name: "app1", flags: []cli.Flag{flag1}})
-	reg.Add(&trackingApp{name: "app2", flags: []cli.Flag{flag2}})
-	reg.Add(&minimalApp{}) // Not Configurable, should be skipped.
-
-	flags := reg.AllFlags(nil)
-	require.Len(t, flags, 2)
-	assert.Equal(t, flag1, flags[0])
-	assert.Equal(t, flag2, flags[1])
-}
-
-func TestRegistryConfigureCallsConfigurableApps(t *testing.T) {
-	reg := NewRegistry()
-	app1 := &trackingApp{name: "conf1"}
-	app2 := &trackingApp{name: "conf2"}
-	reg.Add(app1)
-	reg.Add(app2)
-	reg.Add(&minimalApp{}) // Not Configurable, should be skipped.
-
-	err := reg.Configure(&AppConfig{Registry: reg}, nil)
-	require.NoError(t, err)
-	assert.True(t, app1.configured)
-	assert.True(t, app2.configured)
-}
-
-func TestRegistryConfigureStopsOnError(t *testing.T) {
-	reg := NewRegistry()
-	errCfg := errors.New("config error")
-	reg.Add(&failingApp{name: "bad-cfg", err: errCfg})
-
-	err := reg.Configure(&AppConfig{Registry: reg}, nil)
-	require.ErrorIs(t, err, errCfg)
-	assert.Contains(t, err.Error(), "bad-cfg")
-}
-
-func TestRegistryAllCLICommands(t *testing.T) {
-	reg := NewRegistry()
-	cmd1 := &cli.Command{Name: "migrate"}
-	cmd2 := &cli.Command{Name: "seed"}
-	reg.Add(&trackingApp{name: "app1", commands: []*cli.Command{cmd1}})
-	reg.Add(&trackingApp{name: "app2", commands: []*cli.Command{cmd2}})
-	reg.Add(&minimalApp{}) // No commands, should be skipped.
-
-	cmds := reg.AllCLICommands()
-	require.Len(t, cmds, 2)
-	assert.Equal(t, "migrate", cmds[0].Name)
-	assert.Equal(t, "seed", cmds[1].Name)
-}
-
-func TestRegistryRunMigrationsAppliesPendingOnce(t *testing.T) {
-	ctx := t.Context()
-	db := testDB(t)
-
-	var ran int
-	reg := NewRegistry()
-	reg.Add(&minimalApp{}) // no migrations — should be skipped
-	reg.Add(&trackingApp{
-		name: "m1",
-		migrations: []NamedMigration{{
-			Version: "001_initial",
-			Migration: migrate.Migration{
-				Forward: func(_ context.Context, _ *den.Tx) error {
-					ran++
-					return nil
-				},
-			},
-		}},
-	})
-
-	require.NoError(t, reg.RunMigrations(ctx, db))
-	assert.Equal(t, 1, ran)
-
-	require.NoError(t, reg.RunMigrations(ctx, db))
-	assert.Equal(t, 1, ran, "second invocation must be a no-op — _den_migrations records the version")
-}
-
-func TestRegistryRunMigrationsReturnsForwardError(t *testing.T) {
-	ctx := t.Context()
-	db := testDB(t)
-
-	errBoom := errors.New("forward failed")
-	reg := NewRegistry()
-	reg.Add(&trackingApp{
-		name: "broken",
-		migrations: []NamedMigration{{
-			Version: "001_initial",
-			Migration: migrate.Migration{
-				Forward: func(_ context.Context, _ *den.Tx) error { return errBoom },
-			},
-		}},
-	})
-
-	err := reg.RunMigrations(ctx, db)
-	require.ErrorIs(t, err, errBoom)
-}
-
-func TestRegistryRegisterRoutes(t *testing.T) {
-	reg := NewRegistry()
-
-	routeApp := &routeApp{name: "router"}
-	reg.Add(routeApp)
-	reg.Add(&minimalApp{}) // No routes, should be skipped.
-
-	r := chi.NewRouter()
-	reg.RegisterRoutes(r)
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/from-app", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "route-registered", rec.Body.String())
-}
-
-// routeApp is a test helper implementing App + HasRoutes.
-type routeApp struct {
-	name string
-}
-
-func (a *routeApp) Name() string { return a.name }
-func (a *routeApp) Routes(r chi.Router) {
-	r.Get("/from-app", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("route-registered"))
-	})
-}
-
-func TestRegistryAllAdminNavItemsSortedByPosition(t *testing.T) {
-	reg := NewRegistry()
-	reg.Add(&trackingApp{
-		name: "app1",
-		adminNavItems: []NavItem{
-			{Label: "Users", Position: 10},
-			{Label: "Settings", Position: 30},
-		},
-	})
-	reg.Add(&trackingApp{
-		name: "app2",
-		adminNavItems: []NavItem{
-			{Label: "Invites", Position: 20},
-		},
-	})
-	// minimalApp doesn't implement HasAdmin - but trackingApp always does.
-	// Add a minimalApp to test it is skipped.
-	reg.Add(&minimalApp{})
-
-	items := reg.AllAdminNavItems()
-	require.Len(t, items, 3)
-	assert.Equal(t, "Users", items[0].Label)
-	assert.Equal(t, "Invites", items[1].Label)
-	assert.Equal(t, "Settings", items[2].Label)
-}
-
-func TestRegistryAllAdminNavItemsEmpty(t *testing.T) {
-	reg := NewRegistry()
-	reg.Add(&minimalApp{})
-
-	items := reg.AllAdminNavItems()
-	assert.Empty(t, items)
 }
 
 func TestNavItemsSortStable(t *testing.T) {
@@ -689,7 +308,7 @@ func TestNewServer_SortsAppsAutomatically(t *testing.T) {
 		&dependentApp{name: "session"},
 	)
 
-	names := appNames(srv.Registry().Apps())
+	names := appNames(registry.Apps(srv.Registry()))
 	assert.Equal(t, []string{"session", "auth", "admin"}, names)
 }
 

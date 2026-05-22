@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/burrowtest"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,15 +18,19 @@ import (
 func setupRouter(t *testing.T, apps ...burrow.App) chi.Router {
 	t.Helper()
 	db := burrowtest.DB(t)
-	reg := burrow.NewRegistry()
+	reg := registry.New()
 	for _, a := range apps {
-		reg.Add(a)
+		registry.Add(reg, a)
 	}
 
 	app := New()
-	reg.Add(app)
+	registry.Add(reg, app)
 	cfg := &burrow.AppConfig{DB: db, Registry: reg}
-	require.NoError(t, reg.ConfigureAll(cfg))
+	for _, a := range registry.Apps(reg) {
+		if configurable, ok := a.(burrow.Configurable); ok {
+			require.NoError(t, configurable.Configure(cfg, nil))
+		}
+	}
 
 	r := chi.NewRouter()
 	app.Routes(r)
@@ -47,7 +52,7 @@ func TestAppName(t *testing.T) {
 func TestAppConfigure(t *testing.T) {
 	app := New()
 	db := burrowtest.DB(t)
-	reg := burrow.NewRegistry()
+	reg := registry.New()
 	cfg := &burrow.AppConfig{DB: db, Registry: reg}
 
 	err := app.Configure(cfg, nil)

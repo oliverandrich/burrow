@@ -9,6 +9,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/oliverandrich/den/storage/file"
@@ -87,7 +88,7 @@ func TestCollectFuncMap_MediaURLFromStorage(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	s := &Server{registry: NewRegistry(), appCfg: &AppConfig{DB: db}}
+	s := &Server{registry: registry.New(), appCfg: &AppConfig{DB: db}}
 	fm, _ := s.collectFuncMap()
 
 	fn, ok := fm["mediaURL"].(func(document.Attachment) string)
@@ -100,7 +101,7 @@ func TestCollectFuncMap_NoMediaURLWithoutStorage(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	s := &Server{registry: NewRegistry(), appCfg: &AppConfig{DB: db}}
+	s := &Server{registry: registry.New(), appCfg: &AppConfig{DB: db}}
 	fm, _ := s.collectFuncMap()
 
 	_, ok := fm["mediaURL"]
@@ -118,8 +119,8 @@ func TestBuildTemplatesFailsWithoutCsrfApp(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s := &Server{registry: NewRegistry()}
-			s.registry.Add(&templateApp{
+			s := &Server{registry: registry.New()}
+			registry.Add(s.registry, &templateApp{
 				name:  "test",
 				tplFS: fstest.MapFS{"page.html": &fstest.MapFile{Data: []byte(tc.template)}},
 			})
@@ -132,8 +133,8 @@ func TestBuildTemplatesFailsWithoutCsrfApp(t *testing.T) {
 }
 
 func TestBuildTemplatesFailsWithoutLangFunc(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
-	s.registry.Add(&templateApp{
+	s := &Server{registry: registry.New()}
+	registry.Add(s.registry, &templateApp{
 		name:  "test",
 		tplFS: fstest.MapFS{"page.html": &fstest.MapFile{Data: []byte(`{{ define "test/page" }}{{ lang }}{{ end }}`)}},
 	})
@@ -146,7 +147,7 @@ func TestBuildTemplatesFailsWithoutLangFunc(t *testing.T) {
 }
 
 func TestCsrfTokenFromRequestFuncMap(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"page.html": &fstest.MapFile{
@@ -164,7 +165,7 @@ func TestCsrfTokenFromRequestFuncMap(t *testing.T) {
 			}
 		},
 	}
-	s.registry.Add(app)
+	registry.Add(s.registry, app)
 
 	err := s.buildTemplates()
 	require.NoError(t, err)
@@ -198,7 +199,7 @@ func TestParseTemplateFS_ParseError(t *testing.T) {
 }
 
 func TestBuildTemplates(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"greeting.html": &fstest.MapFile{
@@ -207,7 +208,7 @@ func TestBuildTemplates(t *testing.T) {
 	}
 
 	app := &templateApp{name: "myapp", tplFS: tplFS}
-	s.registry.Add(app)
+	registry.Add(s.registry, app)
 
 	err := s.buildTemplates()
 	require.NoError(t, err)
@@ -219,7 +220,7 @@ func TestBuildTemplates(t *testing.T) {
 }
 
 func TestBuildTemplatesWithFuncMap(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"page.html": &fstest.MapFile{
@@ -234,14 +235,14 @@ func TestBuildTemplatesWithFuncMap(t *testing.T) {
 			"greet": func(name string) string { return "Hi, " + name + "!" },
 		},
 	}
-	s.registry.Add(app)
+	registry.Add(s.registry, app)
 
 	err := s.buildTemplates()
 	require.NoError(t, err)
 }
 
 func TestBuildTemplatesDuplicateFuncMapPanics(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	app1 := &templateFuncMapApp{
 		name:  "app1",
@@ -253,8 +254,8 @@ func TestBuildTemplatesDuplicateFuncMapPanics(t *testing.T) {
 		tplFS: fstest.MapFS{},
 		fm:    template.FuncMap{"greet": func() string { return "hello" }},
 	}
-	s.registry.Add(app1)
-	s.registry.Add(app2)
+	registry.Add(s.registry, app1)
+	registry.Add(s.registry, app2)
 
 	assert.PanicsWithValue(t,
 		`burrow: duplicate template func "greet" registered by app "app2"`,
@@ -263,20 +264,20 @@ func TestBuildTemplatesDuplicateFuncMapPanics(t *testing.T) {
 }
 
 func TestBuildTemplatesFuncMapOverridesBaseAllowed(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	app := &templateFuncMapApp{
 		name:  "override",
 		tplFS: fstest.MapFS{},
 		fm:    template.FuncMap{"add": func(a, b int) int { return a*10 + b }},
 	}
-	s.registry.Add(app)
+	registry.Add(s.registry, app)
 
 	assert.NotPanics(t, func() { _ = s.buildTemplates() })
 }
 
 func TestBuildTemplatesDuplicateRequestFuncMapPanics(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	app1 := &templateRequestFuncMapApp{
 		name:  "csrf",
@@ -292,8 +293,8 @@ func TestBuildTemplatesDuplicateRequestFuncMapPanics(t *testing.T) {
 			return template.FuncMap{"token": func() string { return "b" }}
 		},
 	}
-	s.registry.Add(app1)
-	s.registry.Add(app2)
+	registry.Add(s.registry, app1)
+	registry.Add(s.registry, app2)
 
 	assert.PanicsWithValue(t,
 		`burrow: duplicate template func "token" registered by app "other"`,
@@ -302,8 +303,8 @@ func TestBuildTemplatesDuplicateRequestFuncMapPanics(t *testing.T) {
 }
 
 func TestBuildTemplatesNoTemplateApps(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
-	s.registry.Add(&minimalApp{})
+	s := &Server{registry: registry.New()}
+	registry.Add(s.registry, &minimalApp{})
 
 	err := s.buildTemplates()
 	require.NoError(t, err)
@@ -311,14 +312,14 @@ func TestBuildTemplatesNoTemplateApps(t *testing.T) {
 }
 
 func TestExecuteTemplate(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"hello.html": &fstest.MapFile{
 			Data: []byte(`{{ define "myapp/hello" }}Hello, {{ .Name }}!{{ end }}`),
 		},
 	}
-	s.registry.Add(&templateApp{name: "myapp", tplFS: tplFS})
+	registry.Add(s.registry, &templateApp{name: "myapp", tplFS: tplFS})
 
 	err := s.buildTemplates()
 	require.NoError(t, err)
@@ -329,7 +330,7 @@ func TestExecuteTemplate(t *testing.T) {
 }
 
 func TestExecuteTemplateWithRequestFuncMap(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"page.html": &fstest.MapFile{
@@ -346,7 +347,7 @@ func TestExecuteTemplateWithRequestFuncMap(t *testing.T) {
 			}
 		},
 	}
-	s.registry.Add(app)
+	registry.Add(s.registry, app)
 
 	err := s.buildTemplates()
 	require.NoError(t, err)
@@ -357,14 +358,14 @@ func TestExecuteTemplateWithRequestFuncMap(t *testing.T) {
 }
 
 func TestExecuteTemplateNotFound(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"hello.html": &fstest.MapFile{
 			Data: []byte(`{{ define "myapp/hello" }}Hello{{ end }}`),
 		},
 	}
-	s.registry.Add(&templateApp{name: "myapp", tplFS: tplFS})
+	registry.Add(s.registry, &templateApp{name: "myapp", tplFS: tplFS})
 
 	err := s.buildTemplates()
 	require.NoError(t, err)
@@ -535,7 +536,7 @@ func TestBuildNavLinks_PreservesIcon(t *testing.T) {
 }
 
 func TestIconFunc(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"icons.html": &fstest.MapFile{
@@ -545,7 +546,7 @@ func TestIconFunc(t *testing.T) {
 			Data: []byte(`{{ define "test/page" }}[{{ icon .Name }}]{{ end }}`),
 		},
 	}
-	s.registry.Add(&templateApp{name: "test", tplFS: tplFS})
+	registry.Add(s.registry, &templateApp{name: "test", tplFS: tplFS})
 
 	require.NoError(t, s.buildTemplates())
 
@@ -598,14 +599,14 @@ func TestCoreRequestFuncMap_NavLinks(t *testing.T) {
 }
 
 func TestTemplateMiddleware(t *testing.T) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"hello.html": &fstest.MapFile{
 			Data: []byte(`{{ define "myapp/hello" }}Hello{{ end }}`),
 		},
 	}
-	s.registry.Add(&templateApp{name: "myapp", tplFS: tplFS})
+	registry.Add(s.registry, &templateApp{name: "myapp", tplFS: tplFS})
 
 	err := s.buildTemplates()
 	require.NoError(t, err)
@@ -629,7 +630,7 @@ func TestExecuteTemplateUsingIconDoesNotPoisonClone(t *testing.T) {
 	// against s.templates directly, the global tree would be marked executed
 	// and the next Clone() (e.g. for layout wrap-around or any subsequent
 	// request) would fail.
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"page.html": &fstest.MapFile{
@@ -648,7 +649,7 @@ func TestExecuteTemplateUsingIconDoesNotPoisonClone(t *testing.T) {
 			return template.FuncMap{"reqfn": func() string { return "" }}
 		},
 	}
-	s.registry.Add(app)
+	registry.Add(s.registry, app)
 	require.NoError(t, s.buildTemplates())
 
 	html1, err := s.executeTemplate(t.Context(), "myapp/page", nil)
@@ -697,14 +698,14 @@ func (a *templateRequestFuncMapApp) RequestFuncMap(ctx context.Context) template
 // Benchmarks
 
 func BenchmarkExecuteTemplate_NoRequestFuncMap(b *testing.B) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"page.html": &fstest.MapFile{
 			Data: []byte(`{{ define "myapp/page" }}Hello, {{ .Name }}! You have {{ .Count }} items.{{ end }}`),
 		},
 	}
-	s.registry.Add(&templateApp{name: "myapp", tplFS: tplFS})
+	registry.Add(s.registry, &templateApp{name: "myapp", tplFS: tplFS})
 
 	if err := s.buildTemplates(); err != nil {
 		b.Fatal(err)
@@ -721,7 +722,7 @@ func BenchmarkExecuteTemplate_NoRequestFuncMap(b *testing.B) {
 }
 
 func BenchmarkExecuteTemplate_WithRequestFuncMap(b *testing.B) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	tplFS := fstest.MapFS{
 		"page.html": &fstest.MapFile{
@@ -739,7 +740,7 @@ func BenchmarkExecuteTemplate_WithRequestFuncMap(b *testing.B) {
 			}
 		},
 	}
-	s.registry.Add(app)
+	registry.Add(s.registry, app)
 
 	if err := s.buildTemplates(); err != nil {
 		b.Fatal(err)
@@ -756,7 +757,7 @@ func BenchmarkExecuteTemplate_WithRequestFuncMap(b *testing.B) {
 }
 
 func BenchmarkExecuteTemplate_LargerTemplate(b *testing.B) {
-	s := &Server{registry: NewRegistry()}
+	s := &Server{registry: registry.New()}
 
 	// A more realistic template with multiple elements.
 	tplFS := fstest.MapFS{
@@ -770,7 +771,7 @@ func BenchmarkExecuteTemplate_LargerTemplate(b *testing.B) {
 				`</div>{{ end }}`),
 		},
 	}
-	s.registry.Add(&templateApp{name: "myapp", tplFS: tplFS})
+	registry.Add(s.registry, &templateApp{name: "myapp", tplFS: tplFS})
 
 	if err := s.buildTemplates(); err != nil {
 		b.Fatal(err)

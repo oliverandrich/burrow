@@ -135,105 +135,69 @@ This means you cannot start the server with a different CLI framework (cobra, ko
 
 ## Registry
 
-The `Registry` manages registered apps and provides access to their capabilities.
+The `registry` package holds the apps that make up a server — pure storage, no lifecycle. The `Server` constructs one in `NewServer` and exposes it as `cfg.Registry` to every app's `Configure` method. Lifecycle orchestration (Configure, RegisterMiddleware, RegisterRoutes, RunMigrations, Shutdown) lives inside `package burrow` and runs automatically during boot — application code does not call those helpers directly.
 
-### Methods
+`burrow.Registry` is a type alias for `*registry.Registry`; both names refer to the same type. `burrow.App` is a type alias for `registry.App`.
+
+### Storage API (`package registry`)
+
+#### New
+
+```go
+func registry.New() *Registry
+```
+
+Creates an empty registry. `NewServer` calls this internally; application code typically does not.
 
 #### Add
 
 ```go
-func (r *Registry) Add(app App)
+func registry.Add(reg *Registry, app App)
 ```
 
-Registers an app. Panics on duplicate names or missing dependencies.
+Registers an app. Panics on a duplicate name or a missing dependency declared via `HasDependencies`.
 
 #### Get
 
 ```go
-func (r *Registry) Get(name string) (App, bool)
+func registry.Get[T App](reg *Registry) (T, bool)
 ```
 
-Returns the app with the given name, or `false` if not found. Use with type assertions to access app-specific methods.
+Returns the unique app of type `T`, or the zero value and `false` when no app of type `T` is registered or when more than one is. The idiomatic shape for **Optional-Service** lookups where graceful degradation is acceptable.
+
+#### MustGet
+
+```go
+func registry.MustGet[T App](reg *Registry) T
+```
+
+Returns the unique app of type `T`. Panics with a message naming the type when no app of type `T` is registered, when more than one is registered, or when the registered app has a different concrete type. The idiomatic shape for **Hard-Dependency** lookups when the provider is declared in `Dependencies()`.
+
+#### GetByName
+
+```go
+func registry.GetByName(reg *Registry, name string) (App, bool)
+```
+
+Returns the app with the given name as `App`, or `false` if not found. Use when you have the name but not a typed handle.
+
+#### MustGetByName
+
+```go
+func registry.MustGetByName(reg *Registry, name string) App
+```
+
+Like `GetByName`, but panics when the named app is not registered.
 
 #### Apps
 
 ```go
-func (r *Registry) Apps() []App
+func registry.Apps(reg *Registry) []App
 ```
 
-Returns all registered apps in registration order.
+Returns a copy of all registered apps in registration order. Combine with a type assertion against an exported interface for **Provider-Discovery** patterns — e.g. `contrib/admin` iterates `registry.Apps(cfg.Registry)` to find any app implementing `burrow.AdminAuth`.
 
-#### RegisterDocuments
-
-```go
-func (r *Registry) RegisterDocuments(ctx context.Context, db *den.DB) error
-```
-
-Registers document types from all `HasDocuments` apps with Den. Called automatically during the boot sequence — you don't need to call this yourself.
-
-#### AllNavItems
-
-```go
-func (r *Registry) AllNavItems() []NavItem
-```
-
-Collects and sorts nav items from all `HasNavItems` apps by position.
-
-#### RegisterMiddleware
-
-```go
-func (r *Registry) RegisterMiddleware(router chi.Router)
-```
-
-Applies middleware from all `HasMiddleware` apps to the router.
-
-#### RegisterRoutes
-
-```go
-func (r *Registry) RegisterRoutes(router chi.Router)
-```
-
-Calls `Routes()` on all `HasRoutes` apps.
-
-#### AllFlags
-
-```go
-func (r *Registry) AllFlags(configSource func(key string) cli.ValueSource) []cli.Flag
-```
-
-Collects CLI flags from all `HasFlags` apps. Pass `nil` for CLI+ENV only.
-
-#### Configure
-
-```go
-func (r *Registry) Configure(cfg *AppConfig, cmd *cli.Command) error
-```
-
-Two-phase app configuration. First, `Configure()` runs on every `Configurable` app in registration order; then `PostConfigure()` runs on every `PostConfigurable` app. The two phases guarantee that all apps have completed `Configure()` before any `PostConfigure()` fires — required by apps like `contrib/jobs` that need to discover `HasJobs` handlers from other apps after they've been initialised. Called automatically by `Server.boot` (which `Server.Run` and `Server.CLICommands` share).
-
-#### ConfigureAll
-
-```go
-func (r *Registry) ConfigureAll(cfg *AppConfig) error
-```
-
-Test convenience: calls only the `Configure()` phase (no `PostConfigure`), passing `nil` for `*cli.Command`. Use in unit tests that don't go through `cli`; production code should call `Server.Run` / `Server.CLICommands` instead.
-
-#### AllCLICommands
-
-```go
-func (r *Registry) AllCLICommands() []*cli.Command
-```
-
-Collects CLI subcommands from all `HasCLICommands` apps **without** the boot-lifecycle wrapping that `Server.CLICommands` adds. Use this only when you need raw access to the registered subcommands — most projects should call `srv.CLICommands()` instead so contrib subcommands like `auth set-role` run against a fully-configured app graph.
-
-#### RunMigrations
-
-```go
-func (r *Registry) RunMigrations(ctx context.Context, db *den.DB) error
-```
-
-Builds a `migrate.Registry` from every `HasMigrations` app and applies all pending migrations against `db`. Versions are namespaced as `{app.Name()}/{version}` so two contribs can both ship `"001_initial"` without colliding. Each migration runs exactly once across processes (tracked in the `_den_migrations` collection). Called automatically during boot, after every app's `Configure`. See [Database Migrations](../guide/migrations.md) for app-side authoring.
+See [Inter-App Communication](../guide/inter-app-communication.md) for end-to-end usage patterns.
 
 ## Render
 

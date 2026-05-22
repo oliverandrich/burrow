@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/stretchr/testify/assert"
@@ -68,7 +69,7 @@ func TestFreshDB_ServerBootstrapWithMultipleApps(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify both apps were registered.
-	apps := srv.Registry().Apps()
+	apps := registry.Apps(srv.Registry())
 	require.Len(t, apps, 2)
 }
 
@@ -81,7 +82,7 @@ func TestFreshDB_ServerBootstrapWithNoDocuments(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the app was registered successfully.
-	apps := srv.Registry().Apps()
+	apps := registry.Apps(srv.Registry())
 	require.Len(t, apps, 1)
 	assert.Equal(t, "minimal", apps[0].Name())
 }

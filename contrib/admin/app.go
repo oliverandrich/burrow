@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/urfave/cli/v3"
 )
 
@@ -84,7 +85,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.registry = cfg.Registry
 
 	// Discover the AdminAuth provider from the registry.
-	for _, app := range cfg.Registry.Apps() {
+	for _, app := range registry.Apps(cfg.Registry) {
 		if aa, ok := app.(burrow.AdminAuth); ok {
 			if a.authMiddleware != nil {
 				first, _ := a.authMiddleware.(burrow.App) //nolint:errcheck // AdminAuth providers are always Apps
@@ -110,7 +111,7 @@ func (a *App) indexPage(w http.ResponseWriter, r *http.Request) error {
 // buildNavGroups collects nav groups from all HasAdmin apps.
 func (a *App) buildNavGroups() []NavGroup {
 	var groups []NavGroup
-	for _, app := range a.registry.Apps() {
+	for _, app := range registry.Apps(a.registry) {
 		if provider, ok := app.(burrow.HasAdmin); ok {
 			items := provider.AdminNavItems()
 			if len(items) > 0 {
@@ -175,7 +176,7 @@ func (a *App) Routes(r chi.Router) {
 
 		r.Get("/", burrow.Handle(a.indexPage))
 
-		for _, app := range a.registry.Apps() {
+		for _, app := range registry.Apps(a.registry) {
 			if provider, ok := app.(burrow.HasAdmin); ok {
 				provider.AdminRoutes(r)
 			}
