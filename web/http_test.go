@@ -1,4 +1,4 @@
-package burrow
+package web
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/oliverandrich/burrow/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -245,7 +246,7 @@ func TestRenderError_WithTemplate(t *testing.T) {
 		return "", fmt.Errorf("template %q not found", name)
 	}
 
-	ctx := WithTemplateExecutor(t.Context(), exec)
+	ctx := app.WithTemplateExecutor(t.Context(), exec)
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/missing", nil)
 	rec := httptest.NewRecorder()
 
@@ -269,8 +270,8 @@ func TestRenderError_SkipsAppLayout(t *testing.T) {
 		}
 	}
 
-	ctx := WithTemplateExecutor(t.Context(), exec)
-	ctx = WithLayout(ctx, "myapp/layout")
+	ctx := app.WithTemplateExecutor(t.Context(), exec)
+	ctx = app.WithLayout(ctx, "myapp/layout")
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/broken", nil)
 	rec := httptest.NewRecorder()
 
@@ -294,8 +295,8 @@ func TestRenderError_HTMXRequestGetsFragmentOnly(t *testing.T) {
 		}
 	}
 
-	ctx := WithTemplateExecutor(t.Context(), exec)
-	ctx = WithLayout(ctx, "myapp/layout")
+	ctx := app.WithTemplateExecutor(t.Context(), exec)
+	ctx = app.WithLayout(ctx, "myapp/layout")
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/missing", nil)
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
@@ -331,7 +332,7 @@ func TestHandle_UsesRenderError(t *testing.T) {
 		return NewHTTPError(http.StatusForbidden, "forbidden")
 	})
 
-	ctx := WithTemplateExecutor(t.Context(), exec)
+	ctx := app.WithTemplateExecutor(t.Context(), exec)
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/admin", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)

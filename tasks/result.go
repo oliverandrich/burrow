@@ -1,4 +1,4 @@
-package burrow
+package tasks
 
 import (
 	"context"
@@ -39,11 +39,11 @@ func CaptureResult(ctx context.Context, data []byte) {
 //
 // Create with DefineResultTask, wire with Register, enqueue with Enqueue:
 //
-//	var compute = burrow.DefineResultTask[Input, Output]("compute",
+//	var compute = tasks.DefineResultTask[Input, Output]("compute",
 //	    func(ctx context.Context, in Input) (Output, error) { ... },
 //	)
 //
-//	func (a *App) RegisterJobs(q burrow.Queue) { compute.Register(q) }
+//	func (a *App) RegisterJobs(q tasks.Queue) { compute.Register(q) }
 //
 //	compute.Enqueue(ctx, Input{...})
 type ResultTask[P, R any] struct {

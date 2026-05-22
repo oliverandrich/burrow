@@ -1,4 +1,4 @@
-package burrow
+package tasks
 
 import (
 	"testing"

@@ -1,11 +1,11 @@
-package burrow_test
+package tasks_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/tasks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +20,7 @@ type resultOutput struct {
 
 func TestResultTask_RegisterAndEnqueue(t *testing.T) {
 	var received resultPayload
-	task := burrow.DefineResultTask("compute", func(_ context.Context, p resultPayload) (resultOutput, error) {
+	task := tasks.DefineResultTask("compute", func(_ context.Context, p resultPayload) (resultOutput, error) {
 		received = p
 		return resultOutput{Output: "done-" + p.Input}, nil
 	})
@@ -37,8 +37,8 @@ func TestResultTask_RegisterAndEnqueue(t *testing.T) {
 	assert.Equal(t, "job-123", id)
 
 	// Simulate worker: inject ResultCapture, call handler, read result.
-	capture := &burrow.ResultCapture{}
-	ctx := burrow.WithResultCapture(context.Background(), capture)
+	capture := &tasks.ResultCapture{}
+	ctx := tasks.WithResultCapture(context.Background(), capture)
 
 	handler := q.handlers["compute"]
 	err = handler(ctx, []byte(`{"input":"hello"}`))
@@ -50,7 +50,7 @@ func TestResultTask_RegisterAndEnqueue(t *testing.T) {
 }
 
 func TestResultTask_EnqueueAt(t *testing.T) {
-	task := burrow.DefineResultTask("delayed", func(_ context.Context, _ resultPayload) (resultOutput, error) {
+	task := tasks.DefineResultTask("delayed", func(_ context.Context, _ resultPayload) (resultOutput, error) {
 		return resultOutput{}, nil
 	})
 
@@ -64,14 +64,14 @@ func TestResultTask_EnqueueAt(t *testing.T) {
 }
 
 func TestResultTask_Name(t *testing.T) {
-	task := burrow.DefineResultTask("my-task", func(_ context.Context, _ resultPayload) (resultOutput, error) {
+	task := tasks.DefineResultTask("my-task", func(_ context.Context, _ resultPayload) (resultOutput, error) {
 		return resultOutput{}, nil
 	})
 	assert.Equal(t, "my-task", task.Name())
 }
 
 func TestResultTask_EnqueueBeforeRegister(t *testing.T) {
-	task := burrow.DefineResultTask("unregistered", func(_ context.Context, _ resultPayload) (resultOutput, error) {
+	task := tasks.DefineResultTask("unregistered", func(_ context.Context, _ resultPayload) (resultOutput, error) {
 		return resultOutput{}, nil
 	})
 
@@ -84,7 +84,7 @@ func TestResultTask_EnqueueBeforeRegister(t *testing.T) {
 }
 
 func TestResultTask_HandlerUnmarshalError(t *testing.T) {
-	task := burrow.DefineResultTask("bad-json", func(_ context.Context, _ resultPayload) (resultOutput, error) {
+	task := tasks.DefineResultTask("bad-json", func(_ context.Context, _ resultPayload) (resultOutput, error) {
 		t.Fatal("handler should not be called on unmarshal error")
 		return resultOutput{}, nil
 	})
@@ -102,25 +102,25 @@ func TestResultTask_HandlerUnmarshalError(t *testing.T) {
 func TestResultCapture_NilContext(t *testing.T) {
 	// CaptureResult should be a no-op when no capture is in context.
 	assert.NotPanics(t, func() {
-		burrow.CaptureResult(context.Background(), []byte(`{"ok":true}`))
+		tasks.CaptureResult(context.Background(), []byte(`{"ok":true}`))
 	})
 }
 
 func TestResultCapture_NoCapture(t *testing.T) {
-	capture := &burrow.ResultCapture{}
+	capture := &tasks.ResultCapture{}
 	assert.Empty(t, capture.Result())
 }
 
 func TestResultTask_RegisterPassesOptions(t *testing.T) {
-	task := burrow.DefineResultTask("with-opts", func(_ context.Context, _ resultPayload) (resultOutput, error) {
+	task := tasks.DefineResultTask("with-opts", func(_ context.Context, _ resultPayload) (resultOutput, error) {
 		return resultOutput{}, nil
-	}, burrow.WithMaxRetries(10))
+	}, tasks.WithMaxRetries(10))
 
 	q := newMockQueue()
 	task.Register(q)
 
 	require.Contains(t, q.opts, "with-opts")
-	cfg := burrow.JobConfig{MaxRetries: 3}
+	cfg := tasks.JobConfig{MaxRetries: 3}
 	for _, o := range q.opts["with-opts"] {
 		o(&cfg)
 	}

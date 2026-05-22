@@ -1,4 +1,4 @@
-package burrow
+package web
 
 import (
 	"context"

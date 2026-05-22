@@ -1,4 +1,4 @@
-package burrow
+package web
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/oliverandrich/burrow/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,11 +22,11 @@ func TestRenderNoExecutor(t *testing.T) {
 }
 
 func TestRenderFragment(t *testing.T) {
-	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		return template.HTML("<p>" + name + "</p>"), nil
 	})
 
-	ctx := WithTemplateExecutor(context.Background(), exec)
+	ctx := app.WithTemplateExecutor(context.Background(), exec)
 	html, err := RenderFragment(ctx, "greeting", nil)
 
 	require.NoError(t, err)
@@ -40,7 +41,7 @@ func TestRenderFragmentWithoutExecutor(t *testing.T) {
 }
 
 func TestRenderWithLayout(t *testing.T) {
-	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			return template.HTML("<html><body>" + string(data["Content"].(template.HTML)) + "</body></html>"), nil
 		}
@@ -48,8 +49,8 @@ func TestRenderWithLayout(t *testing.T) {
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	ctx := WithTemplateExecutor(req.Context(), exec)
-	ctx = WithLayout(ctx, "test-layout")
+	ctx := app.WithTemplateExecutor(req.Context(), exec)
+	ctx = app.WithLayout(ctx, "test-layout")
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -59,14 +60,14 @@ func TestRenderWithLayout(t *testing.T) {
 }
 
 func TestRenderHTMXSkipsLayout(t *testing.T) {
-	exec := TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>fragment</p>"), nil
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set("HX-Request", "true")
-	ctx := WithTemplateExecutor(req.Context(), exec)
-	ctx = WithLayout(ctx, "test-layout")
+	ctx := app.WithTemplateExecutor(req.Context(), exec)
+	ctx = app.WithLayout(ctx, "test-layout")
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -77,7 +78,7 @@ func TestRenderHTMXSkipsLayout(t *testing.T) {
 
 func TestRenderBoostedRequestAppliesLayout(t *testing.T) {
 	layoutCalled := false
-	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "test-layout" {
 			layoutCalled = true
 			return template.HTML("<html>" + string(data["Content"].(template.HTML)) + "</html>"), nil
@@ -88,8 +89,8 @@ func TestRenderBoostedRequestAppliesLayout(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set("HX-Request", "true")
 	req.Header.Set("HX-Boosted", "true")
-	ctx := WithTemplateExecutor(req.Context(), exec)
-	ctx = WithLayout(ctx, "test-layout")
+	ctx := app.WithTemplateExecutor(req.Context(), exec)
+	ctx = app.WithLayout(ctx, "test-layout")
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -100,12 +101,12 @@ func TestRenderBoostedRequestAppliesLayout(t *testing.T) {
 }
 
 func TestRenderWithoutLayout(t *testing.T) {
-	exec := TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>bare</p>"), nil
 	})
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	ctx := WithTemplateExecutor(req.Context(), exec)
+	ctx := app.WithTemplateExecutor(req.Context(), exec)
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -119,7 +120,7 @@ func TestRenderBoostedWithCustomTarget_SkipsLayout(t *testing.T) {
 	// should NOT apply the layout, because the layout is already on the page
 	// and only the <main> element is being swapped.
 	layoutCalled := false
-	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "admin/layout" {
 			layoutCalled = true
 			return template.HTML("<html><sidebar/>" + string(data["Content"].(template.HTML)) + "</html>"), nil
@@ -131,8 +132,8 @@ func TestRenderBoostedWithCustomTarget_SkipsLayout(t *testing.T) {
 	req.Header.Set("HX-Request", "true")
 	req.Header.Set("HX-Boosted", "true")
 	req.Header.Set("HX-Target", "main")
-	ctx := WithTemplateExecutor(req.Context(), exec)
-	ctx = WithLayout(ctx, "admin/layout")
+	ctx := app.WithTemplateExecutor(req.Context(), exec)
+	ctx = app.WithLayout(ctx, "admin/layout")
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -145,7 +146,7 @@ func TestRenderBoostedWithCustomTarget_SkipsLayout(t *testing.T) {
 func TestRenderBoostedWithBodyTarget_AppliesLayout(t *testing.T) {
 	// Boosted requests targeting "body" (or no target) should get the full layout.
 	layoutCalled := false
-	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "app/layout" {
 			layoutCalled = true
 			return template.HTML("<html>" + string(data["Content"].(template.HTML)) + "</html>"), nil
@@ -157,8 +158,8 @@ func TestRenderBoostedWithBodyTarget_AppliesLayout(t *testing.T) {
 	req.Header.Set("HX-Request", "true")
 	req.Header.Set("HX-Boosted", "true")
 	req.Header.Set("HX-Target", "body")
-	ctx := WithTemplateExecutor(req.Context(), exec)
-	ctx = WithLayout(ctx, "app/layout")
+	ctx := app.WithTemplateExecutor(req.Context(), exec)
+	ctx = app.WithLayout(ctx, "app/layout")
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -169,7 +170,7 @@ func TestRenderBoostedWithBodyTarget_AppliesLayout(t *testing.T) {
 
 func TestRenderContentBoostedWithCustomTarget_SkipsLayout(t *testing.T) {
 	// Same bug but via RenderContent (used by ModelAdmin).
-	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		return template.HTML("<html><sidebar/>" + string(data["Content"].(template.HTML)) + "</html>"), nil
 	})
 
@@ -177,8 +178,8 @@ func TestRenderContentBoostedWithCustomTarget_SkipsLayout(t *testing.T) {
 	req.Header.Set("HX-Request", "true")
 	req.Header.Set("HX-Boosted", "true")
 	req.Header.Set("HX-Target", "main")
-	ctx := WithTemplateExecutor(req.Context(), exec)
-	ctx = WithLayout(ctx, "admin/layout")
+	ctx := app.WithTemplateExecutor(req.Context(), exec)
+	ctx = app.WithLayout(ctx, "admin/layout")
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
@@ -191,11 +192,11 @@ func TestRenderContentBoostedWithCustomTarget_SkipsLayout(t *testing.T) {
 // Benchmarks
 
 func BenchmarkRender_Fragment(b *testing.B) {
-	exec := TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>Hello, World!</p>"), nil
 	})
 
-	ctx := WithTemplateExecutor(context.Background(), exec)
+	ctx := app.WithTemplateExecutor(context.Background(), exec)
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 
 	b.ReportAllocs()
@@ -207,15 +208,15 @@ func BenchmarkRender_Fragment(b *testing.B) {
 }
 
 func BenchmarkRender_WithLayout(b *testing.B) {
-	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
 		if name == "app/layout" {
 			return template.HTML("<html><body>" + string(data["Content"].(template.HTML)) + "</body></html>"), nil
 		}
 		return template.HTML("<p>content</p>"), nil
 	})
 
-	ctx := WithTemplateExecutor(context.Background(), exec)
-	ctx = WithLayout(ctx, "app/layout")
+	ctx := app.WithTemplateExecutor(context.Background(), exec)
+	ctx = app.WithLayout(ctx, "app/layout")
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	data := map[string]any{"Title": "Test Page"}
 
@@ -228,12 +229,12 @@ func BenchmarkRender_WithLayout(b *testing.B) {
 }
 
 func BenchmarkRender_HTMXFragment(b *testing.B) {
-	exec := TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return template.HTML("<p>fragment</p>"), nil
 	})
 
-	ctx := WithTemplateExecutor(context.Background(), exec)
-	ctx = WithLayout(ctx, "app/layout")
+	ctx := app.WithTemplateExecutor(context.Background(), exec)
+	ctx = app.WithLayout(ctx, "app/layout")
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	req.Header.Set("HX-Request", "true")
 
@@ -246,12 +247,12 @@ func BenchmarkRender_HTMXFragment(b *testing.B) {
 }
 
 func BenchmarkRenderContent_WithLayout(b *testing.B) {
-	exec := TemplateExecutor(func(_ context.Context, _ string, data map[string]any) (template.HTML, error) {
+	exec := app.TemplateExecutor(func(_ context.Context, _ string, data map[string]any) (template.HTML, error) {
 		return template.HTML("<html><body>" + string(data["Content"].(template.HTML)) + "</body></html>"), nil
 	})
 
-	ctx := WithTemplateExecutor(context.Background(), exec)
-	ctx = WithLayout(ctx, "app/layout")
+	ctx := app.WithTemplateExecutor(context.Background(), exec)
+	ctx = app.WithLayout(ctx, "app/layout")
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	content := template.HTML("<div class=\"card\"><h2>Title</h2><p>Body text here</p></div>")
 	data := map[string]any{"Title": "Test"}
@@ -265,7 +266,7 @@ func BenchmarkRenderContent_WithLayout(b *testing.B) {
 }
 
 func BenchmarkRenderContent_NoLayout(b *testing.B) {
-	ctx := WithTemplateExecutor(context.Background(), TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
+	ctx := app.WithTemplateExecutor(context.Background(), app.TemplateExecutor(func(_ context.Context, _ string, _ map[string]any) (template.HTML, error) {
 		return "", nil
 	}))
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)

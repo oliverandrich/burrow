@@ -84,9 +84,14 @@ package burrow
 
 import (
 	"context"
+	"html/template"
+	"net/http"
 
 	"github.com/oliverandrich/burrow/app"
+	"github.com/oliverandrich/burrow/pagination"
 	"github.com/oliverandrich/burrow/registry"
+	"github.com/oliverandrich/burrow/tasks"
+	"github.com/oliverandrich/burrow/web"
 	"github.com/urfave/cli/v3"
 )
 
@@ -215,6 +220,74 @@ type HasFuncMap = app.HasFuncMap
 // template functions. Alias for [app.HasRequestFuncMap].
 type HasRequestFuncMap = app.HasRequestFuncMap
 
+// Queue provides job handler registration, enqueueing, and cancellation.
+// Alias for [tasks.Queue].
+type Queue = tasks.Queue
+
+// Enqueuer provides job submission and cancellation. Alias for [tasks.Enqueuer].
+type Enqueuer = tasks.Enqueuer
+
+// JobConfig holds per-handler job configuration. Alias for [tasks.JobConfig].
+type JobConfig = tasks.JobConfig
+
+// JobOption configures job handler registration. Alias for [tasks.JobOption].
+type JobOption = tasks.JobOption
+
+// JobHandlerFunc is the signature for job handler functions. Alias for
+// [tasks.JobHandlerFunc].
+type JobHandlerFunc = tasks.JobHandlerFunc
+
+// HasJobs is implemented by apps that register background job handlers.
+// Alias for [tasks.HasJobs].
+type HasJobs = tasks.HasJobs
+
+// TaskDefinition is a generic typed task wrapper. Alias for
+// [tasks.TaskDefinition].
+type TaskDefinition[P any] = tasks.TaskDefinition[P]
+
+// ResultTask is a generic typed task that captures a result. Alias for
+// [tasks.ResultTask].
+type ResultTask[P, R any] = tasks.ResultTask[P, R]
+
+// ResultCapture holds the captured result of a job handler. Alias for
+// [tasks.ResultCapture].
+type ResultCapture = tasks.ResultCapture
+
+// PageRequest captures requested limit and page from the query string. Alias
+// for [pagination.PageRequest].
+type PageRequest = pagination.PageRequest
+
+// PageResult holds the computed pagination metadata. Alias for
+// [pagination.PageResult].
+type PageResult = pagination.PageResult
+
+// PageResponse wraps items and pagination metadata for JSON APIs. Alias for
+// [pagination.PageResponse].
+type PageResponse[T any] = pagination.PageResponse[T]
+
+// HandlerFunc is burrow's error-returning HTTP handler signature. Alias for
+// [web.HandlerFunc].
+type HandlerFunc = web.HandlerFunc
+
+// HTTPError is the typed error returned from handlers to control status code
+// and message. Alias for [web.HTTPError].
+type HTTPError = web.HTTPError
+
+// ValidationError carries per-field validation failures. Alias for
+// [web.ValidationError].
+type ValidationError = web.ValidationError
+
+// FieldError is one entry in a [ValidationError]. Alias for [web.FieldError].
+type FieldError = web.FieldError
+
+// CacheControlImmutable is the value to set on Cache-Control headers for
+// content-hashed static assets. Alias for [web.CacheControlImmutable].
+const CacheControlImmutable = web.CacheControlImmutable
+
+// ErrNoTemplateExecutor is returned by Render when no executor is in context.
+// Alias for [web.ErrNoTemplateExecutor].
+var ErrNoTemplateExecutor = web.ErrNoTemplateExecutor
+
 // Startable is implemented by apps that need to start background processes
 // after the full boot sequence completes (templates built, middleware and
 // routes registered). It is the counterpart to HasShutdown.
@@ -244,6 +317,108 @@ func FlagSources(configSource func(key string) cli.ValueSource, envVar, tomlKey 
 // IsLocalhost reports whether the host string refers to a localhost address.
 // Wrapper around [app.IsLocalhost].
 func IsLocalhost(host string) bool { return app.IsLocalhost(host) }
+
+// WithMaxRetries sets the maximum number of retries for a job type. Wrapper
+// around [tasks.WithMaxRetries].
+func WithMaxRetries(n int) JobOption { return tasks.WithMaxRetries(n) }
+
+// WithPriority sets the default priority for a job type. Wrapper around
+// [tasks.WithPriority].
+func WithPriority(n int) JobOption { return tasks.WithPriority(n) }
+
+// DefineTask wires up a generic typed task definition. Wrapper around
+// [tasks.DefineTask].
+func DefineTask[P any](name string, handler func(context.Context, P) error, opts ...JobOption) *TaskDefinition[P] {
+	return tasks.DefineTask(name, handler, opts...)
+}
+
+// DefineResultTask wires up a generic typed task that captures a result.
+// Wrapper around [tasks.DefineResultTask].
+func DefineResultTask[P, R any](name string, handler func(context.Context, P) (R, error), opts ...JobOption) *ResultTask[P, R] {
+	return tasks.DefineResultTask(name, handler, opts...)
+}
+
+// WithResultCapture stores a ResultCapture in the context. Wrapper around
+// [tasks.WithResultCapture].
+func WithResultCapture(ctx context.Context, rc *ResultCapture) context.Context {
+	return tasks.WithResultCapture(ctx, rc)
+}
+
+// CaptureResult stores result data in the context-bound capture. Wrapper
+// around [tasks.CaptureResult].
+func CaptureResult(ctx context.Context, data []byte) { tasks.CaptureResult(ctx, data) }
+
+// ParsePageRequest extracts limit and page from the request query string.
+// Wrapper around [pagination.ParsePageRequest].
+func ParsePageRequest(r *http.Request) PageRequest { return pagination.ParsePageRequest(r) }
+
+// OffsetResult computes pagination metadata from a request and total count.
+// Wrapper around [pagination.OffsetResult].
+func OffsetResult(pr PageRequest, totalCount int) PageResult {
+	return pagination.OffsetResult(pr, totalCount)
+}
+
+// PageURL builds a pagination URL preserving existing query parameters.
+// Wrapper around [pagination.PageURL].
+func PageURL(basePath, rawQuery string, page int) string {
+	return pagination.PageURL(basePath, rawQuery, page)
+}
+
+// PageNumbers returns the truncated page list for a paginator UI. Wrapper
+// around [pagination.PageNumbers].
+func PageNumbers(current, total int) []int { return pagination.PageNumbers(current, total) }
+
+// NewHTTPError constructs a typed HTTP error. Wrapper around
+// [web.NewHTTPError].
+func NewHTTPError(code int, message string) *HTTPError { return web.NewHTTPError(code, message) }
+
+// Handle wraps a [HandlerFunc] into an http.HandlerFunc with centralized
+// error handling. Wrapper around [web.Handle].
+func Handle(fn HandlerFunc) http.HandlerFunc { return web.Handle(fn) }
+
+// JSON writes a JSON response with the given status code. Wrapper around
+// [web.JSON].
+func JSON(w http.ResponseWriter, code int, v any) error { return web.JSON(w, code, v) }
+
+// Text writes a plain-text response with the given status code. Wrapper
+// around [web.Text].
+func Text(w http.ResponseWriter, code int, s string) error { return web.Text(w, code, s) }
+
+// HTML writes an HTML response with the given status code. Wrapper around
+// [web.HTML].
+func HTML(w http.ResponseWriter, code int, s string) error { return web.HTML(w, code, s) }
+
+// Bind parses a request body (JSON, multipart, or form-encoded) into v and
+// validates it. Wrapper around [web.Bind].
+func Bind(r *http.Request, v any) error { return web.Bind(r, v) }
+
+// Validate runs validator on v and returns any [*ValidationError]. Wrapper
+// around [web.Validate].
+func Validate(v any) error { return web.Validate(v) }
+
+// Render writes a rendered template into the HTTP response, wrapping it in
+// the layout for full-page requests. Wrapper around [web.Render].
+func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error {
+	return web.Render(w, r, statusCode, name, data)
+}
+
+// RenderError writes a typed error response (JSON or HTML based on Accept).
+// Wrapper around [web.RenderError].
+func RenderError(w http.ResponseWriter, r *http.Request, code int, message string) {
+	web.RenderError(w, r, code, message)
+}
+
+// RenderContent writes pre-rendered template.HTML into the response. Wrapper
+// around [web.RenderContent].
+func RenderContent(w http.ResponseWriter, r *http.Request, statusCode int, content template.HTML, data map[string]any) error {
+	return web.RenderContent(w, r, statusCode, content, data)
+}
+
+// RenderFragment executes a named template into template.HTML using the
+// context's executor. Wrapper around [web.RenderFragment].
+func RenderFragment(ctx context.Context, name string, data map[string]any) (template.HTML, error) {
+	return web.RenderFragment(ctx, name, data)
+}
 
 // WithLayout stores the layout template name in the context. Wrapper around
 // [app.WithLayout].

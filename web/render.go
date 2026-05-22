@@ -1,4 +1,4 @@
-package burrow
+package web
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/i18n"
 )
 
@@ -22,7 +23,7 @@ var ErrNoTemplateExecutor = errors.New("burrow: no template executor in context"
 //   - Normal request + layout name in context → fragment wrapped in layout
 //   - Normal request + no layout → fragment only
 func Render(w http.ResponseWriter, r *http.Request, statusCode int, name string, data map[string]any) error {
-	exec := TemplateExec(r.Context())
+	exec := app.TemplateExec(r.Context())
 	if exec == nil {
 		return ErrNoTemplateExecutor
 	}
@@ -59,7 +60,7 @@ func RenderError(w http.ResponseWriter, r *http.Request, code int, message strin
 
 	// Error pages render without the app layout — error templates are
 	// responsible for their own HTML shell (if they need one).
-	r = r.WithContext(WithLayout(r.Context(), ""))
+	r = r.WithContext(app.WithLayout(r.Context(), ""))
 
 	data := map[string]any{
 		"Code":    code,
@@ -95,12 +96,12 @@ func RenderContent(w http.ResponseWriter, r *http.Request, statusCode int, conte
 		return HTML(w, statusCode, string(content))
 	}
 
-	layoutTmpl := Layout(r.Context())
+	layoutTmpl := app.Layout(r.Context())
 	if layoutTmpl == "" {
 		return HTML(w, statusCode, string(content))
 	}
 
-	exec := TemplateExec(r.Context())
+	exec := app.TemplateExec(r.Context())
 	if exec == nil {
 		return HTML(w, statusCode, string(content))
 	}
@@ -124,7 +125,7 @@ func RenderContent(w http.ResponseWriter, r *http.Request, statusCode int, conte
 // Use this for background jobs, SSE broadcasts, CLI commands, or any
 // non-HTTP code that needs to render templates.
 func RenderFragment(ctx context.Context, name string, data map[string]any) (template.HTML, error) {
-	exec := TemplateExec(ctx)
+	exec := app.TemplateExec(ctx)
 	if exec == nil {
 		return "", ErrNoTemplateExecutor
 	}

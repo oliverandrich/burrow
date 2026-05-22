@@ -1,11 +1,11 @@
-package burrow_test
+package tasks_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/tasks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,20 +17,20 @@ type testPayload struct {
 
 // mockQueue records Handle and Enqueue calls for testing TaskDefinition.
 type mockQueue struct {
-	handlers map[string]burrow.JobHandlerFunc
-	opts     map[string][]burrow.JobOption
+	handlers map[string]tasks.JobHandlerFunc
+	opts     map[string][]tasks.JobOption
 	lastType string
 	lastData any
 }
 
 func newMockQueue() *mockQueue {
 	return &mockQueue{
-		handlers: make(map[string]burrow.JobHandlerFunc),
-		opts:     make(map[string][]burrow.JobOption),
+		handlers: make(map[string]tasks.JobHandlerFunc),
+		opts:     make(map[string][]tasks.JobOption),
 	}
 }
 
-func (q *mockQueue) Handle(typeName string, fn burrow.JobHandlerFunc, opts ...burrow.JobOption) {
+func (q *mockQueue) Handle(typeName string, fn tasks.JobHandlerFunc, opts ...tasks.JobOption) {
 	q.handlers[typeName] = fn
 	q.opts[typeName] = opts
 }
@@ -52,7 +52,7 @@ func (q *mockQueue) Dequeue(ctx context.Context, id string) error {
 }
 
 func TestTaskDefinition_Name(t *testing.T) {
-	task := burrow.DefineTask("send-email", func(_ context.Context, _ testPayload) error {
+	task := tasks.DefineTask("send-email", func(_ context.Context, _ testPayload) error {
 		return nil
 	})
 	assert.Equal(t, "send-email", task.Name())
@@ -60,7 +60,7 @@ func TestTaskDefinition_Name(t *testing.T) {
 
 func TestTaskDefinition_RegisterAndEnqueue(t *testing.T) {
 	var received testPayload
-	task := burrow.DefineTask("send-email", func(_ context.Context, p testPayload) error {
+	task := tasks.DefineTask("send-email", func(_ context.Context, p testPayload) error {
 		received = p
 		return nil
 	})
@@ -87,7 +87,7 @@ func TestTaskDefinition_RegisterAndEnqueue(t *testing.T) {
 }
 
 func TestTaskDefinition_EnqueueAt(t *testing.T) {
-	task := burrow.DefineTask("delayed-task", func(_ context.Context, _ testPayload) error {
+	task := tasks.DefineTask("delayed-task", func(_ context.Context, _ testPayload) error {
 		return nil
 	})
 
@@ -102,7 +102,7 @@ func TestTaskDefinition_EnqueueAt(t *testing.T) {
 }
 
 func TestTaskDefinition_EnqueueBeforeRegister(t *testing.T) {
-	task := burrow.DefineTask("unregistered", func(_ context.Context, _ testPayload) error {
+	task := tasks.DefineTask("unregistered", func(_ context.Context, _ testPayload) error {
 		return nil
 	})
 
@@ -115,7 +115,7 @@ func TestTaskDefinition_EnqueueBeforeRegister(t *testing.T) {
 }
 
 func TestTaskDefinition_EnqueueAtBeforeRegister(t *testing.T) {
-	task := burrow.DefineTask("unregistered", func(_ context.Context, _ testPayload) error {
+	task := tasks.DefineTask("unregistered", func(_ context.Context, _ testPayload) error {
 		return nil
 	})
 
@@ -128,7 +128,7 @@ func TestTaskDefinition_EnqueueAtBeforeRegister(t *testing.T) {
 }
 
 func TestTaskDefinition_HandlerUnmarshalError(t *testing.T) {
-	task := burrow.DefineTask("bad-json", func(_ context.Context, _ testPayload) error {
+	task := tasks.DefineTask("bad-json", func(_ context.Context, _ testPayload) error {
 		t.Fatal("handler should not be called on unmarshal error")
 		return nil
 	})
@@ -144,16 +144,16 @@ func TestTaskDefinition_HandlerUnmarshalError(t *testing.T) {
 }
 
 func TestTaskDefinition_RegisterPassesOptions(t *testing.T) {
-	task := burrow.DefineTask("with-opts", func(_ context.Context, _ testPayload) error {
+	task := tasks.DefineTask("with-opts", func(_ context.Context, _ testPayload) error {
 		return nil
-	}, burrow.WithMaxRetries(7))
+	}, tasks.WithMaxRetries(7))
 
 	q := newMockQueue()
 	task.Register(q)
 
 	require.Contains(t, q.opts, "with-opts")
 	// Verify options were passed through by applying them.
-	cfg := burrow.JobConfig{MaxRetries: 3}
+	cfg := tasks.JobConfig{MaxRetries: 3}
 	for _, o := range q.opts["with-opts"] {
 		o(&cfg)
 	}

@@ -1,4 +1,4 @@
-package burrow
+package pagination
 
 import (
 	"net/http"

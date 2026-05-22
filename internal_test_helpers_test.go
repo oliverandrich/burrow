@@ -1,11 +1,7 @@
 package burrow
 
 import (
-	"context"
-	"fmt"
-	"html/template"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/oliverandrich/den"
@@ -31,16 +27,4 @@ func testDB(t *testing.T) *den.DB {
 func testDSN(t *testing.T) string {
 	t.Helper()
 	return "sqlite:///" + filepath.Join(t.TempDir(), "test.db")
-}
-
-// testErrorExecContext mirrors burrowtest.ErrorExecContext for
-// internal-package tests.
-func testErrorExecContext(ctx context.Context) context.Context {
-	exec := TemplateExecutor(func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
-		if strings.HasPrefix(name, "error/") {
-			return template.HTML(fmt.Sprintf("%d: %s", data["Code"], data["Message"])), nil //nolint:gosec // test helper
-		}
-		return "", fmt.Errorf("template %q not found", name)
-	})
-	return WithTemplateExecutor(ctx, exec)
 }

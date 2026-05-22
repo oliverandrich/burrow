@@ -1,4 +1,4 @@
-package burrow
+package tasks
 
 import (
 	"context"
@@ -16,12 +16,12 @@ import (
 // Register (typically in your RegisterJobs method), then use Enqueue
 // to submit work:
 //
-//	var sendEmail = burrow.DefineTask[EmailPayload]("send-email",
+//	var sendEmail = tasks.DefineTask[EmailPayload]("send-email",
 //	    func(ctx context.Context, p EmailPayload) error { ... },
-//	    burrow.WithMaxRetries(5),
+//	    tasks.WithMaxRetries(5),
 //	)
 //
-//	func (a *App) RegisterJobs(q burrow.Queue) { sendEmail.Register(q) }
+//	func (a *App) RegisterJobs(q tasks.Queue) { sendEmail.Register(q) }
 //
 //	sendEmail.Enqueue(ctx, EmailPayload{To: "x@y.com"})
 type TaskDefinition[P any] struct {
