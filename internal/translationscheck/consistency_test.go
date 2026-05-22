@@ -1,4 +1,4 @@
-package burrow_test
+package translationscheck_test
 
 import (
 	"io/fs"

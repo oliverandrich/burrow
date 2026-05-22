@@ -1,4 +1,4 @@
-package burrow_test
+package translationscheck_test
 
 import (
 	"io/fs"
@@ -15,7 +15,7 @@ import (
 // translation guards so they stay aligned on the skip list and filters.
 func forEachTranslationFile(t *testing.T, fn func(fsys fs.FS, path string)) {
 	t.Helper()
-	repoFS := os.DirFS(".")
+	repoFS := os.DirFS("../..")
 	require.NoError(t, fs.WalkDir(repoFS, ".", func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
