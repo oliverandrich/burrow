@@ -141,6 +141,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/oliverandrich/den/migrate"
@@ -150,9 +151,16 @@ import (
 // App is the required interface that all apps must implement.
 // An app has a unique name used for identification in the registry,
 // migrations, and logging.
-type App interface {
-	Name() string
-}
+//
+// App is an alias for [registry.App]; the two are the same type.
+type App = registry.App
+
+// Registry stores the apps that make up a Server. It is an alias for
+// [registry.Registry]; the two are the same type. Construct one with
+// [registry.New] and operate on it with the free functions in package
+// registry: [registry.Add], [registry.Get], [registry.MustGet],
+// [registry.GetByName], [registry.MustGetByName], [registry.Apps].
+type Registry = registry.Registry
 
 // AppConfig is passed to each app's Configure method, providing
 // access to shared framework resources.
@@ -300,9 +308,10 @@ type HasTranslations interface {
 // HasDependencies is implemented by apps that require other apps
 // to be registered first. Dependencies() returns the names of
 // required apps; registration panics if any are missing.
-type HasDependencies interface {
-	Dependencies() []string
-}
+//
+// HasDependencies is an alias for [registry.HasDependencies]; the two
+// are the same type.
+type HasDependencies = registry.HasDependencies
 
 // PostConfigurable is implemented by apps that need a second configuration
 // pass after all [Configurable] apps have been configured. This is useful

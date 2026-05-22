@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +33,7 @@ func TestConcurrentRequests(t *testing.T) {
 
 	setup := &tlsSetup{addr: ln.Addr().String()}
 	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 5}}
-	registry := NewRegistry()
+	registry := registry.New()
 	done := make(chan struct{})
 
 	errCh := make(chan error, 1)

@@ -2,6 +2,21 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Breaking Changes
+
+- **`Registry` split into storage and lifecycle.** Storage (`Add`, `Get`, `Apps`, name lookup) moves into a new `github.com/oliverandrich/burrow/registry` package as free functions; the lifecycle orchestration (`ConfigureAll`, `Configure`, `RegisterMiddleware`, `RegisterRoutes`, `RunMigrations`, `RegisterDocuments`, `AllFlags`, `AllNavItems`, `AllAdminNavItems`, `AllCLICommands`, `Shutdown`) is no longer exported — `Server` orchestrates them internally. Construct registries with `registry.New()`, add apps with `registry.Add(reg, app)`. `burrow.App`, `burrow.Registry`, and `burrow.HasDependencies` remain available as type aliases pointing at the new package, so existing `burrow.App` references compile unchanged.
+
+### Added
+
+- **Typed registry lookup.** `registry.Get[T](reg)` returns `(T, bool)` for Optional-Service lookups (graceful degradation when the provider may be missing). `registry.MustGet[T](reg)` returns `T` and panics on a missing or ambiguous type — the idiomatic shape for Hard-Dependency apps that declare the provider in `Dependencies()`. `registry.GetByName(reg, name)` and `registry.MustGetByName(reg, name)` cover the string-keyed Soft-Discovery case (used by `contrib/admin` to discover its `AdminAuth` provider).
+
+### Changed
+
+- **`docs/guide/inter-app-communication.md` documents three lookup patterns** — Hard-Dependency, Optional-Service, Soft-Discovery — with the registry function each one uses and the failure mode it carries.
+- **`sse.BrokerFromRegistry` simplified to `registry.Get[*App]`.** Behaviour unchanged (still returns nil when SSE is not registered); the old name-lookup-plus-type-assert is gone.
+
 ## 0.23.0 — 2026-05-21
 
 > **Upgrading from v0.22?** See the [v0.23 migration guide](migration/v0.23.md).

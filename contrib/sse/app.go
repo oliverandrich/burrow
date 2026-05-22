@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/urfave/cli/v3"
 )
 
@@ -51,16 +52,11 @@ func (a *App) Broker() *EventBroker {
 // Returns nil if the SSE app is not registered or not yet configured.
 // Use this for non-HTTP code (background jobs, CLI commands) that cannot
 // access the broker via request context.
-func BrokerFromRegistry(registry *burrow.Registry) *EventBroker {
-	app, ok := registry.Get("sse")
-	if !ok {
-		return nil
+func BrokerFromRegistry(reg *burrow.Registry) *EventBroker {
+	if app, ok := registry.Get[*App](reg); ok {
+		return app.Broker()
 	}
-	sseApp, ok := app.(*App)
-	if !ok {
-		return nil
-	}
-	return sseApp.Broker()
+	return nil
 }
 
 // Middleware injects the broker into every request context.

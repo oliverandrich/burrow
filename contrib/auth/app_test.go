@@ -15,6 +15,7 @@ import (
 	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/oliverandrich/burrow/forms"
 	"github.com/oliverandrich/burrow/i18n"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 
@@ -779,16 +780,16 @@ func TestAdminNavItems(t *testing.T) {
 func newTestApp(t *testing.T) (*App[EmptyProfile], *Repository[EmptyProfile]) {
 	t.Helper()
 	db := openTestDB(t)
-	registry := burrow.NewRegistry()
+	reg := registry.New()
 	sessionApp := session.New()
-	registry.Add(sessionApp)
+	registry.Add(reg, sessionApp)
 	// Stub auth's declared dependencies; tests here exercise handler-level
 	// behaviour only, not csrf/staticfiles wiring.
-	registry.Add(burrowtest.StubApp("csrf"))
-	registry.Add(burrowtest.StubApp("staticfiles"))
+	registry.Add(reg, burrowtest.StubApp("csrf"))
+	registry.Add(reg, burrowtest.StubApp("staticfiles"))
 	app := New[EmptyProfile]()
-	registry.Add(app)
-	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
+	registry.Add(reg, app)
+	appCfg := &burrow.AppConfig{DB: db, Registry: reg, Config: &burrow.Config{}}
 
 	cmd := &cli.Command{
 		Name:  "test",
@@ -1837,13 +1838,13 @@ func TestRoutesWithLogoMiddleware(t *testing.T) {
 
 func TestConfigure(t *testing.T) {
 	db := openTestDB(t)
-	registry := burrow.NewRegistry()
-	registry.Add(session.New())
-	registry.Add(burrowtest.StubApp("csrf"))
-	registry.Add(burrowtest.StubApp("staticfiles"))
+	reg := registry.New()
+	registry.Add(reg, session.New())
+	registry.Add(reg, burrowtest.StubApp("csrf"))
+	registry.Add(reg, burrowtest.StubApp("staticfiles"))
 	app := New[EmptyProfile]()
-	registry.Add(app)
-	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
+	registry.Add(reg, app)
+	appCfg := &burrow.AppConfig{DB: db, Registry: reg, Config: &burrow.Config{}}
 
 	// Build a CLI command that sets the flags and calls Configure.
 	cliCmd := &cli.Command{
@@ -1881,13 +1882,13 @@ func TestConfigure(t *testing.T) {
 
 func TestConfigureWithDefaultOrigin(t *testing.T) {
 	db := openTestDB(t)
-	registry := burrow.NewRegistry()
-	registry.Add(session.New())
-	registry.Add(burrowtest.StubApp("csrf"))
-	registry.Add(burrowtest.StubApp("staticfiles"))
+	reg := registry.New()
+	registry.Add(reg, session.New())
+	registry.Add(reg, burrowtest.StubApp("csrf"))
+	registry.Add(reg, burrowtest.StubApp("staticfiles"))
 	app := New[EmptyProfile]()
-	registry.Add(app)
-	appCfg := &burrow.AppConfig{DB: db, Registry: registry, Config: &burrow.Config{}}
+	registry.Add(reg, app)
+	appCfg := &burrow.AppConfig{DB: db, Registry: reg, Config: &burrow.Config{}}
 
 	cliCmd := &cli.Command{
 		Name:  "test",

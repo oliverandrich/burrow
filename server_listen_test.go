@@ -13,6 +13,7 @@ import (
 
 	"syscall"
 
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -89,7 +90,7 @@ func TestServeAndWait_WithOnReady(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
-	registry := NewRegistry()
+	registry := registry.New()
 	done := make(chan struct{})
 
 	errCh := make(chan error, 1)
@@ -138,7 +139,7 @@ func TestServeAndWait_WithHTTPRedirectServer(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
-	registry := NewRegistry()
+	registry := registry.New()
 	done := make(chan struct{})
 
 	errCh := make(chan error, 1)
@@ -181,7 +182,7 @@ func TestServeAndWait_DoneChannelTriggersShutdown(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
-	registry := NewRegistry()
+	registry := registry.New()
 	done := make(chan struct{})
 
 	errCh := make(chan error, 1)
@@ -211,7 +212,7 @@ func TestServeAndWait_OnReadyError(t *testing.T) {
 	setup := &tlsSetup{addr: ln.Addr().String()}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {})
 	cfg := &Config{Server: ServerConfig{ShutdownTimeout: 1}}
-	registry := NewRegistry()
+	registry := registry.New()
 	done := make(chan struct{})
 
 	err = serveAndWait(t.Context(), ln, nil, setup, handler, cfg, registry, func() error {
@@ -241,7 +242,7 @@ func TestStartServer_GracefulShutdown(t *testing.T) {
 		fmt.Fprint(w, "ok")
 	})
 
-	registry := NewRegistry()
+	registry := registry.New()
 	ctx, cancel := context.WithCancel(t.Context())
 
 	errCh := make(chan error, 1)

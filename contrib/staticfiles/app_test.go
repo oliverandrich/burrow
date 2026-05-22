@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,16 +62,16 @@ func TestNewError(t *testing.T) {
 }
 
 func TestConfigureContribFSError(t *testing.T) {
-	registry := burrow.NewRegistry()
-	registry.Add(&contribApp{
+	reg := registry.New()
+	registry.Add(reg, &contribApp{
 		name:   "broken",
 		prefix: "broken",
 		fsys:   &brokenFS{err: errors.New("contrib broken")},
 	})
 
 	app := mustNew(t, testFS)
-	registry.Add(app)
-	err := app.Configure(&burrow.AppConfig{Registry: registry}, nil)
+	registry.Add(reg, app)
+	err := app.Configure(&burrow.AppConfig{Registry: reg}, nil)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "contrib broken")
 }
@@ -213,12 +214,12 @@ func TestConfigureCollectsContribFS(t *testing.T) {
 		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
 	}
 
-	registry := burrow.NewRegistry()
-	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+	reg := registry.New()
+	registry.Add(reg, &contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
 	app := mustNew(t, testFS)
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	// The manifest should include both user and contrib files.
 	hash := contentHash([]byte(".admin{}"))
@@ -230,12 +231,12 @@ func TestContribFileServing(t *testing.T) {
 		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
 	}
 
-	registry := burrow.NewRegistry()
-	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+	reg := registry.New()
+	registry.Add(reg, &contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
 	app := mustNew(t, testFS)
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	r := chi.NewRouter()
 	app.Routes(r)
@@ -254,12 +255,12 @@ func TestContribFileURL(t *testing.T) {
 		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
 	}
 
-	registry := burrow.NewRegistry()
-	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+	reg := registry.New()
+	registry.Add(reg, &contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
 	app := mustNew(t, testFS)
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	ctx := context.WithValue(context.Background(), ctxKeyApp{}, app)
 
@@ -272,12 +273,12 @@ func TestContribAndUserFilesCoexist(t *testing.T) {
 		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
 	}
 
-	registry := burrow.NewRegistry()
-	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+	reg := registry.New()
+	registry.Add(reg, &contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
 	app := mustNew(t, testFS)
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	r := chi.NewRouter()
 	app.Routes(r)
@@ -306,12 +307,12 @@ func TestContribFileCacheHeaders(t *testing.T) {
 		"admin.css": &fstest.MapFile{Data: []byte(".admin{}")},
 	}
 
-	registry := burrow.NewRegistry()
-	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+	reg := registry.New()
+	registry.Add(reg, &contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
 
 	app := mustNew(t, testFS)
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	r := chi.NewRouter()
 	for _, mw := range app.Middleware() {
@@ -329,11 +330,11 @@ func TestContribFileCacheHeaders(t *testing.T) {
 }
 
 func TestNoContribsStillWorks(t *testing.T) {
-	registry := burrow.NewRegistry()
+	reg := registry.New()
 
 	app := mustNew(t, testFS)
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	// User files should still work exactly as before.
 	r := chi.NewRouter()
@@ -378,13 +379,13 @@ func TestMultipleContribs(t *testing.T) {
 		"theme.css": &fstest.MapFile{Data: []byte(".theme{}")},
 	}
 
-	registry := burrow.NewRegistry()
-	registry.Add(&contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
-	registry.Add(&contribApp{name: "test-theme", prefix: "theme", fsys: themeFS})
+	reg := registry.New()
+	registry.Add(reg, &contribApp{name: "test-admin", prefix: "admin", fsys: adminFS})
+	registry.Add(reg, &contribApp{name: "test-theme", prefix: "theme", fsys: themeFS})
 
 	app := mustNew(t, testFS)
-	registry.Add(app)
-	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: registry}, nil))
+	registry.Add(reg, app)
+	require.NoError(t, app.Configure(&burrow.AppConfig{Registry: reg}, nil))
 
 	ctx := context.WithValue(context.Background(), ctxKeyApp{}, app)
 

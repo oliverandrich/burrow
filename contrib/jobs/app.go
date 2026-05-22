@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/urfave/cli/v3"
@@ -119,7 +120,7 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 // PostConfigure discovers HasJobs implementors and registers their handlers.
 func (a *App) PostConfigure(_ *burrow.AppConfig, _ *cli.Command) error {
 	if a.registry != nil {
-		for _, app := range a.registry.Apps() {
+		for _, app := range registry.Apps(a.registry) {
 			if hj, ok := app.(burrow.HasJobs); ok {
 				hj.RegisterJobs(a)
 			}

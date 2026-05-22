@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/urfave/cli/v3"
 )
@@ -55,7 +56,7 @@ func (a *App) readiness(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	checks := make(map[string]string)
-	for _, app := range a.registry.Apps() {
+	for _, app := range registry.Apps(a.registry) {
 		checker, ok := app.(burrow.ReadinessChecker)
 		if !ok {
 			continue

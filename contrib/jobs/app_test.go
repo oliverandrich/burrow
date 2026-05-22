@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/burrowtest"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -359,11 +360,11 @@ func TestApp_PostConfigure(t *testing.T) {
 	db := testDB(t)
 	app := New()
 
-	// Set up a registry with a HasJobs implementor.
-	registry := burrow.NewRegistry()
+	// Set up a reg with a HasJobs implementor.
+	reg := registry.New()
 	stub := &stubHasJobsApp{}
-	registry.Add(stub)
-	appCfg := &burrow.AppConfig{DB: db, Registry: registry}
+	registry.Add(reg, stub)
+	appCfg := &burrow.AppConfig{DB: db, Registry: reg}
 
 	// Run Configure first (sets up repo, admin, worker config).
 	cmd := &cli.Command{
@@ -425,7 +426,7 @@ func TestApp_PostConfigure_NilRegistry(t *testing.T) {
 	db := testDB(t)
 	app := New()
 	appCfg := &burrow.AppConfig{DB: db}
-	// registry is nil — should not panic.
+	// reg is nil — should not panic.
 
 	cmd := &cli.Command{
 		Name:  "test",
@@ -450,10 +451,10 @@ func TestApp_PostConfigure_RegistryWithoutHasJobs(t *testing.T) {
 	app := New()
 
 	// Registry with an app that does NOT implement HasJobs.
-	registry := burrow.NewRegistry()
-	registry.Add(burrowtest.StubApp("admin")) // satisfies jobs's declared dependency
-	registry.Add(New())                       // jobs app itself does not implement HasJobs
-	appCfg := &burrow.AppConfig{DB: db, Registry: registry}
+	reg := registry.New()
+	registry.Add(reg, burrowtest.StubApp("admin")) // satisfies jobs's declared dependency
+	registry.Add(reg, New())                       // jobs app itself does not implement HasJobs
+	appCfg := &burrow.AppConfig{DB: db, Registry: reg}
 
 	cmd := &cli.Command{
 		Name:  "test",

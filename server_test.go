@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/oliverandrich/den/migrate"
@@ -23,7 +24,7 @@ func TestNewServer(t *testing.T) {
 	s := NewServer(app1, app2)
 
 	require.NotNil(t, s)
-	apps := s.Registry().Apps()
+	apps := registry.Apps(s.Registry())
 	require.Len(t, apps, 2)
 	assert.Equal(t, "minimal", apps[0].Name())
 	assert.Equal(t, "full", apps[1].Name())
@@ -106,7 +107,7 @@ func TestServerBootstrapDoesNotRunMigrations(t *testing.T) {
 	err := s.bootstrap(t.Context(), db, nil)
 	require.NoError(t, err)
 
-	assert.False(t, ran, "bootstrap only registers documents; migrations run later via Registry.RunMigrations after Configure")
+	assert.False(t, ran, "bootstrap only registers documents; migrations run later via runMigrations after Configure")
 }
 
 func TestSetLayout(t *testing.T) {
@@ -191,7 +192,7 @@ func TestServerRunAction(t *testing.T) {
 // TestServerCLICommandsConfigureBeforeAction pins the contract that subcommands
 // returned by Server.CLICommands() run inside the framework's boot lifecycle —
 // i.e. Configure() runs on every Configurable app before any subcommand Action
-// fires. Without the wrap (raw Registry.AllCLICommands), Action runs against
+// fires. Without the wrap (raw allCLICommands), Action runs against
 // uninitialised apps (a.repo == nil etc.).
 func TestServerCLICommandsConfigureBeforeAction(t *testing.T) {
 	var actionRan, configuredAtAction bool
