@@ -2,6 +2,17 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+
+- **`burrow dev` — integrated dev server.** New CLI sub-command runs the app via `go run` under an `fsnotify`-backed file watcher. On each debounced file change it sequentially rebuilds the Tailwind CSS bundle (via `burrow tailwind`, when configured) and restarts the app — the Go rebuild re-embeds the fresh CSS via `//go:embed`. Replaces the Air-based loop in the project scaffold; auto-discovers the entry-point and Tailwind paths from the conventional burrow layout. Detects app crashes (build errors, panics, port-in-use) and logs them. Linux is the tested target; macOS works as a side effect, Windows is best-effort.
+- **`burrow dev` auto-creates `.env`** with `SESSION_HASH_KEY` and `CSRF_KEY` (mode 0600) on first run when the file is missing; existing files are read verbatim via [godotenv](https://github.com/joho/godotenv) and never patched. Shell env vars win over `.env` values (standard 12-factor precedence). Pass `--no-env-file` to skip both.
+
+### Changed
+
+- **Project scaffold no longer ships `.air.toml` or pins `air`** in `.mise.toml`. `mise run dev` becomes `go tool burrow dev`; `mise run setup` now calls `go tool burrow dev --init-env` to materialise `.env`. `.gitignore` tracks `.env` instead of `.dev-keys`.
+
 ## 0.24.0 — 2026-05-23
 
 > **Upgrading from v0.23?** See the [v0.24 migration guide](migration/v0.24.md).

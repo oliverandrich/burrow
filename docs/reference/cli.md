@@ -29,6 +29,7 @@ by `burrow new` wires this up by default.
 burrow new <dir> --module <path>     scaffold a new burrow project
 burrow generate app <name>           scaffold a contrib-style app stub
 burrow tailwind <args...>            run tailwindcss with auto @source listing
+burrow dev                           run the app with live reload + Tailwind co-watcher
 ```
 
 ---
@@ -45,8 +46,8 @@ burrow new <dir> --module <module-path> [flags]
 
 `<dir>` must not exist or must be empty. The scaffold writes a
 complete starter project — `cmd/<name>/`, `internal/app/` shell,
-`.mise.toml`, `.air.toml`, `.golangci.yml`, `.goreleaser.yaml`,
-multi-arch `Dockerfile`, and GitHub Actions CI + release workflows.
+`.mise.toml`, `.golangci.yml`, `.goreleaser.yaml`, multi-arch
+`Dockerfile`, and GitHub Actions CI + release workflows.
 
 ### Flags
 
@@ -202,4 +203,47 @@ See [Tailwind CSS](../guide/tailwind.md) for the full setup pattern.
 
 ### Migrating from the old `cmd/burrow-tailwind`
 
-The standalone `cmd/burrow-tailwind` binary was a deprecation shim in v0.21 and was removed in v0.22. Replace the `tool` directive in `go.mod` and the invocations in `.mise.toml` / `.air.toml` — see the migration callout at the top of [Tailwind CSS](../guide/tailwind.md).
+The standalone `cmd/burrow-tailwind` binary was a deprecation shim in v0.21 and was removed in v0.22. Replace the `tool` directive in `go.mod` and the invocations in `.mise.toml` — see the migration callout at the top of [Tailwind CSS](../guide/tailwind.md).
+
+---
+
+## `burrow dev`
+
+Run the app with live reload. On each file change burrow dev sequentially rebuilds the Tailwind CSS bundle (when configured) and restarts the Go binary via `go run`. Replaces the Air-based loop in older scaffolds.
+
+### Synopsis
+
+```
+burrow dev [flags]
+```
+
+`burrow dev` walks the project (rooted at the module's `go.mod` directory), watches every non-excluded directory via `fsnotify`, and on each debounced file event: SIGTERMs the running app, runs `burrow tailwind` once to regenerate the CSS bundle (when configured), then re-runs `go run <AppPath>`. The Go rebuild re-embeds the freshly-written CSS via `//go:embed`, so the served bundle matches the templates that depend on it. A long-running `tailwindcss --watch` co-process is intentionally not used — embedded assets only update on rebuild.
+
+### Flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--app` | auto | Entry-point package path. Auto-detected as the single `./cmd/<name>` containing `main.go`. |
+| `--css-in` | `tailwind.css` if present | Tailwind input file. |
+| `--css-out` | `internal/<app>/static/app.min.css` | Tailwind output. The directory is auto-excluded from watching so the CSS write doesn't trigger an extra restart. |
+| `--no-tailwind` | off | Skip the Tailwind rebuild step. |
+| `--env-file` | `.env` | dotenv-format file injected into the app's environment. Auto-created with `SESSION_HASH_KEY` and `CSRF_KEY` (mode 0600) when missing. |
+| `--no-env-file` | off | Skip both reading and auto-generation of the env file. |
+| `--debounce` | `300ms` | Quiet window after the first file event before a restart fires. |
+
+### Auto-discovery contract
+
+- **App path:** exactly one `./cmd/<name>/main.go` → that's the entry-point. Zero or multiple → error; pass `--app`.
+- **Tailwind:** `tailwind.css` at the project root *and* exactly one `internal/<app>/static/` directory → both are inferred. Any other shape → Tailwind co-watcher stays off (pass `--css-in` / `--css-out` explicitly to override).
+- **Watched extensions:** `.go`, `.html`, `.css`. `*_test.go` is excluded.
+- **Excluded directories:** `.git`, `.beans`, `node_modules`, `tmp`, `testdata`, `.tailwind`, plus the auto-detected CSS output directory (to avoid a Tailwind ↔ watcher feedback loop).
+
+### Env file format
+
+`burrow dev` parses the env file with [godotenv](https://github.com/joho/godotenv) — comments (`#`), quoted values (`"…"`, `'…'`), and `KEY=VALUE` lines are all supported. Auto-generation only creates the file when it's missing; an existing file is never patched.
+
+The two default keys (`SESSION_HASH_KEY`, `CSRF_KEY`) are the secrets that `contrib/session` and `contrib/csrf` expect. Builds that don't use those contribs inherit the file harmlessly.
+
+### Platform support
+
+Linux is the tested target. macOS works as a side effect (POSIX file semantics, fsnotify via kqueue). Windows is best-effort and untested — process-group signalling is a no-op there, so cleanup of grand-child processes may be incomplete.

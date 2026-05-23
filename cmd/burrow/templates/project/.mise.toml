@@ -1,6 +1,5 @@
 [tools]
 go = "1.26"
-"go:github.com/air-verse/air" = "latest"
 "go:github.com/mfridman/tparse" = "latest"
 "golangci-lint" = "latest"
 "go:golang.org/x/tools/cmd/goimports" = "latest"
@@ -10,29 +9,12 @@ go = "1.26"
 "pipx:pre-commit" = "latest"
 
 [tasks.css]
-description = "Build the Tailwind CSS bundle (also re-run automatically by air on every dev rebuild)"
+description = "Build the Tailwind CSS bundle for production (dev runs tailwind --watch via burrow dev)"
 run = "go tool burrow tailwind -i tailwind.css -o internal/app/static/app.min.css --minify"
 
-[tasks.ensure-dev-keys]
-description = "Generate persistent dev session/CSRF keys on first run"
-hide = true
-run = '''
-#!/usr/bin/env bash
-if [ ! -f .dev-keys ]; then
-    echo "SESSION_HASH_KEY=$(openssl rand -hex 32)" > .dev-keys
-    echo "CSRF_KEY=$(openssl rand -hex 32)" >> .dev-keys
-    echo "Generated .dev-keys"
-fi
-'''
-
 [tasks.dev]
-description = "Run the development server with live reload (air, rebuilds CSS on every change)"
-depends = ["ensure-dev-keys"]
-run = '''
-#!/usr/bin/env bash
-set -a; source .dev-keys; set +a
-air
-'''
+description = "Run the development server: live reload + Tailwind --watch co-process. Auto-generates .env on first run."
+run = "go tool burrow dev"
 
 [tasks.test]
 description = "Run all tests"
@@ -86,8 +68,7 @@ depends = ["css"]
 run = "goreleaser release --clean --skip=docker"
 
 [tasks.setup]
-description = "Bootstrap the project: install pinned tools, fetch deps, generate dev secrets, install git hooks"
-depends = ["ensure-dev-keys"]
+description = "Bootstrap the project: install pinned tools, fetch deps, generate .env, install git hooks"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
@@ -97,6 +78,9 @@ mise install
 
 echo "==> go mod tidy"
 go mod tidy
+
+echo "==> burrow dev --init-env"
+go tool burrow dev --init-env
 
 if [ -d .git ]; then
     if command -v pre-commit >/dev/null 2>&1; then

@@ -111,7 +111,7 @@ const nextStepsMiseTemplate = `Project scaffolded at %[1]s.
 
 Next steps:
   cd %[1]s
-  mise run setup     # installs tools, fetches deps, generates dev keys, installs git hooks
+  mise run setup     # installs tools, fetches deps, generates .env, installs git hooks
   mise run dev       # live-reload server
 
 Docs: https://burrow.dev/
