@@ -13,10 +13,10 @@ Built on [Burrow](https://github.com/oliverandrich/burrow) (modular Go web frame
 ## Quick Start
 
 ```bash
-# Bootstrap the project (mise install + go mod tidy + dev keys + git hooks)
+# Bootstrap the project (mise install + go mod tidy + git hooks)
 mise run setup
 
-# Run the development server with live reload
+# Run the development server with live reload (auto-generates .env on first run)
 mise run dev
 ```
 
@@ -32,13 +32,13 @@ Server: <http://localhost:8080>.
 
 | Task | What it does |
 |---|---|
-| `mise run dev` | air (live reload). Every rebuild reruns `burrow tailwind`, so the embedded CSS bundle stays in sync with template utility classes. |
+| `mise run dev` | `burrow dev`: watches the project, rebuilds Tailwind CSS, restarts the Go app on every save — sequentially, in one process. |
 | `mise run test` | `go test ./...` via tparse |
 | `mise run lint` | golangci-lint |
 | `mise run fmt` | gofmt + goimports |
 | `mise run vuln` | govulncheck |
 
-On first `mise run dev` a `.dev-keys` file is generated with persistent `SESSION_HASH_KEY` and `CSRF_KEY` so sessions and CSRF tokens survive reloads. The file is gitignored.
+On first `mise run dev` an `.env` file is generated with persistent `SESSION_HASH_KEY` and `CSRF_KEY` (mode 0600) so sessions and CSRF tokens survive reloads. The file is gitignored. Edit it to add your own dev-time variables — `burrow dev` reads the whole file as a dotenv and injects the keys into the app's environment.
 
 ## Project Structure
 

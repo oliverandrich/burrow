@@ -42,6 +42,7 @@ func main() {
 			newCommand(),
 			generateCommand(),
 			tailwindCommand(),
+			devCommand(),
 		},
 	}
 

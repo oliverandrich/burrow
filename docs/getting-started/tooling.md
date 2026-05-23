@@ -32,11 +32,12 @@ The scaffold ships:
   `csrf`, `staticfiles`, `healthcheck`, `messages`, `htmx`) plus a
   Tailwind-classed shell app providing the homepage and layout
   overrides.
-- `.mise.toml` pinning the Go toolchain, Tailwind v4, `air`,
+- `.mise.toml` pinning the Go toolchain, Tailwind v4,
   `golangci-lint`, `tparse`, `goimports`, `govulncheck`, `goreleaser`,
   and `pre-commit`.
-- `.air.toml` integration so `mise run dev` rebuilds CSS and the
-  binary on every save.
+- `mise run dev` calls `burrow dev`, which watches the project and on
+  every change rebuilds Tailwind CSS then restarts the Go app —
+  sequentially, in one process.
 - `.golangci.yml`, `.goreleaser.yaml`, multi-arch `Dockerfile`, and
   GitHub Actions CI + release workflows.
 - A pre-commit config that calls the mise-installed tools (no extra
