@@ -12,6 +12,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Changed
 
 - **Project scaffold no longer ships `.air.toml` or pins `air`** in `.mise.toml`. `mise run dev` becomes `go tool burrow dev`; `mise run setup` now calls `go tool burrow dev --init-env` to materialise `.env`. `.gitignore` tracks `.env` instead of `.dev-keys`.
+- **Den bumped to v0.16.1.** Bugfix release: top-level `Or()` no longer swallows sibling AND-predicates (SQL precedence fix); SQLite `time.Time`, `[]byte`, and `json.RawMessage` comparison operators now match the JSON storage encoding.
 
 ## 0.24.0 — 2026-05-23
 

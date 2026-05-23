@@ -78,8 +78,8 @@ github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOF
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/nicksnyder/go-i18n/v2 v2.6.1 h1:JDEJraFsQE17Dut9HFDHzCoAWGEQJom5s0TRd17NIEQ=
 github.com/nicksnyder/go-i18n/v2 v2.6.1/go.mod h1:Vee0/9RD3Quc/NmwEjzzD7VTZ+Ir7QbXocrkhOzmUKA=
-github.com/oliverandrich/den v0.16.0 h1:r2/FfiOUEBkWOwKZZFlcseK6sNDZ6txeoIY3/gLk5rY=
-github.com/oliverandrich/den v0.16.0/go.mod h1:r2jtIO/SBSC3m3xeLZBWNVbApnnNfWtryySRqWBcVCU=
+github.com/oliverandrich/den v0.16.1 h1:vyBYyEdq9opAUJCM5IBDlKcqwbGfVytraUnfnDl1qxo=
+github.com/oliverandrich/den v0.16.1/go.mod h1:r2jtIO/SBSC3m3xeLZBWNVbApnnNfWtryySRqWBcVCU=
 github.com/philhofer/fwd v1.2.0 h1:e6DnBTl7vGY+Gz322/ASL4Gyp1FspeMvx1RNDoToZuM=
 github.com/philhofer/fwd v1.2.0/go.mod h1:RqIHx9QI14HlwKwm98g9Re5prTQ6LdeRQn+gXJFxsJM=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
