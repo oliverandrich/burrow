@@ -44,6 +44,7 @@ Generated with [google/go-licenses](https://github.com/google/go-licenses).
 
 | Module | License | URL |
 |--------|---------|-----|
+| aead.dev/minisign | MIT | [LICENSE](https://github.com/aead/minisign/blob/v0.2.0/LICENSE) |
 | github.com/BurntSushi/toml | MIT | [LICENSE](https://github.com/BurntSushi/toml/blob/v1.6.0/COPYING) |
 | github.com/cloudflare/tableflip | BSD-3-Clause | [LICENSE](https://github.com/cloudflare/tableflip/blob/v1.2.3/LICENSE) |
 | github.com/davecgh/go-spew/spew | ISC | [LICENSE](https://github.com/davecgh/go-spew/blob/v1.1.1/LICENSE) |
@@ -69,6 +70,9 @@ Generated with [google/go-licenses](https://github.com/google/go-licenses).
 | github.com/joho/godotenv | MIT | [LICENSE](https://github.com/joho/godotenv/blob/v1.5.1/LICENCE) |
 | github.com/leodido/go-urn | MIT | [LICENSE](https://github.com/leodido/go-urn/blob/v1.4.0/LICENSE) |
 | github.com/mattn/go-isatty | MIT | [LICENSE](https://github.com/mattn/go-isatty/blob/v0.0.20/LICENSE) |
+| github.com/minio/selfupdate | Apache-2.0 | [LICENSE](https://github.com/minio/selfupdate/blob/v0.6.0/LICENSE) |
+| github.com/minio/selfupdate/internal/binarydist | MIT | [LICENSE](https://github.com/minio/selfupdate/blob/v0.6.0/internal/binarydist/License) |
+| github.com/minio/selfupdate/internal/osext | BSD-3-Clause | [LICENSE](https://github.com/minio/selfupdate/blob/v0.6.0/internal/osext/LICENSE) |
 | github.com/ncruces/go-strftime | MIT | [LICENSE](https://github.com/ncruces/go-strftime/blob/v1.0.0/LICENSE) |
 | github.com/nicksnyder/go-i18n/v2 | MIT | [LICENSE](https://github.com/nicksnyder/go-i18n/blob/v2.6.1/LICENSE) |
 | github.com/oliverandrich/den | MIT | [LICENSE](https://github.com/oliverandrich/den/blob/v0.16.1/LICENSE) |

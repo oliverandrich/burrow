@@ -15,6 +15,7 @@ require (
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/securecookie v1.1.2
 	github.com/joho/godotenv v1.5.1
+	github.com/minio/selfupdate v0.6.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/oliverandrich/den v0.16.1
 	github.com/stretchr/testify v1.11.1
@@ -28,6 +29,7 @@ require (
 )
 
 require (
+	aead.dev/minisign v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
