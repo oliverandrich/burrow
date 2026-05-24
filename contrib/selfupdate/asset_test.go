@@ -19,6 +19,31 @@ func TestArchiveExt(t *testing.T) {
 	assert.Equal(t, "zip", archiveExt("windows"))
 }
 
+func TestArchiveFormatFromName(t *testing.T) {
+	tests := []struct {
+		name, want string
+		wantErr    bool
+	}{
+		{"app-1.0.0-linux-x86_64.tar.gz", "tar.gz", false},
+		{"app.tgz", "tar.gz", false},
+		{"goreleaser_Darwin_all.tar.gz", "tar.gz", false},
+		{"app-1.0.0-windows-x86_64.zip", "zip", false},
+		{"app.exe", "", true},
+		{"random-name", "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := archiveFormatFromName(tt.name)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestBinaryName(t *testing.T) {
 	assert.Equal(t, "myapp", binaryName("myapp", "linux"))
 	assert.Equal(t, "myapp.exe", binaryName("myapp", "windows"))

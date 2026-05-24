@@ -61,15 +61,34 @@ func archAlias(arch string) string {
 	}
 }
 
-// archiveExt returns the archive extension goreleaser produces per
-// OS (tar.gz on Linux, zip on darwin + windows — matches the
-// scaffold's format_overrides).
+// archiveExt returns the archive extension the burrow scaffold's
+// goreleaser config produces per OS (tar.gz on Linux, zip on darwin
+// + windows). Used to populate `{{ .Ext }}` in the default asset
+// pattern — extraction time uses [archiveFormatFromName] instead
+// because [WithAssetMatcher] callers may pull archives that don't
+// follow this convention.
 func archiveExt(os string) string {
 	switch os {
 	case "darwin", "windows":
 		return "zip"
 	default:
 		return "tar.gz"
+	}
+}
+
+// archiveFormatFromName derives the archive type from an asset
+// filename's suffix. Returns an error on an unsupported extension.
+// This is what the extraction path uses — it must work for
+// [WithAssetMatcher] callers whose archives may not match the
+// burrow-scaffold conventions encoded in [archiveExt].
+func archiveFormatFromName(name string) (string, error) {
+	switch {
+	case strings.HasSuffix(name, ".tar.gz"), strings.HasSuffix(name, ".tgz"):
+		return "tar.gz", nil
+	case strings.HasSuffix(name, ".zip"):
+		return "zip", nil
+	default:
+		return "", fmt.Errorf("selfupdate: unsupported archive format for %q (want .tar.gz, .tgz, or .zip)", name)
 	}
 }
 

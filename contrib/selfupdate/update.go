@@ -118,8 +118,12 @@ func (a *App) updateAction(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	format, err := archiveFormatFromName(assetName)
+	if err != nil {
+		return err
+	}
 	binary, err := extractBinary(bytes.NewReader(archive), int64(len(archive)),
-		a.effectiveBinaryName(), archiveExt(runtime.GOOS))
+		a.effectiveBinaryName(), format)
 	if err != nil {
 		return err
 	}
