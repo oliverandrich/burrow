@@ -2,7 +2,9 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## 0.25.0 — 2026-05-24
+
+> **Upgrading from v0.24?** See the [v0.25 migration guide](migration/v0.25.md).
 
 ### Added
 
