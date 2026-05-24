@@ -1,2 +1,6 @@
 @import "tailwindcss";
 @import "./.tailwind/sources.css";
+
+/* Plugins bundled with the standalone Tailwind CLI. Tree-shaken when unused. */
+@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/forms";
