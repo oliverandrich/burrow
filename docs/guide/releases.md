@@ -1,268 +1,65 @@
 # Building Releases
 
-Burrow apps compile to a single static binary with all assets embedded. This page covers building binaries locally and publishing releases via GitHub Actions.
+Burrow apps compile to a single static binary with all assets embedded. The scaffold ships everything needed to produce cross-platform binaries plus a multi-arch Docker image on every `v*` tag push, via [GoReleaser](https://goreleaser.com/) and a GitHub Actions workflow.
 
-## Prerequisites
+This page covers the framework-level decisions baked into the scaffold (why those choices), the local commands you'll use day-to-day, and how the release pipeline fits together. For the exact config, read your project's own `.goreleaser.yaml`, `.mise.toml`, and `.github/workflows/ci.yml` — they're the source of truth and stay in sync with the scaffold template.
 
-- [GoReleaser](https://goreleaser.com/install/) — for cross-compiled builds and GitHub releases
-- [just](https://github.com/casey/just) — task runner (optional, for the convenience commands)
+## Why pure-Go static binaries
 
-## Local Builds
+The scaffold pins `modernc.org/sqlite` (pure Go) and builds with `CGO_ENABLED=0`. The pay-off is real:
 
-### Quick build (current platform)
+- Single static binary per target — no C toolchain on the build host, no shared-library hunt at runtime.
+- Cross-compilation to every supported OS/arch in one `goreleaser` invocation. The scaffold ships builds for Linux, macOS, Windows, FreeBSD, and OpenBSD on both amd64 and arm64.
+- Docker images can use `gcr.io/distroless/static-debian12:nonroot` — no `libc`, smaller surface, no `glibc-vs-musl` headaches.
 
-The simplest way to build a binary for your current platform:
+## Local builds
+
+### Quick build for your current platform
 
 ```bash
 go build -o myapp ./cmd/myapp
 ```
 
-To inject the version number at build time:
+### Install locally with version injection
+
+The scaffold's `mise run install` task drops a stripped, version-stamped binary into `$GOPATH/bin`:
 
 ```bash
-go build -ldflags="-X 'main.version=1.2.3'" -o myapp ./cmd/myapp
+mise run install
+# = mise run css && go install -ldflags="-s -w -X 'main.version=$(git describe ...)'" ./cmd/myapp
 ```
 
-Or derive it from Git:
+`mise run install`, `release`, `release-no-docker`, and `release-snapshot` all `depends = ["css"]`, so each first rebuilds the Tailwind bundle via `mise run css` before the Go step. Expect a couple-hundred-millisecond Tailwind invocation in front of every release-path command.
 
-```bash
-go build -ldflags="-X 'main.version=$(git describe --tags --always --dirty)'" -o myapp ./cmd/myapp
-```
+### Release-flag reference
 
-!!! tip
-    The [project template](https://github.com/oliverandrich/go-burrow-template) includes a `just run` recipe that injects the version automatically.
-
-### Production build (optimized)
-
-For production binaries, strip debug info and use `-trimpath` for reproducible builds:
-
-```bash
-CGO_ENABLED=0 go build \
-    -trimpath \
-    -ldflags="-s -w -X 'main.version=1.2.3'" \
-    -o myapp ./cmd/myapp
-```
+These are the flags goreleaser uses for every release build. Mostly informational — you don't set them directly in day-to-day work, the scaffold's `.goreleaser.yaml` does.
 
 | Flag | Purpose |
 |------|---------|
-| `CGO_ENABLED=0` | Pure Go build, no C dependencies — required for static binaries and cross-compilation |
-| `-trimpath` | Removes local file paths from the binary for reproducible builds |
-| `-s -w` | Strips debug symbols and DWARF info, reducing binary size by ~30% |
-| `-X main.version=...` | Sets the `version` variable in `main` at link time |
+| `CGO_ENABLED=0` | Pure-Go build — required for static binaries and cross-compilation |
+| `-trimpath` | Reproducible builds (no local file paths leak in) |
+| `-s -w` | Strip debug symbols + DWARF — about 30% smaller binary |
+| `-X main.version={{.Version}}` | Inject the Git tag into `main.version` at link time |
 
-### Cross-compilation with GoReleaser
-
-Build binaries for all target platforms without publishing a release:
+### Cross-compile all targets without publishing
 
 ```bash
-goreleaser build --snapshot --clean
+mise run release-snapshot
+# = goreleaser release --snapshot --clean --skip=publish,docker
 ```
 
-This creates binaries in `dist/` for every OS/architecture combination defined in `.goreleaser.yaml`. The `--snapshot` flag skips the version tag requirement.
+Produces archives in `dist/` for every OS/arch combination defined in `.goreleaser.yaml`. The `--snapshot` flag waives the tag requirement so you can sanity-check the pipeline without cutting a release.
 
-## GoReleaser Configuration
+## The version-injection pattern
 
-The [project template](https://github.com/oliverandrich/go-burrow-template) ships a complete `.goreleaser.yaml`. Here is the essential structure:
-
-```yaml
-version: 2
-project_name: myapp
-
-builds:
-  - main: ./cmd/myapp
-    binary: myapp
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - arm64
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w
-      - -X main.version={{.Version}}
-
-archives:
-  - name_template: >-
-      {{ .ProjectName }}-
-      {{- .Version }}-
-      {{- .Os }}-
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "arm64" }}arm64
-      {{- else }}{{ .Arch }}{{ end }}
-    formats:
-      - tar.gz
-    format_overrides:
-      - goos: windows
-        formats:
-          - zip
-      - goos: darwin
-        formats:
-          - zip
-
-checksum:
-  name_template: checksums.txt
-  algorithm: sha256
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^chore:"
-  groups:
-    - title: Features
-      regexp: "^feat"
-    - title: Bug Fixes
-      regexp: "^fix"
-    - title: Others
-      order: 999
-
-release:
-  prerelease: auto
-```
-
-### Key decisions
-
-**`CGO_ENABLED=0`** is essential. Burrow uses `modernc.org/sqlite` (pure Go SQLite) specifically so that `CGO_ENABLED=0` works. This enables true static binaries and hassle-free cross-compilation — no C toolchain needed for any target platform.
-
-**`-X main.version={{.Version}}`** injects the Git tag as the version. Your `main.go` should have:
-
-```go
-var version = "dev"
-```
-
-GoReleaser replaces `{{.Version}}` with the tag (e.g., `1.2.3` from tag `v1.2.3`).
-
-### Optional: Homebrew tap
-
-The template includes a Homebrew Cask section for macOS distribution:
-
-```yaml
-homebrew_casks:
-  - name: myapp
-    homepage: https://github.com/user/myapp
-    description: My Burrow application
-    binaries:
-      - myapp
-    directory: Casks
-    repository:
-      owner: user
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-```
-
-This uses GoReleaser's [Homebrew Cask](https://goreleaser.com/customization/homebrew/) support for macOS binary distribution. If you don't need Homebrew distribution, you can remove this section entirely.
-
-This requires a separate `homebrew-tap` repository and a personal access token with `repo` scope stored as `HOMEBREW_TAP_GITHUB_TOKEN` in your repository secrets.
-
-## Publishing a Release
-
-### Manual release
-
-Tag and push to trigger the release:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Or build and publish locally:
-
-```bash
-export GITHUB_TOKEN=ghp_...
-goreleaser release --clean
-```
-
-### Automated release with GitHub Actions
-
-The scaffold ships a single `.github/workflows/ci.yml` that runs on every push, pull request, **and** tag push. A tag-only `release` job at the bottom is gated on the regular `check` + `zizmor` jobs, so a release only goes out when the same checks that gate `main` are green:
-
-```yaml
-name: CI
-
-on:
-  push:
-    branches: [main]
-    tags: ["v*"]
-  pull_request:
-    branches: [main]
-
-permissions:
-  contents: read
-
-jobs:
-  check:
-    # mise install + css + test + lint + vuln
-    # ...
-
-  zizmor:
-    # workflow audit
-    # ...
-
-  release:
-    name: Release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [check, zizmor]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write   # ghcr.io push
-    steps:
-      - uses: actions/checkout@<pinned-sha>
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: jdx/mise-action@<pinned-sha>
-      - uses: docker/setup-qemu-action@<pinned-sha>
-      - uses: docker/setup-buildx-action@<pinned-sha>
-      - uses: docker/login-action@<pinned-sha>
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mise run release
-```
-
-**How it works:**
-
-1. Push a tag: `git tag v1.0.0 && git push origin v1.0.0`
-2. CI runs the standard `check` and `zizmor` jobs.
-3. Once both are green, the `release` job triggers `mise run release` (= `goreleaser release --clean`).
-4. GoReleaser builds binaries for every platform, generates the checksum file, creates the changelog, and pushes a multi-arch Docker image to `ghcr.io/<user>/<project>`.
-5. A GitHub Release is created with all archives + `checksums.txt` attached.
-
-**Important settings:**
-
-| Setting | Why |
-|---------|-----|
-| `tags: ["v*"]` in `on.push` | Lets the same workflow file handle both branch CI and tag releases |
-| `if: startsWith(github.ref, 'refs/tags/v')` | Restricts the release job to tag pushes |
-| `needs: [check, zizmor]` | Release only fires after the regular CI gate is green |
-| `fetch-depth: 0` | GoReleaser needs the full Git history to generate the changelog |
-| `permissions: contents: write` | Required to create the GitHub Release |
-| `permissions: packages: write` | Required to push the Docker image to `ghcr.io` |
-| `GITHUB_TOKEN` | Automatically provided by GitHub Actions |
-
-## Version Injection Pattern
-
-The standard pattern for version injection in a Burrow app:
+The scaffold's `main.go` follows the same three-level fallback every well-behaved Go CLI uses:
 
 ```go
 // version is set via ldflags at build time.
 var version = "dev"
 
 func init() {
-    // Fall back to Go module version when not built with ldflags
-    // (e.g., installed via `go install`).
     if version == "dev" {
         if info, ok := debug.ReadBuildInfo(); ok &&
             info.Main.Version != "" &&
@@ -273,24 +70,70 @@ func init() {
 }
 ```
 
-This gives three levels of version information:
+1. **GoReleaser / `mise run install`**: `v1.2.3` — Git tag, baked in via `-X main.version=...`.
+2. **`go install github.com/me/myapp@latest`**: Go's build info supplies the module version.
+3. **Local `go run`**: falls back to `"dev"`.
 
-1. **GoReleaser / ldflags**: `v1.2.3` — the Git tag, set during release builds
-2. **`go install`**: module version from Go's build info (e.g., `v1.2.3`)
-3. **Local dev build**: falls back to `"dev"`
+`contrib/selfupdate`'s `WithCurrentVersion(version)` is passed this same variable, so the chain works end-to-end.
 
-## Quick Reference
+## Publishing a release
+
+### Cut a release
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+That's it. The scaffold's `.github/workflows/ci.yml` has a tag-only `release` job at the bottom; on every `v*` tag push it:
+
+1. Runs the regular `check` + `zizmor` jobs (the same gate that runs on `main` pushes).
+2. Once both are green, `mise run release` (= `goreleaser release --clean`) builds every binary, generates `checksums.txt`, renders the changelog from commit messages, and uploads them to a fresh GitHub Release.
+3. Builds a multi-arch (`linux/amd64` + `linux/arm64`) Docker image and pushes it to `ghcr.io/<user>/<project>:v<version>` + `:latest`.
+
+The whole thing runs unattended with the workflow's auto-provided `GITHUB_TOKEN`. No personal access token, no extra secrets — `packages: write` permission is enough for the ghcr push because the actor is the tag's pusher.
+
+Tags shaped like `v1.0.0-rc1` or `v1.0.0-beta1` are marked as **prereleases** on GitHub (goreleaser's `release.prerelease: auto` handles this). Override by editing `.goreleaser.yaml` if you want strict-stable semantics.
+
+### Cut a release locally (no CI)
+
+For one-off manual releases from your workstation:
+
+```bash
+export GITHUB_TOKEN=ghp_...        # PAT with repo + write:packages scopes
+echo "$GITHUB_TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
+mise run release
+```
+
+Both auth steps are required: the token uploads the GitHub Release, the Docker login lets goreleaser push the image to ghcr.io. Skip the Docker login and the build will fail mid-way through the push.
+
+When you don't have (or don't want) Docker on the host, use the no-Docker variant — still needs the token for the Release upload:
+
+```bash
+export GITHUB_TOKEN=ghp_...
+mise run release-no-docker
+# = goreleaser release --clean --skip=docker
+```
+
+For a pure sanity check that produces no uploads and no Docker calls, use `mise run release-snapshot` (see above) instead.
+
+## Optional integrations
+
+The scaffold's `.goreleaser.yaml` covers the common path (cross-platform binaries + checksums + Docker). GoReleaser itself supports a lot more — Homebrew taps, Scoop manifests, nFPM packages (.deb / .rpm), Snap, and others. None of these are wired into the scaffold; if you need them, read [goreleaser's customization docs](https://goreleaser.com/customization/) and add the relevant sections directly to your project's `.goreleaser.yaml`.
+
+## Quick reference
 
 ```bash
 # Development
-go run ./cmd/myapp                              # run directly
-just run                                        # run with version injection
+mise run dev                                    # live reload (burrow dev)
 
 # Local builds
 go build -o myapp ./cmd/myapp                   # simple build
-goreleaser build --snapshot --clean             # cross-compile all platforms
+mise run install                                # production-shaped local install
+mise run release-snapshot                       # cross-compile every target (no upload)
 
 # Release
-git tag v1.0.0 && git push origin v1.0.0       # trigger CI release
-goreleaser release --clean                      # manual release (needs GITHUB_TOKEN)
+git tag v1.0.0 && git push origin v1.0.0        # CI release (full pipeline)
+mise run release                                # local manual release (needs GITHUB_TOKEN)
+mise run release-no-docker                      # local release without ghcr push
 ```
