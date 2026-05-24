@@ -2,6 +2,13 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Changed
+
+- **Scaffold: release job moved into `ci.yml` as a tag-only stage** (`if: startsWith(github.ref, 'refs/tags/v')`, `needs: [check, zizmor]`). Standalone `release.yml` is removed. Matches burrow's own workflow shape and ensures release builds run against the same CI gate as `main` pushes.
+- **Scaffold: goreleaser builds FreeBSD and OpenBSD binaries** for `amd64` and `arm64`, alongside the existing Linux / macOS / Windows targets. Possible because the scaffold is consistently `CGO_ENABLED=0`. (NetBSD was evaluated but `modernc.org/sqlite` upstream has a compile bug for `netbsd/amd64` and ships no source for `netbsd/arm64`; left out until that's fixed.)
+
 ## 0.25.1 — 2026-05-24
 
 ### Fixed

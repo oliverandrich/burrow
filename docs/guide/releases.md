@@ -181,59 +181,7 @@ goreleaser release --clean
 
 ### Automated release with GitHub Actions
 
-The template includes a release workflow at `.github/workflows/release.yml`:
-
-```yaml
-name: Release
-
-on:
-  push:
-    tags:
-      - "v*"
-
-permissions:
-  contents: write
-
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: latest
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
-**How it works:**
-
-1. Push a tag: `git tag v1.0.0 && git push origin v1.0.0`
-2. GitHub Actions triggers the workflow
-3. GoReleaser builds binaries for all platforms, generates checksums, creates the changelog
-4. A GitHub Release is created with all artifacts attached
-
-**Important settings:**
-
-| Setting | Why |
-|---------|-----|
-| `fetch-depth: 0` | GoReleaser needs the full Git history to generate the changelog |
-| `go-version-file: go.mod` | Uses the same Go version as your project |
-| `permissions: contents: write` | Required to create the GitHub Release |
-| `GITHUB_TOKEN` | Automatically provided by GitHub Actions |
-
-### CI workflow
-
-The template also includes a CI workflow at `.github/workflows/ci.yml` that runs on every push and pull request:
+The scaffold ships a single `.github/workflows/ci.yml` that runs on every push, pull request, **and** tag push. A tag-only `release` job at the bottom is gated on the regular `check` + `zizmor` jobs, so a release only goes out when the same checks that gate `main` are green:
 
 ```yaml
 name: CI
@@ -241,6 +189,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
@@ -249,25 +198,59 @@ permissions:
 
 jobs:
   check:
+    # mise install + css + test + lint + vuln
+    # ...
+
+  zizmor:
+    # workflow audit
+    # ...
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [check, zizmor]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write   # ghcr.io push
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@<pinned-sha>
         with:
-          go-version-file: go.mod
-
-      - name: Build
-        run: go build ./...
-
-      - name: Test
-        run: go test ./...
-
-      - name: Lint
-        uses: golangci/golangci-lint-action@v7
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@<pinned-sha>
+      - uses: docker/setup-qemu-action@<pinned-sha>
+      - uses: docker/setup-buildx-action@<pinned-sha>
+      - uses: docker/login-action@<pinned-sha>
         with:
-          version: latest
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mise run release
 ```
+
+**How it works:**
+
+1. Push a tag: `git tag v1.0.0 && git push origin v1.0.0`
+2. CI runs the standard `check` and `zizmor` jobs.
+3. Once both are green, the `release` job triggers `mise run release` (= `goreleaser release --clean`).
+4. GoReleaser builds binaries for every platform, generates the checksum file, creates the changelog, and pushes a multi-arch Docker image to `ghcr.io/<user>/<project>`.
+5. A GitHub Release is created with all archives + `checksums.txt` attached.
+
+**Important settings:**
+
+| Setting | Why |
+|---------|-----|
+| `tags: ["v*"]` in `on.push` | Lets the same workflow file handle both branch CI and tag releases |
+| `if: startsWith(github.ref, 'refs/tags/v')` | Restricts the release job to tag pushes |
+| `needs: [check, zizmor]` | Release only fires after the regular CI gate is green |
+| `fetch-depth: 0` | GoReleaser needs the full Git history to generate the changelog |
+| `permissions: contents: write` | Required to create the GitHub Release |
+| `permissions: packages: write` | Required to push the Docker image to `ghcr.io` |
+| `GITHUB_TOKEN` | Automatically provided by GitHub Actions |
 
 ## Version Injection Pattern
 

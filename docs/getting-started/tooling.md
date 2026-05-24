@@ -39,7 +39,7 @@ The scaffold ships:
   every change rebuilds Tailwind CSS then restarts the Go app —
   sequentially, in one process.
 - `.golangci.yml`, `.goreleaser.yaml`, multi-arch `Dockerfile`, and
-  GitHub Actions CI + release workflows.
+  GitHub Actions CI workflow (with a tag-only release stage).
 - A pre-commit config that calls the mise-installed tools (no extra
   Go toolchains).
 
