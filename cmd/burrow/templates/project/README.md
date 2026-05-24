@@ -79,8 +79,8 @@ git push origin v0.1.0
 
 The workflow runs `mise run release` (= `goreleaser release --clean`) which in one go:
 
-1. Builds binaries for linux / darwin / windows × amd64 / arm64
-2. Packages them as `tar.gz` (Linux) / `zip` (macOS, Windows) + `checksums.txt`
+1. Builds binaries for linux / darwin / windows / freebsd / openbsd × amd64 / arm64
+2. Packages them as `tar.gz` (Linux, BSDs) / `zip` (macOS, Windows) + `checksums.txt`
 3. Builds a multi-arch Docker image (`linux/amd64` + `linux/arm64`)
 4. Uploads the archives to GitHub Releases (with auto-generated notes grouped by `feat:` / `fix:`)
 5. Pushes the image to GitHub Container Registry as `ghcr.io/<user>/<project>:v<version>` and `:latest`

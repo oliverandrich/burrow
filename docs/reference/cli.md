@@ -47,7 +47,7 @@ burrow new <dir> --module <module-path> [flags]
 `<dir>` must not exist or must be empty. The scaffold writes a
 complete starter project — `cmd/<name>/`, `internal/app/` shell,
 `.mise.toml`, `.golangci.yml`, `.goreleaser.yaml`, multi-arch
-`Dockerfile`, and GitHub Actions CI + release workflows.
+`Dockerfile`, and a GitHub Actions CI workflow (with a tag-only release stage).
 
 ### Flags
 
