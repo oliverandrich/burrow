@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.25.1 — 2026-05-24
+
+### Fixed
+
+- **`contrib/selfupdate` archive extraction** now picks tar.gz vs zip from the asset's actual filename instead of `runtime.GOOS`. The previous heuristic assumed the burrow-scaffold convention (zip on darwin/windows) and broke `WithAssetMatcher` users whose archives don't follow it — `goreleaser_Darwin_all.tar.gz`, for example, was opened as a zip and failed with "not a valid zip file". Burrow-scaffold-shaped releases are unaffected.
+
 ## 0.25.0 — 2026-05-24
 
 > **Upgrading from v0.24?** See the [v0.25 migration guide](migration/v0.25.md).
