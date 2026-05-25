@@ -40,9 +40,11 @@ cd myapp && mise run setup && mise run dev
 
 Without `mise`, the scaffold prints a `go mod tidy && go run ./cmd/myapp` fallback.
 
-See [Tooling](getting-started/tooling.md) for the full sub-command
-reference, or follow the from-scratch example below to understand what
-the CLI wires up:
+See [Scaffold](getting-started/scaffold.md) for a file-by-file
+walkthrough of the generated project and its `mise` tasks, or
+[Tooling](getting-started/tooling.md) for the full sub-command
+reference. To understand what the CLI wires up, the from-scratch
+example below builds the equivalent by hand:
 
 ```bash
 mkdir myapp && cd myapp
