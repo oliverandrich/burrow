@@ -201,7 +201,7 @@ run = "go tool burrow dev"
 mise run dev
 ```
 
-On any `.go`, `.html`, or `.css` edit inside the project:
+On any `.go`, `.html`, `.css`, `.toml`, `.yml`, or `.yaml` edit inside the project:
 
 1. `burrow dev` SIGTERMs the running app.
 2. It re-runs `burrow tailwind` once (no `--watch`), regenerating `internal/app/static/app.min.css`.

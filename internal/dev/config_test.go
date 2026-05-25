@@ -21,7 +21,7 @@ func TestDiscover_ConventionalScaffoldLayout(t *testing.T) {
 	assert.Equal(t, "./cmd/myapp", cfg.AppPath)
 	assert.Equal(t, "tailwind.css", cfg.CSSIn)
 	assert.Equal(t, filepath.Join("internal", "app", "static", "app.min.css"), cfg.CSSOut)
-	assert.Equal(t, []string{".go", ".html", ".css"}, cfg.WatchExts)
+	assert.Equal(t, []string{".go", ".html", ".css", ".toml", ".yml", ".yaml"}, cfg.WatchExts)
 	assert.Equal(t, ".env", cfg.EnvFile)
 	assert.Equal(t, 300*time.Millisecond, cfg.Debounce)
 	assert.Equal(t, 500*time.Millisecond, cfg.KillTimeout)

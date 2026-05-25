@@ -68,7 +68,7 @@ The shell app under `internal/app/` holds the layout, the homepage, the compiled
 
 1. `mise run setup` once after `burrow new` (or after cloning a teammate's project).
 2. `mise run dev`. The first run also writes `.env` if it doesn't exist, with mode `0600`. The file is gitignored — `burrow dev` reads it as a dotenv and injects every key into the app's environment before launching.
-3. Edit anything under `internal/app/templates/` or any `*.go` file. `burrow dev` debounces, rebuilds Tailwind CSS when templates change, then restarts the Go binary. Server defaults to <http://localhost:8080>.
+3. Edit anything under `internal/app/templates/`, any `*.go` file, or any `*.toml` / `*.yml` / `*.yaml` (translation bundles, app config). `burrow dev` debounces, rebuilds Tailwind CSS when templates change, then restarts the Go binary. Server defaults to <http://localhost:8080>.
 
 The pinned `SESSION_HASH_KEY` and `CSRF_KEY` in `.env` survive restarts so logged-in sessions and CSRF tokens don't break every save.
 

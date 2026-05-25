@@ -35,7 +35,10 @@ type Config struct {
 	CSSOut string
 
 	// WatchExts is the set of file extensions (lowercase, leading dot)
-	// that trigger a restart, e.g. {".go", ".html", ".css"}.
+	// that trigger a restart, e.g. {".go", ".html", ".css", ".toml",
+	// ".yml", ".yaml"}. TOML and YAML are included so changes to
+	// translation bundles and config files are picked up without an
+	// explicit `--watch-exts` override.
 	WatchExts []string
 
 	// ExcludeDirs is the set of directory names (no path separators)
@@ -73,7 +76,7 @@ const (
 )
 
 var (
-	defaultWatchExts   = []string{".go", ".html", ".css"}
+	defaultWatchExts   = []string{".go", ".html", ".css", ".toml", ".yml", ".yaml"}
 	defaultExcludeDirs = []string{".git", ".beans", "node_modules", "tmp", "testdata", ".tailwind"}
 )
 
