@@ -33,6 +33,12 @@ auth.New[auth.EmptyProfile](
 )
 ```
 
+Other constructor options:
+
+- `auth.WithEmailService(svc)` — wire up an email backend (see [Email Service](#email-service)).
+- `auth.WithLogoComponent(html)` — render a small logo above login/register/recovery pages.
+- `auth.WithDefaultRole(role)` — assign every newly-registered user a role other than `RoleUser` (see [Default Role for New Users](#default-role-for-new-users)).
+
 ## Default Templates
 
 The auth app ships HTML templates via `HasTemplates`. These templates use the global template set and are rendered with `burrow.Render()`. The auth app also implements `HasRequestFuncMap` to provide `currentUser`, `isAuthenticated`, and other request-scoped functions available in all templates.
@@ -335,6 +341,20 @@ func (r *myRenderer) LoginPage(w http.ResponseWriter, req *http.Request, loginRe
 ## Admin Integration
 
 The auth app implements `HasAdmin` to provide user and invite management in the admin panel with hand-written handlers. Admin views include user list with search and role filter, user edit form with last-admin demotion protection, and an htmx-powered inline invite creation form.
+
+## Default Role for New Users
+
+By default, newly-registered users land in `RoleUser`. For apps where every accepted invitee is expected to be staff — for example invite-only blog engines or internal tools with no reader role — `auth.WithDefaultRole` skips the "register, then promote" round-trip:
+
+```go
+auth.New[auth.EmptyProfile](
+    auth.WithDefaultRole(auth.RoleStaff),
+)
+```
+
+The first-user-becomes-admin promotion still wins: the very first user in an empty database becomes `RoleAdmin` regardless of this option, so a fresh deployment never locks itself out of `/admin/`. After that, every successful registration is assigned the configured role.
+
+Valid arguments are `auth.RoleUser`, `auth.RoleStaff`, `auth.RoleAdmin`, or the empty string (which behaves identically to not passing the option). Any other value makes `Configure` return an error at boot.
 
 ## Configuration
 

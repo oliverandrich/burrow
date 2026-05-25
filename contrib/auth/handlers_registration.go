@@ -127,6 +127,16 @@ func (a *App[P]) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 		slog.Info("first user registered as admin", "user_id", user.ID)
 	}
 
+	// Apply WithDefaultRole if configured and the admin promotion did
+	// not already lift the user above RoleUser.
+	if a.defaultRole != "" && user.Role == RoleUser {
+		if roleErr := a.repo.SetUserRole(ctx, user.ID, a.defaultRole); roleErr != nil {
+			slog.Error("failed to apply default role", "user_id", user.ID, "role", a.defaultRole, "error", roleErr)
+		} else {
+			user.Role = a.defaultRole
+		}
+	}
+
 	// Mark invite as used.
 	if validInvite != nil {
 		if markErr := a.repo.MarkInviteUsed(ctx, validInvite.ID, user.ID); markErr != nil {
