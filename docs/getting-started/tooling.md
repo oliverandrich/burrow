@@ -43,6 +43,10 @@ The scaffold ships:
 - A pre-commit config that calls the mise-installed tools (no extra
   Go toolchains).
 
+For a file-by-file walkthrough, the full `mise` task reference, the
+dev/release loops, and what the scaffold deliberately omits, see
+[Scaffold](scaffold.md).
+
 The generated `go.mod` auto-pins to the burrow version that produced
 it, via `runtime/debug.ReadBuildInfo`.
 

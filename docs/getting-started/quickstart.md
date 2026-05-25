@@ -15,7 +15,9 @@ Build a minimal working application with a custom homepage and health check endp
 
     Without `mise`, the scaffold prints a `go mod tidy && go run ./cmd/myapp` fallback.
 
-    See [Tooling](tooling.md) for the full set of flags.
+    See [Scaffold](scaffold.md) for a file-by-file walkthrough of what
+    `burrow new` generates and the `mise` tasks it ships, or
+    [Tooling](tooling.md) for the CLI flag reference.
 
 ## 1. Create the Project
 

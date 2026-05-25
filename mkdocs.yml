@@ -64,6 +64,7 @@ nav:
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quickstart.md
       - Project Structure: getting-started/project-structure.md
+      - Scaffold: getting-started/scaffold.md
       - Examples & Tutorial: getting-started/examples.md
       - Tooling: getting-started/tooling.md
   - Guide:
