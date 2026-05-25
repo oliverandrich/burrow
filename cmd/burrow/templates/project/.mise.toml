@@ -13,7 +13,7 @@ description = "Build the Tailwind CSS bundle for production (dev runs tailwind -
 run = "go tool burrow tailwind -i tailwind.css -o internal/app/static/app.min.css --minify"
 
 [tasks.dev]
-description = "Run the development server: live reload + Tailwind --watch co-process. Auto-generates .env on first run."
+description = "Run the development server: on each debounced file change, rebuild Tailwind CSS once then restart the Go app (sequential, no --watch co-process). Auto-generates .env on first run."
 run = "go tool burrow dev"
 
 [tasks.test]
