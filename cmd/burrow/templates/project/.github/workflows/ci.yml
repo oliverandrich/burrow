@@ -24,7 +24,11 @@ jobs:
 
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
-          cache: true
+          # Cache disabled to avoid zizmor's cache-poisoning concern: this
+          # job feeds into the release job via `needs:` and untrusted PR
+          # branches could otherwise populate the cache with malicious
+          # build artifacts. Matches burrow's own .github/workflows/ci.yml.
+          cache: false
 
       - run: mise run css
 
