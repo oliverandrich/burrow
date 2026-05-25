@@ -235,7 +235,7 @@ burrow dev [flags]
 
 - **App path:** exactly one `./cmd/<name>/main.go` → that's the entry-point. Zero or multiple → error; pass `--app`.
 - **Tailwind:** `tailwind.css` at the project root *and* exactly one `internal/<app>/static/` directory → both are inferred. Any other shape → Tailwind co-watcher stays off (pass `--css-in` / `--css-out` explicitly to override).
-- **Watched extensions:** `.go`, `.html`, `.css`. `*_test.go` is excluded.
+- **Watched extensions:** `.go`, `.html`, `.css`, `.toml`, `.yml`, `.yaml`. `*_test.go` is excluded. TOML and YAML are included so edits to translation bundles (e.g. go-i18n `*.toml`) and config files trigger a rebuild — without this, a fix for a boot-time check that failed on stale content wouldn't recover until the dev server was restarted by hand.
 - **Excluded directories:** `.git`, `.beans`, `node_modules`, `tmp`, `testdata`, `.tailwind`, plus the auto-detected CSS output directory (to avoid a Tailwind ↔ watcher feedback loop).
 
 ### Env file format
