@@ -148,7 +148,13 @@ func monitorAppExits(ctx context.Context, s *supervisor, log io.Writer) {
 		case <-ctx.Done():
 			return
 		case <-exited:
-			err := s.clearExited()
+			did, err := s.handleUnsolicitedExit(exited)
+			if !did {
+				// A Restart raced ahead while we were unblocking. The
+				// fresh child is the supervisor's current concern; do
+				// not log over its start or touch its lifecycle.
+				continue
+			}
 			// Skip the log if shutdown is in flight — the exit was
 			// almost certainly our own SIGTERM and the user has
 			// already seen `burrow dev: shutting down`.
