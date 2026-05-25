@@ -73,18 +73,22 @@
 //
 // The contrib/ directory provides reusable apps:
 //
+//   - admin — admin panel coordinator with three-tier role gating
 //   - auth — WebAuthn passkey authentication with recovery codes
 //   - authmail — pluggable email rendering with SMTP backend
-//   - session — cookie-based sessions (gorilla/sessions)
 //   - csrf — CSRF protection (gorilla/csrf)
-//   - i18n — locale detection and translations (go-i18n)
-//   - admin — admin panel with generic CRUD via ModelAdmin
+//   - healthcheck — liveness and readiness probes
 //   - htmx — HTMX asset serving and request/response helpers
+//   - humanize — i18n-aware template helpers for times, numbers, file sizes
 //   - jobs — Den-backed in-process job queue with retry (SQLite + Postgres)
-//   - sse — Server-Sent Events with in-memory pub/sub broker
-//   - uploads — pluggable file upload storage
 //   - messages — flash messages via session storage
 //   - ratelimit — per-client token bucket rate limiting
-//   - healthcheck — liveness and readiness probes
+//   - secure — security response headers (X-Frame-Options, HSTS, CSP, …)
+//   - selfupdate — in-app binary self-update from GitHub releases
+//   - session — cookie-based sessions (gorilla/sessions)
+//   - sse — Server-Sent Events with in-memory pub/sub broker
 //   - staticfiles — static file serving with content-hashed URLs
+//
+// Locale detection and translations are provided by the root
+// [github.com/oliverandrich/burrow/i18n] package, not a contrib.
 package burrow
