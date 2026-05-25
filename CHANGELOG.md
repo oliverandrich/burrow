@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+
+- **`csrf.ExemptPaths` capability interface** for apps that own webhook routes (Webmention inbound, ActivityPub inbox, payment callbacks). An app returns its exempt paths from `CSRFExemptPaths() []string` and the csrf app discovers every implementor at boot, merges the declarations into a single matcher, and bypasses `gorilla/csrf.UnsafeSkipCheck` for matching requests. Keeps the declaration local to the app that owns the route — `main.go` stays unaware. Patterns are minimal by design: exact (`"/webmention"`) and prefix (`"/inbox/"`).
+
 ## 0.25.5 — 2026-05-25
 
 ### Changed

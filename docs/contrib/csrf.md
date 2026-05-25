@@ -102,6 +102,37 @@ token := csrf.Token(r.Context())
     openssl rand -hex 32
     ```
 
+## Exempting Webhook Paths
+
+Cross-origin webhook receivers — Webmention inbound, ActivityPub inbox, payment callbacks — accept POSTs from external services without a CSRF token by design. The csrf app honours a capability interface so the app that owns the route declares the exemption locally:
+
+```go
+package webmention
+
+import (
+    "github.com/oliverandrich/burrow/contrib/csrf"
+)
+
+// Compile-time check.
+var _ csrf.ExemptPaths = (*App)(nil)
+
+func (a *App) CSRFExemptPaths() []string {
+    return []string{"/webmention"}
+}
+```
+
+At boot the csrf app walks the registry, collects every `CSRFExemptPaths()` return value, and builds a single matcher. No coordination from `main.go` — adding a new webhook receiver only requires implementing the interface on its app.
+
+**Pattern syntax (minimal by design):**
+
+- `"/webmention"` — exact match (matches `/webmention`, **not** `/webmention/x`).
+- `"/inbox/"` — prefix match (trailing slash; matches `/inbox/alice`, `/inbox/bob/feed`, **not** `/inbox`).
+
+No glob or chi-style placeholders. Apps with more complex routing constraints should list each path explicitly or front a prefix-matched subspace and gate further inside their handler.
+
+!!! warning "Use sparingly"
+    Each exempt path is a hole in CSRF protection. Limit them to endpoints that legitimately accept off-domain POSTs and validate authenticity by other means (HTTP signatures for Webmention, signed payloads for payment webhooks, etc.).
+
 ## Cookie Properties
 
 - `HttpOnly: true` — not accessible from JavaScript
