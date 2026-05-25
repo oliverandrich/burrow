@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Changed
+
+- **`burrow dev` default watch extensions now include `.toml`, `.yml`, and `.yaml`** alongside the existing `.go` / `.html` / `.css`. Edits to translation bundles (`*.toml`) and config files now trigger a rebuild without an explicit `--watch-exts` override — fixes the silent failure mode where a translation-file fix didn't recover from a boot-time i18n check failure until the dev server was restarted by hand.
+
 ## 0.25.4 — 2026-05-25
 
 ### Security
