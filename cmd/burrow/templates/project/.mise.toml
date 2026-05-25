@@ -43,6 +43,23 @@ run = [
 description = "Tidy module dependencies"
 run = "go mod tidy"
 
+[tasks.clean]
+description = "Remove build artifacts and generated files"
+run = [
+    "rm -rf build dist .tailwind",
+    "rm -f coverage.out coverage.html",
+    "rm -f internal/app/static/app.min.css",
+    "find . -maxdepth 2 -type f -name '*.coverprofile' -delete 2>/dev/null || true",
+]
+
+[tasks."clean-all"]
+description = "Like clean, plus local runtime data dir and SQLite files (NOT .env)"
+depends = ["clean"]
+run = [
+    "rm -rf data",
+    "find . -type f \\( -name '*.db' -o -name '*.db-shm' -o -name '*.db-wal' \\) -not -path './.git/*' -delete 2>/dev/null || true",
+]
+
 [tasks.vuln]
 description = "Run vulnerability check"
 run = "govulncheck ./..."

@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+
+- **`mise run clean` and `mise run clean-all` tasks** in burrow itself and the project scaffold. `clean` removes build artifacts and generated files (coverage outputs, `bin/`, `tmp/`, `site/`, docs build output, `.tailwind/` source dirs, generated example static bundles); `clean-all` additionally wipes every gitignored `data/` runtime dir and every `*.db*` SQLite file anywhere in the tree. `clean-all` depends on `clean` so there's no copy-paste drift.
+
 ## 0.25.2 — 2026-05-24
 
 ### Changed
