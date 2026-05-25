@@ -9,6 +9,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **`mise run clean` and `mise run clean-all` tasks** in burrow itself and the project scaffold. `clean` removes build artifacts and generated files (coverage outputs, `bin/`, `tmp/`, `site/`, docs build output, `.tailwind/` source dirs, generated example static bundles); `clean-all` additionally wipes every gitignored `data/` runtime dir and every `*.db*` SQLite file anywhere in the tree. `clean-all` depends on `clean` so there's no copy-paste drift.
 - **`docs/getting-started/scaffold.md`** documents the output of `burrow new` — annotated file tree, full mise-task reference, dev/release loops, and what the scaffold deliberately omits. The Quick Start tip box, the index Minimal Example, and the Tooling CLI section now cross-link to it; `tooling.md` keeps the CLI-flag reference, the new page covers the generated project.
 
+### Fixed
+
+- **`burrow dev` no longer kills a freshly-restarted child on a stale exit observation.** When the app exited (compile error, panic) and the user saved a file before the supervisor's exit-monitor goroutine had finished its cleanup, the cleanup would cancel the brand-new child's context, killing it. The dev server recovered on the next save but the experience looked like "save → crash → nothing rebuilds." The exit handler now refuses to act on observations from a previous generation (`internal/dev/supervisor.go`).
+
 ## 0.25.2 — 2026-05-24
 
 ### Changed

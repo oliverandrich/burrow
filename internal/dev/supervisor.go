@@ -65,13 +65,24 @@ func (s *supervisor) currentExitedChan() (<-chan struct{}, bool) {
 	return s.exited, true
 }
 
-// clearExited resets the supervisor state after an unsolicited exit
-// observed via currentExitedChan. Returns the exit error captured by
-// the Wait goroutine (nil for clean exit). Safe to call when no child
-// is or was running — returns nil.
-func (s *supervisor) clearExited() error {
+// handleUnsolicitedExit resets the supervisor state after an unsolicited
+// exit observed via currentExitedChan, but only when the observed
+// channel still matches the supervisor's current generation. The bool
+// return signals whether the cleanup actually ran: when it is false the
+// caller observed a stale generation (a Restart raced ahead while the
+// observer was unblocking) and must NOT log or otherwise act on this
+// event — the fresh child belongs to the supervisor's current state and
+// is still the user's concern. The error is the value captured by the
+// Wait goroutine (nil for clean exit) and is only meaningful when the
+// bool is true.
+func (s *supervisor) handleUnsolicitedExit(observed <-chan struct{}) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.exited != observed {
+		// A Restart raced ahead and installed a new generation.
+		// Touching s.cancel here would kill the freshly-started child.
+		return false, nil
+	}
 	err := s.exitErr
 	if s.cancel != nil {
 		s.cancel()
@@ -80,7 +91,7 @@ func (s *supervisor) clearExited() error {
 	s.exited = nil
 	s.cancel = nil
 	s.exitErr = nil
-	return err
+	return true, err
 }
 
 // Start launches the configured command. It is an error to call
