@@ -37,6 +37,24 @@ run = "govulncheck ./..."
 description = "List active beans (excludes completed and scrapped)"
 run = "beans list --no-status completed --no-status scrapped"
 
+[tasks.clean]
+description = "Remove build artifacts and generated files"
+run = [
+    "rm -rf bin tmp site",
+    "rm -f coverage.out coverage.html",
+    "rm -f docs/llms-full.txt docs/changelog.md docs/third-party-licenses.md",
+    "find . -type d -name .tailwind -not -path './.git/*' -prune -exec rm -rf {} + 2>/dev/null || true",
+    "find example -type f -path '*/static/*' ! -name .gitkeep -delete 2>/dev/null || true",
+]
+
+[tasks."clean-all"]
+description = "Like clean, plus local runtime data dirs and SQLite files anywhere in the tree"
+depends = ["clean"]
+run = [
+    "find . -type d -name data -not -path './.git/*' -prune -exec rm -rf {} + 2>/dev/null || true",
+    "find . -type f \\( -name '*.db' -o -name '*.db-shm' -o -name '*.db-wal' \\) -not -path './.git/*' -delete 2>/dev/null || true",
+]
+
 [tasks."example-hello"]
 description = "Run the hello world example (builds Tailwind CSS first)"
 run = [
