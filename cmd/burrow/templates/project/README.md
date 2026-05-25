@@ -47,7 +47,7 @@ On first `mise run dev` an `.env` file is generated with persistent `SESSION_HAS
 │   └── <name>/                  # Server entry point
 │       └── main.go              # NewServer + cli wiring
 ├── internal/
-│   └── app/                     # Shell app: layout, homepage, CSS bundle (Pattern B)
+│   └── app/                     # Shell app: layout, homepage, CSS bundle
 │       ├── app.go               # HasTemplates, HasStaticFiles, NavItems, Routes
 │       ├── static/              # Tailwind output (app.min.css, gitignored)
 │       └── templates/
@@ -66,7 +66,7 @@ On first `mise run dev` an `.env` file is generated with persistent `SESSION_HAS
 └── .goreleaser.yaml             # Release config (archives + Docker image)
 ```
 
-`internal/app/` follows the Pattern B project layout from Burrow's [Tailwind guide](https://burrow.readthedocs.io/en/latest/guide/tailwind/): the shell app owns the layout templates, the compiled Tailwind CSS, and the project-level icon defines, all served under the `/static/app/` URL prefix.
+`internal/app/` is the shell-app convention from Burrow's [Tailwind guide](https://burrow.readthedocs.io/en/latest/guide/tailwind/#why-the-shell-is-in-internalapp): the shell app owns the layout templates, the compiled Tailwind CSS, and the project-level icon defines, all served under the `/static/app/` URL prefix.
 
 ## Releases
 
