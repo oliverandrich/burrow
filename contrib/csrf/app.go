@@ -5,20 +5,44 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	gorillacsrf "github.com/gorilla/csrf"
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/internal/cryptokey"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/urfave/cli/v3"
 )
+
+// ExemptPaths is implemented by apps that want specific URL paths to
+// bypass CSRF token validation — typically webhook receivers (webmention
+// inbound, ActivityPub inbox, payment callbacks) that accept POSTs from
+// external services without a CSRF token by design.
+//
+// The csrf app discovers every implementor in the registry during boot
+// and merges their declarations into a single matcher. This keeps the
+// declaration local to the app that owns the route: a Webmention contrib
+// returns "/webmention" from its own CSRFExemptPaths, the application's
+// main.go stays unaware of which routes need bypassing.
+//
+// Pattern syntax (minimal by design):
+//
+//   - "/webmention" — exact match (matches /webmention, NOT /webmention/x).
+//   - "/inbox/"     — prefix match (trailing slash; matches /inbox/alice,
+//     /inbox/bob/feed, NOT /inbox).
+type ExemptPaths interface {
+	CSRFExemptPaths() []string
+}
 
 // New creates a new CSRF app.
 func New() *App { return &App{} }
 
 // App implements CSRF protection as a burrow contrib app.
 type App struct {
-	protect func(http.Handler) http.Handler
-	secure  bool
+	protect  func(http.Handler) http.Handler
+	secure   bool
+	registry *registry.Registry
+	exempt   *exemptMatcher
 }
 
 func (a *App) Name() string { return "csrf" }
@@ -36,6 +60,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	keyHex := cmd.String("csrf-key")
 	secure := cfg.Config != nil && cfg.Config.IsHTTPS()
+	a.registry = cfg.Registry
 	return a.configure(keyHex, secure)
 }
 
@@ -48,6 +73,7 @@ func (a *App) configure(keyHex string, secure bool) error {
 	}
 
 	a.secure = secure
+	a.exempt = buildExemptMatcher(a.registry)
 	a.protect = gorillacsrf.Protect(
 		key,
 		gorillacsrf.Secure(secure),
@@ -89,13 +115,76 @@ func (a *App) csrfMiddleware(next http.Handler) http.Handler {
 
 	wrapped := a.protect(bridged)
 
-	// gorilla/csrf assumes HTTPS by default. For plaintext HTTP deployments,
-	// mark each request so gorilla skips HTTPS-only referer checks.
-	if !a.secure {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			wrapped.ServeHTTP(w, gorillacsrf.PlaintextHTTPRequest(r))
-		})
-	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Webhook receivers and similar cross-origin endpoints can opt
+		// their path out of CSRF validation via the ExemptPaths capability
+		// interface. UnsafeSkipCheck must be applied to the request
+		// BEFORE gorilla.Protect runs.
+		if a.exempt.matches(r.URL.Path) {
+			r = gorillacsrf.UnsafeSkipCheck(r)
+		}
+		// gorilla/csrf assumes HTTPS by default. For plaintext HTTP
+		// deployments, mark each request so gorilla skips HTTPS-only
+		// referer checks.
+		if !a.secure {
+			r = gorillacsrf.PlaintextHTTPRequest(r)
+		}
+		wrapped.ServeHTTP(w, r)
+	})
+}
 
-	return wrapped
+// exemptMatcher is the merged exempt-path lookup table built once at
+// boot from every registry app that implements ExemptPaths. The matcher
+// is safe to call when nil — it returns false for every path.
+type exemptMatcher struct {
+	exact  map[string]struct{}
+	prefix []string // each entry already validated to end with "/"
+}
+
+// buildExemptMatcher walks the registry collecting every ExemptPaths
+// declaration. Returns nil when the registry is nil (e.g. tests that
+// construct the app via configure() without a Configure call) or when
+// no app implements the interface — both are normal modes.
+func buildExemptMatcher(reg *registry.Registry) *exemptMatcher {
+	if reg == nil {
+		return nil
+	}
+	m := &exemptMatcher{exact: map[string]struct{}{}}
+	for _, app := range registry.Apps(reg) {
+		provider, ok := app.(ExemptPaths)
+		if !ok {
+			continue
+		}
+		for _, p := range provider.CSRFExemptPaths() {
+			if p == "" {
+				continue
+			}
+			if strings.HasSuffix(p, "/") {
+				m.prefix = append(m.prefix, p)
+			} else {
+				m.exact[p] = struct{}{}
+			}
+		}
+	}
+	if len(m.exact) == 0 && len(m.prefix) == 0 {
+		return nil
+	}
+	return m
+}
+
+// matches reports whether path is exempt from CSRF validation. The
+// receiver may be nil — that case is treated as "no exemptions".
+func (m *exemptMatcher) matches(path string) bool {
+	if m == nil {
+		return false
+	}
+	if _, ok := m.exact[path]; ok {
+		return true
+	}
+	for _, p := range m.prefix {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }

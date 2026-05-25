@@ -10,10 +10,41 @@ import (
 
 	gorillacsrf "github.com/gorilla/csrf"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 )
+
+// exemptStubApp is a test fixture: a minimal App that also implements
+// ExemptPaths, so we can put it into a registry and verify the csrf
+// middleware picks the paths up.
+type exemptStubApp struct {
+	name  string
+	paths []string
+}
+
+func (s *exemptStubApp) Name() string              { return s.name }
+func (s *exemptStubApp) CSRFExemptPaths() []string { return s.paths }
+
+// newTestAppWithExempts builds a csrf app whose registry contains stub
+// apps with the given exempt-path declarations. Each call to the
+// function adds one stub app named "stub-<i>" with its paths.
+func newTestAppWithExempts(t *testing.T, paths ...[]string) *App {
+	t.Helper()
+	reg := registry.New()
+	for i, p := range paths {
+		registry.Add(reg, &exemptStubApp{name: stubName(i), paths: p})
+	}
+	a := New()
+	a.registry = reg
+	require.NoError(t, a.configure("", false))
+	return a
+}
+
+func stubName(i int) string {
+	return "stub-" + string(rune('a'+i))
+}
 
 // Compile-time interface assertions.
 var (
@@ -355,4 +386,116 @@ func TestSecureDerivedFromBaseURL(t *testing.T) {
 			assert.NotNil(t, a.protect)
 		})
 	}
+}
+
+// --- ExemptPaths ---
+
+// postWithoutToken issues a POST to the given path and returns the recorder.
+// Helper for the exempt-path tests; the only thing they care about is whether
+// the response is 200 (exempted) or 403 (still enforced).
+func postWithoutToken(t *testing.T, handler http.Handler, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, path, strings.NewReader("data=value"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	return rr
+}
+
+func TestExemptPaths_ExactMatchBypassesValidation(t *testing.T) {
+	a := newTestAppWithExempts(t, []string{"/webmention"})
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := a.Middleware()[0](inner)
+
+	rr := postWithoutToken(t, handler, "/webmention")
+
+	assert.Equal(t, http.StatusOK, rr.Code, "exact-path exempt must bypass CSRF check")
+}
+
+func TestExemptPaths_PrefixMatchBypassesValidation(t *testing.T) {
+	a := newTestAppWithExempts(t, []string{"/inbox/"})
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := a.Middleware()[0](inner)
+
+	for _, path := range []string{"/inbox/alice", "/inbox/bob/feed"} {
+		t.Run(path, func(t *testing.T) {
+			rr := postWithoutToken(t, handler, path)
+			assert.Equal(t, http.StatusOK, rr.Code, "prefix exempt %q must match %q", "/inbox/", path)
+		})
+	}
+}
+
+func TestExemptPaths_DoesNotMatchUnrelatedPath(t *testing.T) {
+	a := newTestAppWithExempts(t, []string{"/webmention"})
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := a.Middleware()[0](inner)
+
+	rr := postWithoutToken(t, handler, "/other")
+
+	assert.Equal(t, http.StatusForbidden, rr.Code, "non-exempt paths must still require a CSRF token")
+}
+
+func TestExemptPaths_ExactDoesNotMatchSubpath(t *testing.T) {
+	a := newTestAppWithExempts(t, []string{"/webmention"})
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := a.Middleware()[0](inner)
+
+	rr := postWithoutToken(t, handler, "/webmention/extra")
+
+	assert.Equal(t, http.StatusForbidden, rr.Code,
+		"exact entry (no trailing slash) must not match descendant paths")
+}
+
+func TestExemptPaths_MergedAcrossMultipleApps(t *testing.T) {
+	a := newTestAppWithExempts(t,
+		[]string{"/webmention"},
+		[]string{"/inbox/"},
+	)
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := a.Middleware()[0](inner)
+
+	for _, path := range []string{"/webmention", "/inbox/alice"} {
+		t.Run(path, func(t *testing.T) {
+			rr := postWithoutToken(t, handler, path)
+			assert.Equal(t, http.StatusOK, rr.Code)
+		})
+	}
+}
+
+func TestExemptPaths_NoProviderAppsLeavesBehaviourUnchanged(t *testing.T) {
+	// Registry exists but no app implements ExemptPaths.
+	a := newTestAppWithExempts(t)
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := a.Middleware()[0](inner)
+
+	rr := postWithoutToken(t, handler, "/anything")
+
+	assert.Equal(t, http.StatusForbidden, rr.Code)
+}
+
+func TestExemptPaths_NilRegistryIsSafe(t *testing.T) {
+	// newTestApp (used elsewhere) does not set a registry — this guards
+	// against a nil-pointer panic in the matcher build path.
+	a := newTestApp(t)
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := a.Middleware()[0](inner)
+
+	rr := postWithoutToken(t, handler, "/anything")
+
+	assert.Equal(t, http.StatusForbidden, rr.Code,
+		"a csrf app without a registry must still enforce CSRF (no panic, no silent bypass)")
+}
+
+func TestExemptPaths_GetOnExemptPathStillSucceeds(t *testing.T) {
+	// Sanity check: exempting a path doesn't break ordinary GETs (which
+	// were already accepted by csrf because GET isn't state-changing).
+	a := newTestAppWithExempts(t, []string{"/webmention"})
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := a.Middleware()[0](inner)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/webmention", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
 }
