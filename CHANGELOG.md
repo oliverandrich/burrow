@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Security
+
+- **Scaffold CI: `cache: false` on the check job's `mise-action` step** to close zizmor's `cache-poisoning` finding. The release job (which depends on `check` via `needs:`) builds release artifacts from the same toolchain — leaving the check-job cache enabled would let an untrusted PR branch poison build inputs that flow into a later release. Matches burrow's own `.github/workflows/ci.yml`, which already had `cache: false` on every mise-action call.
+
 ## 0.25.3 — 2026-05-25
 
 ### Added
