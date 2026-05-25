@@ -213,6 +213,32 @@ func TestCountAdminUsers(t *testing.T) {
 	assert.Equal(t, 2, count)
 }
 
+func TestValidateDefaultRole(t *testing.T) {
+	cases := []struct {
+		name    string
+		role    string
+		wantErr bool
+	}{
+		{"empty string accepted (preserves default behaviour)", "", false},
+		{"RoleUser accepted", RoleUser, false},
+		{"RoleStaff accepted", RoleStaff, false},
+		{"RoleAdmin accepted", RoleAdmin, false},
+		{"unknown role rejected", "moderator", true},
+		{"case-sensitive — uppercase rejected", "STAFF", true},
+		{"whitespace rejected", " user", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateDefaultRole(tc.role)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestSetUserRole(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository[EmptyProfile](db)

@@ -326,6 +326,85 @@ func TestRegisterBeginUsernameMode(t *testing.T) {
 	assert.Equal(t, "newuser", users[0].Username)
 }
 
+func TestRegisterBeginAppliesDefaultRole(t *testing.T) {
+	h, repo, _ := setupTestApp(t)
+	ctx := context.Background()
+
+	// Seed an existing admin so the first-user promotion doesn't kick
+	// in and shadow the default-role assignment we're verifying.
+	admin, err := repo.CreateUser(ctx, "existing-admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, admin.ID, RoleAdmin))
+
+	h.defaultRole = RoleStaff
+
+	body := strings.NewReader(`{"username":"newcomer"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err = h.RegisterBegin(rec, req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	got, err := repo.GetUserByUsername(ctx, "newcomer")
+	require.NoError(t, err)
+	assert.Equal(t, RoleStaff, got.Role,
+		"WithDefaultRole(RoleStaff) should bump new users from RoleUser to RoleStaff")
+}
+
+func TestRegisterBeginAdminPromotionWinsOverDefaultRole(t *testing.T) {
+	h, repo, _ := setupTestApp(t)
+	ctx := context.Background()
+
+	// No prior users → the registrant is the first → admin promotion
+	// fires before our default-role check sees user.Role == RoleUser.
+	h.defaultRole = RoleStaff
+
+	body := strings.NewReader(`{"username":"firstever"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err := h.RegisterBegin(rec, req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	got, err := repo.GetUserByUsername(ctx, "firstever")
+	require.NoError(t, err)
+	assert.Equal(t, RoleAdmin, got.Role,
+		"first user must become admin even when WithDefaultRole is set")
+}
+
+func TestRegisterBeginDefaultRoleUnsetPreservesRoleUser(t *testing.T) {
+	h, repo, _ := setupTestApp(t)
+	ctx := context.Background()
+
+	// Seed an existing admin so the first-user promotion is out of the
+	// picture; the only thing being tested is "no option → no change".
+	admin, err := repo.CreateUser(ctx, "existing-admin")
+	require.NoError(t, err)
+	require.NoError(t, repo.SetUserRole(ctx, admin.ID, RoleAdmin))
+
+	// Sanity: option is unset on the test app.
+	require.Empty(t, h.defaultRole)
+
+	body := strings.NewReader(`{"username":"plainuser"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+
+	err = h.RegisterBegin(rec, req)
+	require.NoError(t, err)
+
+	got, err := repo.GetUserByUsername(ctx, "plainuser")
+	require.NoError(t, err)
+	assert.Equal(t, RoleUser, got.Role)
+}
+
 func TestRegisterBeginMissingUsername(t *testing.T) {
 	h, _, _ := setupTestApp(t)
 	body := strings.NewReader(`{"username":""}`)

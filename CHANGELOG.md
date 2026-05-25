@@ -6,6 +6,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Added
 
+- **`auth.WithDefaultRole(role)` constructor option.** Sets the role assigned to newly-registered users after `CreateUser` succeeds, so apps where every accepted invitee should be staff don't have to wrap the registration flow or run a post-hoc CLI. The first-user → `RoleAdmin` promotion still wins (a fresh deployment never locks itself out of `/admin/`), and an invalid role string makes `Configure` return an error at boot. Leaving the option unset preserves the historic `RoleUser` default.
 - **`mise run clean` and `mise run clean-all` tasks** in burrow itself and the project scaffold. `clean` removes build artifacts and generated files (coverage outputs, `bin/`, `tmp/`, `site/`, docs build output, `.tailwind/` source dirs, generated example static bundles); `clean-all` additionally wipes every gitignored `data/` runtime dir and every `*.db*` SQLite file anywhere in the tree. `clean-all` depends on `clean` so there's no copy-paste drift.
 - **`docs/getting-started/scaffold.md`** documents the output of `burrow new` — annotated file tree, full mise-task reference, dev/release loops, and what the scaffold deliberately omits. The Quick Start tip box, the index Minimal Example, and the Tooling CLI section now cross-link to it; `tooling.md` keeps the CLI-flag reference, the new page covers the generated project.
 

@@ -80,6 +80,7 @@ type App[P any] struct {
 	renderer       Renderer
 	emailService   EmailService
 	authLayout     string
+	defaultRole    string
 	cancelCleanup  context.CancelFunc
 	cancelWebAuthn context.CancelFunc
 	config         *Config
@@ -126,6 +127,34 @@ func WithEmailService[P any](e EmailService) Option[P] {
 	return func(a *App[P]) { a.emailService = e }
 }
 
+// WithDefaultRole sets the role assigned to newly-registered users
+// after CreateUser succeeds. Useful for apps where every accepted
+// invitee is intended to be staff (e.g. invite-only blog engines with
+// no reader role) so they don't have to wrap the registration flow or
+// run a post-hoc CLI to promote users.
+//
+// The first-user → RoleAdmin promotion still wins: if the registrant
+// is the first user in the database, they become admin regardless of
+// this option. Valid values are [RoleUser], [RoleStaff], and
+// [RoleAdmin]; any other value makes Configure return an error.
+// Leaving the option unset preserves the historic default ([RoleUser]).
+func WithDefaultRole[P any](role string) Option[P] {
+	return func(a *App[P]) { a.defaultRole = role }
+}
+
+// validateDefaultRole reports whether the role string is acceptable as
+// a WithDefaultRole argument. The empty string is allowed and means
+// "no override — keep the default RoleUser behaviour."
+func validateDefaultRole(role string) error {
+	switch role {
+	case "", RoleUser, RoleStaff, RoleAdmin:
+		return nil
+	default:
+		return fmt.Errorf("auth: WithDefaultRole(%q): role must be one of %q, %q, %q (or empty for the default)",
+			role, RoleUser, RoleStaff, RoleAdmin)
+	}
+}
+
 // New creates a new auth app with the given options.
 // By default, the built-in HTML renderer and auth layout are used.
 // Use WithRenderer() and WithAuthLayout() to override.
@@ -146,6 +175,9 @@ func (a *App[P]) Dependencies() []string { return []string{"session", "csrf", "s
 
 func (a *App[P]) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 	if err := validateProfileType[P](); err != nil {
+		return err
+	}
+	if err := validateDefaultRole(a.defaultRole); err != nil {
 		return err
 	}
 
