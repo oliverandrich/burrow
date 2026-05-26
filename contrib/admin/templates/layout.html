@@ -24,7 +24,7 @@
                     </svg>
                     {{ .Username }}
                 </span>
-                <form method="post" action="/auth/logout" hx-boost="false">
+                <form hx-post="/auth/logout">
                     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
                     <button type="submit"
                             class="rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">

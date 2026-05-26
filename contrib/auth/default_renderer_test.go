@@ -165,7 +165,10 @@ func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
 	assert.Contains(t, body, "aaaa-bbbb-cccc")
 	assert.Contains(t, body, "dddd-eeee-ffff")
 	assert.Contains(t, body, "<article ", "recovery codes page should be wrapped in a card")
-	assert.Contains(t, body, "/auth/recovery-codes/ack")
+	assert.Contains(t, body, `hx-post="/auth/recovery-codes/ack"`,
+		"recovery-codes ack form must submit via hx-post (admin/auth contribs mandate JS)")
+	assert.NotContains(t, body, `method="POST" action="/auth/recovery-codes/ack"`,
+		"recovery-codes ack form must not fall back to method=POST (dead code)")
 }
 
 func TestDefaultRendererVerifyPendingPage(t *testing.T) {

@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Changed
+
+- **contrib/admin + contrib/auth: form templates commit to `hx-post`.** Admin user-edit, recovery-codes ack, and admin logout drop their `method=post` no-JS fallbacks — `contrib/auth` is WebAuthn-only and admin sits behind `RequireAuth + RequireStaff`, so those paths were unreachable. The example `notes` app follows the same pattern. No runtime behaviour change. See [admin → JavaScript required](https://burrow.andrich.dev/contrib/admin/#javascript-required).
+
 ## 0.25.6 — 2026-05-25
 
 ### Added
