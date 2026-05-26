@@ -5,6 +5,8 @@ import (
 	"math"
 	"net"
 	"net/http"
+
+	"github.com/oliverandrich/burrow"
 )
 
 func (a *App) rateLimitMiddleware(next http.Handler) http.Handler {
@@ -27,29 +29,20 @@ func (a *App) rateLimitMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// defaultKeyFunc extracts the client IP from the request.
-// If trustProxy is true, it uses the X-Real-IP header set by the reverse proxy.
-// X-Forwarded-For is intentionally not used because it can contain multiple
-// comma-separated values that are trivially spoofed to bypass rate limiting.
-//
-// WARNING: trustProxy must only be enabled when the application runs behind a
-// reverse proxy (nginx, Caddy, etc.) that sets the X-Real-IP header and strips
-// any client-supplied value. Without a proxy, clients can spoof X-Real-IP to
-// bypass rate limiting entirely.
-func defaultKeyFunc(trustProxy bool) func(*http.Request) string {
-	return func(r *http.Request) string {
-		if trustProxy {
-			if xri := r.Header.Get("X-Real-IP"); xri != "" {
-				return xri
-			}
-		}
-
-		host, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			return r.RemoteAddr
-		}
-		return host
+// defaultKeyFunc derives the rate-limit key from the framework-wide client
+// IP set by burrow's server-level ClientIP middleware (configured via
+// --client-ip-mode; see docs/guide/client-ip.md). Falls back to the host
+// portion of RemoteAddr when the middleware did not run — e.g. in unit tests
+// that exercise this contrib in isolation.
+func defaultKeyFunc(r *http.Request) string {
+	if ip := burrow.ClientIP(r.Context()); ip != "" {
+		return ip
 	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 // defaultOnLimited sends a plain text 429 response.

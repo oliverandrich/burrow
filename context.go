@@ -2,7 +2,9 @@ package burrow
 
 import (
 	"context"
+	"net/netip"
 
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/oliverandrich/burrow/app"
 )
 
@@ -82,3 +84,13 @@ func WithContextValue(ctx context.Context, key, val any) context.Context {
 func ContextValue[T any](ctx context.Context, key any) (T, bool) {
 	return app.ContextValue[T](ctx, key)
 }
+
+// ClientIP returns the client IP stored in the context by burrow's
+// server-level ClientIP middleware (configured via --client-ip-mode). Returns
+// "" when no middleware ran. Wrapper around [chimw.GetClientIP]. See
+// docs/guide/client-ip.md for the trust model.
+func ClientIP(ctx context.Context) string { return chimw.GetClientIP(ctx) }
+
+// ClientIPAddr returns the client IP as a [netip.Addr]. Use [netip.Addr.IsValid]
+// to check whether a middleware ran. Wrapper around [chimw.GetClientIPAddr].
+func ClientIPAddr(ctx context.Context) netip.Addr { return chimw.GetClientIPAddr(ctx) }

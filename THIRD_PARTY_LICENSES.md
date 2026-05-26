@@ -44,7 +44,7 @@ Generated with [google/go-licenses](https://github.com/google/go-licenses).
 
 | Module | License | URL |
 |--------|---------|-----|
-| aead.dev/minisign | MIT | [LICENSE](Unknown) |
+| aead.dev/minisign | MIT | [LICENSE](https://github.com/aead/minisign/blob/v0.2.0/LICENSE) |
 | github.com/BurntSushi/toml | MIT | [LICENSE](https://github.com/BurntSushi/toml/blob/v1.6.0/COPYING) |
 | github.com/cloudflare/tableflip | BSD-3-Clause | [LICENSE](https://github.com/cloudflare/tableflip/blob/v1.2.3/LICENSE) |
 | github.com/davecgh/go-spew/spew | ISC | [LICENSE](https://github.com/davecgh/go-spew/blob/v1.1.1/LICENSE) |

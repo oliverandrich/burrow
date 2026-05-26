@@ -66,11 +66,6 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Usage:   "Interval for sweeping expired rate limit entries",
 			Sources: burrow.FlagSources(configSource, "RATELIMIT_CLEANUP_INTERVAL", "ratelimit.cleanup_interval"),
 		},
-		&cli.BoolFlag{
-			Name:    "ratelimit-trust-proxy",
-			Usage:   "Use X-Real-IP header for client IP extraction",
-			Sources: burrow.FlagSources(configSource, "RATELIMIT_TRUST_PROXY", "ratelimit.trust_proxy"),
-		},
 		&cli.IntFlag{
 			Name:    "ratelimit-max-clients",
 			Value:   10000,
@@ -83,25 +78,24 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 func (a *App) Configure(_ *burrow.AppConfig, cmd *cli.Command) error {
 	rps := cmd.Float("ratelimit-rate")
 	burst := int(cmd.Int("ratelimit-burst"))
-	trustProxy := cmd.Bool("ratelimit-trust-proxy")
 	cleanupInterval := cmd.Duration("ratelimit-cleanup-interval")
 	maxClients := int(cmd.Int("ratelimit-max-clients"))
 
-	return a.configureWithCleanup(rps, burst, trustProxy, cleanupInterval, maxClients)
+	return a.configureWithCleanup(rps, burst, cleanupInterval, maxClients)
 }
 
 // configure sets up the limiter with default cleanup interval.
 // Used by tests that don't need a cli.Command.
-func (a *App) configure(rps float64, burst int, trustProxy bool) {
-	_ = a.configureWithCleanup(rps, burst, trustProxy, time.Minute, 0)
+func (a *App) configure(rps float64, burst int) {
+	_ = a.configureWithCleanup(rps, burst, time.Minute, 0)
 }
 
-func (a *App) configureWithCleanup(rps float64, burst int, trustProxy bool, cleanupInterval time.Duration, maxClients int) error {
+func (a *App) configureWithCleanup(rps float64, burst int, cleanupInterval time.Duration, maxClients int) error {
 	if err := validateConfig(rps, burst, cleanupInterval, maxClients); err != nil {
 		return err
 	}
 	if a.keyFunc == nil {
-		a.keyFunc = defaultKeyFunc(trustProxy)
+		a.keyFunc = defaultKeyFunc
 	}
 	a.limiter = NewLimiter(rps, burst, cleanupInterval, maxClients)
 	return nil

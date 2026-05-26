@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -117,6 +119,39 @@ func TestContextHelpers_RoundTrip(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, "value", got)
 	})
+}
+
+func TestClientIP_RoundTripThroughChiMiddleware(t *testing.T) {
+	// burrow.ClientIP and burrow.ClientIPAddr re-export chi's GetClientIP /
+	// GetClientIPAddr so contribs can read the framework-wide source of
+	// client IP without importing chi/v5/middleware directly. Verify the
+	// re-export by running a real chi middleware in front of a handler that
+	// reads through the burrow facade.
+	r := chi.NewRouter()
+	r.Use(chimw.ClientIPFromHeader("X-Real-IP"))
+	var typedAddrValid bool
+	r.Get("/", func(w http.ResponseWriter, req *http.Request) {
+		typedAddrValid = burrow.ClientIPAddr(req.Context()).IsValid()
+		_, _ = w.Write([]byte(burrow.ClientIP(req.Context())))
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set("X-Real-IP", "198.51.100.7")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, "198.51.100.7", rec.Body.String(),
+		"burrow.ClientIP must return the value chi's ClientIPFromHeader middleware stored")
+	assert.True(t, typedAddrValid, "burrow.ClientIPAddr must also be populated by chi's middleware")
+}
+
+func TestClientIP_EmptyWhenNoMiddleware(t *testing.T) {
+	// Without chi's ClientIP middleware in the chain, burrow.ClientIP should
+	// return the zero value — contribs depending on it must implement a
+	// fallback (ratelimit does, via r.RemoteAddr).
+	ctx := context.Background()
+	assert.Empty(t, burrow.ClientIP(ctx))
+	assert.False(t, burrow.ClientIPAddr(ctx).IsValid())
 }
 
 func TestAuthHelpers_NoChecker_ReturnFalse(t *testing.T) {
