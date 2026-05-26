@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="{{ staticURL "app/app.min.css" }}">
 </head>
 <body class="min-h-screen bg-white text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
+    <noscript>
+        <div class="border-b border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            <p class="font-medium">{{ t "auth-noscript-title" }}</p>
+            <p class="mt-1">{{ t "auth-noscript-body" }} <a href="https://www.enable-javascript.com/" rel="noopener noreferrer" class="underline">{{ t "auth-noscript-link-text" }}</a>.</p>
+        </div>
+    </noscript>
     {{ .Content }}
 </body>
 </html>
