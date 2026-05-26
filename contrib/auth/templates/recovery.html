@@ -2,7 +2,7 @@
 <p class="mb-3 text-sm">{{ t "recovery-codes-description" }}</p>
 <pre class="mb-4 overflow-x-auto rounded-md bg-gray-100 p-3 font-mono text-sm dark:bg-gray-800"><code>{{ range $i, $code := .Codes }}{{ if $i }}
 {{ end }}{{ $code }}{{ end }}</code></pre>
-<form method="POST" action="/auth/recovery-codes/ack">
+<form hx-post="/auth/recovery-codes/ack">
     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}"/>
     <button type="submit"
         class="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">

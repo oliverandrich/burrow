@@ -11,7 +11,7 @@
 <header class="mb-4">
     <h2 class="text-2xl font-bold tracking-tight">{{ t "Edit" }} {{ .User.Username }}</h2>
 </header>
-<form method="post" action="/admin/users/{{ .User.ID }}" class="space-y-3">
+<form hx-post="/admin/users/{{ .User.ID }}" hx-target="#main" hx-swap="innerHTML" class="space-y-3">
     <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}">
     {{- range .Fields }}
     {{- template "auth/admin_user_field" . }}

@@ -383,8 +383,9 @@ func TestNewNoteHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "notes-new-title")
-	assert.Contains(t, body, `action="/notes"`)
 	assert.Contains(t, body, `hx-post="/notes"`)
+	assert.NotContains(t, body, `action="/notes"`,
+		"form must not carry a method=post fallback (JS is required)")
 	assert.Contains(t, body, `name="title"`)
 	assert.Contains(t, body, `name="content"`)
 	assert.JSONEq(t, `{"openDialog":"modal"}`, rec.Header().Get("HX-Trigger-After-Swap"))
@@ -521,7 +522,7 @@ func TestCreateNoteValidationErrorHTMX(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "notes-new-title")
-	assert.Contains(t, body, `action="/notes"`)
+	assert.Contains(t, body, `hx-post="/notes"`)
 	assert.Contains(t, body, `aria-invalid="true"`)
 
 	// No note should have been created.
@@ -561,7 +562,7 @@ func TestCreateNoteValidationErrorNonHTMX(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, "notes-new-title")
-	assert.Contains(t, body, `action="/notes"`)
+	assert.Contains(t, body, `hx-post="/notes"`)
 }
 
 func TestCreateNoteUnauthenticatedPanics(t *testing.T) {
@@ -610,8 +611,9 @@ func TestEditNoteHTMX(t *testing.T) {
 	assert.Contains(t, body, "notes-edit-title")
 	assert.Contains(t, body, "Edit Me")
 	assert.Contains(t, body, "Original")
-	assert.Contains(t, body, `action="/notes/`+note.ID+`"`)
 	assert.Contains(t, body, `hx-post="/notes/`+note.ID+`"`)
+	assert.NotContains(t, body, `action="/notes/`+note.ID+`"`,
+		"form must not carry a method=post fallback (JS is required)")
 	assert.JSONEq(t, `{"openDialog":"modal"}`, rec.Header().Get("HX-Trigger-After-Swap"))
 }
 

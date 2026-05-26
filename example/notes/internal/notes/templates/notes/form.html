@@ -12,8 +12,7 @@
         {{- end }}
     </div>
     {{- end }}
-    <form method="post" action="{{ .Action }}"
-          hx-post="{{ .Action }}"
+    <form hx-post="{{ .Action }}"
           hx-target="#modal"
           hx-swap="innerHTML"
           class="space-y-3">

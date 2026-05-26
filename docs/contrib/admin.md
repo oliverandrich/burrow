@@ -6,6 +6,17 @@ Admin panel coordinator that discovers and mounts admin views from other apps.
 
 **Requires:** an app implementing `burrow.AdminAuth` (e.g., `contrib/auth`)
 
+## JavaScript required
+
+The admin contrib mandates JavaScript. The bundled `contrib/auth` is WebAuthn-only (passkeys cannot work without JS), and every admin page sits behind `RequireAuth + RequireStaff`, so the no-JS form fallback never runs in practice. The admin layout reflects this:
+
+- **Nav** uses `<a href>` inside an `hx-boost` container on `<body>`. Semantic HTML stays intact — screen readers, right-click-new-tab, bookmarks, and direct URL reloads all keep working — and htmx upgrades the click into a fragment swap.
+- **Form submits** use `hx-post` with `hx-target="#main" hx-swap="innerHTML"`. Validation errors re-render the form fragment into `#main`; success uses `htmx.SmartRedirect` (which sets `HX-Redirect` to drive a full navigation).
+- **Destructive actions** (delete, deactivate) use `<button hx-post>`, not link-shaped triggers — they shouldn't be reachable via bookmark or prefetch.
+- **CSRF** is carried via `csrfHxHeaders` on `<body>` (auto-injected `X-CSRF-Token` for every htmx request) plus a hidden `gorilla.csrf.Token` input in each form for belt-and-suspenders.
+
+Downstream `HasAdmin` apps should follow the same conventions. See `contrib/auth/templates/admin_user_form.html` and `contrib/auth/admin_handlers.go` (`adminUpdateUser`) for the validation-error / success pair.
+
 ## Setup
 
 ```go
