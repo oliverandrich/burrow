@@ -10,7 +10,7 @@ WebAuthn (passkey) authentication with recovery codes, email verification, and i
     `auth.User`, `auth.App`, `auth.Repository`, `auth.CurrentUser`, and `auth.MustCurrentUser` are all generic over a `Profile` type parameter that holds app-specific extension fields. Examples below use `auth.EmptyProfile` for apps that don't extend the user. To add display name, bio, avatar, social links, or other custom fields, see [Extending the User](auth-profile.md).
 
 !!! info "JavaScript required"
-    WebAuthn calls `navigator.credentials.create()` / `.get()`, so registration and sign-in cannot complete without JavaScript. Every page protected by `RequireAuth` therefore sits behind a JS-capable client; auth-rendered forms (recovery-code acknowledgement, admin user edit, logout) use `hx-post` and do not carry a `method=post` fallback. See [admin → JavaScript required](admin.md#javascript-required) for the full convention.
+    WebAuthn calls `navigator.credentials.create()` / `.get()`, so registration and sign-in cannot complete without JavaScript. Every page protected by `RequireAuth` therefore sits behind a JS-capable client; auth-rendered forms (recovery-code acknowledgement, admin user edit, logout) use `hx-post` and do not carry a `method=post` fallback. The public auth layout (`auth/layout`) renders a `<noscript>` block at the top of every login/register/recovery page so a JS-off browser sees a translated explanation rather than a silently-broken passkey button. See [admin → JavaScript required](admin.md#javascript-required) for the full convention.
 
 ## Setup
 

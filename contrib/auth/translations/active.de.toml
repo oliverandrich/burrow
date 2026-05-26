@@ -133,3 +133,8 @@ email-invite-heading = "Sie wurden eingeladen"
 email-invite-body = "Sie wurden eingeladen, ein Konto zu erstellen. Klicken Sie auf die Schaltfläche unten, um zu beginnen:"
 email-invite-button = "Einladung annehmen"
 email-invite-fallback = "Falls die Schaltfläche nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:"
+
+# Noscript-Fallback (von auth/layout für Benutzer ohne JavaScript gerendert)
+auth-noscript-title = "JavaScript erforderlich"
+auth-noscript-body = "Diese Seite nutzt Passkeys zur Anmeldung, und Passkeys benötigen JavaScript. Bitte aktivieren Sie JavaScript und laden Sie die Seite neu."
+auth-noscript-link-text = "Anleitung zum Aktivieren von JavaScript"

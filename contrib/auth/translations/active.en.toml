@@ -133,3 +133,8 @@ email-invite-heading = "You've been invited"
 email-invite-body = "You've been invited to create an account. Click the button below to get started:"
 email-invite-button = "Accept Invite"
 email-invite-fallback = "If the button doesn't work, copy and paste this link into your browser:"
+
+# Noscript fallback (rendered by auth/layout for users without JavaScript)
+auth-noscript-title = "JavaScript required"
+auth-noscript-body = "This site uses passkeys for sign-in, and passkeys require JavaScript. Please enable JavaScript and reload the page."
+auth-noscript-link-text = "How to enable JavaScript"
