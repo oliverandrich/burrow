@@ -94,6 +94,7 @@ nav:
           - Building Releases: guide/releases.md
           - Logging: guide/logging.md
           - TLS: guide/tls.md
+          - Client IP: guide/client-ip.md
   - Tutorial:
       - Overview: tutorial/index.md
       - "Part 1: Setup & First View": tutorial/part1.md

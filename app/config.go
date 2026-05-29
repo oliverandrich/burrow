@@ -23,9 +23,29 @@ type ServerConfig struct {
 	BaseURL         string
 	PIDFile         string
 	AppName         string
+	ClientIP        ClientIPConfig
 	Port            int
 	MaxBodySize     int // in MB
 	ShutdownTimeout int // in seconds
+}
+
+// ClientIPConfig selects how the framework extracts the client IP from
+// incoming requests. Read the result via [burrow.ClientIP] /
+// [burrow.ClientIPAddr]. There is no safe default: each non-`remote-addr`
+// mode requires its own companion configuration so the operator picks the
+// trust source explicitly. See docs/guide/client-ip.md.
+type ClientIPConfig struct {
+	// Mode is one of: "remote-addr" (default), "header",
+	// "xff-trusted-proxies", "xff-trusted-cidrs".
+	Mode string
+	// Header is the trusted single-IP header (mode=header).
+	Header string
+	// TrustedCIDRs is the list of CIDR prefixes covering the trusted
+	// proxy fleet (mode=xff-trusted-cidrs).
+	TrustedCIDRs []string
+	// TrustedProxies is the number of trusted hops to walk back through
+	// X-Forwarded-For (mode=xff-trusted-proxies).
+	TrustedProxies int
 }
 
 // resolveAppName returns the explicit flag value when set, falling back to
@@ -83,6 +103,12 @@ func NewConfig(cmd *cli.Command) *Config {
 			AppName:         resolveAppName(cmd.String("app-name")),
 			MaxBodySize:     int(cmd.Int("max-body-size")),
 			ShutdownTimeout: int(cmd.Int("shutdown-timeout")),
+			ClientIP: ClientIPConfig{
+				Mode:           cmd.String("client-ip-mode"),
+				Header:         cmd.String("client-ip-header"),
+				TrustedProxies: int(cmd.Int("client-ip-trusted-proxies")),
+				TrustedCIDRs:   splitCSV(cmd.String("client-ip-trusted-cidrs")),
+			},
 		},
 		Database: DatabaseConfig{
 			DSN: cmd.String("database-dsn"),
@@ -130,6 +156,70 @@ func (c *Config) ResolveBaseURL() string {
 		return fmt.Sprintf("%s://%s", scheme, host)
 	}
 	return fmt.Sprintf("%s://%s:%d", scheme, host, port)
+}
+
+// splitCSV splits a comma-separated string and trims surrounding whitespace
+// from each entry, returning nil for an empty input. Used for flag values
+// that accept a list (e.g. --client-ip-trusted-cidrs).
+func splitCSV(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+// ValidateClientIP checks that the client-IP configuration is consistent.
+// Each non-default mode requires its companion flag; setting a companion
+// flag without the matching mode is rejected so misconfigurations fail at
+// boot rather than silently picking the wrong source. See
+// docs/guide/client-ip.md for the trust-model rationale.
+func (c *Config) ValidateClientIP(_ *cli.Command) error {
+	cip := c.Server.ClientIP
+	switch cip.Mode {
+	case "", "remote-addr":
+		return rejectClientIPCompanions(cip, "")
+	case "header":
+		if cip.Header == "" {
+			return fmt.Errorf("--client-ip-mode=header requires --client-ip-header (e.g. X-Real-IP, CF-Connecting-IP)")
+		}
+		return rejectClientIPCompanions(cip, "header")
+	case "xff-trusted-proxies":
+		if cip.TrustedProxies <= 0 {
+			return fmt.Errorf("--client-ip-mode=xff-trusted-proxies requires --client-ip-trusted-proxies > 0")
+		}
+		return rejectClientIPCompanions(cip, "trusted-proxies")
+	case "xff-trusted-cidrs":
+		if len(cip.TrustedCIDRs) == 0 {
+			return fmt.Errorf("--client-ip-mode=xff-trusted-cidrs requires --client-ip-trusted-cidrs (comma-separated CIDRs)")
+		}
+		return rejectClientIPCompanions(cip, "trusted-cidrs")
+	default:
+		return fmt.Errorf("unknown client-ip mode: %q (valid: remote-addr, header, xff-trusted-proxies, xff-trusted-cidrs)", cip.Mode)
+	}
+}
+
+// rejectClientIPCompanions errors out if any companion flag *other* than the
+// one whitelisted by allow is set. allow == "" rejects every companion (the
+// remote-addr case). This pins the design promise that a misplaced companion
+// flag is a hard error, not a silent no-op.
+func rejectClientIPCompanions(cip ClientIPConfig, allow string) error {
+	if cip.Header != "" && allow != "header" {
+		return fmt.Errorf("--client-ip-header is only valid with --client-ip-mode=header")
+	}
+	if cip.TrustedProxies != 0 && allow != "trusted-proxies" {
+		return fmt.Errorf("--client-ip-trusted-proxies is only valid with --client-ip-mode=xff-trusted-proxies")
+	}
+	if len(cip.TrustedCIDRs) != 0 && allow != "trusted-cidrs" {
+		return fmt.Errorf("--client-ip-trusted-cidrs is only valid with --client-ip-mode=xff-trusted-cidrs")
+	}
+	return nil
 }
 
 // ValidateTLS checks that the TLS configuration is consistent.
@@ -247,6 +337,27 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Value:   10,
 			Usage:   "Graceful shutdown timeout in seconds",
 			Sources: FlagSources(configSource, "SHUTDOWN_TIMEOUT", "server.shutdown_timeout"),
+		},
+		&cli.StringFlag{
+			Name:    "client-ip-mode",
+			Value:   "remote-addr",
+			Usage:   "Source of the client IP. One of: remote-addr (no proxy), header (single trusted header), xff-trusted-proxies (count of hops), xff-trusted-cidrs (CIDR list). See docs/guide/client-ip.md.",
+			Sources: FlagSources(configSource, "CLIENT_IP_MODE", "server.client_ip.mode"),
+		},
+		&cli.StringFlag{
+			Name:    "client-ip-header",
+			Usage:   "Trusted single-IP header (with --client-ip-mode=header): e.g. X-Real-IP for Nginx ngx_http_realip_module, CF-Connecting-IP for Cloudflare.",
+			Sources: FlagSources(configSource, "CLIENT_IP_HEADER", "server.client_ip.header"),
+		},
+		&cli.IntFlag{
+			Name:    "client-ip-trusted-proxies",
+			Usage:   "Number of trusted reverse-proxy hops in X-Forwarded-For (with --client-ip-mode=xff-trusted-proxies). Use when proxy IPs are dynamic.",
+			Sources: FlagSources(configSource, "CLIENT_IP_TRUSTED_PROXIES", "server.client_ip.trusted_proxies"),
+		},
+		&cli.StringFlag{
+			Name:    "client-ip-trusted-cidrs",
+			Usage:   "Comma-separated CIDRs covering the trusted proxy fleet (with --client-ip-mode=xff-trusted-cidrs): e.g. 13.32.0.0/15,52.46.0.0/18.",
+			Sources: FlagSources(configSource, "CLIENT_IP_TRUSTED_CIDRS", "server.client_ip.trusted_cidrs"),
 		},
 		&cli.StringFlag{
 			Name:    "database-dsn",

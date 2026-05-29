@@ -18,6 +18,7 @@ func TestCoreFlags(t *testing.T) {
 
 	expected := []string{
 		"host", "port", "base-url", "pid-file", "max-body-size", "shutdown-timeout",
+		"client-ip-mode", "client-ip-header", "client-ip-trusted-proxies", "client-ip-trusted-cidrs",
 		"database-dsn",
 		"storage-dsn",
 		"tls-mode", "tls-cert-dir", "tls-email", "tls-cert-file", "tls-key-file",
@@ -157,6 +158,132 @@ func TestValidateTLS_UnknownMode(t *testing.T) {
 	err := cfg.ValidateTLS(cmd)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown TLS mode")
+}
+
+func TestClientIP_DefaultMode(t *testing.T) {
+	cmd := runCommand(t)
+	cfg := NewConfig(cmd)
+	assert.Equal(t, "remote-addr", cfg.Server.ClientIP.Mode)
+	assert.Empty(t, cfg.Server.ClientIP.Header)
+	assert.Zero(t, cfg.Server.ClientIP.TrustedProxies)
+	assert.Empty(t, cfg.Server.ClientIP.TrustedCIDRs)
+
+	require.NoError(t, cfg.ValidateClientIP(cmd))
+}
+
+func TestClientIP_HeaderMode(t *testing.T) {
+	cmd := runCommand(t, "--client-ip-mode", "header", "--client-ip-header", "X-Real-IP")
+	cfg := NewConfig(cmd)
+	assert.Equal(t, "header", cfg.Server.ClientIP.Mode)
+	assert.Equal(t, "X-Real-IP", cfg.Server.ClientIP.Header)
+
+	require.NoError(t, cfg.ValidateClientIP(cmd))
+}
+
+func TestValidateClientIP_HeaderModeMissingHeader(t *testing.T) {
+	cmd := runCommand(t, "--client-ip-mode", "header")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateClientIP(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--client-ip-header")
+}
+
+func TestValidateClientIP_XFFTrustedProxiesMode(t *testing.T) {
+	cmd := runCommand(t, "--client-ip-mode", "xff-trusted-proxies", "--client-ip-trusted-proxies", "2")
+	cfg := NewConfig(cmd)
+	assert.Equal(t, "xff-trusted-proxies", cfg.Server.ClientIP.Mode)
+	assert.Equal(t, 2, cfg.Server.ClientIP.TrustedProxies)
+
+	require.NoError(t, cfg.ValidateClientIP(cmd))
+}
+
+func TestValidateClientIP_XFFTrustedProxiesMissingCount(t *testing.T) {
+	cmd := runCommand(t, "--client-ip-mode", "xff-trusted-proxies")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateClientIP(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--client-ip-trusted-proxies")
+}
+
+func TestValidateClientIP_XFFTrustedCIDRsMode(t *testing.T) {
+	cmd := runCommand(t, "--client-ip-mode", "xff-trusted-cidrs", "--client-ip-trusted-cidrs", "13.32.0.0/15,52.46.0.0/18")
+	cfg := NewConfig(cmd)
+	assert.Equal(t, "xff-trusted-cidrs", cfg.Server.ClientIP.Mode)
+	assert.Equal(t, []string{"13.32.0.0/15", "52.46.0.0/18"}, cfg.Server.ClientIP.TrustedCIDRs)
+
+	require.NoError(t, cfg.ValidateClientIP(cmd))
+}
+
+func TestValidateClientIP_XFFTrustedCIDRsMissingList(t *testing.T) {
+	cmd := runCommand(t, "--client-ip-mode", "xff-trusted-cidrs")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateClientIP(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--client-ip-trusted-cidrs")
+}
+
+func TestValidateClientIP_UnknownMode(t *testing.T) {
+	cmd := runCommand(t, "--client-ip-mode", "bogus")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateClientIP(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown client-ip mode")
+}
+
+func TestValidateClientIP_HeaderSetWithWrongMode(t *testing.T) {
+	// Companion flag set without the matching mode is a configuration
+	// error — fail fast instead of silently ignoring the flag.
+	cmd := runCommand(t, "--client-ip-mode", "remote-addr", "--client-ip-header", "X-Real-IP")
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateClientIP(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--client-ip-header")
+}
+
+func TestValidateClientIP_HeaderModeRejectsTrustedProxies(t *testing.T) {
+	// Cross-mode companion: --client-ip-mode=header with --client-ip-trusted-proxies
+	// is meaningless — chi's ClientIPFromHeader ignores XFF. Fail at boot.
+	cmd := runCommand(t,
+		"--client-ip-mode", "header",
+		"--client-ip-header", "X-Real-IP",
+		"--client-ip-trusted-proxies", "2",
+	)
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateClientIP(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--client-ip-trusted-proxies")
+}
+
+func TestValidateClientIP_XFFTrustedProxiesRejectsCIDRs(t *testing.T) {
+	cmd := runCommand(t,
+		"--client-ip-mode", "xff-trusted-proxies",
+		"--client-ip-trusted-proxies", "2",
+		"--client-ip-trusted-cidrs", "10.0.0.0/8",
+	)
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateClientIP(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--client-ip-trusted-cidrs")
+}
+
+func TestValidateClientIP_XFFTrustedCIDRsRejectsHeader(t *testing.T) {
+	cmd := runCommand(t,
+		"--client-ip-mode", "xff-trusted-cidrs",
+		"--client-ip-trusted-cidrs", "10.0.0.0/8",
+		"--client-ip-header", "X-Real-IP",
+	)
+	cfg := NewConfig(cmd)
+
+	err := cfg.ValidateClientIP(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--client-ip-header")
 }
 
 func TestFlagSourcesWithNilConfigSource(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/oliverandrich/burrow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,7 @@ func TestName(t *testing.T) {
 func newTestApp(t *testing.T, rps float64, burst int) *App {
 	t.Helper()
 	a := New()
-	a.configure(rps, burst, false)
+	a.configure(rps, burst)
 	t.Cleanup(func() { a.Shutdown(t.Context()) })
 	return a
 }
@@ -128,9 +129,50 @@ func TestMiddleware_DifferentIPsIndependent(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 }
 
-func TestMiddleware_TrustProxy(t *testing.T) {
-	a := New(WithKeyFunc(defaultKeyFunc(true)))
-	a.configure(1, 1, true)
+func TestMiddleware_ReadsClientIPFromContext(t *testing.T) {
+	// When burrow's server-level ClientIP middleware runs in front of
+	// ratelimit, the rate-limit key is derived from the framework-wide
+	// client IP rather than r.RemoteAddr. Verify by wiring chi's
+	// ClientIPFromHeader in front and checking that two requests sharing
+	// an X-Real-IP value are rate-limited together regardless of
+	// RemoteAddr.
+	a := New()
+	a.configure(1, 1)
+	t.Cleanup(func() { a.Shutdown(t.Context()) })
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := chimw.ClientIPFromHeader("X-Real-IP")(a.Middleware()[0](inner))
+
+	// First request: different RemoteAddr, same X-Real-IP.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.RemoteAddr = "10.0.0.1:1234"
+	req.Header.Set("X-Real-IP", "203.0.113.1")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	// Second request: yet another RemoteAddr but the same X-Real-IP. If
+	// the key came from RemoteAddr this would pass; from the framework
+	// client IP, it gets denied.
+	req = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.RemoteAddr = "10.0.0.2:1234"
+	req.Header.Set("X-Real-IP", "203.0.113.1")
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusTooManyRequests, rr.Code,
+		"ratelimit must derive its key from burrow.ClientIP, not r.RemoteAddr")
+}
+
+func TestMiddleware_FallsBackToRemoteAddrWithoutClientIPMiddleware(t *testing.T) {
+	// When no ClientIP middleware ran (downstream app mounted ratelimit
+	// without the burrow server, or a unit test exercises this contrib in
+	// isolation), defaultKeyFunc falls back to the host portion of
+	// r.RemoteAddr so rate limiting still functions.
+	a := New()
+	a.configure(1, 1)
 	t.Cleanup(func() { a.Shutdown(t.Context()) })
 
 	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -139,28 +181,25 @@ func TestMiddleware_TrustProxy(t *testing.T) {
 
 	handler := a.Middleware()[0](inner)
 
-	// First request from proxy with X-Real-IP.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	req.RemoteAddr = "10.0.0.1:1234"
-	req.Header.Set("X-Real-IP", "203.0.113.1")
+	req.RemoteAddr = "1.2.3.4:5678"
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
 
-	// Second request from same real IP — should be denied.
 	req = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	req.RemoteAddr = "10.0.0.1:1234"
-	req.Header.Set("X-Real-IP", "203.0.113.1")
+	req.RemoteAddr = "1.2.3.4:5679" // same host, different port
 	rr = httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusTooManyRequests, rr.Code)
+	assert.Equal(t, http.StatusTooManyRequests, rr.Code,
+		"fallback should use the host portion only so ephemeral ports don't bypass the limit")
 }
 
 func TestMiddleware_CustomKeyFunc(t *testing.T) {
 	a := New(WithKeyFunc(func(r *http.Request) string {
 		return r.Header.Get("X-API-Key")
 	}))
-	a.configure(1, 1, false)
+	a.configure(1, 1)
 	t.Cleanup(func() { a.Shutdown(t.Context()) })
 
 	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -191,7 +230,7 @@ func TestMiddleware_CustomOnLimited(t *testing.T) {
 		customCalled = true
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
-	a.configure(1, 1, false)
+	a.configure(1, 1)
 	t.Cleanup(func() { a.Shutdown(t.Context()) })
 
 	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -264,7 +303,7 @@ func TestConfigureWithCleanup_InvalidValues(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := New()
-			err := a.configureWithCleanup(tt.rps, tt.burst, false, tt.cleanupInterval, tt.maxClients)
+			err := a.configureWithCleanup(tt.rps, tt.burst, tt.cleanupInterval, tt.maxClients)
 			assert.Error(t, err)
 		})
 	}
@@ -272,7 +311,7 @@ func TestConfigureWithCleanup_InvalidValues(t *testing.T) {
 
 func TestConfigureWithCleanup_ValidValues(t *testing.T) {
 	a := New()
-	err := a.configureWithCleanup(10, 5, false, time.Minute, 0)
+	err := a.configureWithCleanup(10, 5, time.Minute, 0)
 	require.NoError(t, err)
 	assert.NotNil(t, a.limiter)
 	a.Shutdown(t.Context())

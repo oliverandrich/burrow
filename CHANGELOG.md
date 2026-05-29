@@ -4,8 +4,13 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Breaking Changes
+
+- **`--ratelimit-trust-proxy` removed.** Client-IP extraction now lives at server level via `--client-ip-mode`; ratelimit reads `burrow.ClientIP(r.Context())`. Migration depends on your proxy (Nginx, Cloudflare, AWS ALB, etc.) — see the [Client IP guide](https://burrow.andrich.dev/guide/client-ip/) for the right combination. The old behaviour matched Nginx with `ngx_http_realip_module` and is now `--client-ip-mode=header --client-ip-header=X-Real-IP`.
+
 ### Added
 
+- **Framework-wide client IP via chi v5.3.0's new `ClientIPFromX` API.** Four `--client-ip-mode` choices (`remote-addr`, `header`, `xff-trusted-proxies`, `xff-trusted-cidrs`), each with its companion flag — boot fails fast on missing/mismatched companions. `burrow.ClientIP(ctx)` and `burrow.ClientIPAddr(ctx)` expose the value to contribs without a chi import. ratelimit is the first consumer; future request-logging / geofencing / abuse-detection can read from the same source.
 - **contrib/auth: `<noscript>` fallback in the public auth layout.** Login/register/recovery pages render a translated noscript block so JS-off browsers see an explanation instead of a silently-broken passkey button. New i18n keys `auth-noscript-{title,body,link-text}` ship in English + German.
 
 ### Changed
