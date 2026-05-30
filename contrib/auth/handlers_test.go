@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -440,6 +441,95 @@ func TestRegisterBeginUsernameExists(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "publicKey", "must not start WebAuthn flow for existing user")
 }
 
+// postRegisterBegin issues a register/begin request with the given JSON
+// body and returns the recorder. Shared by the validator table tests.
+func postRegisterBegin(t *testing.T, h *App[EmptyProfile], jsonBody string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/auth/register/begin", strings.NewReader(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	req = requestWithSession(req, nil)
+	rec := httptest.NewRecorder()
+	require.NoError(t, h.RegisterBegin(rec, req))
+	return rec
+}
+
+// TestRegisterBeginValidator covers the username- and email-mode
+// registration validators: a non-nil error rejects with 400 and the
+// message reaches the user without creating a user, and a passing
+// validator is invoked and lets registration proceed.
+func TestRegisterBeginValidator(t *testing.T) {
+	cases := []struct {
+		name    string
+		setup   func(t *testing.T) (*App[EmptyProfile], *Repository[EmptyProfile], *mockRenderer)
+		install func(h *App[EmptyProfile], fn func(context.Context, string) error)
+		body    string
+		stored  string
+	}{
+		{
+			name:    "username mode",
+			setup:   setupTestApp,
+			install: func(h *App[EmptyProfile], fn func(context.Context, string) error) { h.usernameValidator = fn },
+			body:    `{"username":"candidate"}`,
+			stored:  "candidate",
+		},
+		{
+			name:    "email mode",
+			setup:   setupTestAppEmailMode,
+			install: func(h *App[EmptyProfile], fn func(context.Context, string) error) { h.emailValidator = fn },
+			body:    `{"email":"candidate@example.com"}`,
+			stored:  "candidate@example.com",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name+" rejects", func(t *testing.T) {
+			h, repo, _ := tc.setup(t)
+			tc.install(h, func(context.Context, string) error { return errors.New("value is not allowed") })
+
+			rec := postRegisterBegin(t, h, tc.body)
+
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
+			assert.Contains(t, rec.Body.String(), "value is not allowed", "validator error message must reach the user")
+			assert.NotContains(t, rec.Body.String(), "publicKey", "must not start WebAuthn flow for rejected value")
+
+			users, err := repo.ListUsers(context.Background())
+			require.NoError(t, err)
+			assert.Empty(t, users, "rejected value must not create a user")
+		})
+
+		t.Run(tc.name+" passes", func(t *testing.T) {
+			h, repo, _ := tc.setup(t)
+			called := false
+			tc.install(h, func(context.Context, string) error { called = true; return nil })
+
+			rec := postRegisterBegin(t, h, tc.body)
+
+			assert.True(t, called, "validator must be invoked")
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Contains(t, rec.Body.String(), "publicKey")
+
+			users, err := repo.ListUsers(context.Background())
+			require.NoError(t, err)
+			require.Len(t, users, 1)
+			assert.Equal(t, tc.stored, users[0].Username)
+		})
+	}
+}
+
+func TestRegisterBeginNilUsernameValidatorUnchanged(t *testing.T) {
+	h, repo, _ := setupTestApp(t)
+	require.Nil(t, h.usernameValidator, "default app must have no username validator")
+
+	rec := postRegisterBegin(t, h, `{"username":"newuser"}`)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "publicKey")
+
+	users, err := repo.ListUsers(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, users, 1)
+}
+
 func TestRegisterBeginInvalidJSON(t *testing.T) {
 	h, _, _ := setupTestApp(t)
 	body := strings.NewReader(`{invalid}`)
@@ -452,6 +542,18 @@ func TestRegisterBeginInvalidJSON(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestRegisterBeginUsernameValidatorIgnoredInEmailMode(t *testing.T) {
+	h, _, _ := setupTestAppEmailMode(t)
+	h.usernameValidator = func(_ context.Context, _ string) error {
+		return errors.New("must not run in email mode")
+	}
+
+	rec := postRegisterBegin(t, h, `{"email":"someone@example.com"}`)
+
+	assert.Equal(t, http.StatusOK, rec.Code, "username validator must not gate email-mode registration")
+	assert.Contains(t, rec.Body.String(), "publicKey")
 }
 
 func TestRegisterBeginEmailMode(t *testing.T) {

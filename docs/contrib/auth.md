@@ -41,6 +41,29 @@ Other constructor options:
 - `auth.WithEmailService(svc)` — wire up an email backend (see [Email Service](#email-service)).
 - `auth.WithLogoComponent(html)` — render a small logo above login/register/recovery pages.
 - `auth.WithDefaultRole(role)` — assign every newly-registered user a role other than `RoleUser` (see [Default Role for New Users](#default-role-for-new-users)).
+- `auth.WithUsernameValidator(fn)` / `auth.WithEmailValidator(fn)` — reject chosen usernames or email addresses at registration time (see [Registration Validators](#registration-validators)).
+
+## Registration Validators
+
+Uniqueness of usernames and emails is already enforced by the database. The validators are for *policy* rejections — reserved handles, blocked addresses, domain restrictions — values that are free but unwanted.
+
+```go
+reserved := map[string]bool{"posts": true, "notes": true, "all": true}
+
+srv.Register(auth.New[auth.EmptyProfile](
+    auth.WithUsernameValidator[auth.EmptyProfile](func(ctx context.Context, username string) error {
+        if reserved[username] {
+            return fmt.Errorf("username %q is reserved", username)
+        }
+        return nil
+    }),
+))
+```
+
+The matching validator runs during registration after the value is read and any invite is checked, but before the user is created. `WithUsernameValidator` runs only in username mode; `WithEmailValidator` only in email mode — the modes are mutually exclusive, so exactly one fires. A non-nil error aborts registration with HTTP 400.
+
+!!! warning "The error message is shown to the user"
+    The validator's error message is returned verbatim in the registration response and surfaced by the WebAuthn client. Return a clean, user-facing message (e.g. `"username is reserved"`), not a wrapped internal error.
 
 ## Default Templates
 

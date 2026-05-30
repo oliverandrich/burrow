@@ -94,10 +94,20 @@ func (a *App[P]) RegisterBegin(w http.ResponseWriter, r *http.Request) error {
 		if req.Email == "" {
 			return errorJSON(w, http.StatusBadRequest, "email is required")
 		}
+		if a.emailValidator != nil {
+			if err := a.emailValidator(ctx, req.Email); err != nil {
+				return errorJSON(w, http.StatusBadRequest, err.Error())
+			}
+		}
 		user, createErr = a.repo.CreateUserWithEmail(ctx, req.Email)
 	} else {
 		if req.Username == "" {
 			return errorJSON(w, http.StatusBadRequest, "username is required")
+		}
+		if a.usernameValidator != nil {
+			if err := a.usernameValidator(ctx, req.Username); err != nil {
+				return errorJSON(w, http.StatusBadRequest, err.Error())
+			}
 		}
 		user, createErr = a.repo.CreateUser(ctx, req.Username)
 	}
