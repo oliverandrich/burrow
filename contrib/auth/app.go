@@ -88,6 +88,9 @@ type App[P any] struct {
 	withLocale     func(ctx context.Context, lang string) context.Context
 	emailTask      *burrow.TaskDefinition[emailJobPayload]
 	logo           template.HTML
+
+	usernameValidator func(context.Context, string) error
+	emailValidator    func(context.Context, string) error
 }
 
 // Config holds auth-specific configuration.
@@ -140,6 +143,32 @@ func WithEmailService[P any](e EmailService) Option[P] {
 // Leaving the option unset preserves the historic default ([RoleUser]).
 func WithDefaultRole[P any](role string) Option[P] {
 	return func(a *App[P]) { a.defaultRole = role }
+}
+
+// WithUsernameValidator sets a validator invoked during registration in
+// username mode, after the username is read and any invite is checked but
+// before the user is created. Returning a non-nil error aborts
+// registration with HTTP 400 and the error's message is shown to the end
+// user — so return a clean, user-facing message (e.g. "username is
+// reserved"), not a wrapped internal error. Uniqueness is already enforced
+// by the database; use this for policy rejections such as reserved handles.
+// The validator only runs in username mode; for email mode use
+// [WithEmailValidator]. Leaving it unset is a no-op (current behaviour).
+func WithUsernameValidator[P any](fn func(context.Context, string) error) Option[P] {
+	return func(a *App[P]) { a.usernameValidator = fn }
+}
+
+// WithEmailValidator sets a validator invoked during registration in email
+// mode, after the email is read and any invite is checked but before the
+// user is created. Returning a non-nil error aborts registration with HTTP
+// 400 and the error's message is shown to the end user — so return a clean,
+// user-facing message, not a wrapped internal error. Uniqueness is already
+// enforced by the database; use this for policy rejections such as blocked
+// addresses or domain restrictions. The validator only runs in email mode;
+// for username mode use [WithUsernameValidator]. Leaving it unset is a
+// no-op (current behaviour).
+func WithEmailValidator[P any](fn func(context.Context, string) error) Option[P] {
+	return func(a *App[P]) { a.emailValidator = fn }
 }
 
 // validateDefaultRole reports whether the role string is acceptable as

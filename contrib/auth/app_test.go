@@ -1342,6 +1342,24 @@ func TestWithAuthLayoutOption(t *testing.T) {
 	assert.Equal(t, "test/layout", app.authLayout, "authLayout should be set via WithAuthLayout option")
 }
 
+func TestWithUsernameValidatorOption(t *testing.T) {
+	fn := func(_ context.Context, _ string) error { return nil }
+	app := New[EmptyProfile](WithUsernameValidator[EmptyProfile](fn))
+	require.NotNil(t, app.usernameValidator, "usernameValidator should be set via WithUsernameValidator option")
+}
+
+func TestWithEmailValidatorOption(t *testing.T) {
+	fn := func(_ context.Context, _ string) error { return nil }
+	app := New[EmptyProfile](WithEmailValidator[EmptyProfile](fn))
+	require.NotNil(t, app.emailValidator, "emailValidator should be set via WithEmailValidator option")
+}
+
+func TestNewWithoutValidators(t *testing.T) {
+	app := New[EmptyProfile]()
+	assert.Nil(t, app.usernameValidator, "usernameValidator must be nil by default")
+	assert.Nil(t, app.emailValidator, "emailValidator must be nil by default")
+}
+
 func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 	// Set up a mock renderer that captures the layout from context.
 	var capturedLayout string
