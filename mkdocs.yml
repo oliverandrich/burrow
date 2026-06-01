@@ -83,6 +83,7 @@ nav:
           - Validation: guide/validation.md
           - Internationalization: guide/i18n.md
       - Advanced:
+          - JSON CRUD APIs: guide/crud-api.md
           - Pagination: guide/pagination.md
           - Full-Text Search: guide/fts5.md
           - File Uploads: guide/uploader.md
