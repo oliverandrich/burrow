@@ -152,7 +152,7 @@ Time-limited invite tokens for invite-only registration.
 
 ### APIKey
 
-SHA256-hashed API key (personal access token) for bearer authentication of non-browser clients. Only the hash is stored — the plaintext is shown once at creation. A key inherits the role of its owning user. See [RequireAPIKey](#requireapikey).
+SHA256-hashed API key (personal access token) for bearer authentication of non-browser clients (fields: `ID`, `UserID`, `Label`, optional `ExpiresAt`). Only the hash is stored — the plaintext is shown once at creation. A key inherits the role of its owning user. See [API Key Authentication](#api-key-authentication).
 
 ## Routes
 
@@ -222,7 +222,7 @@ The auth app provides three middleware functions:
 
 ### Automatic User Loading
 
-Registered automatically — loads the user from the session on every request:
+Registered automatically — resolves the user on every request from the session cookie or, for non-browser clients, an `Authorization: Bearer <api-key>` header (see [API Key Authentication](#api-key-authentication)). Both populate the same context:
 
 ```go
 // In any handler, after auth middleware runs:
@@ -231,7 +231,7 @@ user := auth.CurrentUser[auth.EmptyProfile](r.Context())  // or nil if unauthent
 
 ### RequireAuth
 
-Redirects unauthenticated users to the login page:
+Denies unauthenticated requests. Browsers and htmx requests are redirected to the login page (the original target is stored in the session for post-login return); API clients (`Accept: application/json`) get a **401** with a `WWW-Authenticate: Bearer` challenge instead.
 
 ```go
 r.Route("/notes", func(r chi.Router) {
@@ -240,11 +240,9 @@ r.Route("/notes", func(r chi.Router) {
 })
 ```
 
-The original URL is preserved via a `?next=` parameter for post-login redirect.
-
 ### RequireStaff
 
-Redirects to login if unauthenticated; returns 403 if the user is neither `staff` nor `admin`. The `contrib/admin` coordinator uses this to gate the `/admin/` frame, but you can apply it to your own routes too (e.g. a `/studio/` shell):
+Denies unauthenticated requests (redirect for browsers, 401 for API clients); returns 403 if the user is neither `staff` nor `admin`. The `contrib/admin` coordinator uses this to gate the `/admin/` frame, but you can apply it to your own routes too (e.g. a `/studio/` shell):
 
 ```go
 r.Route("/studio", func(r chi.Router) {
@@ -255,7 +253,7 @@ r.Route("/studio", func(r chi.Router) {
 
 ### RequireAdmin
 
-Redirects to login if unauthenticated; returns 403 if the user is not an admin. Use this inside `HasAdmin.AdminRoutes` to gate admin-only sub-groups (the `/admin/` frame itself is staff-gated; admin-only routes self-gate):
+Denies unauthenticated requests (redirect for browsers, 401 for API clients); returns 403 if the user is not an admin. Use this inside `HasAdmin.AdminRoutes` to gate admin-only sub-groups (the `/admin/` frame itself is staff-gated; admin-only routes self-gate):
 
 ```go
 func (a *App) AdminRoutes(r chi.Router) {
@@ -266,46 +264,56 @@ func (a *App) AdminRoutes(r chi.Router) {
 }
 ```
 
-### RequireAPIKey
+### API Key Authentication
 
-Authenticates non-browser API clients via an API key (personal access token) presented as `Authorization: Bearer <token>`. Unlike the browser middleware, it is a hard gate: a missing, malformed, unknown, expired, or inactive-user key is rejected with **401** (a JSON body when the client sends `Accept: application/json`). A valid key loads its owning user into the request context exactly like the session path, so `CurrentUser`, `RequireStaff`, and `RequireAdmin` all behave identically.
-
-Because it needs database access, `RequireAPIKey` is a method on the app instance (not a package function like `RequireAuth`):
+Non-browser clients authenticate with an API key (personal access token) sent as `Authorization: Bearer <token>`. There is **no separate middleware** — the automatic user-loading middleware resolves a bearer token to its owning user just like a session cookie, so the standard gates work unchanged. Gate an API the same way you gate any route:
 
 ```go
-authApp := auth.New[myapp.Profile]()
-srv := burrow.NewServer(session.New(), csrf.New(), authApp /* , ... */)
-
-// On the app that owns the API routes:
 r.Route("/api", func(r chi.Router) {
-    r.Use(authApp.RequireAPIKey())
-    r.Use(auth.RequireStaff()) // optional: gate by role, composes on top
-    r.Get("/posts", listPosts)
+    r.Use(auth.RequireAuth())   // or RequireStaff() — keys inherit their owner's role
+    // ... resource routes
 })
 ```
 
-Keys inherit their owner's role, so role gating is done by chaining the existing role middleware after `RequireAPIKey`.
+A valid key authenticates as its owner. A missing, unknown, or expired key (or one whose user is inactive) leaves the request unauthenticated, so `RequireAuth` answers API clients with a 401 (see above). Send `Accept: application/json` so failures return that 401 rather than a login redirect:
+
+```bash
+curl -H "Authorization: Bearer brw_…" -H "Accept: application/json" https://example.com/api/notes
+```
 
 !!! warning "Exempt API routes from CSRF"
-    The bearer path carries no cookie, so it needs no CSRF token — but the global `csrf` middleware still rejects unsafe methods (POST/PUT/DELETE) that arrive without one. Declare your API prefix CSRF-exempt via the [`csrf.ExemptPaths`](csrf.md) capability interface on the app that owns the routes:
+    The bearer path carries no cookie, so it needs no CSRF token — but the global `csrf` middleware still rejects unsafe methods (POST/PUT/DELETE) that arrive without one. Declare your API prefix CSRF-exempt via the [`csrf.ExemptPaths`](csrf.md#exempting-webhook-paths) capability interface on the app that owns the routes. The trailing slash makes it a **prefix** match (covers `/api/notes`, `/api/notes/123`, …):
 
     ```go
-    func (a *App) CSRFExemptPaths() []string { return []string{"/api/"} } // prefix match
+    func (a *App) CSRFExemptPaths() []string { return []string{"/api/"} }
     ```
 
 #### Managing keys
 
-There is no built-in UI yet — keys are created, listed, and revoked through the auth repository (`authApp.Repo()`). The plaintext token is returned **once** at creation; show it to the user immediately and never persist it (only the hash is stored):
+There is no built-in UI or CLI command yet — you mint and revoke keys yourself through the auth repository (the same `*Repository[P]` your app already builds in `Configure`). The plaintext token is returned **once** at creation; show it to the user immediately and never persist it (only the hash is stored):
 
 ```go
-repo := authApp.Repo()
+func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
+    a.userRepo = auth.NewRepository[Profile](cfg.DB) // store on the app
+    return nil
+}
 
-// nil expiry = never expires; pass a *time.Time to set one.
-plaintext, key, err := repo.CreateAPIKey(ctx, userID, "ci-deploy", nil)
-// → show `plaintext` (e.g. "brw_…") to the user now; it is unrecoverable afterwards.
+// In an authenticated handler — e.g. a "create token" action on a settings page:
+func (a *App) createKey(w http.ResponseWriter, r *http.Request) error {
+    user := auth.MustCurrentUser[Profile](r.Context())
 
-keys, _ := repo.ListAPIKeysByUser(ctx, userID) // hashes only, plaintext gone
-_ = repo.DeleteAPIKey(ctx, key.ID, userID)     // revoke (scoped to the owner)
+    // nil expiry = never expires; pass a *time.Time to set one.
+    plaintext, _, err := a.userRepo.CreateAPIKey(r.Context(), user.ID, "ci-deploy", nil)
+    if err != nil {
+        return err
+    }
+    // Show `plaintext` (e.g. "brw_…") to the user NOW — it is unrecoverable afterwards.
+    return burrow.JSON(w, http.StatusCreated, map[string]string{"token": plaintext})
+}
+
+// Listing and revoking a user's keys (hashes only; plaintext is gone):
+keys, _ := a.userRepo.ListAPIKeysByUser(ctx, user.ID)
+_ = a.userRepo.DeleteAPIKey(ctx, keyID, user.ID) // revoke, scoped to the owner
 ```
 
 ## Context Helpers
