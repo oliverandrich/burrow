@@ -12,6 +12,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/htmx"
+	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/document"
 	"github.com/urfave/cli/v3"
 )
@@ -26,6 +27,7 @@ var noteTemplateFS embed.FS
 type App struct {
 	repo     *Repository
 	userRepo *auth.Repository[Profile]
+	db       *den.DB
 }
 
 // New creates a new notes app.
@@ -40,6 +42,7 @@ func (a *App) Dependencies() []string { return []string{"auth"} }
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
 	a.repo = NewRepository(cfg.DB)
 	a.userRepo = auth.NewRepository[Profile](cfg.DB)
+	a.db = cfg.DB
 	return nil
 }
 
@@ -99,6 +102,9 @@ func (a *App) Routes(r chi.Router) {
 		r.Post("/{id}", burrow.Handle(a.Update))
 		r.Delete("/{id}", burrow.Handle(a.Delete))
 	})
+
+	// JSON API counterpart to the HTML UI above (see api.go).
+	a.apiRoutes(r)
 }
 
 // adminListNotes handles GET /admin/notes — paginated note list with optional search.
