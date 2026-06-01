@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oliverandrich/burrow/contrib/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -112,15 +113,19 @@ func TestDeleteAPIKeyScopedToUser(t *testing.T) {
 	assert.Empty(t, keys)
 }
 
-// --- Middleware tests ---
+// --- Bearer authentication tests ---
+//
+// Bearer tokens are resolved by the same automatic authMiddleware as session
+// cookies, so the standard gates (RequireAuth / RequireStaff) work for API
+// clients with no extra middleware. These tests drive authMiddleware + a gate.
 
-// apiKeyRouter wires RequireAPIKey in front of a handler that echoes the
-// authenticated username, so tests can assert who (if anyone) got through.
-func apiKeyRouter(app *App[EmptyProfile], extra ...func(http.Handler) http.Handler) chi.Router {
+// bearerRouter wires the automatic user-loading middleware plus the given
+// gates in front of a handler that echoes the authenticated username.
+func bearerRouter(app *App[EmptyProfile], gates ...func(http.Handler) http.Handler) chi.Router {
 	r := chi.NewRouter()
-	r.Use(app.RequireAPIKey())
-	for _, m := range extra {
-		r.Use(m)
+	r.Use(app.authMiddleware)
+	for _, g := range gates {
+		r.Use(g)
 	}
 	r.Get("/api/ping", func(w http.ResponseWriter, r *http.Request) {
 		user := CurrentUser[EmptyProfile](r.Context())
@@ -129,16 +134,18 @@ func apiKeyRouter(app *App[EmptyProfile], extra ...func(http.Handler) http.Handl
 	return r
 }
 
-func apiKeyRequest(ctx context.Context, token string) *http.Request {
+// bearerRequest builds an API request (Accept: application/json, empty
+// session) optionally carrying a bearer token.
+func bearerRequest(ctx context.Context, token string) *http.Request {
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/ping", nil)
 	req.Header.Set("Accept", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-	return req
+	return session.Inject(req, nil)
 }
 
-func TestRequireAPIKeyAllowsValidKey(t *testing.T) {
+func TestBearerAuthAllowsValidKey(t *testing.T) {
 	app, repo := newTestApp(t)
 
 	user, err := repo.CreateUser(context.Background(), "alice")
@@ -147,33 +154,33 @@ func TestRequireAPIKeyAllowsValidKey(t *testing.T) {
 	require.NoError(t, err)
 
 	rec := httptest.NewRecorder()
-	apiKeyRouter(app).ServeHTTP(rec, apiKeyRequest(t.Context(), plaintext))
+	bearerRouter(app, RequireAuth()).ServeHTTP(rec, bearerRequest(t.Context(), plaintext))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "alice", rec.Body.String(), "the key's owner is the authenticated user")
 }
 
-func TestRequireAPIKeyRejectsMissingHeader(t *testing.T) {
+func TestBearerAuthRejectsMissingCredential(t *testing.T) {
 	app, _ := newTestApp(t)
 
 	rec := httptest.NewRecorder()
-	apiKeyRouter(app).ServeHTTP(rec, apiKeyRequest(t.Context(), ""))
+	bearerRouter(app, RequireAuth()).ServeHTTP(rec, bearerRequest(t.Context(), ""))
 
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "API client gets 401, not a redirect")
 	assert.Equal(t, "Bearer", rec.Header().Get("WWW-Authenticate"))
 	assert.Contains(t, rec.Body.String(), "error")
 }
 
-func TestRequireAPIKeyRejectsUnknownToken(t *testing.T) {
+func TestBearerAuthRejectsUnknownToken(t *testing.T) {
 	app, _ := newTestApp(t)
 
 	rec := httptest.NewRecorder()
-	apiKeyRouter(app).ServeHTTP(rec, apiKeyRequest(t.Context(), "brw_unknown"))
+	bearerRouter(app, RequireAuth()).ServeHTTP(rec, bearerRequest(t.Context(), "brw_unknown"))
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
-func TestRequireAPIKeyRejectsExpiredKey(t *testing.T) {
+func TestBearerAuthRejectsExpiredKey(t *testing.T) {
 	app, repo := newTestApp(t)
 
 	user, err := repo.CreateUser(context.Background(), "alice")
@@ -183,12 +190,12 @@ func TestRequireAPIKeyRejectsExpiredKey(t *testing.T) {
 	require.NoError(t, err)
 
 	rec := httptest.NewRecorder()
-	apiKeyRouter(app).ServeHTTP(rec, apiKeyRequest(t.Context(), plaintext))
+	bearerRouter(app, RequireAuth()).ServeHTTP(rec, bearerRequest(t.Context(), plaintext))
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
-func TestRequireAPIKeyRejectsInactiveUser(t *testing.T) {
+func TestBearerAuthRejectsInactiveUser(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
@@ -199,12 +206,12 @@ func TestRequireAPIKeyRejectsInactiveUser(t *testing.T) {
 	require.NoError(t, repo.SetUserActive(ctx, user.ID, false))
 
 	rec := httptest.NewRecorder()
-	apiKeyRouter(app).ServeHTTP(rec, apiKeyRequest(t.Context(), plaintext))
+	bearerRouter(app, RequireAuth()).ServeHTTP(rec, bearerRequest(t.Context(), plaintext))
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
-func TestRequireAPIKeyComposesWithRequireStaff(t *testing.T) {
+func TestBearerAuthComposesWithRequireStaff(t *testing.T) {
 	app, repo := newTestApp(t)
 	ctx := context.Background()
 
@@ -215,12 +222,12 @@ func TestRequireAPIKeyComposesWithRequireStaff(t *testing.T) {
 	require.NoError(t, err)
 
 	rec := httptest.NewRecorder()
-	apiKeyRouter(app, RequireStaff()).ServeHTTP(rec, apiKeyRequest(t.Context(), plaintext))
+	bearerRouter(app, RequireStaff()).ServeHTTP(rec, bearerRequest(t.Context(), plaintext))
 	assert.Equal(t, http.StatusForbidden, rec.Code, "valid key, insufficient role → 403")
 
 	// Promote to staff and retry.
 	require.NoError(t, repo.SetUserRole(ctx, user.ID, RoleStaff))
 	rec = httptest.NewRecorder()
-	apiKeyRouter(app, RequireStaff()).ServeHTTP(rec, apiKeyRequest(t.Context(), plaintext))
+	bearerRouter(app, RequireStaff()).ServeHTTP(rec, bearerRequest(t.Context(), plaintext))
 	assert.Equal(t, http.StatusOK, rec.Code, "staff key passes the role gate")
 }

@@ -403,25 +403,47 @@ func (a *App[P]) Middleware() []func(http.Handler) http.Handler {
 	return []func(http.Handler) http.Handler{a.authMiddleware}
 }
 
-// authMiddleware loads the user from the session and sets it in the request context.
+// authMiddleware loads the user from the request and sets it in the context.
 // It also injects a burrow.AuthChecker so the core navLinks template function
 // can filter AuthOnly/AdminOnly items without importing this package.
+//
+// Credentials come from the session cookie or, for non-browser API clients,
+// an `Authorization: Bearer <api-key>` header — both resolve to the same
+// context, so the gates ([RequireAuth] etc.) work identically for either.
 func (a *App[P]) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID := session.GetString(r, "user_id")
-		if userID == "" {
+		user := a.resolveUser(r)
+		if user == nil {
 			next.ServeHTTP(w, r)
 			return
 		}
-
-		user, err := a.repo.GetUserByID(r.Context(), userID)
-		if err != nil || !user.IsActive {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		next.ServeHTTP(w, r.WithContext(setAuthContext(r.Context(), user)))
 	})
+}
+
+// resolveUser identifies the request's active user from the session cookie,
+// falling back to an API-key bearer token. It returns nil when neither
+// credential identifies an active user — the request then proceeds
+// unauthenticated and the gates decide what to do.
+func (a *App[P]) resolveUser(r *http.Request) *User[P] {
+	if userID := session.GetString(r, "user_id"); userID != "" {
+		if user, err := a.repo.GetUserByID(r.Context(), userID); err == nil && user.IsActive {
+			return user
+		}
+	}
+	if token := bearerToken(r); token != "" {
+		// An unknown or expired token resolves to no user — the request
+		// proceeds unauthenticated and the gate (RequireAuth etc.) returns
+		// the 401. The resolver never rejects; only gates do.
+		key, err := a.repo.GetAPIKeyByHash(r.Context(), HashToken(token))
+		if err != nil || key.IsExpired() {
+			return nil
+		}
+		if user, err := a.repo.GetUserByID(r.Context(), key.UserID); err == nil && user.IsActive {
+			return user
+		}
+	}
+	return nil
 }
 
 // Routes registers auth HTTP routes.

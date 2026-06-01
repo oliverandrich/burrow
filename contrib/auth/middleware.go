@@ -3,26 +3,56 @@ package auth
 import (
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/htmx"
 	"github.com/oliverandrich/burrow/contrib/session"
 )
 
-// requireAuth returns middleware that redirects to login if not authenticated.
+// requireAuth returns middleware that denies unauthenticated requests.
 func requireAuth() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !IsAuthenticated(r.Context()) {
-				if target := redirectTarget(r); target != "" {
-					_ = session.Set(w, r, "redirect_after_login", target)
-				}
-				redirectToLogin(w, r)
+				denyUnauthenticated(w, r)
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// denyUnauthenticated rejects a request that carries no authenticated user.
+// API clients (Accept: application/json) get a 401 with a Bearer challenge;
+// browsers and htmx requests are redirected to the login page with the
+// original target stored for post-login return.
+func denyUnauthenticated(w http.ResponseWriter, r *http.Request) {
+	if wantsJSON(r) {
+		w.Header().Set("WWW-Authenticate", "Bearer")
+		burrow.RenderError(w, r, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if target := redirectTarget(r); target != "" {
+		_ = session.Set(w, r, "redirect_after_login", target)
+	}
+	redirectToLogin(w, r)
+}
+
+// wantsJSON reports whether the client prefers a JSON response — the same
+// Accept-header heuristic [burrow.RenderError] uses to pick its body.
+func wantsJSON(r *http.Request) bool {
+	return strings.Contains(r.Header.Get("Accept"), "application/json")
+}
+
+// bearerToken extracts the token from an `Authorization: Bearer <token>`
+// header, or returns "" when the header is absent or not a bearer scheme.
+func bearerToken(r *http.Request) string {
+	scheme, token, ok := strings.Cut(r.Header.Get("Authorization"), " ")
+	if !ok || !strings.EqualFold(scheme, "Bearer") {
+		return ""
+	}
+	return strings.TrimSpace(token)
 }
 
 // redirectTarget returns the URL to redirect back to after login.
@@ -53,18 +83,15 @@ type roleChecker interface {
 }
 
 // requireRole returns middleware that loads the request's user from
-// context and applies pass to decide access. Unauthenticated requests
-// redirect to login; authenticated requests where pass returns false get a
-// 403 error page.
+// context and applies pass to decide access. Unauthenticated requests are
+// denied (401 for API clients, redirect to login for browsers);
+// authenticated requests where pass returns false get a 403 error page.
 func requireRole(pass func(roleChecker) bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, ok := r.Context().Value(ctxKeyUser{}).(roleChecker)
 			if !ok {
-				if target := redirectTarget(r); target != "" {
-					_ = session.Set(w, r, "redirect_after_login", target)
-				}
-				redirectToLogin(w, r)
+				denyUnauthenticated(w, r)
 				return
 			}
 			if !pass(user) {
