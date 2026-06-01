@@ -18,7 +18,7 @@ type RecoveryLoginRequest struct {
 
 // RecoveryPage renders the recovery login page.
 func (a *App[P]) RecoveryPage(w http.ResponseWriter, r *http.Request) error {
-	return a.renderer.RecoveryPage(w, r, a.config.LoginRedirect)
+	return recoveryPage(w, r, a.config.LoginRedirect)
 }
 
 // RecoveryLogin authenticates a user with a recovery code.
@@ -130,7 +130,7 @@ func (a *App[P]) RecoveryCodesPage(w http.ResponseWriter, r *http.Request) error
 		return nil
 	}
 
-	return a.renderer.RecoveryCodesPage(w, r, codes)
+	return recoveryCodesPage(w, r, codes)
 }
 
 // AcknowledgeRecoveryCodes clears recovery codes from the session and redirects.

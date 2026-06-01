@@ -121,7 +121,7 @@ Visit `/auth/register` to create an account (you'll need a browser that supports
 
 ## What You've Learnt
 
-- **`auth.New[auth.EmptyProfile]()`** — configures the auth app with built-in default renderer and layout
+- **`auth.New[auth.EmptyProfile]()`** — configures the auth app with the built-in auth layout and page templates
 - **`auth.RequireAuth()`** — middleware that redirects unauthenticated users to login
 - **`auth.CurrentUser[auth.EmptyProfile]()`** — retrieves the authenticated user from request context
 - **`HasDependencies`** — declares inter-app dependencies for automatic ordering

@@ -16,7 +16,7 @@ import (
 
 // LoginPage renders the login page.
 func (a *App[P]) LoginPage(w http.ResponseWriter, r *http.Request) error {
-	return a.renderer.LoginPage(w, r, a.config.LoginRedirect)
+	return loginPage(w, r, a.config.LoginRedirect)
 }
 
 // LoginBegin starts the WebAuthn discoverable login process.

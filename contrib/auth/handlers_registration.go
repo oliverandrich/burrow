@@ -9,19 +9,6 @@ import (
 	"github.com/oliverandrich/burrow/contrib/session"
 )
 
-// Renderer defines the page rendering interface for auth templates.
-// Projects implement this to provide their own template rendering.
-type Renderer interface {
-	RegisterPage(w http.ResponseWriter, r *http.Request, useEmail, inviteOnly bool, email, invite string) error
-	LoginPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
-	CredentialsPage(w http.ResponseWriter, r *http.Request, creds []Credential) error
-	RecoveryPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
-	RecoveryCodesPage(w http.ResponseWriter, r *http.Request, codes []string) error
-	VerifyPendingPage(w http.ResponseWriter, r *http.Request) error
-	VerifyEmailSuccessPage(w http.ResponseWriter, r *http.Request) error
-	VerifyEmailErrorPage(w http.ResponseWriter, r *http.Request, errorCode string) error
-}
-
 // UseEmailMode returns true if email-based authentication is enabled.
 func (a *App[P]) UseEmailMode() bool {
 	return a.config != nil && a.config.UseEmail
@@ -47,12 +34,12 @@ func (a *App[P]) RegisterPage(w http.ResponseWriter, r *http.Request) error {
 	if a.IsInviteOnly() && inviteToken != "" {
 		invite, err := a.validateInviteToken(r.Context(), inviteToken)
 		if err != nil || !invite.IsValid() {
-			return a.renderer.RegisterPage(w, r, a.UseEmailMode(), true, "", "")
+			return registerPage(w, r, a.UseEmailMode(), true, "", "")
 		}
-		return a.renderer.RegisterPage(w, r, a.UseEmailMode(), true, invite.Email, inviteToken)
+		return registerPage(w, r, a.UseEmailMode(), true, invite.Email, inviteToken)
 	}
 
-	return a.renderer.RegisterPage(w, r, a.UseEmailMode(), a.IsInviteOnly(), "", "")
+	return registerPage(w, r, a.UseEmailMode(), a.IsInviteOnly(), "", "")
 }
 
 // RegisterBegin starts the WebAuthn registration process.

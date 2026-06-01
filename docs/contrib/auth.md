@@ -26,12 +26,11 @@ srv := burrow.NewServer(
 )
 ```
 
-The constructor uses built-in defaults for the renderer and auth layout. Use options to override with custom implementations:
+The constructor uses a built-in auth layout. Override it with an option, and restyle individual pages by redefining their templates (see [Page rendering](#page-rendering)):
 
 ```go
-// With custom renderer and layout.
+// With a custom auth layout shell.
 auth.New[auth.EmptyProfile](
-    auth.WithRenderer(myCustomRenderer),
     auth.WithAuthLayout("myapp/auth-layout"),
 )
 ```
@@ -366,57 +365,31 @@ In templates (via `HasRequestFuncMap`):
 {{ end }}
 ```
 
-## Renderer
+## Page rendering
 
-The auth app uses a `Renderer` interface to render all user-facing HTML pages. Each method corresponds to one page in the authentication flow.
+The auth app renders its pages (login, register, credentials, recovery codes, email verification) with the shipped `auth/*` templates — Tailwind v4 markup wrapped in either a centered layout (login) or a card layout (the rest). `auth.DefaultAuthLayout()` returns `"auth/layout"`, the navbar-less shell from [Auth Layout](#auth-layout), so auth pages render inside it by default. Pass `auth.WithAuthLayout("")` to inherit the host's `srv.SetLayout` instead, or `auth.WithAuthLayout("myapp/auth-layout")` to swap in your own shell.
 
-### Default Renderer
-
-By default, `auth.New[auth.EmptyProfile]()` uses a built-in renderer that calls `burrow.Render()` with the shipped `auth/*` templates. These templates use Tailwind v4 utility classes and are wrapped in either a centered layout (login) or a card layout (register, credentials, recovery codes, etc.). `auth.DefaultAuthLayout()` returns `"auth/layout"` — the shipped, navbar-less shell described in [Auth Layout](#auth-layout) — so auth pages render inside that shell by default. To make auth pages inherit the host's `srv.SetLayout` instead, pass `auth.WithAuthLayout("")`. To swap in a custom shell, pass `auth.WithAuthLayout("myapp/auth-layout")` and override the renderer via `auth.WithRenderer(...)` when you need a different look.
-
-For most applications, the default renderer works out of the box — you only need to override it if you want to fundamentally change how auth pages are rendered.
-
-### Custom Renderer
-
-To fully control the auth page markup, implement the `Renderer` interface and pass it via `auth.WithRenderer()`:
+To restyle a page, **redefine its template**. Ship the block in your own app's templates (contributed via `HasTemplates` — see [Templates](#default-templates)); burrow parses every app's templates into one set and last definition wins, so an app registered after `auth` overrides the built-in block:
 
 ```go
-auth.New[auth.EmptyProfile](
-    auth.WithRenderer(myRenderer),
-)
+{{ define "auth/login" }}
+  <!-- your markup; the page's data is unchanged (see the table below) -->
+{{ end }}
 ```
 
-```go
-type Renderer interface {
-    RegisterPage(w http.ResponseWriter, r *http.Request, useEmail, inviteOnly bool, email, invite string) error
-    LoginPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
-    CredentialsPage(w http.ResponseWriter, r *http.Request, creds []Credential) error
-    RecoveryPage(w http.ResponseWriter, r *http.Request, loginRedirect string) error
-    RecoveryCodesPage(w http.ResponseWriter, r *http.Request, codes []string) error
-    VerifyPendingPage(w http.ResponseWriter, r *http.Request) error
-    VerifyEmailSuccessPage(w http.ResponseWriter, r *http.Request) error
-    VerifyEmailErrorPage(w http.ResponseWriter, r *http.Request, errorCode string) error
-}
-```
+Overrides are markup-only: the data each page receives is fixed (there is no longer a renderer to pass custom Go-side data). The page templates and their data:
 
-Each method writes a complete HTTP response. You can use `burrow.Render()` with your own template names, or write HTML directly — whatever fits your application.
+| Template | Data available |
+|----------|----------------|
+| `auth/login` | `.LoginRedirect` |
+| `auth/register` | `.UseEmail`, `.InviteOnly`, `.Email`, `.Invite` |
+| `auth/credentials` | `.Creds` (`[]Credential`) |
+| `auth/recovery` | `.LoginRedirect` |
+| `auth/recovery_codes` | `.Codes` (`[]string`) |
+| `auth/verify_pending` / `auth/verify_success` | — |
+| `auth/verify_error` | `.ErrorCode` |
 
-A minimal custom renderer might look like this:
-
-```go
-type myRenderer struct{}
-
-func (r *myRenderer) LoginPage(w http.ResponseWriter, req *http.Request, loginRedirect string) error {
-    return burrow.Render(w, req, http.StatusOK, "myapp/login", map[string]any{
-        "LoginRedirect": loginRedirect,
-    })
-}
-
-// ... implement the remaining methods
-```
-
-!!! tip
-    You don't need a custom renderer just to change styles. The default templates use Tailwind v4 utility classes and are wrapped in the [auth layout](#auth-layout), which you can override separately via `auth.WithAuthLayout()`.
+The `auth/layout`, `auth/card`, and `auth/centered` wrappers receive `.Content`, `.Title`, and (card only) `.CardTitle`. No renderer abstraction to implement — template redefinition is the override mechanism.
 
 ## Admin Integration
 

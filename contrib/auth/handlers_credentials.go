@@ -15,7 +15,7 @@ func (a *App[P]) CredentialsPage(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return errorJSONLog(w, http.StatusInternalServerError, "failed to get credentials", err)
 	}
-	return a.renderer.CredentialsPage(w, r, creds)
+	return credentialsPage(w, r, creds)
 }
 
 // AddCredentialBegin starts the process of adding a new credential.

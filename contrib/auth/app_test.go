@@ -1360,13 +1360,21 @@ func TestNewWithoutValidators(t *testing.T) {
 	assert.Nil(t, app.emailValidator, "emailValidator must be nil by default")
 }
 
+// layoutCapturingExecutor returns a TemplateExecutor that records the layout
+// present in context (set by authLayoutMiddleware) into capturedLayout and
+// renders trivial text. It replaces the former layoutCapturingRenderer now
+// that page rendering goes through the package funcs + a context executor.
+func layoutCapturingExecutor(capturedLayout *string) burrow.TemplateExecutor {
+	return func(ctx context.Context, _ string, _ map[string]any) (template.HTML, error) {
+		*capturedLayout = burrow.Layout(ctx)
+		return template.HTML("page"), nil //nolint:gosec // test
+	}
+}
+
 func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
-	// Set up a mock renderer that captures the layout from context.
 	var capturedLayout string
-	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
 	app := &App[EmptyProfile]{
-		renderer:   mockR,
 		config:     &Config{LoginRedirect: "/"},
 		authLayout: "test/auth-layout",
 	}
@@ -1375,6 +1383,7 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := burrow.WithLayout(r.Context(), "global/layout")
+			ctx = burrow.WithTemplateExecutor(ctx, layoutCapturingExecutor(&capturedLayout))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
@@ -1386,20 +1395,17 @@ func TestPublicAuthRoutesUseAuthLayout(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	// The captured layout should be the auth layout, not the global one.
-	assert.Equal(t, "test/auth-layout", *mockR.capturedLayout, "layout should be the auth layout")
+	assert.Equal(t, "test/auth-layout", capturedLayout, "layout should be the auth layout")
 }
 
 func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewRepository[EmptyProfile](db)
 
-	// Set up a mock renderer that captures the layout from context.
 	var capturedLayout string
-	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
 	app := &App[EmptyProfile]{
 		repo:       repo,
-		renderer:   mockR,
 		config:     &Config{LoginRedirect: "/"},
 		authLayout: "test/auth-layout",
 	}
@@ -1412,6 +1418,7 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := burrow.WithLayout(r.Context(), "global/layout")
+			ctx = burrow.WithTemplateExecutor(ctx, layoutCapturingExecutor(&capturedLayout))
 			// Inject the user so RequireAuth passes.
 			ctx = WithUser(ctx, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -1425,17 +1432,15 @@ func TestAuthenticatedRoutesKeepGlobalLayout(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	// The captured layout should be the global layout, not the auth layout.
-	assert.Equal(t, "global/layout", *mockR.capturedLayout, "layout should be the global layout")
+	assert.Equal(t, "global/layout", capturedLayout, "layout should be the global layout")
 }
 
 func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 	// When no auth layout is set, public routes should keep the global layout.
 	var capturedLayout string
-	mockR := &layoutCapturingRenderer{capturedLayout: &capturedLayout}
 
 	app := &App[EmptyProfile]{
-		renderer: mockR,
-		config:   &Config{LoginRedirect: "/"},
+		config: &Config{LoginRedirect: "/"},
 	}
 	// No SetAuthLayout call.
 
@@ -1443,6 +1448,7 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := burrow.WithLayout(r.Context(), "global/layout")
+			ctx = burrow.WithTemplateExecutor(ctx, layoutCapturingExecutor(&capturedLayout))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
@@ -1453,60 +1459,7 @@ func TestPublicRoutesWithoutAuthLayoutKeepGlobalLayout(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "global/layout", *mockR.capturedLayout, "global layout should be preserved when no auth layout is set")
-}
-
-// layoutCapturingRenderer is a mock Renderer that captures the layout from context.
-type layoutCapturingRenderer struct {
-	capturedLayout *string
-}
-
-func (m *layoutCapturingRenderer) LoginPage(w http.ResponseWriter, r *http.Request, _ string) error {
-	lay := burrow.Layout(r.Context())
-	*m.capturedLayout = lay
-	return burrow.Text(w, http.StatusOK, "login")
-}
-
-func (m *layoutCapturingRenderer) RegisterPage(w http.ResponseWriter, r *http.Request, _, _ bool, _, _ string) error {
-	lay := burrow.Layout(r.Context())
-	*m.capturedLayout = lay
-	return burrow.Text(w, http.StatusOK, "register")
-}
-
-func (m *layoutCapturingRenderer) CredentialsPage(w http.ResponseWriter, r *http.Request, _ []Credential) error {
-	lay := burrow.Layout(r.Context())
-	*m.capturedLayout = lay
-	return burrow.Text(w, http.StatusOK, "credentials")
-}
-
-func (m *layoutCapturingRenderer) RecoveryPage(w http.ResponseWriter, r *http.Request, _ string) error {
-	lay := burrow.Layout(r.Context())
-	*m.capturedLayout = lay
-	return burrow.Text(w, http.StatusOK, "recovery")
-}
-
-func (m *layoutCapturingRenderer) RecoveryCodesPage(w http.ResponseWriter, r *http.Request, _ []string) error {
-	lay := burrow.Layout(r.Context())
-	*m.capturedLayout = lay
-	return burrow.Text(w, http.StatusOK, "recovery-codes")
-}
-
-func (m *layoutCapturingRenderer) VerifyPendingPage(w http.ResponseWriter, r *http.Request) error {
-	lay := burrow.Layout(r.Context())
-	*m.capturedLayout = lay
-	return burrow.Text(w, http.StatusOK, "verify-pending")
-}
-
-func (m *layoutCapturingRenderer) VerifyEmailSuccessPage(w http.ResponseWriter, r *http.Request) error {
-	lay := burrow.Layout(r.Context())
-	*m.capturedLayout = lay
-	return burrow.Text(w, http.StatusOK, "verify-success")
-}
-
-func (m *layoutCapturingRenderer) VerifyEmailErrorPage(w http.ResponseWriter, r *http.Request, _ string) error {
-	lay := burrow.Layout(r.Context())
-	*m.capturedLayout = lay
-	return burrow.Text(w, http.StatusBadRequest, "verify-error")
+	assert.Equal(t, "global/layout", capturedLayout, "global layout should be preserved when no auth layout is set")
 }
 
 // --- Static files tests ---
@@ -1579,12 +1532,6 @@ func TestRequestFuncMapUnauthenticated(t *testing.T) {
 }
 
 // --- Option functions ---
-
-func TestWithRendererOption(t *testing.T) {
-	r := &mockRenderer{}
-	app := New[EmptyProfile](WithRenderer[EmptyProfile](r))
-	assert.Equal(t, r, app.renderer)
-}
 
 func TestWithLogoComponentOption(t *testing.T) {
 	logo := template.HTML(`<img src="logo.png"/>`)
@@ -1831,18 +1778,15 @@ func TestRequestFuncMapAuthLogo(t *testing.T) {
 }
 
 func TestNewWithMultipleOptions(t *testing.T) {
-	r := &mockRenderer{}
 	logo := template.HTML(`<span>Logo</span>`)
 	emailSvc := &mockEmailService{}
 
 	app := New(
-		WithRenderer[EmptyProfile](r),
 		WithLogoComponent[EmptyProfile](logo),
 		WithEmailService[EmptyProfile](emailSvc),
 		WithAuthLayout[EmptyProfile]("custom/auth-layout"),
 	)
 
-	assert.Equal(t, r, app.renderer)
 	assert.Equal(t, logo, app.logo)
 	assert.Equal(t, emailSvc, app.emailService)
 	assert.Equal(t, "custom/auth-layout", app.authLayout)
@@ -1863,12 +1807,19 @@ func TestAdminRoutes(t *testing.T) {
 
 func TestRoutesWithLogoMiddleware(t *testing.T) {
 	app := &App[EmptyProfile]{
-		renderer: &mockRenderer{},
-		config:   &Config{LoginRedirect: "/"},
-		logo:     template.HTML(`<img src="logo.png"/>`),
+		config: &Config{LoginRedirect: "/"},
+		logo:   template.HTML(`<img src="logo.png"/>`),
 	}
 
 	router := chi.NewRouter()
+	// Inject a template executor so the login page renders instead of
+	// falling through to burrow.Render (which needs a template set).
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := burrow.WithTemplateExecutor(r.Context(), rendererTestExecutor())
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 	// Should not panic.
 	app.Routes(router)
 

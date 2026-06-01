@@ -19,9 +19,6 @@ import (
 //go:embed templates/*.html
 var testRendererTemplateFS embed.FS
 
-// Compile-time interface assertion.
-var _ Renderer = (*defaultRenderer)(nil)
-
 // testBaseFuncMap returns the common template functions needed to parse auth templates in tests.
 func testBaseFuncMap() template.FuncMap {
 	return template.FuncMap{
@@ -77,12 +74,11 @@ func withRendererTestExecutor(req *http.Request) *http.Request {
 	return req.WithContext(ctx)
 }
 
-func TestDefaultRendererLoginPage(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderLoginPage(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.LoginPage(rec, req, "/dashboard")
+	err := loginPage(rec, req, "/dashboard")
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -91,12 +87,11 @@ func TestDefaultRendererLoginPage(t *testing.T) {
 	assert.NotContains(t, body, "<article ", "login page should not have a card frame")
 }
 
-func TestDefaultRendererRegisterPage(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderRegisterPage(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.RegisterPage(rec, req, false, false, "", "")
+	err := registerPage(rec, req, false, false, "", "")
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -105,12 +100,11 @@ func TestDefaultRendererRegisterPage(t *testing.T) {
 	assert.Contains(t, body, "<article ", "register page should be wrapped in a card")
 }
 
-func TestDefaultRendererRegisterPageEmailMode(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderRegisterPageEmailMode(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.RegisterPage(rec, req, true, false, "", "")
+	err := registerPage(rec, req, true, false, "", "")
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -118,15 +112,14 @@ func TestDefaultRendererRegisterPageEmailMode(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "register-username-label")
 }
 
-func TestDefaultRendererCredentialsPage(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderCredentialsPage(t *testing.T) {
 	cred := Credential{Name: "My Passkey"}
 	cred.ID = "cred-1"
 	creds := []Credential{cred}
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/credentials", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.CredentialsPage(rec, req, creds)
+	err := credentialsPage(rec, req, creds)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -135,12 +128,11 @@ func TestDefaultRendererCredentialsPage(t *testing.T) {
 	assert.Contains(t, body, "<article ", "credentials page should be wrapped in a card")
 }
 
-func TestDefaultRendererRecoveryPage(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderRecoveryPage(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.RecoveryPage(rec, req, "/dashboard")
+	err := recoveryPage(rec, req, "/dashboard")
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -150,13 +142,12 @@ func TestDefaultRendererRecoveryPage(t *testing.T) {
 	assert.Contains(t, body, "<article ", "recovery page should be wrapped in a card")
 }
 
-func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderRecoveryCodesPage(t *testing.T) {
 	codes := []string{"aaaa-bbbb-cccc", "dddd-eeee-ffff"}
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/recovery-codes", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.RecoveryCodesPage(rec, req, codes)
+	err := recoveryCodesPage(rec, req, codes)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -171,12 +162,11 @@ func TestDefaultRendererRecoveryCodesPage(t *testing.T) {
 		"recovery-codes ack form must not fall back to method=POST (dead code)")
 }
 
-func TestDefaultRendererVerifyPendingPage(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderVerifyPendingPage(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-pending", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.VerifyPendingPage(rec, req)
+	err := verifyPendingPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -185,12 +175,11 @@ func TestDefaultRendererVerifyPendingPage(t *testing.T) {
 	assert.Contains(t, body, "<article ", "verify pending page should be wrapped in a card")
 }
 
-func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderVerifyEmailSuccess(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.VerifyEmailSuccessPage(rec, req)
+	err := verifyEmailSuccessPage(rec, req)
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -199,12 +188,11 @@ func TestDefaultRendererVerifyEmailSuccess(t *testing.T) {
 	assert.Contains(t, body, "<article ", "verify email success page should be wrapped in a card")
 }
 
-func TestDefaultRendererVerifyEmailError(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderVerifyEmailError(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/verify-email", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.VerifyEmailErrorPage(rec, req, "invalid_token")
+	err := verifyEmailErrorPage(rec, req, "invalid_token")
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -214,8 +202,7 @@ func TestDefaultRendererVerifyEmailError(t *testing.T) {
 	assert.Contains(t, body, "<article ", "verify email error page should be wrapped in a card")
 }
 
-func TestDefaultRendererLoginPageWithLogo(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderLoginPageWithLogo(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
 	logoExec := rendererTestExecutorWithLogo(`<span class="test-logo">My Brand</span>`)
@@ -224,7 +211,7 @@ func TestDefaultRendererLoginPageWithLogo(t *testing.T) {
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
-	err := r.LoginPage(rec, req, "/dashboard")
+	err := loginPage(rec, req, "/dashboard")
 
 	require.NoError(t, err)
 	body := rec.Body.String()
@@ -232,20 +219,18 @@ func TestDefaultRendererLoginPageWithLogo(t *testing.T) {
 	assert.Contains(t, body, "My Brand")
 }
 
-func TestDefaultRendererLoginPageWithoutLogo(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderLoginPageWithoutLogo(t *testing.T) {
 	req := withRendererTestExecutor(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil))
 	rec := httptest.NewRecorder()
 
-	err := r.LoginPage(rec, req, "/dashboard")
+	err := loginPage(rec, req, "/dashboard")
 
 	require.NoError(t, err)
 	body := rec.Body.String()
 	assert.NotContains(t, body, `class="auth-logo"`)
 }
 
-func TestDefaultRendererWithLayout(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderWithLayout(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
 	exec := func(_ context.Context, name string, data map[string]any) (template.HTML, error) {
@@ -261,7 +246,7 @@ func TestDefaultRendererWithLayout(t *testing.T) {
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
-	err := r.LoginPage(rec, req, "/dashboard")
+	err := loginPage(rec, req, "/dashboard")
 
 	require.NoError(t, err)
 	assert.Contains(t, rec.Body.String(), "<layout-wrapper>")
@@ -269,8 +254,7 @@ func TestDefaultRendererWithLayout(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "</layout-wrapper>")
 }
 
-func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderIncludesCSRFToken(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
 	funcMap := testBaseFuncMap()
@@ -291,7 +275,7 @@ func TestDefaultRendererIncludesCSRFToken(t *testing.T) {
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
-	err := r.LoginPage(rec, req, "/dashboard")
+	err := loginPage(rec, req, "/dashboard")
 
 	require.NoError(t, err)
 	body := rec.Body.String()
@@ -308,31 +292,28 @@ func TestDefaultAuthLayout(t *testing.T) {
 
 // --- renderCentered/renderCard without executor ---
 
-func TestDefaultRendererLoginPageWithoutExecutor(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderLoginPageWithoutExecutor(t *testing.T) {
 	// Request without template executor => falls back to burrow.RenderTemplate.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 	rec := httptest.NewRecorder()
 
 	// This will try to use burrow.RenderTemplate which may return an error
 	// if no template set is configured, but we're testing the code path.
-	err := r.LoginPage(rec, req, "/dashboard")
+	err := loginPage(rec, req, "/dashboard")
 	// Without a template executor, renderCentered falls through to burrow.RenderTemplate
 	// which needs a template set. We just want to confirm it doesn't panic.
 	_ = err
 }
 
-func TestDefaultRendererRegisterPageWithoutExecutor(t *testing.T) {
-	r := DefaultRenderer()
+func TestRenderRegisterPageWithoutExecutor(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil)
 	rec := httptest.NewRecorder()
 
-	err := r.RegisterPage(rec, req, false, false, "", "")
+	err := registerPage(rec, req, false, false, "", "")
 	_ = err // May error without templates, but should not panic.
 }
 
 func TestRenderCenteredExecError(t *testing.T) {
-	r := DefaultRenderer()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/login", nil)
 
 	// Executor that always returns an error.
@@ -343,13 +324,12 @@ func TestRenderCenteredExecError(t *testing.T) {
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
-	err := r.LoginPage(rec, req, "/dashboard")
+	err := loginPage(rec, req, "/dashboard")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "template exec error")
 }
 
 func TestRenderCardExecError(t *testing.T) {
-	r := DefaultRenderer()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/register", nil)
 
 	// Executor that always returns an error.
@@ -360,7 +340,7 @@ func TestRenderCardExecError(t *testing.T) {
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 
-	err := r.RegisterPage(rec, req, false, false, "", "")
+	err := registerPage(rec, req, false, false, "", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "template exec error")
 }
