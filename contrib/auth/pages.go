@@ -56,6 +56,13 @@ func recoveryCodesPage(w http.ResponseWriter, r *http.Request, codes []string) e
 	})
 }
 
+func apiKeysPage(w http.ResponseWriter, r *http.Request, keys []APIKey, newKey string) error {
+	return renderCard(w, r, i18n.T(r.Context(), "api-keys-title"), i18n.T(r.Context(), "api-keys-title"), "auth/api_keys", map[string]any{
+		"Keys":   keys,
+		"NewKey": newKey,
+	})
+}
+
 func verifyPendingPage(w http.ResponseWriter, r *http.Request) error {
 	return renderCard(w, r, i18n.T(r.Context(), "verify-pending-title"), i18n.T(r.Context(), "verify-pending-title"), "auth/verify_pending", nil)
 }

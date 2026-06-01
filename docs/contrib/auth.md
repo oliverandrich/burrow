@@ -175,6 +175,9 @@ All routes are registered under `/auth`:
 | GET | `/auth/recovery-codes` | View recovery codes (auth required) |
 | POST | `/auth/recovery-codes/ack` | Acknowledge recovery codes (auth required) |
 | POST | `/auth/recovery-codes/regenerate` | Regenerate recovery codes (auth required) |
+| GET | `/auth/api-keys` | Manage API keys (auth required) |
+| POST | `/auth/api-keys` | Create an API key (auth required) |
+| POST | `/auth/api-keys/{id}/delete` | Revoke an API key (auth required) |
 | GET | `/auth/verify-pending` | Email verification pending page |
 | GET | `/auth/verify-email` | Verify email via token |
 | POST | `/auth/resend-verification` | Resend verification email |
@@ -289,7 +292,9 @@ curl -H "Authorization: Bearer brw_…" -H "Accept: application/json" https://ex
 
 #### Managing keys
 
-There is no built-in UI or CLI command yet — you mint and revoke keys yourself through the auth repository (the same `*Repository[P]` your app already builds in `Configure`). The plaintext token is returned **once** at creation; show it to the user immediately and never persist it (only the hash is stored):
+Users manage their own keys at the built-in self-service page **`/auth/api-keys`** (behind `RequireAuth`): list, create (the plaintext is shown once), and revoke. Link to it from your account/settings UI; restyle it by redefining the `auth/api_keys` template (see [Page rendering](#page-rendering)).
+
+To mint or revoke keys programmatically — e.g. a CLI, an admin tool, or your own UI — use the auth repository (the same `*Repository[P]` your app builds in `Configure`). The plaintext token is returned **once** at creation; show it immediately and never persist it (only the hash is stored):
 
 ```go
 func (a *App) Configure(cfg *burrow.AppConfig, _ *cli.Command) error {
@@ -367,7 +372,7 @@ In templates (via `HasRequestFuncMap`):
 
 ## Page rendering
 
-The auth app renders its pages (login, register, credentials, recovery codes, email verification) with the shipped `auth/*` templates — Tailwind v4 markup wrapped in either a centered layout (login) or a card layout (the rest). `auth.DefaultAuthLayout()` returns `"auth/layout"`, the navbar-less shell from [Auth Layout](#auth-layout), so auth pages render inside it by default. Pass `auth.WithAuthLayout("")` to inherit the host's `srv.SetLayout` instead, or `auth.WithAuthLayout("myapp/auth-layout")` to swap in your own shell.
+The auth app renders its pages (login, register, credentials, recovery codes, API keys, email verification) with the shipped `auth/*` templates — Tailwind v4 markup wrapped in either a centered layout (login) or a card layout (the rest). `auth.DefaultAuthLayout()` returns `"auth/layout"`, the navbar-less shell from [Auth Layout](#auth-layout), so auth pages render inside it by default. Pass `auth.WithAuthLayout("")` to inherit the host's `srv.SetLayout` instead, or `auth.WithAuthLayout("myapp/auth-layout")` to swap in your own shell.
 
 To restyle a page, **redefine its template**. Ship the block in your own app's templates (contributed via `HasTemplates` — see [Templates](#default-templates)); burrow parses every app's templates into one set and last definition wins, so an app registered after `auth` overrides the built-in block:
 
@@ -386,6 +391,7 @@ Overrides are markup-only: the data each page receives is fixed (there is no lon
 | `auth/credentials` | `.Creds` (`[]Credential`) |
 | `auth/recovery` | `.LoginRedirect` |
 | `auth/recovery_codes` | `.Codes` (`[]string`) |
+| `auth/api_keys` | `.Keys` (`[]APIKey`), `.NewKey` (plaintext, shown once) |
 | `auth/verify_pending` / `auth/verify_success` | — |
 | `auth/verify_error` | `.ErrorCode` |
 
