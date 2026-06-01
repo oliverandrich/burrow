@@ -1,0 +1,57 @@
+{{ define "auth/api_keys" -}}
+<p class="mb-4 text-sm">{{ t "api-keys-description" }}</p>
+
+{{ if .NewKey -}}
+<div class="mb-4 rounded-md border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/40" role="status">
+    <p class="mb-2 text-sm font-medium text-emerald-900 dark:text-emerald-200">{{ t "api-keys-new-notice" }}</p>
+    <pre class="overflow-x-auto rounded-md bg-gray-100 p-3 font-mono text-sm dark:bg-gray-800"><code>{{ .NewKey }}</code></pre>
+</div>
+{{- end }}
+
+{{ if .Keys -}}
+<div class="mb-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+    <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
+        <thead class="bg-gray-50 dark:bg-gray-800/40">
+            <tr>
+                <th class="px-3 py-2 text-left font-medium">{{ t "api-keys-label" }}</th>
+                <th class="px-3 py-2 text-left font-medium">{{ t "api-keys-created" }}</th>
+                <th class="px-3 py-2"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {{ range .Keys -}}
+            <tr>
+                <td class="px-3 py-2">{{ if .Label }}{{ .Label }}{{ else }}<span class="text-gray-500">{{ t "api-keys-unlabeled" }}</span>{{ end }}</td>
+                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ .CreatedAt.Format "2006-01-02" }}</td>
+                <td class="whitespace-nowrap px-3 py-2 text-right">
+                    <form hx-post="/auth/api-keys/{{ .ID }}/delete" hx-confirm="{{ t "api-keys-revoke-confirm" }}" class="inline">
+                        <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}"/>
+                        <button type="submit"
+                            class="inline-flex items-center rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                        >{{ t "api-keys-revoke" }}</button>
+                    </form>
+                </td>
+            </tr>
+            {{- end }}
+        </tbody>
+    </table>
+</div>
+{{- else -}}
+<p class="mb-4 text-sm">{{ t "api-keys-none" }}</p>
+{{- end }}
+
+<h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">{{ t "api-keys-create-title" }}</h3>
+<form hx-post="/auth/api-keys" class="space-y-3">
+    <input type="hidden" name="gorilla.csrf.Token" value="{{ csrfToken }}"/>
+    <label for="label" class="block">
+        <span class="mb-1 block text-sm font-medium">{{ t "api-keys-label" }}</span>
+        <input type="text" id="label" name="label" autocomplete="off"
+            placeholder="{{ t "api-keys-label-placeholder" }}"
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900"/>
+    </label>
+    <button type="submit"
+        class="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+        {{ t "api-keys-create-button" }}
+    </button>
+</form>
+{{- end }}

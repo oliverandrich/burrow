@@ -482,6 +482,14 @@ func (a *App[P]) Routes(r chi.Router) {
 			r.Post("/ack", burrow.Handle(a.AcknowledgeRecoveryCodes))
 			r.Post("/regenerate", burrow.Handle(a.RegenerateRecoveryCodes))
 		})
+
+		// Authenticated API-key management — keeps global layout.
+		r.Route("/api-keys", func(r chi.Router) {
+			r.Use(RequireAuth())
+			r.Get("/", burrow.Handle(a.APIKeysPage))
+			r.Post("/", burrow.Handle(a.CreateAPIKeyHandler))
+			r.Post("/{id}/delete", burrow.Handle(a.RevokeAPIKeyHandler))
+		})
 	})
 }
 
