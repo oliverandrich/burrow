@@ -9,11 +9,19 @@ import (
 	"github.com/oliverandrich/den/where"
 )
 
-// noteInput is the API write model. It omits UserID on purpose — ownership
-// comes from the authenticated user, never the client (mass-assignment guard).
-type noteInput struct {
+// createNoteInput is the create write model. It omits UserID on purpose —
+// ownership comes from the authenticated user, never the client.
+type createNoteInput struct {
 	Title   string `json:"title" validate:"required"`
 	Content string `json:"content"`
+}
+
+// updateNoteInput is the update write model. Update is a partial merge (PATCH),
+// so its fields are pointers: only the ones the client actually sends are
+// applied, leaving the rest untouched.
+type updateNoteInput struct {
+	Title   *string `json:"title"`
+	Content *string `json:"content"`
 }
 
 // apiRoutes mounts the JSON CRUD API for notes under /api/notes. It is the
@@ -32,11 +40,17 @@ func (a *App) apiRoutes(r chi.Router) {
 				return []where.Condition{where.Field("user_id").Eq(currentUserID(req))}
 			}),
 			// WithCreate stamps the owner on new records from the auth context.
-			crud.WithCreate(func(in noteInput, req *http.Request) (*Note, error) {
+			crud.WithCreate(func(in createNoteInput, req *http.Request) (*Note, error) {
 				return &Note{UserID: currentUserID(req), Title: in.Title, Content: in.Content}, nil
 			}),
-			crud.WithUpdate(func(in noteInput, n *Note, _ *http.Request) error {
-				n.Title, n.Content = in.Title, in.Content
+			// WithUpdate applies only the fields the PATCH actually carried.
+			crud.WithUpdate(func(in updateNoteInput, n *Note, _ *http.Request) error {
+				if in.Title != nil {
+					n.Title = *in.Title
+				}
+				if in.Content != nil {
+					n.Content = *in.Content
+				}
 				return nil
 			}),
 		))
