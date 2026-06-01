@@ -401,6 +401,73 @@ func (r *Repository[P]) CountUserCredentials(ctx context.Context, userID string)
 	return count, nil
 }
 
+// --- API key methods ---
+
+// CreateAPIKey generates a new API key for a user, persists only its SHA256
+// hash, and returns the plaintext token. The plaintext is the only time the
+// token is recoverable — callers must surface it to the user immediately and
+// never store it. A nil expiresAt creates a key that never expires.
+func (r *Repository[P]) CreateAPIKey(ctx context.Context, userID, label string, expiresAt *time.Time) (string, *APIKey, error) {
+	plaintext, hash, err := GenerateAPIKey()
+	if err != nil {
+		return "", nil, fmt.Errorf("create api key for user %s: %w", userID, err)
+	}
+	key := &APIKey{UserID: userID, Label: label, Hash: hash, ExpiresAt: expiresAt}
+	if err := den.Save(ctx, r.db, key); err != nil {
+		return "", nil, fmt.Errorf("create api key for user %s: %w", userID, err)
+	}
+	return plaintext, key, nil
+}
+
+// GetAPIKeyByHash retrieves an API key by its SHA256 hash. Callers pass
+// HashToken(plaintext); the lookup is an exact match on the unique, indexed
+// hash column.
+func (r *Repository[P]) GetAPIKeyByHash(ctx context.Context, hash string) (*APIKey, error) {
+	key, err := den.NewQuery[APIKey](r.db, where.Field("hash").Eq(hash)).First(ctx)
+	if err != nil {
+		if errors.Is(err, den.ErrNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get api key by hash: %w", err)
+	}
+	return key, nil
+}
+
+// ListAPIKeysByUser returns a user's API keys ordered by creation time
+// descending. Hashes are included; plaintext tokens are never recoverable.
+func (r *Repository[P]) ListAPIKeysByUser(ctx context.Context, userID string) ([]APIKey, error) {
+	keys, err := den.NewQuery[APIKey](r.db, where.Field("user_id").Eq(userID)).
+		Sort("_created_at", den.Desc).All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list api keys for user %s: %w", userID, err)
+	}
+	result := make([]APIKey, len(keys))
+	for i, k := range keys {
+		result[i] = *k
+	}
+	return result, nil
+}
+
+// DeleteAPIKey revokes an API key. The delete is scoped to the owning user
+// so one user cannot revoke another's key by guessing its ID. Deleting a
+// non-existent (or already-deleted) key is a no-op.
+func (r *Repository[P]) DeleteAPIKey(ctx context.Context, keyID, userID string) error {
+	key, err := den.NewQuery[APIKey](r.db,
+		where.Field("_id").Eq(keyID),
+		where.Field("user_id").Eq(userID),
+	).First(ctx)
+	if err != nil {
+		if errors.Is(err, den.ErrNotFound) {
+			return nil
+		}
+		return fmt.Errorf("delete api key %s for user %s: %w", keyID, userID, err)
+	}
+	if err := den.Delete(ctx, r.db, key); err != nil {
+		return fmt.Errorf("delete api key %s for user %s: %w", keyID, userID, err)
+	}
+	return nil
+}
+
 // --- Recovery code methods ---
 
 // CreateRecoveryCodes creates recovery codes for a user.

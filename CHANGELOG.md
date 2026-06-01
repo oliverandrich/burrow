@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+
+- **contrib/auth: API-key (personal access token) bearer auth.** `App.RequireAPIKey()` middleware authenticates non-browser clients via `Authorization: Bearer <token>`, loading the key's owner into the request context exactly like the session path — so `CurrentUser` and `RequireStaff`/`RequireAdmin` compose on top unchanged. Tokens are `brw_`-prefixed, stored only as their SHA256 hash (plaintext shown once), and managed through the auth repository (`CreateAPIKey`/`ListAPIKeysByUser`/`DeleteAPIKey`). Bearer API routes must be declared CSRF-exempt via `csrf.ExemptPaths`.
+
 ## 0.26.0 — 2026-05-31
 
 ### Breaking Changes

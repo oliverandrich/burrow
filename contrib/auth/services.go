@@ -49,25 +49,42 @@ func HashToken(token string) string {
 	return hex.EncodeToString(hash[:])
 }
 
+// generateToken generates TokenLength random bytes as a hex string with an
+// optional prefix, plus its SHA256 hash for storage. The plaintext is the
+// only recoverable form; only the hash is ever persisted.
+func generateToken(prefix string) (plaintext, hash string, err error) {
+	b := make([]byte, TokenLength)
+	if _, err := rand.Read(b); err != nil {
+		return "", "", fmt.Errorf("generate random bytes: %w", err)
+	}
+	plaintext = prefix + hex.EncodeToString(b)
+	return plaintext, HashToken(plaintext), nil
+}
+
 // GenerateToken generates a new verification token.
 // Returns (plaintext token, SHA256 hash for storage, expiry time, error).
 func GenerateToken() (string, string, time.Time, error) {
-	b := make([]byte, TokenLength)
-	if _, err := rand.Read(b); err != nil {
-		return "", "", time.Time{}, fmt.Errorf("generate random bytes: %w", err)
+	plaintext, hash, err := generateToken("")
+	if err != nil {
+		return "", "", time.Time{}, err
 	}
-	plaintext := hex.EncodeToString(b)
-	return plaintext, HashToken(plaintext), time.Now().Add(TokenExpiry), nil
+	return plaintext, hash, time.Now().Add(TokenExpiry), nil
 }
 
 // GenerateInviteToken generates a random invite token and its SHA256 hash.
 func GenerateInviteToken() (plaintext, hash string, err error) {
-	b := make([]byte, TokenLength)
-	if _, err := rand.Read(b); err != nil {
-		return "", "", err
-	}
-	plaintext = hex.EncodeToString(b)
-	return plaintext, HashToken(plaintext), nil
+	return generateToken("")
+}
+
+// APIKeyPrefix is prepended to generated API-key plaintext tokens. The
+// fixed prefix makes leaked keys recognisable to secret scanners.
+const APIKeyPrefix = "brw_"
+
+// GenerateAPIKey generates a random API-key token and its SHA256 hash. The
+// plaintext is prefixed with [APIKeyPrefix] and must be shown to the user
+// exactly once — only the returned hash is ever persisted.
+func GenerateAPIKey() (plaintext, hash string, err error) {
+	return generateToken(APIKeyPrefix)
 }
 
 // --- Recovery service ---

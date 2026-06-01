@@ -8,6 +8,8 @@ package auth
 import (
 	"context"
 	"html/template"
+
+	"github.com/oliverandrich/burrow"
 )
 
 // ctxKeyUser is the context key for the authenticated user. The value
@@ -49,6 +51,20 @@ func IsAuthenticated(ctx context.Context) bool {
 // know the Profile type — only the [CurrentUser] read site does.
 func WithUser(ctx context.Context, user any) context.Context {
 	return context.WithValue(ctx, ctxKeyUser{}, user)
+}
+
+// setAuthContext stamps an authenticated user into the request context: both
+// the user value (via [WithUser]) and a [burrow.AuthChecker] for the core
+// navLinks / role-gating template helpers. Both the session middleware and
+// the API-key middleware funnel through here, so the authenticated-context
+// contract has a single source.
+func setAuthContext[P any](ctx context.Context, user *User[P]) context.Context {
+	ctx = WithUser(ctx, user)
+	return burrow.WithAuthChecker(ctx, burrow.AuthChecker{
+		IsAuthenticated: func() bool { return true },
+		IsStaff:         func() bool { return user.IsStaff() },
+		IsAdmin:         func() bool { return user.IsAdmin() },
+	})
 }
 
 // ctxKeyLogo is the context key for the optional auth page logo component.
