@@ -44,7 +44,7 @@ func (a *App) Routes(r chi.Router) {
 | `GET` | `/api/notes` | List (paginated) |
 | `POST` | `/api/notes` | Create → `201` |
 | `GET` | `/api/notes/{id}` | Get |
-| `PUT` / `PATCH` | `/api/notes/{id}` | Update |
+| `PATCH` | `/api/notes/{id}` | Update (partial merge) |
 | `DELETE` | `/api/notes/{id}` | Delete → `204` |
 
 Lists use offset [pagination](pagination.md#json-api) and return a
@@ -107,19 +107,28 @@ type createNote struct {
     Body  string `json:"body"`
 }
 
+// Update is a partial merge — pointer fields distinguish "sent" from "absent".
+type updateNote struct {
+    Title *string `json:"title"`
+    Body  *string `json:"body"`
+}
+
 crud.NewResource[Note](a.db,
     crud.WithCreate(func(in createNote, r *http.Request) (*Note, error) {
         u := auth.MustCurrentUser[Profile](r.Context())
         return &Note{AuthorID: u.ID, Title: in.Title, Body: in.Body}, nil
     }),
-    crud.WithUpdate(func(in createNote, n *Note, r *http.Request) error {
-        n.Title, n.Body = in.Title, in.Body
+    crud.WithUpdate(func(in updateNote, n *Note, r *http.Request) error {
+        if in.Title != nil { n.Title = *in.Title } // only fields the client sent
+        if in.Body != nil { n.Body = *in.Body }
         return nil
     }),
 )
 ```
 
 Without these, the body binds directly onto the document (the simple case).
+
+**Update is a partial merge** — the route is `PATCH` (there is no generated `PUT`). The request applies its provided fields onto the loaded record. With a write DTO, give the update model **pointer fields** and apply them conditionally (above) so an omitted field isn't reset to its zero value; the no-DTO path is already partial because JSON decodes onto the loaded document.
 
 ## Output shaping
 

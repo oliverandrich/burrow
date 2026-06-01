@@ -70,13 +70,14 @@ func TestAPICRUDRoundTrip(t *testing.T) {
 	rec = apiDo(t, r, http.MethodGet, "/api/notes/"+created.ID, "")
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	// Update, then read it back to confirm the change landed.
-	rec = apiDo(t, r, http.MethodPut, "/api/notes/"+created.ID, `{"title":"Renamed","content":"x"}`)
+	// PATCH only the title; content is omitted and must survive the partial merge.
+	rec = apiDo(t, r, http.MethodPatch, "/api/notes/"+created.ID, `{"title":"Renamed"}`)
 	require.Equal(t, http.StatusOK, rec.Code)
 	rec = apiDo(t, r, http.MethodGet, "/api/notes/"+created.ID, "")
 	var reloaded Note
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &reloaded))
 	assert.Equal(t, "Renamed", reloaded.Title)
+	assert.Equal(t, "hello", reloaded.Content, "PATCH left the omitted content untouched")
 
 	// Delete.
 	rec = apiDo(t, r, http.MethodDelete, "/api/notes/"+created.ID, "")

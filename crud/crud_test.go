@@ -208,14 +208,36 @@ func TestUpdate(t *testing.T) {
 	db := newDB(t)
 	w := save(t, db, &widget{Name: "old", Price: 1})
 
-	for _, method := range []string{http.MethodPut, http.MethodPatch} {
-		rec := do(t, mount(crud.NewResource[widget](db)), method, "/widgets/"+w.ID, `{"name":"updated","price":2}`, nil)
-		assert.Equal(t, http.StatusOK, rec.Code, method)
+	rec := do(t, mount(crud.NewResource[widget](db)), http.MethodPatch, "/widgets/"+w.ID, `{"name":"updated","price":2}`, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
 
-		got, err := den.FindByID[widget](t.Context(), db, w.ID)
-		require.NoError(t, err)
-		assert.Equal(t, "updated", got.Name, method)
-	}
+	got, err := den.FindByID[widget](t.Context(), db, w.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "updated", got.Name)
+	assert.Equal(t, 2, got.Price)
+}
+
+func TestUpdateIsPatchOnly(t *testing.T) {
+	db := newDB(t)
+	w := save(t, db, &widget{Name: "old"})
+
+	// PUT is not generated — update is PATCH (partial merge) only.
+	rec := do(t, mount(crud.NewResource[widget](db)), http.MethodPut, "/widgets/"+w.ID, `{"name":"x"}`, nil)
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
+
+func TestUpdatePartialMergePreservesOmittedFields(t *testing.T) {
+	db := newDB(t)
+	w := save(t, db, &widget{Name: "old", Price: 5})
+
+	// PATCH only the name; price is omitted and must be preserved.
+	rec := do(t, mount(crud.NewResource[widget](db)), http.MethodPatch, "/widgets/"+w.ID, `{"name":"new"}`, nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	got, err := den.FindByID[widget](t.Context(), db, w.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "new", got.Name)
+	assert.Equal(t, 5, got.Price, "omitted field is preserved (partial merge)")
 }
 
 func TestUpdateWithDTO(t *testing.T) {
@@ -227,13 +249,43 @@ func TestUpdateWithDTO(t *testing.T) {
 		return nil
 	}))
 
-	rec := do(t, mount(rs), http.MethodPut, "/widgets/"+w.ID, `{"name":"renamed","owner_id":"hacker"}`, nil)
+	rec := do(t, mount(rs), http.MethodPatch, "/widgets/"+w.ID, `{"name":"renamed","owner_id":"hacker"}`, nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	got, err := den.FindByID[widget](t.Context(), db, w.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "renamed", got.Name)
 	assert.Equal(t, "alice", got.OwnerID, "the DTO can't touch server-owned fields")
+}
+
+// TestUpdateWithPointerDTOPartial shows the supported partial-update pattern:
+// a pointer-field DTO whose mapper only applies fields the client actually sent.
+func TestUpdateWithPointerDTOPartial(t *testing.T) {
+	db := newDB(t)
+	w := save(t, db, &widget{Name: "old", Price: 7})
+
+	type patchInput struct {
+		Name  *string `json:"name"`
+		Price *int    `json:"price"`
+	}
+	rs := crud.NewResource[widget](db, crud.WithUpdate(func(in patchInput, dst *widget, _ *http.Request) error {
+		if in.Name != nil {
+			dst.Name = *in.Name
+		}
+		if in.Price != nil {
+			dst.Price = *in.Price
+		}
+		return nil
+	}))
+
+	// PATCH only the name; price is absent → mapper leaves it alone.
+	rec := do(t, mount(rs), http.MethodPatch, "/widgets/"+w.ID, `{"name":"renamed"}`, nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	got, err := den.FindByID[widget](t.Context(), db, w.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "renamed", got.Name)
+	assert.Equal(t, 7, got.Price, "pointer DTO leaves omitted fields untouched")
 }
 
 func TestDelete(t *testing.T) {

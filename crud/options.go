@@ -34,6 +34,15 @@ func WithCreate[T, C any](fn func(C, *http.Request) (*T, error)) Option[T] {
 // WithUpdate sets a typed write model for update: the request body is bound
 // and validated into U, then fn applies it onto the loaded document. Without
 // it, the body is bound directly onto the loaded T.
+//
+// Update is a partial merge (the route is PATCH). Standard JSON decoding gives
+// fields absent from the body their Go zero value, so for true partial updates
+// make U's fields pointers and apply them conditionally:
+//
+//	crud.WithUpdate(func(in updatePost, p *Post, _ *http.Request) error {
+//	    if in.Title != nil { p.Title = *in.Title }
+//	    return nil
+//	})
 func WithUpdate[T, U any](fn func(U, *T, *http.Request) error) Option[T] {
 	return func(rs *Resource[T]) {
 		rs.applyUpdate = func(r *http.Request, dst *T) error {

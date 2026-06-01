@@ -100,7 +100,11 @@ func (rs *Resource[T]) register(r chi.Router) {
 		r.Get("/{id}", burrow.Handle(rs.handleGet))
 	}
 	if rs.enabled[ActionUpdate] {
-		r.Put("/{id}", burrow.Handle(rs.handleUpdate))
+		// Update is a partial merge (PATCH): the request applies its provided
+		// fields onto the loaded record. PUT (full replace) is intentionally
+		// not generated — it can't reset omitted fields while preserving the
+		// server-owned ID for an arbitrary T. Write a custom action if you
+		// need replace semantics.
 		r.Patch("/{id}", burrow.Handle(rs.handleUpdate))
 	}
 	if rs.enabled[ActionDelete] {
