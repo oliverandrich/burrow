@@ -4,6 +4,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Breaking Changes
+
+- **contrib/auth: the `Renderer` interface and `WithRenderer` option are removed.** Auth pages now render directly through their named templates; customize a page by redefining its template block (`{{ define "auth/login" }}` …, last-define-wins) instead of implementing a renderer. `WithAuthLayout` is unchanged. Migrating off a custom `Renderer` means deleting the `auth.WithRenderer(...)` call and moving any markup changes into template overrides.
+
 ### Added
 
 - **`crud` package: declarative JSON CRUD APIs.** `crud.NewResource[T](db, opts…)` turns a Den document type into the five standard endpoints (list/get/create/update/delete) as a plain `http.Handler` — mount it with `r.Mount`, or register it into a route group with `Routes(r)` to add custom sibling actions. Options cover ownership scoping (`WithScope`, applied to every action), typed write models (`WithCreate`/`WithUpdate`, mass-assignment-safe), output shaping (`WithPresenter`), sorting, and action subsetting (`Only`/`Except`). Auth and CSRF stay the host's ordinary middleware. See the [JSON CRUD APIs guide](https://burrow.andrich.dev/guide/crud-api/).
@@ -824,7 +828,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - Added "Why urfave/cli?" section to [Server & Registry](reference/server.md) reference.
 - New guide: [Testing](guide/testing.md) covering test helpers and patterns.
 - New pages: [Examples & Tutorial](getting-started/examples.md) overview, seven-part [Tutorial](tutorial/index.md).
-- Expanded auth [Renderer](contrib/auth.md#renderer) and [Auth Layout](contrib/auth.md#auth-layout) documentation with usage examples.
+- Expanded auth [page rendering](contrib/auth.md#page-rendering) and [Auth Layout](contrib/auth.md#auth-layout) documentation with usage examples.
 - **Default email renderer moved** from `authmail/smtpmail/templates` to `auth.DefaultEmailRenderer()`. The `authmail` package keeps the `Renderer` interface only.
 - Auth app now declares `i18n` as a dependency alongside `session`.
 - Added `i18n.NewTestApp()` helper for creating a minimal i18n setup in tests.

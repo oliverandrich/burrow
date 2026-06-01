@@ -11,14 +11,14 @@ import (
 
 // VerifyPendingPage renders the "check your email" page.
 func (a *App[P]) VerifyPendingPage(w http.ResponseWriter, r *http.Request) error {
-	return a.renderer.VerifyPendingPage(w, r)
+	return verifyPendingPage(w, r)
 }
 
 // VerifyEmail handles the email verification link.
 func (a *App[P]) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		return a.renderer.VerifyEmailErrorPage(w, r, "missing_token")
+		return verifyEmailErrorPage(w, r, "missing_token")
 	}
 
 	ctx := r.Context()
@@ -26,19 +26,19 @@ func (a *App[P]) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 
 	verificationToken, err := a.repo.GetEmailVerificationToken(ctx, tokenHash)
 	if err != nil {
-		return a.renderer.VerifyEmailErrorPage(w, r, "invalid_token")
+		return verifyEmailErrorPage(w, r, "invalid_token")
 	}
 
 	if time.Now().After(verificationToken.ExpiresAt) {
 		if delErr := a.repo.DeleteEmailVerificationToken(ctx, verificationToken.ID); delErr != nil {
 			slog.Error("failed to delete expired verification token", "token_id", verificationToken.ID, "error", delErr)
 		}
-		return a.renderer.VerifyEmailErrorPage(w, r, "token_expired")
+		return verifyEmailErrorPage(w, r, "token_expired")
 	}
 
 	if markErr := a.repo.MarkEmailVerified(ctx, verificationToken.UserID); markErr != nil {
 		slog.Error("failed to mark email as verified", "error", markErr)
-		return a.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
+		return verifyEmailErrorPage(w, r, "verification_failed")
 	}
 
 	if delErr := a.repo.DeleteUserEmailVerificationTokens(ctx, verificationToken.UserID); delErr != nil {
@@ -48,15 +48,15 @@ func (a *App[P]) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 	user, err := a.repo.GetUserByID(ctx, verificationToken.UserID)
 	if err != nil {
 		slog.Error("failed to get user after verification", "error", err)
-		return a.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
+		return verifyEmailErrorPage(w, r, "verification_failed")
 	}
 
 	if err := session.Save(w, r, map[string]any{"user_id": user.ID}); err != nil {
 		slog.Error("failed to create session after verification", "error", err)
-		return a.renderer.VerifyEmailErrorPage(w, r, "verification_failed")
+		return verifyEmailErrorPage(w, r, "verification_failed")
 	}
 
-	return a.renderer.VerifyEmailSuccessPage(w, r)
+	return verifyEmailSuccessPage(w, r)
 }
 
 // ResendVerificationRequest is the request body for resending verification email.

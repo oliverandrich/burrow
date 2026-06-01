@@ -77,7 +77,6 @@ type App[P any] struct {
 	repo           *Repository[P]
 	webauthn       WebAuthnService
 	recovery       *RecoveryService
-	renderer       Renderer
 	emailService   EmailService
 	authLayout     string
 	defaultRole    string
@@ -105,11 +104,6 @@ type Config struct {
 
 // Option configures the auth app.
 type Option[P any] func(*App[P])
-
-// WithRenderer sets the page renderer for auth views.
-func WithRenderer[P any](r Renderer) Option[P] {
-	return func(a *App[P]) { a.renderer = r }
-}
 
 // WithAuthLayout sets an optional layout template name for public (unauthenticated)
 // auth pages. When set, pages like login, register, and recovery use this layout
@@ -185,11 +179,10 @@ func validateDefaultRole(role string) error {
 }
 
 // New creates a new auth app with the given options.
-// By default, the built-in HTML renderer and auth layout are used.
-// Use WithRenderer() and WithAuthLayout() to override.
+// By default, the built-in auth layout is used; override it with
+// [WithAuthLayout], or restyle any page by redefining its template.
 func New[P any](opts ...Option[P]) *App[P] {
 	a := &App[P]{
-		renderer:   DefaultRenderer(),
 		authLayout: DefaultAuthLayout(),
 	}
 	for _, o := range opts {
