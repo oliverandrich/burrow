@@ -31,6 +31,7 @@ A full-featured notes application with authentication, an admin panel, and HTMX-
 
 - **Multi-app architecture** — session, CSRF, auth, admin, jobs, messages, htmx, and humanize all wired together in `main.go`
 - **Repository pattern** with Den/SQLite — CRUD operations, offset-based pagination
+- **Declarative JSON API** — `/api/notes` built with the [`crud` package](../guide/crud-api.md): an owner-scoped resource with a write DTO, authenticated by API-key bearer tokens (managed at the self-service `/auth/api-keys` page) alongside the session-based HTML UI
 - **FTS5 full-text search** — migration with triggers, `SearchByUserID` repository method, HTMX search form
 - **Admin views** — hand-written admin handlers with search, pagination, and htmx actions
 - **Custom layout** — navbar with navigation items, icon helpers, theme switcher
