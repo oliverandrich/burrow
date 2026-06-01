@@ -150,6 +150,10 @@ Bcrypt-hashed one-time recovery codes for account access when passkeys are unava
 
 Time-limited invite tokens for invite-only registration.
 
+### APIKey
+
+SHA256-hashed API key (personal access token) for bearer authentication of non-browser clients. Only the hash is stored — the plaintext is shown once at creation. A key inherits the role of its owning user. See [RequireAPIKey](#requireapikey).
+
 ## Routes
 
 All routes are registered under `/auth`:
@@ -260,6 +264,48 @@ func (a *App) AdminRoutes(r chi.Router) {
         r.Get("/settings", a.settings)
     })
 }
+```
+
+### RequireAPIKey
+
+Authenticates non-browser API clients via an API key (personal access token) presented as `Authorization: Bearer <token>`. Unlike the browser middleware, it is a hard gate: a missing, malformed, unknown, expired, or inactive-user key is rejected with **401** (a JSON body when the client sends `Accept: application/json`). A valid key loads its owning user into the request context exactly like the session path, so `CurrentUser`, `RequireStaff`, and `RequireAdmin` all behave identically.
+
+Because it needs database access, `RequireAPIKey` is a method on the app instance (not a package function like `RequireAuth`):
+
+```go
+authApp := auth.New[myapp.Profile]()
+srv := burrow.NewServer(session.New(), csrf.New(), authApp /* , ... */)
+
+// On the app that owns the API routes:
+r.Route("/api", func(r chi.Router) {
+    r.Use(authApp.RequireAPIKey())
+    r.Use(auth.RequireStaff()) // optional: gate by role, composes on top
+    r.Get("/posts", listPosts)
+})
+```
+
+Keys inherit their owner's role, so role gating is done by chaining the existing role middleware after `RequireAPIKey`.
+
+!!! warning "Exempt API routes from CSRF"
+    The bearer path carries no cookie, so it needs no CSRF token — but the global `csrf` middleware still rejects unsafe methods (POST/PUT/DELETE) that arrive without one. Declare your API prefix CSRF-exempt via the [`csrf.ExemptPaths`](csrf.md) capability interface on the app that owns the routes:
+
+    ```go
+    func (a *App) CSRFExemptPaths() []string { return []string{"/api/"} } // prefix match
+    ```
+
+#### Managing keys
+
+There is no built-in UI yet — keys are created, listed, and revoked through the auth repository (`authApp.Repo()`). The plaintext token is returned **once** at creation; show it to the user immediately and never persist it (only the hash is stored):
+
+```go
+repo := authApp.Repo()
+
+// nil expiry = never expires; pass a *time.Time to set one.
+plaintext, key, err := repo.CreateAPIKey(ctx, userID, "ci-deploy", nil)
+// → show `plaintext` (e.g. "brw_…") to the user now; it is unrecoverable afterwards.
+
+keys, _ := repo.ListAPIKeysByUser(ctx, userID) // hashes only, plaintext gone
+_ = repo.DeleteAPIKey(ctx, key.ID, userID)     // revoke (scoped to the owner)
 ```
 
 ## Context Helpers

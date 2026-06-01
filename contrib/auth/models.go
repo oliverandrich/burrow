@@ -149,6 +149,27 @@ func TransportsFromWebAuthn(transports []protocol.AuthenticatorTransport) string
 	return strings.Join(strs, ",")
 }
 
+// APIKey is a hashed API key (personal access token) used for bearer
+// authentication of non-browser API clients. Only the SHA256 hash of the
+// token is stored; the plaintext is shown to the user exactly once at
+// creation. A key inherits the role of its owning user — the
+// [App.RequireAPIKey] middleware loads that user into the request context
+// just like the session path, so [RequireStaff]/[RequireAdmin] compose on
+// top unchanged.
+type APIKey struct {
+	document.Base
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	Hash      string     `json:"hash" den:"unique"`
+	UserID    string     `json:"user_id" den:"index"`
+	Label     string     `json:"label"`
+}
+
+// IsExpired reports whether the key carries an expiry that is in the past.
+// Keys without an expiry never expire.
+func (k *APIKey) IsExpired() bool {
+	return k.ExpiresAt != nil && time.Now().After(*k.ExpiresAt)
+}
+
 // RecoveryCode stores a hashed recovery code for account recovery.
 type RecoveryCode struct {
 	document.Base

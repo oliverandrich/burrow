@@ -276,7 +276,7 @@ func (a *App[P]) StaticFS() (string, fs.FS) {
 
 // Documents returns the Den document types registered by this app.
 func (a *App[P]) Documents() []document.Document {
-	return []document.Document{&User[P]{}, &Credential{}, &RecoveryCode{}, &EmailVerificationToken{}, &Invite{}}
+	return []document.Document{&User[P]{}, &Credential{}, &RecoveryCode{}, &EmailVerificationToken{}, &Invite{}, &APIKey{}}
 }
 
 // TranslationFS returns the embedded translation files for auto-discovery by the i18n app.
@@ -420,13 +420,7 @@ func (a *App[P]) authMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := WithUser(r.Context(), user)
-		ctx = burrow.WithAuthChecker(ctx, burrow.AuthChecker{
-			IsAuthenticated: func() bool { return true },
-			IsStaff:         func() bool { return user.IsStaff() },
-			IsAdmin:         func() bool { return user.IsAdmin() },
-		})
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(setAuthContext(r.Context(), user)))
 	})
 }
 
