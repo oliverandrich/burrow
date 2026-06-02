@@ -50,6 +50,7 @@ func (rs *Resource[T]) handleGet(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return rs.fail(w, r, err)
 	}
+	rs.setETag(w, doc)
 	return burrow.JSON(w, http.StatusOK, rs.view(doc))
 }
 
@@ -61,6 +62,7 @@ func (rs *Resource[T]) handleCreate(w http.ResponseWriter, r *http.Request) erro
 	if err := den.Save(r.Context(), rs.db, doc); err != nil {
 		return rs.fail(w, r, err)
 	}
+	rs.setETag(w, doc)
 	return burrow.JSON(w, http.StatusCreated, rs.view(doc))
 }
 
@@ -69,18 +71,25 @@ func (rs *Resource[T]) handleUpdate(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return rs.fail(w, r, err)
 	}
+	if err := rs.requirePrecondition(r, doc); err != nil {
+		return rs.fail(w, r, err)
+	}
 	if err := rs.applyUpdate(r, doc); err != nil {
 		return rs.fail(w, r, err)
 	}
 	if err := den.Save(r.Context(), rs.db, doc); err != nil {
 		return rs.fail(w, r, err)
 	}
+	rs.setETag(w, doc)
 	return burrow.JSON(w, http.StatusOK, rs.view(doc))
 }
 
 func (rs *Resource[T]) handleDelete(w http.ResponseWriter, r *http.Request) error {
 	doc, err := rs.find(r)
 	if err != nil {
+		return rs.fail(w, r, err)
+	}
+	if err := rs.requirePrecondition(r, doc); err != nil {
 		return rs.fail(w, r, err)
 	}
 	if err := den.Delete(r.Context(), rs.db, doc); err != nil {
@@ -126,6 +135,10 @@ func (rs *Resource[T]) fail(w http.ResponseWriter, r *http.Request, err error) e
 		return writeError(w, http.StatusNotFound, "not_found", nil)
 	case errors.Is(err, errBadRequest):
 		return writeError(w, http.StatusBadRequest, "invalid_request", nil)
+	case errors.Is(err, errPreconditionRequired):
+		return writeError(w, http.StatusPreconditionRequired, "precondition_required", nil)
+	case errors.Is(err, errPreconditionFailed), errors.Is(err, den.ErrRevisionConflict):
+		return writeError(w, http.StatusPreconditionFailed, "precondition_failed", nil)
 	default:
 		slog.Error("crud: request failed", "error", err, "method", r.Method, "path", r.URL.Path) //nolint:gosec // G706: slog escapes values
 		return writeError(w, http.StatusInternalServerError, "internal", nil)

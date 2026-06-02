@@ -178,6 +178,59 @@ but an unknown ordering or search field is ignored, not an error. Field names
 that collide with the reserved params (`limit`, `page`, `ordering`, `search`)
 are dropped from the filter allowlist.
 
+## Optimistic concurrency (ETag / If-Match)
+
+`WithOptimisticConcurrency` stops concurrent writes from silently clobbering
+each other. It maps Den's revision token (`_rev`) to a strong HTTP ETag: `GET`,
+create, and update responses carry an `ETag`, and `PATCH`/`DELETE` require a
+matching `If-Match` — a missing header is `428 Precondition Required`, a stale
+one is `412 Precondition Failed`. A client that edited a stale copy is rejected
+instead of overwriting whoever wrote first.
+
+It needs the document type to opt into Den's revision tracking, so each row
+carries a `_rev` (`document` is `github.com/oliverandrich/den/document`):
+
+```go
+type Note struct {
+    document.Base
+    Title string `json:"title"`
+}
+
+// Den maintains _rev on every save and rejects a save whose _rev is stale.
+func (Note) DenSettings() den.Settings { return den.Settings{UseRevision: true} }
+
+crud.NewResource[Note](db, crud.WithOptimisticConcurrency[Note]())
+```
+
+The flow is the standard HTTP one — read the ETag, send it back on write:
+
+```bash
+# GET hands back the current version in the ETag header.
+curl -i .../api/notes/abc123
+# → ETag: "7f3a…"
+
+# The write echoes it; a stale token gets 412 instead of clobbering.
+curl -X PATCH -H 'If-Match: "7f3a…"' -d '{"title":"Renamed"}' .../api/notes/abc123
+```
+
+`If-Match: *` matches any existing row (a missing id is still a `404`, not a
+precondition error). A `412` means the row moved on since you read it — re-`GET`
+to pick up the new `ETag` and retry, even if the `If-Match` you sent looked
+current. Without this option crud ignores ETags entirely.
+
+Two caveats:
+
+- **Enabling `UseRevision` on a populated table needs care.** Rows written
+  before it was on have an empty `_rev`, so every `If-Match` against them is a
+  `412` until they're rewritten — backfill or migrate as Den's revision docs
+  describe.
+- **Revision tracking applies to *every* writer of the type.** crud only
+  enforces `If-Match` on its own routes; if the same model is edited by a
+  form-based HTML handler, that handler must read `_rev` from the loaded record,
+  round-trip it (e.g. a hidden field), and handle `den.ErrRevisionConflict`
+  itself — otherwise a stale form post becomes a 500. Optimistic concurrency
+  fits machine clients more naturally than form posts.
+
 ## Other options
 
 - `WithSort(field, den.Asc|den.Desc)` — default list ordering (creation time
@@ -221,4 +274,7 @@ Failures use one envelope, always JSON:
 ```
 
 `code` is `validation_failed` (400, with localized `fields`), `invalid_request`
-(400, malformed body), `not_found` (404), or `internal` (500).
+(400, malformed body), `not_found` (404), or `internal` (500). With
+[optimistic concurrency](#optimistic-concurrency-etag-if-match) enabled you may
+also see `precondition_required` (428, `If-Match` missing) and
+`precondition_failed` (412, `If-Match` stale).
