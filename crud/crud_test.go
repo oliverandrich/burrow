@@ -217,13 +217,24 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, 2, got.Price)
 }
 
-func TestUpdateIsPatchOnly(t *testing.T) {
+func TestPatchMergesPutReplaces(t *testing.T) {
 	db := newDB(t)
-	w := save(t, db, &widget{Name: "old"})
+	h := mount(crud.NewResource[widget](db))
 
-	// PUT is not generated — update is PATCH (partial merge) only.
-	rec := do(t, mount(crud.NewResource[widget](db)), http.MethodPut, "/widgets/"+w.ID, `{"name":"x"}`, nil)
-	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	// PATCH leaves the omitted field; PUT resets it — the two verbs differ.
+	patched := save(t, db, &widget{Name: "old", Price: 5})
+	require.Equal(t, http.StatusOK,
+		do(t, h, http.MethodPatch, "/widgets/"+patched.ID, `{"name":"new"}`, nil).Code)
+	got, err := den.FindByID[widget](t.Context(), db, patched.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 5, got.Price, "PATCH preserves the omitted field")
+
+	replaced := save(t, db, &widget{Name: "old", Price: 5})
+	require.Equal(t, http.StatusOK,
+		do(t, h, http.MethodPut, "/widgets/"+replaced.ID, `{"name":"new"}`, nil).Code)
+	got, err = den.FindByID[widget](t.Context(), db, replaced.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 0, got.Price, "PUT replaces, resetting the omitted field")
 }
 
 func TestUpdatePartialMergePreservesOmittedFields(t *testing.T) {

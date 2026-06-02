@@ -14,11 +14,12 @@ import (
 
 // Action names accepted by [Only] and [Except].
 const (
-	ActionList   = "list"
-	ActionGet    = "get"
-	ActionCreate = "create"
-	ActionUpdate = "update"
-	ActionDelete = "delete"
+	ActionList    = "list"
+	ActionGet     = "get"
+	ActionCreate  = "create"
+	ActionUpdate  = "update"  // PATCH, partial merge
+	ActionReplace = "replace" // PUT, full replace
+	ActionDelete  = "delete"
 )
 
 // Resource exposes a Den document type T as a set of JSON CRUD endpoints.
@@ -40,13 +41,18 @@ type Resource[T any] struct {
 	searchFields []string                // JSON field names a ?search term matches
 	fieldKinds   map[string]reflect.Kind // JSON field name -> Go kind, for filter coercion
 
+	// Server-owned document.Base field paths, resolved once from T. Used to
+	// emit/read `_rev` (concurrency), the next-page `_id` (cursor), and to carry
+	// id/created/rev across a full-replace PUT. nil when T lacks the field.
+	baseID      []int
+	baseCreated []int
+	baseRev     []int
+
 	// Optimistic concurrency (opt-in; see WithOptimisticConcurrency).
-	concurrency bool  // emit ETags and enforce If-Match on writes
-	revIndex    []int // field-index path of the `_rev` field, nil if T has none
+	concurrency bool // emit ETags and enforce If-Match on writes
 
 	// Cursor pagination (opt-in; see WithCursorPagination).
-	cursor  bool  // list endpoint is forward cursor-mode instead of offset
-	idIndex []int // field-index path of the `_id` field, for the next cursor
+	cursor bool // list endpoint is forward cursor-mode instead of offset
 
 	// Full-text search (opt-in; see WithFullTextSearch).
 	fts bool // ?search runs Den FTS over den:"fts" columns instead of LIKE
@@ -60,20 +66,25 @@ type Resource[T any] struct {
 type Option[T any] func(*Resource[T])
 
 // NewResource builds a Resource for the Den document type T backed by db.
-// Without options it exposes all five actions, binds request bodies directly
+// Without options it exposes all six actions, binds request bodies directly
 // onto T (no separate write model), returns the stored document as JSON, and
 // orders lists by creation time descending. Options refine each of those.
 func NewResource[T any](db *den.DB, opts ...Option[T]) *Resource[T] {
+	rt := reflect.TypeFor[T]()
 	rs := &Resource[T]{
-		db:        db,
-		sortField: den.FieldCreatedAt,
-		sortDir:   den.Desc,
+		db:          db,
+		sortField:   den.FieldCreatedAt,
+		sortDir:     den.Desc,
+		baseID:      fieldIndexByJSON(rt, den.FieldID),
+		baseCreated: fieldIndexByJSON(rt, den.FieldCreatedAt),
+		baseRev:     fieldIndexByJSON(rt, den.FieldRev),
 		enabled: map[string]bool{
-			ActionList:   true,
-			ActionGet:    true,
-			ActionCreate: true,
-			ActionUpdate: true,
-			ActionDelete: true,
+			ActionList:    true,
+			ActionGet:     true,
+			ActionCreate:  true,
+			ActionUpdate:  true,
+			ActionReplace: true,
+			ActionDelete:  true,
 		},
 	}
 	// Defaults bind the request body directly onto T; WithCreate/WithUpdate
@@ -119,12 +130,15 @@ func (rs *Resource[T]) register(r chi.Router) {
 		r.Get("/{id}", burrow.Handle(rs.handleGet))
 	}
 	if rs.enabled[ActionUpdate] {
-		// Update is a partial merge (PATCH): the request applies its provided
-		// fields onto the loaded record. PUT (full replace) is intentionally
-		// not generated — it can't reset omitted fields while preserving the
-		// server-owned ID for an arbitrary T. Write a custom action if you
-		// need replace semantics.
+		// PATCH is a partial merge: only the fields the request carries are
+		// applied onto the loaded record (see PUT below for full replace).
 		r.Patch("/{id}", burrow.Handle(rs.handleUpdate))
+	}
+	if rs.enabled[ActionReplace] {
+		// PUT is a full replace: the body becomes the new representation
+		// (omitted fields reset to zero); the server-owned id and timestamps
+		// are preserved from the stored record.
+		r.Put("/{id}", burrow.Handle(rs.handleReplace))
 	}
 	if rs.enabled[ActionDelete] {
 		r.Delete("/{id}", burrow.Handle(rs.handleDelete))
@@ -203,4 +217,16 @@ func (rs *Resource[T]) stringFieldAt(doc *T, index []int) string {
 		return ""
 	}
 	return v.String()
+}
+
+// copyFieldAt copies the field at the given index path from src onto dst,
+// preserving a server-owned field across a fresh document. No-op when the path
+// is nil (T lacks the field).
+func (rs *Resource[T]) copyFieldAt(dst, src *T, index []int) {
+	if index == nil {
+		return
+	}
+	reflect.ValueOf(dst).Elem().FieldByIndex(index).Set(
+		reflect.ValueOf(src).Elem().FieldByIndex(index),
+	)
 }

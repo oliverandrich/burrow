@@ -1,7 +1,7 @@
 # JSON CRUD APIs
 
 The `crud` package turns a [Den](database.md) document type into a standard set
-of JSON CRUD endpoints. The common 90% — list, get, create, update, delete — is
+of JSON CRUD endpoints. The common 90% — list, get, create, update, replace, delete — is
 declared; custom actions stay ordinary [chi](routing.md) routes.
 
 ## The simple case
@@ -37,7 +37,7 @@ func (a *App) Routes(r chi.Router) {
 ```
 
 `Note` is your Den document type (it embeds `document.Base` — see
-[Database](database.md)). That serves five endpoints under `/api/notes`:
+[Database](database.md)). That serves six endpoints under `/api/notes`:
 
 | Method | Path | Action |
 |--------|------|--------|
@@ -45,6 +45,7 @@ func (a *App) Routes(r chi.Router) {
 | `POST` | `/api/notes` | Create → `201` |
 | `GET` | `/api/notes/{id}` | Get |
 | `PATCH` | `/api/notes/{id}` | Update (partial merge) |
+| `PUT` | `/api/notes/{id}` | Replace (full) |
 | `DELETE` | `/api/notes/{id}` | Delete → `204` |
 
 Lists use offset [pagination](pagination.md#json-api) and return a
@@ -52,9 +53,11 @@ Lists use offset [pagination](pagination.md#json-api) and return a
 return the document as JSON. Responses are always JSON.
 
 !!! warning "Without a write model, every field is client-settable"
-    The simple case above binds the request body directly onto `Note`, so a
-    client can set *any* field (including `id` or an owner column). That is fine
-    for trusted callers; for untrusted input, add a [write model](#write-models).
+    The simple case above binds the request body directly onto `Note` on both
+    create (`POST`) and replace (`PUT`), so a client can set *any* field
+    (including an owner column; `id`/timestamps/`_rev` stay server-owned on
+    replace). That is fine for trusted callers; for untrusted input, add a
+    [write model](#write-models).
 
 ## Custom actions
 
@@ -99,7 +102,9 @@ crud.NewResource[Note](a.db,
 
 `WithCreate` / `WithUpdate` take a typed write model: only its fields are
 accepted (validated against their [`validate`](validation.md) tags), and you map
-it onto the document yourself — so clients can't set server-owned fields:
+it onto the document yourself — so clients can't set server-owned fields.
+`WithCreate` also governs `PUT`/replace, since replace decodes through the same
+model (see below):
 
 ```go
 type createNote struct {
@@ -128,7 +133,9 @@ crud.NewResource[Note](a.db,
 
 Without these, the body binds directly onto the document (the simple case).
 
-**Update is a partial merge** — the route is `PATCH` (there is no generated `PUT`). The request applies its provided fields onto the loaded record. With a write DTO, give the update model **pointer fields** and apply them conditionally (above) so an omitted field isn't reset to its zero value; the no-DTO path is already partial because JSON decodes onto the loaded document.
+**Update (`PATCH`) is a partial merge** — it applies the provided fields onto the loaded record. With a write DTO, give the update model **pointer fields** and apply them conditionally (above) so an omitted field isn't reset to its zero value; the no-DTO path is already partial because JSON decodes onto the loaded document.
+
+**Replace (`PUT`) is a full replace** — the body becomes the new representation, so an omitted field resets to its zero value. It decodes the body through the *same* write model as create (`WithCreate`), so it inherits create's mass-assignment posture; the server-owned id, creation time, and revision are preserved from the stored record. Disable it with `Except(crud.ActionReplace)` if a resource should be patch-only.
 
 ## Output shaping
 
@@ -236,10 +243,10 @@ offset pagination.
 
 `WithOptimisticConcurrency` stops concurrent writes from silently clobbering
 each other. It maps Den's revision token (`_rev`) to a strong HTTP ETag: `GET`,
-create, and update responses carry an `ETag`, and `PATCH`/`DELETE` require a
-matching `If-Match` — a missing header is `428 Precondition Required`, a stale
-one is `412 Precondition Failed`. A client that edited a stale copy is rejected
-instead of overwriting whoever wrote first.
+create, update, and replace responses carry an `ETag`, and `PATCH`/`PUT`/`DELETE`
+require a matching `If-Match` — a missing header is `428 Precondition Required`,
+a stale one is `412 Precondition Failed`. A client that edited a stale copy is
+rejected instead of overwriting whoever wrote first.
 
 It needs the document type to opt into Den's revision tracking, so each row
 carries a `_rev` (`document` is `github.com/oliverandrich/den/document`):
@@ -290,7 +297,7 @@ Two caveats:
 - `WithSort(field, den.Asc|den.Desc)` — default list ordering (creation time
   descending when unset). `field` is the JSON field name, e.g. `"title"`.
 - `Only(crud.ActionList, crud.ActionGet)` / `Except(crud.ActionDelete)` — expose
-  a subset of the five actions. Disable a standard action and write your own
+  a subset of the six actions. Disable a standard action and write your own
   sibling route to fully replace it.
 
 ## Authentication and CSRF
