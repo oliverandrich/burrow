@@ -3,6 +3,7 @@ package crud
 import (
 	"net/http"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
@@ -42,6 +43,10 @@ type Resource[T any] struct {
 	// Optimistic concurrency (opt-in; see WithOptimisticConcurrency).
 	concurrency bool  // emit ETags and enforce If-Match on writes
 	revIndex    []int // field-index path of the `_rev` field, nil if T has none
+
+	// Cursor pagination (opt-in; see WithCursorPagination).
+	cursor  bool  // list endpoint is forward cursor-mode instead of offset
+	idIndex []int // field-index path of the `_id` field, for the next cursor
 
 	once    sync.Once
 	handler chi.Router
@@ -139,6 +144,15 @@ func (rs *Resource[T]) view(doc *T) any {
 	return doc
 }
 
+// views renders a slice of documents for a list response.
+func (rs *Resource[T]) views(items []*T) []any {
+	out := make([]any, len(items))
+	for i, doc := range items {
+		out[i] = rs.view(doc)
+	}
+	return out
+}
+
 // find loads a single document by its path id, narrowed by the scope so one
 // owner cannot reach another's row by guessing an id (it 404s instead).
 func (rs *Resource[T]) find(r *http.Request) (*T, error) {
@@ -147,4 +161,43 @@ func (rs *Resource[T]) find(r *http.Request) (*T, error) {
 		q = q.Where(conds...)
 	}
 	return q.First(r.Context())
+}
+
+// fieldIndexByJSON returns the field-index path of the field carrying the given
+// JSON tag name (e.g. "_id", "_rev"), typically promoted from document.Base, or
+// nil when T has no such field. Recurses into embedded (anonymous, untagged)
+// structs. Used to read server-owned fields on the generic T without assuming
+// a concrete document type.
+func fieldIndexByJSON(rt reflect.Type, jsonName string) []int {
+	for rt.Kind() == reflect.Pointer {
+		rt = rt.Elem()
+	}
+	if rt.Kind() != reflect.Struct {
+		return nil
+	}
+	for f := range rt.Fields() {
+		name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+		if name == jsonName {
+			return f.Index
+		}
+		if f.Anonymous && name == "" {
+			if sub := fieldIndexByJSON(f.Type, jsonName); sub != nil {
+				return append(append([]int{}, f.Index...), sub...)
+			}
+		}
+	}
+	return nil
+}
+
+// stringFieldAt reads the string field at the given index path on doc, or ""
+// when the path is nil or the field is not a string.
+func (rs *Resource[T]) stringFieldAt(doc *T, index []int) string {
+	if index == nil {
+		return ""
+	}
+	v := reflect.ValueOf(doc).Elem().FieldByIndex(index)
+	if v.Kind() != reflect.String {
+		return ""
+	}
+	return v.String()
 }

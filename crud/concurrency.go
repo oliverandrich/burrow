@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/oliverandrich/den"
 )
 
 // errPreconditionRequired and errPreconditionFailed drive the 428/412
@@ -31,45 +33,14 @@ var (
 func WithOptimisticConcurrency[T any]() Option[T] {
 	return func(rs *Resource[T]) {
 		rs.concurrency = true
-		rs.revIndex = revFieldIndex(reflect.TypeFor[T]())
+		rs.revIndex = fieldIndexByJSON(reflect.TypeFor[T](), den.FieldRev)
 	}
-}
-
-// revFieldIndex returns the field-index path of the `json:"_rev"` field
-// (typically promoted from document.Base), or nil if T carries no revision
-// field. Recurses into embedded (anonymous, untagged) structs.
-func revFieldIndex(rt reflect.Type) []int {
-	for rt.Kind() == reflect.Pointer {
-		rt = rt.Elem()
-	}
-	if rt.Kind() != reflect.Struct {
-		return nil
-	}
-	for f := range rt.Fields() {
-		name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
-		if name == "_rev" {
-			return f.Index
-		}
-		if f.Anonymous && name == "" {
-			if sub := revFieldIndex(f.Type); sub != nil {
-				return append(append([]int{}, f.Index...), sub...)
-			}
-		}
-	}
-	return nil
 }
 
 // revisionOf reads the document's current `_rev` token, or "" when the type
 // carries no revision field.
 func (rs *Resource[T]) revisionOf(doc *T) string {
-	if rs.revIndex == nil {
-		return ""
-	}
-	v := reflect.ValueOf(doc).Elem().FieldByIndex(rs.revIndex)
-	if v.Kind() != reflect.String {
-		return ""
-	}
-	return v.String()
+	return rs.stringFieldAt(doc, rs.revIndex)
 }
 
 // setETag emits the document's revision as a strong ETag, when concurrency is

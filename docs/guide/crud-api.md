@@ -178,6 +178,38 @@ but an unknown ordering or search field is ignored, not an error. Field names
 that collide with the reserved params (`limit`, `page`, `ordering`, `search`)
 are dropped from the filter allowlist.
 
+## Cursor pagination
+
+Lists default to offset pagination (`?page=2&limit=20`), which returns a
+`total_count` but degrades on large or append-only tables — a high page means a
+big `OFFSET` and a `COUNT` over the whole set. `WithCursorPagination` switches a
+resource to forward cursor pagination instead:
+
+```go
+crud.NewResource[Event](db, crud.WithCursorPagination[Event]())
+```
+
+Clients follow the `next_cursor` from each response:
+
+```bash
+curl '.../api/events?limit=50'
+# → { "items": [...], "pagination": { "has_more": true, "next_cursor": "01J..." } }
+curl '.../api/events?limit=50&after=01J...'   # the next page
+```
+
+`next_cursor` is the `id` of the last item on the page — treat it as opaque and
+pass it back unchanged in `?after`. `has_more` is `false` and `next_cursor`
+empty on the last page; an `?after` past the end simply returns an empty page,
+never an error. `limit` follows the same default and cap as offset mode.
+
+The response uses the same `PageResponse[T]` envelope, but `page`,
+`total_pages`, and `total_count` are omitted entirely — skipping the COUNT is
+the point. Cursor mode orders strictly by id ascending, so `WithSort`,
+`?ordering`, and `?page` don't apply (pages advance only via `?after`) — but
+[filtering and search](#filtering-ordering-search) still do. Offset and cursor
+are mutually exclusive per resource; without the option a resource stays on
+offset pagination.
+
 ## Optimistic concurrency (ETag / If-Match)
 
 `WithOptimisticConcurrency` stops concurrent writes from silently clobbering
