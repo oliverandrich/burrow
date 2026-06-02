@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/i18n"
 	"github.com/oliverandrich/den"
+	"github.com/oliverandrich/den/where"
 )
 
 // errBadRequest marks a malformed request body, distinguishing it from a
@@ -17,12 +19,20 @@ import (
 var errBadRequest = errors.New("invalid request body")
 
 func (rs *Resource[T]) handleList(w http.ResponseWriter, r *http.Request) error {
-	pr := burrow.ParsePageRequest(r)
 	params := r.URL.Query()
 	conds, err := rs.listConditions(params)
 	if err != nil {
 		return rs.fail(w, r, err)
 	}
+	if rs.cursor {
+		return rs.listCursor(w, r, params, conds)
+	}
+	return rs.listOffset(w, r, params, conds)
+}
+
+// listOffset serves a page+limit offset page with a total count.
+func (rs *Resource[T]) listOffset(w http.ResponseWriter, r *http.Request, params url.Values, conds []where.Condition) error {
+	pr := burrow.ParsePageRequest(r)
 	q := den.NewQuery[T](rs.db, rs.scopeConds(r)...).Where(conds...)
 	for _, s := range rs.sortEntries(params) {
 		q = q.Sort(s.field, s.dir)
@@ -35,12 +45,8 @@ func (rs *Resource[T]) handleList(w http.ResponseWriter, r *http.Request) error 
 		return rs.fail(w, r, err)
 	}
 
-	views := make([]any, len(items))
-	for i, doc := range items {
-		views[i] = rs.view(doc)
-	}
 	return burrow.JSON(w, http.StatusOK, burrow.PageResponse[any]{
-		Items:      views,
+		Items:      rs.views(items),
 		Pagination: burrow.OffsetResult(pr, int(total)),
 	})
 }

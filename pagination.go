@@ -16,6 +16,12 @@ func OffsetResult(pr PageRequest, totalCount int) PageResult {
 	return pagination.OffsetResult(pr, totalCount)
 }
 
+// CursorResult builds pagination metadata for forward cursor pagination.
+// Wrapper around [pagination.CursorResult].
+func CursorResult(hasMore bool, nextCursor string) PageResult {
+	return pagination.CursorResult(hasMore, nextCursor)
+}
+
 // PageURL builds a pagination URL preserving existing query parameters.
 // Wrapper around [pagination.PageURL].
 func PageURL(basePath, rawQuery string, page int) string {

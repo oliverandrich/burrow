@@ -26,12 +26,15 @@ func (pr PageRequest) Offset() int {
 	return (pr.Page - 1) * pr.Limit
 }
 
-// PageResult holds pagination metadata returned alongside items.
+// PageResult holds pagination metadata returned alongside items. Offset
+// pagination fills Page/TotalPages/TotalCount; cursor pagination fills
+// NextCursor. HasMore is common to both.
 type PageResult struct {
-	HasMore    bool `json:"has_more"`              // convenience: more pages exist
-	Page       int  `json:"page,omitempty"`        // current page number (1-based)
-	TotalPages int  `json:"total_pages,omitempty"` // total number of pages
-	TotalCount int  `json:"total_count,omitempty"` // total number of items
+	HasMore    bool   `json:"has_more"`              // convenience: more pages exist
+	Page       int    `json:"page,omitempty"`        // current page number (1-based)
+	TotalPages int    `json:"total_pages,omitempty"` // total number of pages
+	TotalCount int    `json:"total_count,omitempty"` // total number of items
+	NextCursor string `json:"next_cursor,omitempty"` // cursor for the next page (cursor pagination)
 }
 
 // PageResponse wraps items with pagination metadata for JSON APIs.
@@ -74,6 +77,14 @@ func OffsetResult(pr PageRequest, totalCount int) PageResult {
 		TotalPages: totalPages,
 		HasMore:    page < totalPages,
 	}
+}
+
+// CursorResult builds a PageResult for forward cursor pagination. nextCursor is
+// the opaque cursor a client passes back to fetch the next page; it is empty
+// when hasMore is false. Unlike [OffsetResult] it carries no total count —
+// cursor pagination avoids the COUNT that degrades on large tables.
+func CursorResult(hasMore bool, nextCursor string) PageResult {
+	return PageResult{HasMore: hasMore, NextCursor: nextCursor}
 }
 
 // PageURL builds a URL that preserves existing query parameters from rawQuery
