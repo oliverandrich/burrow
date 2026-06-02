@@ -3,7 +3,6 @@ package crud
 import (
 	"net/http"
 	"net/url"
-	"reflect"
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/den"
@@ -19,10 +18,7 @@ import (
 // search still apply. It returns no total_count — that is the point: cursor
 // pagination avoids the COUNT that degrades on large, append-only tables.
 func WithCursorPagination[T any]() Option[T] {
-	return func(rs *Resource[T]) {
-		rs.cursor = true
-		rs.idIndex = fieldIndexByJSON(reflect.TypeFor[T](), den.FieldID)
-	}
+	return func(rs *Resource[T]) { rs.cursor = true }
 }
 
 // listCursor serves one forward cursor page: rows after ?after (by id), ordered
@@ -50,7 +46,7 @@ func (rs *Resource[T]) listCursor(w http.ResponseWriter, r *http.Request, params
 	}
 	next := ""
 	if hasMore && len(items) > 0 {
-		next = rs.stringFieldAt(items[len(items)-1], rs.idIndex)
+		next = rs.stringFieldAt(items[len(items)-1], rs.baseID)
 	}
 
 	return burrow.JSON(w, http.StatusOK, burrow.PageResponse[any]{

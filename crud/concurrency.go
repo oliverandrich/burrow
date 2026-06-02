@@ -3,11 +3,8 @@ package crud
 import (
 	"errors"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
-
-	"github.com/oliverandrich/den"
 )
 
 // errPreconditionRequired and errPreconditionFailed drive the 428/412
@@ -31,16 +28,13 @@ var (
 // (via Den's own revision check). Without this option crud ignores ETags
 // entirely (current behavior).
 func WithOptimisticConcurrency[T any]() Option[T] {
-	return func(rs *Resource[T]) {
-		rs.concurrency = true
-		rs.revIndex = fieldIndexByJSON(reflect.TypeFor[T](), den.FieldRev)
-	}
+	return func(rs *Resource[T]) { rs.concurrency = true }
 }
 
 // revisionOf reads the document's current `_rev` token, or "" when the type
 // carries no revision field.
 func (rs *Resource[T]) revisionOf(doc *T) string {
-	return rs.stringFieldAt(doc, rs.revIndex)
+	return rs.stringFieldAt(doc, rs.baseRev)
 }
 
 // setETag emits the document's revision as a strong ETag, when concurrency is
