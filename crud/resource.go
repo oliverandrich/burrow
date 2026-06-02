@@ -2,6 +2,7 @@ package crud
 
 import (
 	"net/http"
+	"reflect"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
@@ -31,6 +32,12 @@ type Resource[T any] struct {
 	sortField    string
 	sortDir      den.SortDirection
 	enabled      map[string]bool
+
+	// Client-driven list query (all opt-in; see WithFilter/WithOrdering/WithSearch).
+	filterable   map[string]bool         // JSON field names clients may filter by
+	orderable    map[string]bool         // JSON field names clients may sort by
+	searchFields []string                // JSON field names a ?search term matches
+	fieldKinds   map[string]reflect.Kind // JSON field name -> Go kind, for filter coercion
 
 	once    sync.Once
 	handler chi.Router

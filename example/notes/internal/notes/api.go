@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/crud"
+	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/where"
 )
 
@@ -53,6 +54,12 @@ func (a *App) apiRoutes(r chi.Router) {
 				}
 				return nil
 			}),
+			// Client-driven list query, all allowlisted: ?search= matches title
+			// or content, ?ordering=-title,_created_at sorts by the named fields.
+			// Each clause is ANDed with the scope above, so it can only narrow a
+			// caller's own notes.
+			crud.WithSearch[Note]("title", "content"),
+			crud.WithOrdering[Note]("title", den.FieldCreatedAt),
 		))
 	})
 }

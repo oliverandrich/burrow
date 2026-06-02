@@ -142,6 +142,42 @@ crud.WithPresenter(func(n *Note) any {
 })
 ```
 
+## Filtering, ordering & search
+
+The list endpoint can take query params from the client, but only for fields you
+allowlist — an undeclared field is never filterable, sortable, or searchable, so
+clients can't probe columns you didn't mean to expose. You allowlist by JSON
+field name (the `json:"…"` tag); Den's built-in columns have underscore-prefixed
+names, so reach them through the constants (`den.FieldCreatedAt`,
+`den.FieldID`) rather than typing the string. Every clause is ANDed with
+[the scope](#ownership-and-tenancy), so it only ever narrows what a caller
+already sees.
+
+```go
+crud.NewResource[Note](db,
+    crud.WithFilter[Note]("status"),                 // ?status=active (&status=draft -> IN)
+    crud.WithOrdering[Note]("title", den.FieldCreatedAt), // ?ordering=-title,_created_at
+    crud.WithSearch[Note]("title", "content"),       // ?search=foo (substring, ORed)
+)
+```
+
+- **`WithFilter(fields…)`** — exact-match filters. Repeating a param matches any
+  of the values (`?status=active&status=draft`). Values are coerced to each
+  field's Go type, so numeric and boolean fields filter correctly; an uncoercible
+  value (`?price=abc`) is a `400`. Unknown params are ignored.
+- **`WithOrdering(fields…)`** — `?ordering=field`, a leading `-` for descending,
+  commas for tie-breakers. Unknown tokens are silently dropped; when the param is
+  absent or names no allowlisted field, `WithSort` applies.
+- **`WithSearch(fields…)`** — a `?search=` term matched as a SQL `LIKE` substring
+  across the listed fields (ORed). Case-sensitivity follows the database
+  (case-insensitive on SQLite, case-sensitive on PostgreSQL); it is a plain
+  substring scan and does **not** use Den's full-text (`den:"fts"`) index.
+
+A bad filter *value* (`?price=abc` on an int field) is rejected with a `400`,
+but an unknown ordering or search field is ignored, not an error. Field names
+that collide with the reserved params (`limit`, `page`, `ordering`, `search`)
+are dropped from the filter allowlist.
+
 ## Other options
 
 - `WithSort(field, den.Asc|den.Desc)` — default list ordering (creation time

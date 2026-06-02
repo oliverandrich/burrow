@@ -18,8 +18,16 @@ var errBadRequest = errors.New("invalid request body")
 
 func (rs *Resource[T]) handleList(w http.ResponseWriter, r *http.Request) error {
 	pr := burrow.ParsePageRequest(r)
-	items, total, err := den.NewQuery[T](rs.db, rs.scopeConds(r)...).
-		Sort(rs.sortField, rs.sortDir).
+	params := r.URL.Query()
+	conds, err := rs.listConditions(params)
+	if err != nil {
+		return rs.fail(w, r, err)
+	}
+	q := den.NewQuery[T](rs.db, rs.scopeConds(r)...).Where(conds...)
+	for _, s := range rs.sortEntries(params) {
+		q = q.Sort(s.field, s.dir)
+	}
+	items, total, err := q.
 		Limit(pr.Limit).
 		Skip(pr.Offset()).
 		AllWithCount(r.Context())
