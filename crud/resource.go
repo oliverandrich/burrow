@@ -48,6 +48,9 @@ type Resource[T any] struct {
 	cursor  bool  // list endpoint is forward cursor-mode instead of offset
 	idIndex []int // field-index path of the `_id` field, for the next cursor
 
+	// Full-text search (opt-in; see WithFullTextSearch).
+	fts bool // ?search runs Den FTS over den:"fts" columns instead of LIKE
+
 	once    sync.Once
 	handler chi.Router
 }

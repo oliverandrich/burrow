@@ -20,6 +20,9 @@ var errBadRequest = errors.New("invalid request body")
 
 func (rs *Resource[T]) handleList(w http.ResponseWriter, r *http.Request) error {
 	params := r.URL.Query()
+	if rs.ftsActive(params) {
+		return rs.listFTS(w, r, params)
+	}
 	conds, err := rs.listConditions(params)
 	if err != nil {
 		return rs.fail(w, r, err)
