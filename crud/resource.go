@@ -39,6 +39,10 @@ type Resource[T any] struct {
 	searchFields []string                // JSON field names a ?search term matches
 	fieldKinds   map[string]reflect.Kind // JSON field name -> Go kind, for filter coercion
 
+	// Optimistic concurrency (opt-in; see WithOptimisticConcurrency).
+	concurrency bool  // emit ETags and enforce If-Match on writes
+	revIndex    []int // field-index path of the `_rev` field, nil if T has none
+
 	once    sync.Once
 	handler chi.Router
 }
