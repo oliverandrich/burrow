@@ -54,11 +54,11 @@ func (a *App) apiRoutes(r chi.Router) {
 				}
 				return nil
 			}),
-			// Client-driven list query, all allowlisted: ?search= matches title
-			// or content, ?ordering=-title,_created_at sorts by the named fields.
-			// Each clause is ANDed with the scope above, so it can only narrow a
-			// caller's own notes.
-			crud.WithSearch[Note]("title", "content"),
+			// Client-driven list query, all narrowed by the scope above.
+			// Note's title/content are den:"fts", so ?search= runs a relevance-
+			// ranked full-text search over them; ?ordering=-title,_created_at
+			// sorts the non-search listing by the named fields.
+			crud.WithFullTextSearch[Note](),
 			crud.WithOrdering[Note]("title", den.FieldCreatedAt),
 		))
 	})

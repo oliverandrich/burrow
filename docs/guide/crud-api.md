@@ -172,6 +172,28 @@ crud.NewResource[Note](db,
   across the listed fields (ORed). Case-sensitivity follows the database
   (case-insensitive on SQLite, case-sensitive on PostgreSQL); it is a plain
   substring scan and does **not** use Den's full-text (`den:"fts"`) index.
+- **`WithFullTextSearch()`** — the relevance-ranked alternative to `WithSearch`:
+  `?search=` runs a Den full-text search over the type's `den:"fts"` columns (no
+  field list — the model's tags define what's indexed). The term is treated as
+  literal words ANDed together, so `?search=quick fox` matches only documents
+  containing **both** words (contrast `WithSearch`, which ORs), and FTS5
+  operators or stray punctuation are safe input, never a 400. Filtering and the
+  scope still apply; `?ordering` does not (results are ranked), and search
+  responses omit `page`/`total_pages`/`total_count` (`has_more` still
+  paginates). Works on SQLite and PostgreSQL. If both `WithSearch` and
+  `WithFullTextSearch` are set, full text wins.
+
+  Declare the searchable columns with `den:"fts"` and enable it on the resource:
+
+  ```go
+  type Article struct {
+      document.Base
+      Title string `json:"title" den:"fts"`
+      Body  string `json:"body"  den:"fts"`
+  }
+
+  crud.NewResource[Article](db, crud.WithFullTextSearch[Article]())
+  ```
 
 A bad filter *value* (`?price=abc` on an int field) is rejected with a `400`,
 but an unknown ordering or search field is ignored, not an error. Field names
