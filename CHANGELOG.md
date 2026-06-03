@@ -14,6 +14,15 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **`crud` OpenAPI 3.0 spec generation.** `crud.NewAPI(info)` collects resources — `api.Mount(r, path, res)` mounts and records in one call — and serves an OpenAPI 3.0 document via `api.SpecHandler()`: every endpoint with its parameters (pagination/filter/ordering/search/expand), request/response schemas reflected from your Go types (with `validate` tags mapped to constraints), and the error envelope. `BaseURL` becomes the spec's server so paths stay relative. Built on [kin-openapi](https://github.com/getkin/kin-openapi).
 - **contrib/auth: API-key (personal access token) bearer auth.** The automatic user-loading middleware now also resolves an `Authorization: Bearer <token>` header, so non-browser API clients authenticate through the existing gates (`RequireAuth`/`RequireStaff`/`RequireAdmin`) with no extra middleware — a bearer request populates the same context as a session cookie. Those gates now answer API clients (`Accept: application/json`) with a 401 instead of a login redirect. Tokens are `brw_`-prefixed, stored only as their SHA256 hash (plaintext shown once), and managed through the auth repository (`CreateAPIKey`/`ListAPIKeysByUser`/`DeleteAPIKey`). Bearer API routes must be declared CSRF-exempt via `csrf.ExemptPaths`.
 - **contrib/auth: self-service API-key page at `/auth/api-keys`.** Authenticated users list, create (plaintext shown once), and revoke their own keys. Link to it from your account UI; restyle it by redefining the `auth/api_keys` template.
+- **`pagination.CursorResult` + `PageResult.NextCursor`.** A `CursorResult(hasMore, nextCursor)` helper and a `next_cursor` JSON field for forward cursor pagination, mirroring `OffsetResult`/`page`; re-exported as `burrow.CursorResult`. The field is `omitempty`, so existing offset responses are byte-for-byte unchanged.
+
+### Changed
+
+- **Den bumped to v0.17.0.** It ships the FTS literal-by-default `Search`, full-replace `PreserveServerFields`, and link `Marshal`/`LinkFields`/selective `WithFetchLinks` that the new `crud` package builds on. The re-exported `den.*` alias surface is API-compatible — no downstream changes required.
+
+### Security
+
+- **Go toolchain pinned to 1.26.4.** Picks up the patched standard library for GO-2026-5037 (`crypto/x509`) and GO-2026-5039 (`net/textproto`). The required `test` CI check stays on `1.26`; the lint job's `govulncheck` runs on 1.26.4.
 
 ## 0.26.0 — 2026-05-31
 

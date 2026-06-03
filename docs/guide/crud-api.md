@@ -17,6 +17,7 @@ import (
     "github.com/oliverandrich/burrow/contrib/auth"
     "github.com/oliverandrich/burrow/crud"
     "github.com/oliverandrich/den"
+    "github.com/urfave/cli/v3"
 )
 
 type App struct {
@@ -176,9 +177,11 @@ struct tag needed) — `?expand=author,tags` honors several, comma-separated, an
 anything not listed is ignored (never an error). A `[]den.Link[T]` field expands
 to an array of objects. It works on get and list (hydration is batched, so
 expanding a list is not an N+1), resolves one level deep (no `author.org`
-chaining), and composes with filtering, search, and pagination. It does **not**
-combine with `WithPresenter` (a presenter owns the output shape, so a hydrated
-link never surfaces through it).
+chaining), and composes with filtering, search, and pagination. Both the
+document type **and** the linked type must be registered with Den
+(`den.Register`); a misspelled allowlist field is logged at boot, not an error.
+It is **disabled** when `WithPresenter` is set — a presenter owns the output
+shape, so `?expand` is ignored rather than bypassing it.
 
 ## Filtering, ordering & search
 
@@ -328,8 +331,10 @@ Two caveats:
 - `WithSort(field, den.Asc|den.Desc)` — default list ordering (creation time
   descending when unset). `field` is the JSON field name, e.g. `"title"`.
 - `Only(crud.ActionList, crud.ActionGet)` / `Except(crud.ActionDelete)` — expose
-  a subset of the six actions. Disable a standard action and write your own
-  sibling route to fully replace it.
+  a subset of the six actions (`ActionList`, `ActionGet`, `ActionCreate`,
+  `ActionUpdate`, `ActionReplace`, `ActionDelete`). `Only` and `Except` are
+  mutually exclusive; if both are passed, the last one wins. Disable a standard
+  action and write your own sibling route to fully replace it.
 
 ## Authentication and CSRF
 
@@ -388,9 +393,11 @@ once on first request and cached.
 The spec covers every enabled action with its parameters (pagination, filter,
 ordering, search, expand), request bodies (the `WithCreate`/`WithUpdate` write
 models, or `T` when none), response schemas, and the error envelope. Schemas are
-reflected from your Go types, and `validate` tags map onto constraints:
-`required`, `min`/`max` (string length or numeric bounds), `email`/`url`/`uuid`
-(format), `oneof` (enum). `WithPresenter` hides the output schema — a presenter
+reflected from your Go types, and a documented subset of `validate` tags maps
+onto constraints: `required`, `min`/`max` (string length or numeric bounds),
+`email`/`url`/`uuid` (format), `oneof` (enum). Other validator rules (`gte`,
+`len`, cross-field, custom) have no faithful OpenAPI 3.0 equivalent and are
+omitted rather than approximated. `WithPresenter` hides the output schema — a presenter
 returns an arbitrary shape — so a resource using one documents a generic object
 for its responses.
 

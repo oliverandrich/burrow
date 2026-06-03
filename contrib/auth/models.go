@@ -152,10 +152,10 @@ func TransportsFromWebAuthn(transports []protocol.AuthenticatorTransport) string
 // APIKey is a hashed API key (personal access token) used for bearer
 // authentication of non-browser API clients. Only the SHA256 hash of the
 // token is stored; the plaintext is shown to the user exactly once at
-// creation. A key inherits the role of its owning user — the
-// [App.RequireAPIKey] middleware loads that user into the request context
-// just like the session path, so [RequireStaff]/[RequireAdmin] compose on
-// top unchanged.
+// creation. A key inherits the role of its owning user — the auth app's
+// user-loading middleware resolves an `Authorization: Bearer <key>` header into
+// the same request context as a session cookie, so [RequireAuth]/[RequireStaff]/
+// [RequireAdmin] compose on top unchanged.
 type APIKey struct {
 	document.Base
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`

@@ -268,7 +268,7 @@ func (a *App) AdminRoutes(r chi.Router) {
 
 ### API Key Authentication
 
-Non-browser clients authenticate with an API key (personal access token) sent as `Authorization: Bearer <token>`. There is **no separate middleware** — the automatic user-loading middleware resolves a bearer token to its owning user just like a session cookie, so the standard gates work unchanged. Gate an API the same way you gate any route:
+Non-browser clients authenticate with an API key (personal access token) sent as `Authorization: Bearer <token>`. There is **no separate middleware** — the automatic user-loading middleware resolves a bearer token to its owning user just like a session cookie, so the standard gates work unchanged. This is how the [JSON CRUD APIs](../guide/crud-api.md) layer authenticates machine clients. Gate an API the same way you gate any route:
 
 ```go
 r.Route("/api", func(r chi.Router) {
