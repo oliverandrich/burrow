@@ -10,17 +10,14 @@ import (
 // handleReplace serves PUT: a full replace of the stored document. The body is
 // decoded the same way create decodes it (so the resource's write model — and
 // its mass-assignment posture — carries over), producing a fresh T whose
-// omitted fields are zero. The server-owned id, creation time, and revision are
-// then copied from the stored record so a replace can't move the row, reset its
-// creation time, or skip the optimistic-concurrency check; Den re-stamps
-// _updated_at itself.
-//
-// This preserves the standard document.Base server-owned fields. A type that
-// also embeds document.SoftDelete / document.Tracked carries extra server-owned
-// state those embeds manage — full replace doesn't special-case it (tracked via
-// den-cczd upstream). In practice it's fine: a soft-deleted row isn't loadable
-// to replace, and Den repopulates the change snapshot on save.
+// omitted fields are zero. Den's server-owned fields (id, timestamps, revision,
+// and any soft-delete audit fields) are then carried over from the stored
+// record via [den.PreserveServerFields], so a replace can't move the row, reset
+// its creation time, skip the optimistic-concurrency check, or resurrect a
+// soft-deleted row.
 func (rs *Resource[T]) handleReplace(w http.ResponseWriter, r *http.Request) error {
+	// Scoped load (not den.Replace, which loads by id alone): the find applies
+	// the resource's row scope, so one owner can't replace another's row.
 	existing, err := rs.find(r)
 	if err != nil {
 		return rs.fail(w, r, err)
@@ -33,9 +30,9 @@ func (rs *Resource[T]) handleReplace(w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		return rs.fail(w, r, err)
 	}
-	rs.copyFieldAt(doc, existing, rs.baseID)
-	rs.copyFieldAt(doc, existing, rs.baseCreated)
-	rs.copyFieldAt(doc, existing, rs.baseRev)
+	if err := den.PreserveServerFields(rs.db, doc, existing); err != nil {
+		return rs.fail(w, r, err)
+	}
 
 	if err := den.Save(r.Context(), rs.db, doc); err != nil {
 		return rs.fail(w, r, err)

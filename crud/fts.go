@@ -45,7 +45,7 @@ func (rs *Resource[T]) listFTS(w http.ResponseWriter, r *http.Request, params ur
 		Where(conds...).
 		Limit(pr.Limit+1). // one extra row tells us whether another page exists
 		Skip(pr.Offset()).
-		Search(r.Context(), ftsQuery(params.Get("search")))
+		Search(r.Context(), params.Get("search"))
 	if err != nil {
 		return rs.fail(w, r, err)
 	}
@@ -58,28 +58,4 @@ func (rs *Resource[T]) listFTS(w http.ResponseWriter, r *http.Request, params ur
 		Items:      rs.views(items),
 		Pagination: burrow.PageResult{Page: max(pr.Page, 1), HasMore: hasMore},
 	})
-}
-
-// ftsQuery turns a raw user search term into a safe FTS5 MATCH expression:
-// each whitespace-separated token becomes a quoted literal (embedded quotes
-// doubled), joined by spaces so FTS5 ANDs them. This neutralises FTS5 operators
-// and punctuation (AND/OR/NEAR, column filters, prefix *, stray quotes) that
-// would otherwise be a syntax error or let a client scope columns. An all-blank
-// term yields "" — callers route those to the normal list path instead.
-//
-// This bridges a Den gap: Den's Search passes the term straight to SQLite's
-// FTS5 MATCH (PostgreSQL's plainto_tsquery already does this neutralising), so
-// crud has to make the SQLite path safe. Tracked upstream as den-qf0k; once Den
-// offers backend-agnostic literal-term search this can go away.
-func ftsQuery(term string) string {
-	var b strings.Builder
-	for tok := range strings.FieldsSeq(term) {
-		if b.Len() > 0 {
-			b.WriteByte(' ')
-		}
-		b.WriteByte('"')
-		b.WriteString(strings.ReplaceAll(tok, `"`, `""`))
-		b.WriteByte('"')
-	}
-	return b.String()
 }

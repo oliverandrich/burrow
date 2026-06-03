@@ -42,11 +42,10 @@ type Resource[T any] struct {
 	fieldKinds   map[string]reflect.Kind // JSON field name -> Go kind, for filter coercion
 
 	// Server-owned document.Base field paths, resolved once from T. Used to
-	// emit/read `_rev` (concurrency), the next-page `_id` (cursor), and to carry
-	// id/created/rev across a full-replace PUT. nil when T lacks the field.
-	baseID      []int
-	baseCreated []int
-	baseRev     []int
+	// emit/read `_rev` (concurrency) and the next-page `_id` (cursor). nil when
+	// T lacks the field.
+	baseID  []int
+	baseRev []int
 
 	// Optimistic concurrency (opt-in; see WithOptimisticConcurrency).
 	concurrency bool // emit ETags and enforce If-Match on writes
@@ -72,12 +71,11 @@ type Option[T any] func(*Resource[T])
 func NewResource[T any](db *den.DB, opts ...Option[T]) *Resource[T] {
 	rt := reflect.TypeFor[T]()
 	rs := &Resource[T]{
-		db:          db,
-		sortField:   den.FieldCreatedAt,
-		sortDir:     den.Desc,
-		baseID:      fieldIndexByJSON(rt, den.FieldID),
-		baseCreated: fieldIndexByJSON(rt, den.FieldCreatedAt),
-		baseRev:     fieldIndexByJSON(rt, den.FieldRev),
+		db:        db,
+		sortField: den.FieldCreatedAt,
+		sortDir:   den.Desc,
+		baseID:    fieldIndexByJSON(rt, den.FieldID),
+		baseRev:   fieldIndexByJSON(rt, den.FieldRev),
 		enabled: map[string]bool{
 			ActionList:    true,
 			ActionGet:     true,
@@ -217,16 +215,4 @@ func (rs *Resource[T]) stringFieldAt(doc *T, index []int) string {
 		return ""
 	}
 	return v.String()
-}
-
-// copyFieldAt copies the field at the given index path from src onto dst,
-// preserving a server-owned field across a fresh document. No-op when the path
-// is nil (T lacks the field).
-func (rs *Resource[T]) copyFieldAt(dst, src *T, index []int) {
-	if index == nil {
-		return
-	}
-	reflect.ValueOf(dst).Elem().FieldByIndex(index).Set(
-		reflect.ValueOf(src).Elem().FieldByIndex(index),
-	)
 }

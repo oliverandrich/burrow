@@ -110,6 +110,8 @@ func (r *Repository) SearchAllPaged(ctx context.Context, query string, pr burrow
 		return nil, burrow.PageResult{}, nil
 	}
 
+	// Search is literal-by-default, so user input no longer triggers FTS5
+	// syntax errors; this stays defensive against genuine backend failures.
 	allPtrs, err := den.NewQuery[Note](r.db).Search(ctx, query)
 	if err != nil {
 		return nil, burrow.PageResult{}, nil //nolint:nilerr // intentional: treat FTS errors as empty results
