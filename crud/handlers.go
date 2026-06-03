@@ -36,9 +36,13 @@ func (rs *Resource[T]) handleList(w http.ResponseWriter, r *http.Request) error 
 // listOffset serves a page+limit offset page with a total count.
 func (rs *Resource[T]) listOffset(w http.ResponseWriter, r *http.Request, params url.Values, conds []where.Condition) error {
 	pr := burrow.ParsePageRequest(r)
+	expand := rs.expandFields(params)
 	q := den.NewQuery[T](rs.db, rs.scopeConds(r)...).Where(conds...)
 	for _, s := range rs.sortEntries(params) {
 		q = q.Sort(s.field, s.dir)
+	}
+	if len(expand) > 0 {
+		q = q.WithFetchLinks(expand...)
 	}
 	items, total, err := q.
 		Limit(pr.Limit).
@@ -48,19 +52,17 @@ func (rs *Resource[T]) listOffset(w http.ResponseWriter, r *http.Request, params
 		return rs.fail(w, r, err)
 	}
 
-	return burrow.JSON(w, http.StatusOK, burrow.PageResponse[any]{
-		Items:      rs.views(items),
-		Pagination: burrow.OffsetResult(pr, int(total)),
-	})
+	return rs.writeList(w, items, burrow.OffsetResult(pr, int(total)), expand)
 }
 
 func (rs *Resource[T]) handleGet(w http.ResponseWriter, r *http.Request) error {
-	doc, err := rs.find(r)
+	expand := rs.expandFields(r.URL.Query())
+	doc, err := rs.find(r, expand...)
 	if err != nil {
 		return rs.fail(w, r, err)
 	}
 	rs.setETag(w, doc)
-	return burrow.JSON(w, http.StatusOK, rs.view(doc))
+	return rs.writeJSON(w, http.StatusOK, rs.view(doc), expand)
 }
 
 func (rs *Resource[T]) handleCreate(w http.ResponseWriter, r *http.Request) error {
