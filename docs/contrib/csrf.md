@@ -104,7 +104,7 @@ token := csrf.Token(r.Context())
 
 ## Exempting Webhook Paths
 
-Cross-origin webhook receivers — Webmention inbound, ActivityPub inbox, payment callbacks — accept POSTs from external services without a CSRF token by design. The csrf app honours a capability interface so the app that owns the route declares the exemption locally:
+Cross-origin webhook receivers — Webmention inbound, ActivityPub inbox, payment callbacks — accept POSTs from external services without a CSRF token by design. Bearer-authenticated [JSON CRUD APIs](../guide/crud-api.md) need the same exemption (they carry no cookie). The csrf app honours a capability interface so the app that owns the route declares the exemption locally:
 
 ```go
 package webmention

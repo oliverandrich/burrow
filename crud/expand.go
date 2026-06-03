@@ -18,9 +18,11 @@ import (
 // ignored, never an error.
 //
 // Expansion is read-only (get and list) and resolves one level deep. Hydration
-// is batched, so expanding a list is not an N+1. It does not combine with
-// [WithPresenter] — a presenter owns the output shape, so a hydrated link never
-// surfaces through it. Without this option ?expand is ignored.
+// is batched, so expanding a list is not an N+1. Both the document type and the
+// linked type must be registered with Den; a name that is not a den.Link field
+// is logged at registration, not an error. It is disabled when [WithPresenter]
+// is set — a presenter owns the output shape, so ?expand is ignored rather than
+// bypassing it. Without this option ?expand is ignored.
 func WithExpandable[T any](fields ...string) Option[T] {
 	return func(rs *Resource[T]) {
 		rs.expandable = make(map[string]bool, len(fields))
@@ -56,9 +58,11 @@ func (rs *Resource[T]) validateExpandable() {
 }
 
 // expandFields returns the allowlisted relation fields the request asked to
-// expand (?expand=a,b), or nil when expansion is off or none match.
+// expand (?expand=a,b), or nil when expansion is off or none match. A presenter
+// owns the output shape, so expansion is disabled when one is set — otherwise a
+// client's ?expand would bypass the presenter and leak the raw document.
 func (rs *Resource[T]) expandFields(params url.Values) []string {
-	if len(rs.expandable) == 0 {
+	if len(rs.expandable) == 0 || rs.present != nil {
 		return nil
 	}
 	var fields []string

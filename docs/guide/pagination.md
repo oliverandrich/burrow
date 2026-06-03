@@ -124,6 +124,9 @@ This renders a `<nav>` with numbered page links, previous/next buttons, and elli
 
 ## JSON API
 
+The [JSON CRUD APIs](crud-api.md) layer wraps results in `PageResponse` for you
+(offset and cursor); reach for the helpers below when hand-writing endpoints.
+
 For JSON APIs, wrap results with `PageResponse`:
 
 ```go

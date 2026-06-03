@@ -112,6 +112,28 @@ func TestExpandUnknownAllowlistFieldWarns(t *testing.T) {
 	assert.NotContains(t, out, "field=author", "a real link field does not warn")
 }
 
+func TestExpandIgnoredWhenPresenterSet(t *testing.T) {
+	db, post := newPostDB(t)
+	// A presenter and expansion together: the presenter owns the output, so
+	// ?expand must not bypass it and leak the raw document.
+	rs := crud.NewResource[expPost](db,
+		crud.WithExpandable[expPost]("author"),
+		crud.WithPresenter(func(p *expPost) any { return map[string]any{"title": p.Title} }),
+	)
+
+	got := getJSON(t, mountPosts(rs), "/posts/"+post.ID+"?expand=author")
+	assert.Equal(t, "Earthsea", got["title"])
+	assert.NotContains(t, got, "author", "presenter wins; no raw field leaks via ?expand")
+
+	var resp burrow.PageResponse[map[string]any]
+	rec := do(t, mountPosts(rs), http.MethodGet, "/posts?expand=author", "", nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	decode(t, rec, &resp)
+	require.Len(t, resp.Items, 1)
+	assert.Equal(t, "Earthsea", resp.Items[0]["title"])
+	assert.NotContains(t, resp.Items[0], "author", "list presenter not bypassed by ?expand")
+}
+
 func TestExpandList(t *testing.T) {
 	db, _ := newPostDB(t)
 	rs := crud.NewResource[expPost](db, crud.WithExpandable[expPost]("author"))

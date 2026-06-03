@@ -75,8 +75,8 @@ func WithSort[T any](field string, dir den.SortDirection) Option[T] {
 }
 
 // Only restricts the resource to the named actions ([ActionList], [ActionGet],
-// [ActionCreate], [ActionUpdate], [ActionDelete]). Mutually exclusive with
-// [Except] — the last one applied wins.
+// [ActionCreate], [ActionUpdate], [ActionReplace], [ActionDelete]). Mutually
+// exclusive with [Except] — the last one applied wins.
 func Only[T any](actions ...string) Option[T] {
 	return func(rs *Resource[T]) { rs.enabled = actionSet(actions) }
 }
