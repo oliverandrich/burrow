@@ -56,6 +56,9 @@ type Resource[T any] struct {
 	// Full-text search (opt-in; see WithFullTextSearch).
 	fts bool // ?search runs Den FTS over den:"fts" columns instead of LIKE
 
+	// Relation expansion (opt-in; see WithExpandable).
+	expandable map[string]bool // JSON link-field names clients may ?expand=
+
 	once    sync.Once
 	handler chi.Router
 }
@@ -118,6 +121,7 @@ func (rs *Resource[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rs *Resource[T]) register(r chi.Router) {
+	rs.validateExpandable()
 	if rs.enabled[ActionList] {
 		r.Get("/", burrow.Handle(rs.handleList))
 	}
@@ -170,10 +174,14 @@ func (rs *Resource[T]) views(items []*T) []any {
 
 // find loads a single document by its path id, narrowed by the scope so one
 // owner cannot reach another's row by guessing an id (it 404s instead).
-func (rs *Resource[T]) find(r *http.Request) (*T, error) {
+// Optional expand fields hydrate the named relations for ?expand= output.
+func (rs *Resource[T]) find(r *http.Request, expand ...string) (*T, error) {
 	q := den.NewQuery[T](rs.db, where.Field(den.FieldID).Eq(chi.URLParam(r, "id")))
 	if conds := rs.scopeConds(r); len(conds) > 0 {
 		q = q.Where(conds...)
+	}
+	if len(expand) > 0 {
+		q = q.WithFetchLinks(expand...)
 	}
 	return q.First(r.Context())
 }

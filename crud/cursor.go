@@ -27,6 +27,7 @@ func WithCursorPagination[T any]() Option[T] {
 // clauses; the default sort and ?ordering are intentionally ignored.
 func (rs *Resource[T]) listCursor(w http.ResponseWriter, r *http.Request, params url.Values, conds []where.Condition) error {
 	limit := burrow.ParsePageRequest(r).Limit
+	expand := rs.expandFields(params)
 
 	q := den.NewQuery[T](rs.db, rs.scopeConds(r)...).
 		Where(conds...).
@@ -34,6 +35,9 @@ func (rs *Resource[T]) listCursor(w http.ResponseWriter, r *http.Request, params
 		Limit(limit + 1) // one extra row tells us whether another page exists
 	if after := params.Get("after"); after != "" {
 		q = q.After(after)
+	}
+	if len(expand) > 0 {
+		q = q.WithFetchLinks(expand...)
 	}
 	items, err := q.All(r.Context())
 	if err != nil {
@@ -49,8 +53,5 @@ func (rs *Resource[T]) listCursor(w http.ResponseWriter, r *http.Request, params
 		next = rs.stringFieldAt(items[len(items)-1], rs.baseID)
 	}
 
-	return burrow.JSON(w, http.StatusOK, burrow.PageResponse[any]{
-		Items:      rs.views(items),
-		Pagination: burrow.CursorResult(hasMore, next),
-	})
+	return rs.writeList(w, items, burrow.CursorResult(hasMore, next), expand)
 }

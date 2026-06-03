@@ -41,11 +41,15 @@ func (rs *Resource[T]) listFTS(w http.ResponseWriter, r *http.Request, params ur
 		return rs.fail(w, r, err)
 	}
 	pr := burrow.ParsePageRequest(r)
-	items, err := den.NewQuery[T](rs.db, rs.scopeConds(r)...).
+	expand := rs.expandFields(params)
+	q := den.NewQuery[T](rs.db, rs.scopeConds(r)...).
 		Where(conds...).
-		Limit(pr.Limit+1). // one extra row tells us whether another page exists
-		Skip(pr.Offset()).
-		Search(r.Context(), params.Get("search"))
+		Limit(pr.Limit + 1). // one extra row tells us whether another page exists
+		Skip(pr.Offset())
+	if len(expand) > 0 {
+		q = q.WithFetchLinks(expand...)
+	}
+	items, err := q.Search(r.Context(), params.Get("search"))
 	if err != nil {
 		return rs.fail(w, r, err)
 	}
@@ -54,8 +58,5 @@ func (rs *Resource[T]) listFTS(w http.ResponseWriter, r *http.Request, params ur
 	if hasMore {
 		items = items[:pr.Limit]
 	}
-	return burrow.JSON(w, http.StatusOK, burrow.PageResponse[any]{
-		Items:      rs.views(items),
-		Pagination: burrow.PageResult{Page: max(pr.Page, 1), HasMore: hasMore},
-	})
+	return rs.writeList(w, items, burrow.PageResult{Page: max(pr.Page, 1), HasMore: hasMore}, expand)
 }

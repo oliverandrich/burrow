@@ -149,6 +149,37 @@ crud.WithPresenter(func(n *Note) any {
 })
 ```
 
+## Relation expansion
+
+A `den.Link[T]` field serializes as the related document's id by default. With
+`WithExpandable` clients can inline the related object instead, via
+`?expand=`:
+
+```go
+type Post struct {
+    document.Base
+    Title  string              `json:"title"`
+    Author den.Link[Author]    `json:"author"`
+}
+
+crud.NewResource[Post](db, crud.WithExpandable[Post]("author"))
+```
+
+```bash
+curl '.../api/posts/abc?expand=author'
+# → { …, "author": { "_id": "…", "name": "Ursula" } }
+# without ?expand, the same field is just the id string: "author": "01J…"
+```
+
+The argument is an allowlist of the JSON names of `den.Link[T]` fields (no extra
+struct tag needed) — `?expand=author,tags` honors several, comma-separated, and
+anything not listed is ignored (never an error). A `[]den.Link[T]` field expands
+to an array of objects. It works on get and list (hydration is batched, so
+expanding a list is not an N+1), resolves one level deep (no `author.org`
+chaining), and composes with filtering, search, and pagination. It does **not**
+combine with `WithPresenter` (a presenter owns the output shape, so a hydrated
+link never surfaces through it).
+
 ## Filtering, ordering & search
 
 The list endpoint can take query params from the client, but only for fields you
