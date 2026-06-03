@@ -47,7 +47,10 @@ jobs:
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: '1.26'
+          # govulncheck below needs the patched stdlib (GO-2026-5037/5039,
+          # fixed in 1.26.4); the test job stays on '1.26' to keep its required
+          # status-check name stable.
+          go-version: '1.26.4'
           cache: false
 
       - uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9

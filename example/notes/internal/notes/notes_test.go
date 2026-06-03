@@ -1113,7 +1113,9 @@ func TestSearchByUserID(t *testing.T) {
 		assert.Empty(t, notes)
 	})
 
-	t.Run("syntax error returns empty results", func(t *testing.T) {
+	t.Run("malformed query is searched literally, not a syntax error", func(t *testing.T) {
+		// Den's Search is literal-by-default: a stray quote is a literal token,
+		// not an FTS5 syntax error. No note contains "unclosed", so no match.
 		notes, _, err := repo.SearchByUserID(ctx, "user-default", `"unclosed`, burrow.PageRequest{Limit: 10})
 		require.NoError(t, err)
 		assert.Empty(t, notes)
