@@ -59,6 +59,11 @@ type Resource[T any] struct {
 	// Relation expansion (opt-in; see WithExpandable).
 	expandable map[string]bool // JSON link-field names clients may ?expand=
 
+	// Write-model types captured for OpenAPI request-body schemas (nil = bind
+	// onto T directly). Set by WithCreate/WithUpdate.
+	createType reflect.Type
+	updateType reflect.Type
+
 	once    sync.Once
 	handler chi.Router
 }

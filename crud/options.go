@@ -2,6 +2,7 @@ package crud
 
 import (
 	"net/http"
+	"reflect"
 
 	"github.com/oliverandrich/den"
 	"github.com/oliverandrich/den/where"
@@ -21,6 +22,7 @@ func WithScope[T any](fn func(*http.Request) []where.Condition) Option[T] {
 // body is bound directly onto T.
 func WithCreate[T, C any](fn func(C, *http.Request) (*T, error)) Option[T] {
 	return func(rs *Resource[T]) {
+		rs.createType = reflect.TypeFor[C]()
 		rs.decodeCreate = func(r *http.Request) (*T, error) {
 			var dto C
 			if err := bindValidate(r, &dto); err != nil {
@@ -45,6 +47,7 @@ func WithCreate[T, C any](fn func(C, *http.Request) (*T, error)) Option[T] {
 //	})
 func WithUpdate[T, U any](fn func(U, *T, *http.Request) error) Option[T] {
 	return func(rs *Resource[T]) {
+		rs.updateType = reflect.TypeFor[U]()
 		rs.applyUpdate = func(r *http.Request, dst *T) error {
 			var dto U
 			if err := bindValidate(r, &dto); err != nil {
