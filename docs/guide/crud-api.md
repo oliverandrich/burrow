@@ -357,6 +357,48 @@ curl -H "Authorization: Bearer brw_…" -H "Accept: application/json" \
      https://example.com/api/notes
 ```
 
+## OpenAPI spec
+
+`crud.API` emits an OpenAPI 3.0 document for your resources, so the JSON API gets
+machine-readable schemas (Swagger UI, client codegen, contract tests). Assign
+each resource to a variable, then mount **and** describe it through one
+collector — the path is written once:
+
+```go
+notes := crud.NewResource[Note](db /* , options… */)
+api := crud.NewAPI(crud.APIInfo{Title: "Notes API", Version: "1.0", BaseURL: "/api"})
+
+r.Route("/api", func(r chi.Router) {
+    r.Get("/openapi.json", burrow.Handle(api.SpecHandler())) // public spec
+
+    r.Group(func(r chi.Router) {
+        r.Use(auth.RequireAuth())
+        api.Mount(r, "/notes", notes) // r.Mount + record, one call
+    })
+})
+```
+
+`api.Mount(r, path, res)` is `r.Mount` plus recording the resource for the spec.
+`BaseURL` becomes the document's single server, so resource paths stay relative
+(`/notes`, `/notes/{id}`). For a resource mounted with `Routes(r)` (custom
+sibling actions), call `api.Record("/notes", res)` and mount it yourself — pass
+`Record` the same path you mount on (relative to `BaseURL`). The spec is built
+once on first request and cached.
+
+The spec covers every enabled action with its parameters (pagination, filter,
+ordering, search, expand), request bodies (the `WithCreate`/`WithUpdate` write
+models, or `T` when none), response schemas, and the error envelope. Schemas are
+reflected from your Go types, and `validate` tags map onto constraints:
+`required`, `min`/`max` (string length or numeric bounds), `email`/`url`/`uuid`
+(format), `oneof` (enum). `WithPresenter` hides the output schema — a presenter
+returns an arbitrary shape — so a resource using one documents a generic object
+for its responses.
+
+It uses [kin-openapi](https://github.com/getkin/kin-openapi) under the hood.
+burrow bundles no UI: serve the JSON at any path and host swagger-ui or Redoc
+yourself (a CDN `<script>` or via [staticfiles](../contrib/staticfiles.md))
+pointed at it.
+
 ## Errors
 
 Failures use one envelope, always JSON:

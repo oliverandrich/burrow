@@ -48,6 +48,28 @@ func apiDo(t *testing.T, h http.Handler, method, target, body string) *httptest.
 	return rec
 }
 
+func TestAPIServesOpenAPISpec(t *testing.T) {
+	r := apiRouter(t, openTestDB(t))
+
+	rec := apiDo(t, r, http.MethodGet, "/api/openapi.json", "")
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var doc map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &doc))
+
+	assert.Equal(t, "3.0.3", doc["openapi"])
+	info, _ := doc["info"].(map[string]any)
+	assert.Equal(t, "Notes API", info["title"])
+
+	servers, _ := doc["servers"].([]any)
+	require.NotEmpty(t, servers)
+	assert.Equal(t, "/api", servers[0].(map[string]any)["url"])
+
+	paths, _ := doc["paths"].(map[string]any)
+	assert.Contains(t, paths, "/notes", "collection path (relative to the /api server)")
+	assert.Contains(t, paths, "/notes/{id}", "item path")
+}
+
 func TestAPICRUDRoundTrip(t *testing.T) {
 	r := apiRouter(t, openTestDB(t))
 
