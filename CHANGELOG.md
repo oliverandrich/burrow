@@ -4,6 +4,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ## Unreleased
 
+### Added
+
+- **contrib/jobs reports worker liveness through `/healthz/ready`.** The jobs app now implements `ReadinessChecker`, returning 503 with a `jobs` entry when the poller stalls so orchestrators stop routing to an instance that can no longer drain its queue.
+
 ### Fixed
 
 - **Background loops no longer crash the process on panic.** The auth orphaned-user/email-token sweep, the WebAuthn session sweep, the rate-limiter eviction sweep, the jobs poller, and the SIGHUP graceful-restart handler now recover per-iteration panics (logged with a stack trace) instead of letting the goroutine panic propagate unrecovered.

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/oliverandrich/burrow"
@@ -44,6 +45,32 @@ type Worker struct { //nolint:govet // fieldalignment: readability over optimiza
 	jobs         chan *Job
 	wg           sync.WaitGroup
 	done         chan struct{}
+
+	// Liveness instrumentation (read via Stats).
+	lastPollAt atomic.Int64 // UnixNano of the most recent poll tick
+	inFlight   atomic.Int64 // jobs currently being processed
+	running    atomic.Bool  // true between Start and worker drain
+}
+
+// WorkerStats is a snapshot of the worker pool's runtime state.
+type WorkerStats struct {
+	WorkerID   string
+	LastPollAt time.Time
+	NumWorkers int
+	InFlight   int
+	Running    bool
+}
+
+// Stats returns a snapshot of the worker pool's runtime state for readiness
+// checks and the admin status panel.
+func (w *Worker) Stats() WorkerStats {
+	return WorkerStats{
+		WorkerID:   w.id,
+		LastPollAt: time.Unix(0, w.lastPollAt.Load()),
+		NumWorkers: w.config.NumWorkers,
+		InFlight:   int(w.inFlight.Load()),
+		Running:    w.running.Load(),
+	}
 }
 
 // NewWorker creates a new Worker. The exec parameter may be nil when
@@ -63,6 +90,11 @@ func NewWorker(repo *Repository, handlers map[string]burrow.JobHandlerFunc, conf
 // Start runs the poller and workers. It blocks until ctx is cancelled
 // and all in-flight jobs have finished.
 func (w *Worker) Start(ctx context.Context) {
+	w.running.Store(true)
+	// Stamp a baseline so readiness passes from the moment the poller starts,
+	// before the first tick fires.
+	w.lastPollAt.Store(time.Now().UnixNano())
+
 	// Start worker goroutines.
 	for range w.config.NumWorkers {
 		w.wg.Go(w.work)
@@ -74,6 +106,7 @@ func (w *Worker) Start(ctx context.Context) {
 	// Poller stopped — close the channel so workers drain and exit.
 	close(w.jobs)
 	w.wg.Wait()
+	w.running.Store(false)
 	close(w.done)
 }
 
@@ -94,6 +127,9 @@ func (w *Worker) poll(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			// Stamp before dispatching: if claimAndDispatch blocks (e.g. all
+			// workers stuck), the loop can't re-stamp and readiness goes stale.
+			w.lastPollAt.Store(time.Now().UnixNano())
 			func() {
 				defer bgloop.Recover("jobs.poll")
 				w.claimAndDispatch(ctx)
@@ -143,6 +179,9 @@ func (w *Worker) work() {
 }
 
 func (w *Worker) processJob(job *Job) {
+	w.inFlight.Add(1)
+	defer w.inFlight.Add(-1)
+
 	// Increment attempts and stamp ownership — persisted atomically via Complete or Fail.
 	job.Attempts++
 	job.WorkerID = w.id
