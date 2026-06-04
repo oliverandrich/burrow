@@ -90,6 +90,41 @@ func Except[T any](actions ...string) Option[T] {
 	}
 }
 
+// WithTag sets the OpenAPI tag name and description for this resource's
+// operations. The description fills the section a viewer shows above the
+// operation list. Without it the tag is derived from the mount path and carries
+// no prose.
+func WithTag[T any](name, description string) Option[T] {
+	return func(rs *Resource[T]) {
+		rs.tagName = name
+		rs.tagDesc = description
+	}
+}
+
+// WithActionDoc attaches a summary and longer description to one action's
+// OpenAPI operation (action is [ActionList], [ActionGet], [ActionCreate],
+// [ActionUpdate], [ActionReplace], or [ActionDelete]). An empty summary keeps
+// the generated default; the description is prose shown alongside the operation.
+func WithActionDoc[T any](action, summary, description string) Option[T] {
+	return func(rs *Resource[T]) {
+		if rs.docs == nil {
+			rs.docs = map[string]actionDoc{}
+		}
+		rs.docs[action] = actionDoc{summary: summary, description: description}
+	}
+}
+
+// WithSecurity overrides the document-level security requirement (see
+// [API.Secured]) for this resource's operations. Scheme names are alternatives
+// (OR). Call it with no names to mark the resource public, overriding a global
+// requirement. Descriptive only — crud does not enforce auth.
+func WithSecurity[T any](schemeNames ...string) Option[T] {
+	return func(rs *Resource[T]) {
+		names := append([]string(nil), schemeNames...)
+		rs.security = &names
+	}
+}
+
 func actionSet(actions []string) map[string]bool {
 	set := make(map[string]bool, len(actions))
 	for _, a := range actions {

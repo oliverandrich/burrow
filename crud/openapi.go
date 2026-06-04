@@ -38,6 +38,9 @@ type API struct {
 	info    APIInfo
 	entries []apiEntry
 
+	securitySchemes map[string]*openapi3.SecurityScheme
+	globalSecurity  []string
+
 	once sync.Once
 	body []byte
 	err  error
@@ -97,6 +100,7 @@ func (api *API) Spec() (*openapi3.T, error) {
 			return nil, err
 		}
 	}
+	api.applySecurity(doc)
 	// Manually-built $refs carry only their Ref string; resolve them against
 	// the components so each SchemaRef.Value is populated (validation and
 	// downstream tooling expect resolved refs).
@@ -165,53 +169,54 @@ func (rs *Resource[T]) contributeOpenAPI(path string, doc *openapi3.T, gen *open
 		respRef = openapi3.NewSchemaRef("", openapi3.NewObjectSchema())
 	}
 
-	tag := opID(path)
+	tag := rs.tag(path)
+	rs.registerTag(doc, tag)
 	errResp := errResponse()
 	coll := &openapi3.PathItem{}
 	item := &openapi3.PathItem{}
 
 	if rs.enabled[ActionList] {
-		op := newOp(tag, "list_"+tag, "List "+tag)
+		op := rs.buildOp(tag, ActionList, "list_"+tag, "List "+tag)
 		rs.addListParams(op)
 		op.AddResponse(http.StatusOK, jsonResponse("A page of "+tag, listSchemaRef(respRef, pageRef)))
 		coll.Get = op
 	}
 	if rs.enabled[ActionCreate] {
-		op := newOp(tag, "create_"+tag, "Create "+tag)
+		op := rs.buildOp(tag, ActionCreate, "create_"+tag, "Create "+tag)
 		op.RequestBody = jsonBody(createRef)
-		op.AddResponse(http.StatusCreated, jsonResponse("Created", respRef))
+		op.AddResponse(http.StatusCreated, jsonResponse("The created resource.", respRef))
 		op.AddResponse(http.StatusBadRequest, errResp)
 		coll.Post = op
 	}
 	if rs.enabled[ActionGet] {
-		op := newOp(tag, "get_"+tag, "Get "+tag)
+		op := rs.buildOp(tag, ActionGet, "get_"+tag, "Get "+tag)
 		op.AddParameter(idParam())
-		op.AddResponse(http.StatusOK, jsonResponse("OK", respRef))
+		op.AddResponse(http.StatusOK, jsonResponse("The requested resource.", respRef))
 		op.AddResponse(http.StatusNotFound, errResp)
 		item.Get = op
 	}
 	if rs.enabled[ActionUpdate] {
-		op := newOp(tag, "update_"+tag, "Update "+tag+" (partial merge)")
+		op := rs.buildOp(tag, ActionUpdate, "update_"+tag, "Update "+tag+" (partial merge)")
 		op.AddParameter(idParam())
 		op.RequestBody = jsonBody(updateRef)
-		op.AddResponse(http.StatusOK, jsonResponse("OK", respRef))
+		op.AddResponse(http.StatusOK, jsonResponse("The updated resource.", respRef))
 		op.AddResponse(http.StatusBadRequest, errResp)
 		op.AddResponse(http.StatusNotFound, errResp)
 		rs.addConcurrencyResponses(op, errResp)
 		item.Patch = op
 	}
 	if rs.enabled[ActionReplace] {
-		op := newOp(tag, "replace_"+tag, "Replace "+tag+" (full)")
+		op := rs.buildOp(tag, ActionReplace, "replace_"+tag, "Replace "+tag+" (full)")
 		op.AddParameter(idParam())
 		op.RequestBody = jsonBody(createRef)
-		op.AddResponse(http.StatusOK, jsonResponse("OK", respRef))
+		op.AddResponse(http.StatusOK, jsonResponse("The replaced resource.", respRef))
 		op.AddResponse(http.StatusBadRequest, errResp)
 		op.AddResponse(http.StatusNotFound, errResp)
 		rs.addConcurrencyResponses(op, errResp)
 		item.Put = op
 	}
 	if rs.enabled[ActionDelete] {
-		op := newOp(tag, "delete_"+tag, "Delete "+tag)
+		op := rs.buildOp(tag, ActionDelete, "delete_"+tag, "Delete "+tag)
 		op.AddParameter(idParam())
 		op.AddResponse(http.StatusNoContent, noContentResponse())
 		op.AddResponse(http.StatusNotFound, errResp)
@@ -281,6 +286,46 @@ func newOp(tag, id, summary string) *openapi3.Operation {
 	op.Tags = []string{tag}
 	op.OperationID = id
 	op.Summary = summary
+	return op
+}
+
+// tag returns the resource's OpenAPI tag: the WithTag name, or the path-derived
+// default.
+func (rs *Resource[T]) tag(path string) string {
+	if rs.tagName != "" {
+		return rs.tagName
+	}
+	return opID(path)
+}
+
+// registerTag adds a doc-level tag entry with prose when WithTag set a
+// description, deduplicating by name.
+func (rs *Resource[T]) registerTag(doc *openapi3.T, name string) {
+	if rs.tagDesc == "" {
+		return
+	}
+	for _, t := range doc.Tags {
+		if t.Name == name {
+			return
+		}
+	}
+	doc.Tags = append(doc.Tags, &openapi3.Tag{Name: name, Description: rs.tagDesc})
+}
+
+// buildOp creates an operation and applies the resource's documentation
+// overrides (WithActionDoc prose, WithSecurity requirement) for the action.
+func (rs *Resource[T]) buildOp(tag, action, id, summary string) *openapi3.Operation {
+	op := newOp(tag, id, summary)
+	if d, ok := rs.docs[action]; ok {
+		if d.summary != "" {
+			op.Summary = d.summary
+		}
+		op.Description = d.description
+	}
+	if rs.security != nil {
+		reqs := securityRequirements(*rs.security)
+		op.Security = &reqs
+	}
 	return op
 }
 

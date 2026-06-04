@@ -122,6 +122,7 @@ nav:
       - UI & Templates:
           - htmx: contrib/htmx.md
           - Static Files: contrib/staticfiles.md
+          - API Docs: contrib/apidocs.md
       - Formatting:
           - Humanize: contrib/humanize.md
       - Data & Background:

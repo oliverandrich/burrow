@@ -64,8 +64,20 @@ type Resource[T any] struct {
 	createType reflect.Type
 	updateType reflect.Type
 
+	// OpenAPI documentation metadata (all opt-in; spec-only, no runtime effect).
+	tagName  string               // WithTag: operations' tag name (default: path)
+	tagDesc  string               // WithTag: tag description prose
+	docs     map[string]actionDoc // WithActionDoc: per-action summary/description
+	security *[]string            // WithSecurity: nil = inherit global; non-nil = override
+
 	once    sync.Once
 	handler chi.Router
+}
+
+// actionDoc carries the prose overrides for one action's OpenAPI operation.
+type actionDoc struct {
+	summary     string
+	description string
 }
 
 // Option configures a [Resource]. See [WithScope], [WithCreate], [WithUpdate],

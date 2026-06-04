@@ -2,6 +2,13 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+
+- **contrib/apidocs: vendored Scalar OpenAPI documentation UI.** `apidocs.New(apidocs.WithSpecURL(…), apidocs.WithTitle(…))` serves an interactive API reference page (default `/api/docs`) pointed at an OpenAPI spec — the `crud` `SpecHandler` route by default. The Scalar bundle is vendored and served content-hashed through `staticfiles` with web fonts disabled, so the docs work fully offline. See the [API Docs guide](https://burrow.andrich.dev/contrib/apidocs/).
+- **`crud` OpenAPI: security schemes and documentation prose.** Declare authentication so the spec advertises it: `api.AddSecurityScheme("bearerAuth", crud.BearerAuth("token"))` plus `api.Secured("bearerAuth")` (document-level; multiple names are OR alternatives), with `BearerAuth`/`APIKeyAuth` helpers that avoid importing kin-openapi. New resource options add prose a viewer can show: `WithTag` (tag name + description), `WithActionDoc` (per-action summary + description), and `WithSecurity` (per-resource override; no names = public). Security is descriptive only — authentication stays the host's middleware.
+
 ## 0.27.0 — 2026-06-03
 
 ### Breaking Changes
