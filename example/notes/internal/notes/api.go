@@ -61,9 +61,22 @@ func (a *App) apiRoutes(r chi.Router) {
 		// sorts the non-search listing by the named fields.
 		crud.WithFullTextSearch[Note](),
 		crud.WithOrdering[Note]("title", den.FieldCreatedAt),
+		// OpenAPI prose so the generated spec (and any viewer) is self-describing.
+		crud.WithTag[Note]("notes", "CRUD operations for the authenticated user's own notes. Every request is scoped to the caller — you can only see and edit your own notes."),
+		crud.WithActionDoc[Note](crud.ActionList, "List your notes", "Returns a page of the caller's notes. Supports `?search=` (full-text over title and content), `?ordering=`, and pagination."),
+		crud.WithActionDoc[Note](crud.ActionCreate, "Create a note", "Creates a note owned by the authenticated user. The owner is taken from the auth context, never the request body."),
 	)
 
-	api := crud.NewAPI(crud.APIInfo{Title: "Notes API", Version: "1.0", BaseURL: "/api"})
+	api := crud.NewAPI(crud.APIInfo{
+		Title:       "Notes API",
+		Version:     "1.0",
+		BaseURL:     "/api",
+		Description: "JSON API for personal notes. Authenticate with a personal access token (`Authorization: Bearer brw_…`); every request is scoped to your own notes.",
+	})
+	// Document the bearer auth the API routes enforce (descriptive only — the
+	// gate is auth.RequireAuth below). Create tokens at /auth/api-keys.
+	api.AddSecurityScheme("bearerAuth", crud.BearerAuth("personal access token"))
+	api.Secured("bearerAuth")
 
 	r.Route("/api", func(r chi.Router) {
 		// The OpenAPI spec is public; the resource itself is gated below.

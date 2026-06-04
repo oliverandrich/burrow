@@ -402,9 +402,44 @@ returns an arbitrary shape — so a resource using one documents a generic objec
 for its responses.
 
 It uses [kin-openapi](https://github.com/getkin/kin-openapi) under the hood.
-burrow bundles no UI: serve the JSON at any path and host swagger-ui or Redoc
-yourself (a CDN `<script>` or via [staticfiles](../contrib/staticfiles.md))
-pointed at it.
+
+### Documenting auth and prose
+
+The generator reflects schemas, but it can't see your auth middleware or guess
+your prose — declare those so the spec (and any viewer) is self-describing:
+
+```go
+api := crud.NewAPI(crud.APIInfo{
+    Title: "Notes API", Version: "1.0", BaseURL: "/api",
+    Description: "JSON API for personal notes. Authenticate with a bearer token.",
+})
+
+// Security is descriptive only — crud documents it, your middleware enforces it.
+api.AddSecurityScheme("bearerAuth", crud.BearerAuth("personal access token"))
+api.Secured("bearerAuth") // document-level; multiple names = alternatives (OR)
+
+notes := crud.NewResource[Note](db,
+    crud.WithTag[Note]("notes", "CRUD for the caller's own notes."),
+    crud.WithActionDoc[Note](crud.ActionCreate, "Create a note",
+        "Creates a note owned by the authenticated user."),
+)
+```
+
+`BearerAuth`/`APIKeyAuth` build the common schemes without importing kin-openapi.
+`WithTag` fills the section a viewer shows above the operations; `WithActionDoc`
+adds a summary and prose to one action (`ActionList`, `ActionGet`, …). A resource
+can override the document-level requirement with `WithSecurity(...)` — pass no
+names to mark it public. None of this enforces anything; authentication stays
+your ordinary middleware.
+
+As with the schemas, this prose only reaches the spec once the resource is
+recorded through the collector — `api.Mount(r, "/notes", notes)` (or
+`api.Record`), exactly as shown above.
+
+To browse the spec interactively, add the [apidocs](../contrib/apidocs.md)
+contrib — it vendors the Scalar API reference and serves a documentation page
+(default `/api/docs`) pointed at your spec URL, fully offline. Or host any other
+viewer (swagger-ui, Redoc) yourself against the JSON.
 
 ## Errors
 

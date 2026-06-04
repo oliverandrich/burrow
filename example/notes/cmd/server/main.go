@@ -14,6 +14,7 @@ import (
 
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/contrib/admin"
+	"github.com/oliverandrich/burrow/contrib/apidocs"
 	"github.com/oliverandrich/burrow/contrib/auth"
 	"github.com/oliverandrich/burrow/contrib/csrf"
 	"github.com/oliverandrich/burrow/contrib/healthcheck"
@@ -63,6 +64,10 @@ func main() {
 		humanize.New(),
 		notes.New(),
 		admin.New(),
+		apidocs.New(
+			apidocs.WithSpecURL("/api/openapi.json"),
+			apidocs.WithTitle("Notes API"),
+		),
 	)
 
 	srv.SetLayout("app/layout")

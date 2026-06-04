@@ -37,7 +37,7 @@ Built on [Chi](https://go-chi.io/), [Den](https://github.com/oliverandrich/den) 
 - **CSRF protection** — automatic token generation and validation
 - **Flash messages** — session-based flash message system
 - **htmx-first interactivity** — `contrib/htmx` ships the vendored JS plus response helpers (`OpenDialog`, `SmartRedirect`, etc.) so SSR pages get partial swaps and modals without a JS framework. Dark mode follows `prefers-color-scheme`.
-- **Contrib apps** — auth (WebAuthn/passkeys), sessions, i18n, admin, CSRF, flash messages, jobs, uploads, rate limiting, healthcheck, static files
+- **Contrib apps** — auth (WebAuthn/passkeys), sessions, i18n, admin, CSRF, flash messages, jobs, uploads, rate limiting, healthcheck, static files, API docs (Scalar)
 
 ## Quick Start
 
@@ -112,6 +112,7 @@ See [`example/hello/`](example/hello/) for a minimal hello world app, or [`examp
 ```
 contrib/        Reusable apps
   admin/        Admin panel coordinator (top-nav layout, dashboard cards, route mounting)
+  apidocs/      Vendored Scalar OpenAPI documentation UI
   auth/         WebAuthn passkeys, recovery codes, email verification
   authmail/     Pluggable email renderer + SMTP implementation
   csrf/         CSRF protection
