@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"html/template"
+	"net/http"
 )
 
 // TemplateExecutor executes a named template with the given data and returns
@@ -31,6 +32,7 @@ type (
 	ctxKeyTemplateExecutor struct{}
 	ctxKeyAuthChecker      struct{}
 	ctxKeyRequestPath      struct{}
+	ctxKeyForwardedProto   struct{}
 )
 
 // WithContextValue returns a new context with the given key-value pair.
@@ -61,6 +63,33 @@ func Layout(ctx context.Context) string {
 		return name
 	}
 	return ""
+}
+
+// WithForwardedProto records the scheme a trusted reverse proxy reported via
+// X-Forwarded-Proto. It is set only by the server's forwarded-headers
+// middleware, and only after the TCP peer passed the trusted-CIDR check.
+func WithForwardedProto(ctx context.Context, scheme string) context.Context {
+	return context.WithValue(ctx, ctxKeyForwardedProto{}, scheme)
+}
+
+// ForwardedProto returns the scheme recorded by [WithForwardedProto], or "".
+func ForwardedProto(ctx context.Context) string {
+	if scheme, ok := ctx.Value(ctxKeyForwardedProto{}).(string); ok {
+		return scheme
+	}
+	return ""
+}
+
+// RequestIsHTTPS reports whether the request should be treated as HTTPS for
+// per-request security decisions (CSRF origin check, Secure cookies). It
+// consults the trusted forwarded-proto flag first, then falls back to r.TLS.
+// Behind a TLS-terminating proxy the connection is plain HTTP (r.TLS == nil),
+// so the forwarded flag is what makes the scheme correct.
+func RequestIsHTTPS(r *http.Request) bool {
+	if ForwardedProto(r.Context()) == "https" {
+		return true
+	}
+	return r.TLS != nil
 }
 
 // WithNavItems stores navigation items in the context.

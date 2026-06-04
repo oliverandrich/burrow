@@ -8,6 +8,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **contrib/jobs reports worker liveness through `/healthz/ready`.** The jobs app now implements `ReadinessChecker`, returning 503 with a `jobs` entry when the poller stalls so orchestrators stop routing to an instance that can no longer drain its queue.
 - **contrib/jobs admin: worker-status panel.** The `/admin/jobs` page now shows a card with the worker pool's state (running / stopped / stalled), worker count, in-flight jobs, last poll time, and per-status job counts.
+- **Reverse-proxy forwarded-headers support (`--forwarded-mode`, default `private`).** Behind a TLS-terminating proxy the framework now derives the request scheme from a trusted proxy's `X-Forwarded-Proto`, gated on the direct TCP peer: `private` (default) trusts loopback + RFC1918 — covering same-host nginx/Caddy with zero config — while `loopback`, `trusted-cidrs` (with `--forwarded-trusted-cidrs`), and `off` tune the trust boundary. New `burrow.RequestIsHTTPS(r)` reports the per-request scheme. Directly-served requests are unaffected — only requests whose TCP peer is loopback/RFC1918 consult the header.
 
 ### Fixed
 

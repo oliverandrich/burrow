@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,9 +25,27 @@ type ServerConfig struct {
 	PIDFile         string
 	AppName         string
 	ClientIP        ClientIPConfig
+	Forwarded       ForwardedConfig
 	Port            int
 	MaxBodySize     int // in MB
 	ShutdownTimeout int // in seconds
+}
+
+// ForwardedConfig controls whether the framework trusts a reverse proxy's
+// X-Forwarded-Proto (and optionally X-Forwarded-Host) to derive the public
+// request scheme — so CSRF, Secure cookies, and HSTS work behind a
+// TLS-terminating proxy. Trust is gated on the direct TCP peer. See
+// docs/guide/reverse-proxy.md.
+type ForwardedConfig struct {
+	// Mode is one of: "private" (default — trust loopback + RFC1918 + ULA
+	// peers), "loopback" (loopback only), "trusted-cidrs" (explicit allowlist
+	// via TrustedCIDRs), "off" (ignore forwarded headers entirely).
+	Mode string
+	// TrustedCIDRs is the explicit trusted-proxy allowlist (mode=trusted-cidrs).
+	TrustedCIDRs []string
+	// TrustHost, when true, also applies X-Forwarded-Host to r.Host. Off by
+	// default — Host injection enables cache poisoning / poisoned absolute URLs.
+	TrustHost bool
 }
 
 // ClientIPConfig selects how the framework extracts the client IP from
@@ -108,6 +127,11 @@ func NewConfig(cmd *cli.Command) *Config {
 				Header:         cmd.String("client-ip-header"),
 				TrustedProxies: int(cmd.Int("client-ip-trusted-proxies")),
 				TrustedCIDRs:   splitCSV(cmd.String("client-ip-trusted-cidrs")),
+			},
+			Forwarded: ForwardedConfig{
+				Mode:         cmd.String("forwarded-mode"),
+				TrustedCIDRs: splitCSV(cmd.String("forwarded-trusted-cidrs")),
+				TrustHost:    cmd.Bool("forwarded-trust-host"),
 			},
 		},
 		Database: DatabaseConfig{
@@ -220,6 +244,34 @@ func rejectClientIPCompanions(cip ClientIPConfig, allow string) error {
 		return fmt.Errorf("--client-ip-trusted-cidrs is only valid with --client-ip-mode=xff-trusted-cidrs")
 	}
 	return nil
+}
+
+// ValidateForwarded checks that the forwarded-headers configuration is
+// consistent. --forwarded-trusted-cidrs is only meaningful with
+// mode=trusted-cidrs, where it is required and each entry must parse. The
+// default and loopback modes use built-in prefixes; off disables the feature.
+// See docs/guide/reverse-proxy.md.
+func (c *Config) ValidateForwarded(_ *cli.Command) error {
+	f := c.Server.Forwarded
+	switch f.Mode {
+	case "", "private", "loopback", "off":
+		if len(f.TrustedCIDRs) != 0 {
+			return fmt.Errorf("--forwarded-trusted-cidrs is only valid with --forwarded-mode=trusted-cidrs")
+		}
+		return nil
+	case "trusted-cidrs":
+		if len(f.TrustedCIDRs) == 0 {
+			return fmt.Errorf("--forwarded-mode=trusted-cidrs requires --forwarded-trusted-cidrs (comma-separated CIDRs)")
+		}
+		for _, cidr := range f.TrustedCIDRs {
+			if _, err := netip.ParsePrefix(cidr); err != nil {
+				return fmt.Errorf("--forwarded-trusted-cidrs: invalid CIDR %q: %w", cidr, err)
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown forwarded mode: %q (valid: private, loopback, trusted-cidrs, off)", f.Mode)
+	}
 }
 
 // ValidateTLS checks that the TLS configuration is consistent.
@@ -358,6 +410,22 @@ func CoreFlags(configSource func(key string) cli.ValueSource) []cli.Flag {
 			Name:    "client-ip-trusted-cidrs",
 			Usage:   "Comma-separated CIDRs covering the trusted proxy fleet (with --client-ip-mode=xff-trusted-cidrs): e.g. 13.32.0.0/15,52.46.0.0/18.",
 			Sources: FlagSources(configSource, "CLIENT_IP_TRUSTED_CIDRS", "server.client_ip.trusted_cidrs"),
+		},
+		&cli.StringFlag{
+			Name:    "forwarded-mode",
+			Value:   "private",
+			Usage:   "Trust a reverse proxy's X-Forwarded-Proto for the request scheme (CSRF/Secure cookies/HSTS behind a TLS-terminating proxy). One of: private (trust loopback+RFC1918, default — covers same-host nginx/Caddy), loopback (loopback only), trusted-cidrs (explicit --forwarded-trusted-cidrs), off. See docs/guide/reverse-proxy.md.",
+			Sources: FlagSources(configSource, "FORWARDED_MODE", "server.forwarded.mode"),
+		},
+		&cli.StringFlag{
+			Name:    "forwarded-trusted-cidrs",
+			Usage:   "Comma-separated CIDRs of the trusted proxy (with --forwarded-mode=trusted-cidrs): e.g. a Cloudflare range or a single-tenant subnet.",
+			Sources: FlagSources(configSource, "FORWARDED_TRUSTED_CIDRS", "server.forwarded.trusted_cidrs"),
+		},
+		&cli.BoolFlag{
+			Name:    "forwarded-trust-host",
+			Usage:   "Also apply X-Forwarded-Host to the request host. Off by default — an attacker-controlled Host enables cache poisoning / poisoned absolute URLs. Only enable behind a proxy that overwrites this header.",
+			Sources: FlagSources(configSource, "FORWARDED_TRUST_HOST", "server.forwarded.trust_host"),
 		},
 		&cli.StringFlag{
 			Name:    "database-dsn",

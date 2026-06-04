@@ -212,6 +212,7 @@ func (s *Server) Run(ctx context.Context, cmd *cli.Command) error {
 	}))
 	r.Use(chimw.RequestID)
 	r.Use(clientIPMiddleware(cfg.Server.ClientIP))
+	r.Use(forwardedHeadersMiddleware(cfg.Server.Forwarded))
 	r.Use(chimw.Compress(5))
 	r.Use(chimw.RequestSize(int64(cfg.Server.MaxBodySize) * 1024 * 1024))
 	r.Use(s.i18nBundle.LocaleMiddleware())
@@ -278,6 +279,10 @@ func (s *Server) boot(ctx context.Context, cmd *cli.Command) (*burrowapp.Config,
 	}
 
 	if err := cfg.ValidateClientIP(cmd); err != nil {
+		return nil, nil, err
+	}
+
+	if err := cfg.ValidateForwarded(cmd); err != nil {
 		return nil, nil, err
 	}
 

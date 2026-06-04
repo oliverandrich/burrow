@@ -2,11 +2,18 @@ package burrow
 
 import (
 	"context"
+	"net/http"
 	"net/netip"
 
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/oliverandrich/burrow/app"
 )
+
+// RequestIsHTTPS reports whether the request should be treated as HTTPS for
+// per-request security decisions (CSRF origin check, Secure cookies). Wrapper
+// around [app.RequestIsHTTPS]: it honors a trusted reverse proxy's
+// X-Forwarded-Proto (see --forwarded-mode) and falls back to r.TLS.
+func RequestIsHTTPS(r *http.Request) bool { return app.RequestIsHTTPS(r) }
 
 // WithLayout stores the layout template name in the context. Wrapper around
 // [app.WithLayout].
