@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Fixed
+
+- **Reverse-proxy forwarded headers no longer corrupt the request URL (regression from 0.29.0).** Behind a trusted proxy reporting `X-Forwarded-Proto`, the middleware set `r.URL.Scheme` on an origin-form server request (no host), so `r.URL.String()` became `https:///path` — polluting request logs and any absolute URL built from `r.URL`. `r.URL` is now left untouched; read the proxied scheme via `burrow.RequestIsHTTPS(r)` as before.
+
 ## 0.29.0 — 2026-06-04
 
 ### Added
