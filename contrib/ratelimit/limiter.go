@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/oliverandrich/burrow/internal/bgloop"
 	"golang.org/x/time/rate"
 )
 
@@ -100,7 +101,10 @@ func (l *Limiter) cleanup() {
 		case <-l.done:
 			return
 		case <-ticker.C:
-			l.sweep()
+			func() {
+				defer bgloop.Recover("ratelimit.cleanup")
+				l.sweep()
+			}()
 		}
 	}
 }

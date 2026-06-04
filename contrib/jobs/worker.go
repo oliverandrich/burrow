@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/internal/bgloop"
 	"github.com/oliverandrich/den"
 )
 
@@ -93,9 +94,15 @@ func (w *Worker) poll(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			w.claimAndDispatch(ctx)
+			func() {
+				defer bgloop.Recover("jobs.poll")
+				w.claimAndDispatch(ctx)
+			}()
 		case <-maintenanceTicker.C:
-			w.maintenance(ctx)
+			func() {
+				defer bgloop.Recover("jobs.maintenance")
+				w.maintenance(ctx)
+			}()
 		}
 	}
 }

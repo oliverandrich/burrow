@@ -12,6 +12,7 @@ import (
 	"time"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
+	"github.com/oliverandrich/burrow/internal/bgloop"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -296,14 +297,23 @@ func (s *webauthnService) cleanup(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			s.mu.Lock()
-			now := time.Now()
-			for key, entry := range s.store {
-				if now.After(entry.expiresAt) {
-					delete(s.store, key)
-				}
-			}
-			s.mu.Unlock()
+			func() {
+				defer bgloop.Recover("auth.webauthnSessionCleanup")
+				s.sweepExpiredSessions()
+			}()
+		}
+	}
+}
+
+// sweepExpiredSessions removes all expired entries. The deferred unlock
+// guarantees the mutex is released even if iteration panics.
+func (s *webauthnService) sweepExpiredSessions() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	for key, entry := range s.store {
+		if now.After(entry.expiresAt) {
+			delete(s.store, key)
 		}
 	}
 }

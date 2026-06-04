@@ -17,6 +17,7 @@ import (
 
 	"github.com/cloudflare/tableflip"
 	burrowapp "github.com/oliverandrich/burrow/app"
+	"github.com/oliverandrich/burrow/internal/bgloop"
 	"github.com/oliverandrich/burrow/registry"
 )
 
@@ -59,9 +60,12 @@ func startServerTableflip(
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGHUP)
 		for range sig {
-			if err := upg.Upgrade(); err != nil {
-				slog.Error("upgrade failed", "error", err)
-			}
+			func() {
+				defer bgloop.Recover("server.sighupUpgrade")
+				if err := upg.Upgrade(); err != nil {
+					slog.Error("upgrade failed", "error", err)
+				}
+			}()
 		}
 	}()
 
