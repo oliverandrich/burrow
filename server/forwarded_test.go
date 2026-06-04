@@ -50,9 +50,26 @@ func TestForwarded_CGNATPeerIgnored(t *testing.T) {
 func TestForwarded_DefaultPrivate_LoopbackTrusted(t *testing.T) {
 	got := runForwarded(t, app.ForwardedConfig{Mode: "private"}, proxiedReq("127.0.0.1:5000", "https"))
 	assert.NotNil(t, got.TLS, "loopback proxy is trusted under private mode")
-	assert.Equal(t, "https", got.URL.Scheme)
 	assert.Equal(t, "https", app.ForwardedProto(got.Context()))
 	assert.True(t, app.RequestIsHTTPS(got))
+}
+
+func TestForwarded_DoesNotCorruptURL(t *testing.T) {
+	// A real server request carries an origin-form URL (no scheme/host; the
+	// host lives in r.Host). Setting r.URL.Scheme alone would make
+	// r.URL.String() return "https:///auth/login" and pollute logs / absolute
+	// URLs. The scheme signal must flow via the context flag + r.TLS sentinel
+	// instead, leaving r.URL untouched.
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/auth/login", nil)
+	r.RemoteAddr = "127.0.0.1:5000"
+	r.Header.Set("X-Forwarded-Proto", "https")
+
+	got := runForwarded(t, app.ForwardedConfig{Mode: "private"}, r)
+
+	assert.Equal(t, "/auth/login", got.URL.String(), "origin-form request URL must stay intact")
+	assert.Empty(t, got.URL.Scheme)
+	assert.True(t, app.RequestIsHTTPS(got), "scheme still signaled via context flag")
+	assert.NotNil(t, got.TLS, "and via the r.TLS sentinel")
 }
 
 func TestForwarded_DefaultPrivate_RFC1918Trusted(t *testing.T) {

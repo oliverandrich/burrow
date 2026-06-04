@@ -108,7 +108,13 @@ func forwardedHeadersMiddleware(cfg app.ForwardedConfig) func(http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if peerInTrustedCIDRs(r.RemoteAddr, prefixes) {
 				if proto := normalizeProto(r.Header.Get("X-Forwarded-Proto")); proto != "" {
-					r.URL.Scheme = proto
+					// The scheme is signaled via the context flag (read by
+					// burrow.RequestIsHTTPS) and the r.TLS sentinel (read by
+					// unrolled/secure's isSSL). We deliberately do NOT touch
+					// r.URL.Scheme: a server request's URL is origin-form (no
+					// host), so setting only the scheme would make
+					// r.URL.String() return "https:///path" and corrupt logs
+					// and any absolute URL built from r.URL.
 					r = r.WithContext(app.WithForwardedProto(r.Context(), proto))
 					if proto == "https" && r.TLS == nil {
 						// Sentinel: consumers must only check r.TLS != nil,

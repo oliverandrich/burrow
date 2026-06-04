@@ -35,7 +35,7 @@ Set `--base-url` to your public `https://…` URL regardless of mode — it driv
 
 ## What it does (and doesn't) touch
 
-When the peer is trusted, the middleware sets `r.URL.Scheme`, installs a sentinel `r.TLS`, and records the scheme so `burrow.RequestIsHTTPS(r)` reports HTTPS. It is **upgrade-only**: an `X-Forwarded-Proto: http` never clears a genuine TLS connection.
+When the peer is trusted, the middleware records the scheme in the request context and installs a sentinel `r.TLS` (for HTTPS), so `burrow.RequestIsHTTPS(r)` reports HTTPS. It leaves `r.URL` untouched — a server request's URL is origin-form (path only), so the public scheme/host belong in `--base-url`, not on `r.URL`. It is **upgrade-only**: an `X-Forwarded-Proto: http` never clears a genuine TLS connection.
 
 - **CSRF** consults `burrow.RequestIsHTTPS(r)` for its origin check — the `403` disappears.
 - **Sessions** mark the cookie `Secure` for forwarded-HTTPS requests (never downgrading an https base URL).
