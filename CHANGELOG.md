@@ -12,6 +12,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 ### Changed
 
+- **contrib/session and contrib/secure honor the proxied request scheme.** Session cookies are now marked `Secure` for HTTPS requests detected via `burrow.RequestIsHTTPS(r)`, even when the app's base URL is plain `http` (upgrade-only — an https base URL is never downgraded). `contrib/secure` emits HSTS for those requests only when `--forwarded-mode` is explicitly enabled.
 - **contrib/csrf derives the request scheme per-request.** The CSRF origin/referer check now treats a request as HTTPS via `burrow.RequestIsHTTPS(r)` (which honors a trusted proxy's `X-Forwarded-Proto`) instead of the boot-time base-URL scheme. Behind a reverse proxy this fixes the `403 "origin invalid"` that rejected browser POSTs whose `Origin` was `https` while the app saw plain HTTP. The CSRF cookie's own `Secure` attribute still follows the base-URL scheme (gorilla/csrf sets it once at startup).
 
 ### Fixed

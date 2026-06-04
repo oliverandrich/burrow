@@ -43,6 +43,12 @@ type state struct {
 	manager *Manager
 	values  map[string]any
 	dirty   bool
+	// secure is the per-request Secure-cookie decision, set by the middleware
+	// from burrow.RequestIsHTTPS (which honors a trusted proxy's
+	// X-Forwarded-Proto). It overrides the manager's boot-time default so a
+	// request proxied over HTTPS gets a Secure cookie even when the app's own
+	// base URL is http. Upgrade-only: it never drops below the boot default.
+	secure bool
 }
 
 // flush writes the session cookie if any values have changed. Called
@@ -56,6 +62,7 @@ func (s *state) flush(w http.ResponseWriter) {
 		slog.Error("session: failed to encode cookie", "error", err)
 		return
 	}
+	cookie.Secure = s.secure
 	http.SetCookie(w, cookie)
 }
 
@@ -152,8 +159,10 @@ func Clear(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.values = nil
-	s.dirty = false // explicit clear, not a deferred write
-	http.SetCookie(w, s.manager.Clear())
+	s.dirty = false             // explicit clear, not a deferred write
+	cookie := s.manager.Clear() //nolint:gosec // Secure is set per-request below; insecure is allowed for plain HTTP, as in Manager.Save
+	cookie.Secure = s.secure
+	http.SetCookie(w, cookie)
 }
 
 // Inject sets up session state in the request context without the full middleware.

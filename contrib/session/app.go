@@ -85,7 +85,14 @@ func (a *App) Middleware() []func(http.Handler) http.Handler {
 func (a *App) sessionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		values, _ := a.manager.Parse(r)
-		s := &state{manager: a.manager, values: values}
+		// Secure when the boot config says HTTPS or the request arrived over
+		// HTTPS (directly or via a trusted proxy's X-Forwarded-Proto).
+		// Upgrade-only: the boot default is the floor, never downgraded.
+		s := &state{
+			manager: a.manager,
+			values:  values,
+			secure:  a.manager.secure || burrow.RequestIsHTTPS(r),
+		}
 		ctx := context.WithValue(r.Context(), ctxKeySession{}, s)
 		dw := &deferredWriter{ResponseWriter: w, state: s}
 		next.ServeHTTP(dw, r.WithContext(ctx))
