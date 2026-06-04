@@ -9,6 +9,33 @@
 <header class="mb-4">
     <h2 class="text-2xl font-bold tracking-tight">{{ t "Jobs" }}</h2>
 </header>
+{{- $w := .Worker }}
+<section class="mb-6 rounded-lg border border-gray-200 p-4 dark:border-gray-800" aria-label="{{ t "Worker Status" }}">
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <div class="flex items-center gap-2">
+            <span class="font-medium text-gray-900 dark:text-gray-100">{{ t "Worker Status" }}</span>
+            {{- if not $w.Started }}
+            <span class="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">{{ t "Not Started" }}</span>
+            {{- else if $w.Stale }}
+            <span class="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">{{ t "Stalled" }}</span>
+            {{- else if $w.Running }}
+            <span class="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{{ t "Running" }}</span>
+            {{- else }}
+            <span class="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">{{ t "Stopped" }}</span>
+            {{- end }}
+        </div>
+        {{- if $w.Started }}
+        <div class="text-gray-600 dark:text-gray-400">{{ t "Workers" }}: <span class="font-medium text-gray-900 dark:text-gray-100">{{ $w.Workers }}</span></div>
+        <div class="text-gray-600 dark:text-gray-400">{{ t "In Flight" }}: <span class="font-medium text-gray-900 dark:text-gray-100">{{ $w.InFlight }}</span></div>
+        <div class="text-gray-600 dark:text-gray-400">{{ t "Last Poll" }}: <span class="font-medium text-gray-900 dark:text-gray-100">{{ $w.LastPollAt.Format "15:04:05" }}</span></div>
+        {{- end }}
+    </div>
+    <div class="mt-3 flex flex-wrap items-center gap-3">
+        {{- range $w.Counts }}
+        <span class="inline-flex items-center gap-1.5">{{ template "jobs/status_badge" .Status }}<span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ .Count }}</span></span>
+        {{- end }}
+    </div>
+</section>
 {{- $status := .Status }}
 <ul class="mb-6 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-gray-200 text-sm dark:border-gray-800" role="tablist">
     <li><a href="/admin/jobs" role="tab"{{ if eq $status "" }} aria-selected="true"{{ end }} class="-mb-px inline-block border-b-2 py-2 {{ if eq $status "" }}border-emerald-500 font-medium text-emerald-700 dark:text-emerald-400{{ else }}border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100{{ end }}">{{ t "All" }}</a></li>

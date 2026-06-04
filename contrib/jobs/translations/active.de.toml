@@ -28,6 +28,13 @@ Status = "Status"
 Type = "Typ"
 "Updated At" = "Aktualisiert am"
 View = "Anzeigen"
+"Worker Status" = "Worker-Status"
+Workers = "Worker"
+"In Flight" = "In Bearbeitung"
+"Last Poll" = "Letzte Abfrage"
+"Not Started" = "Nicht gestartet"
+Stopped = "Gestoppt"
+Stalled = "Inaktiv"
 
 # Nachrichten (vollständige Sätze, Bestätigungen)
 admin-jobs-empty = "Keine Jobs gefunden."
