@@ -23,12 +23,32 @@ updates:
     schedule:
       interval: weekly
     cooldown:
-      default-days: 14
-      semver-patch-days: 7
-      semver-minor-days: 14
-      semver-major-days: 21
+      default-days: 3
+      semver-patch-days: 1
+      semver-minor-days: 3
+      semver-major-days: 7
     groups:
       github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # The scaffold template ships its own CI workflow; keep its action pins fresh
+  # too, otherwise generated projects start life with stale (and eventually
+  # zizmor-flagged) pins. Same cadence as the live workflow above.
+  - package-ecosystem: github-actions
+    directory: /cmd/burrow/templates/project
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
+      semver-patch-days: 1
+      semver-minor-days: 3
+      semver-major-days: 7
+    groups:
+      scaffold-actions:
         patterns:
           - "*"
     commit-message:
