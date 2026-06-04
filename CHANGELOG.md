@@ -2,6 +2,12 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Fixed
+
+- **Background loops no longer crash the process on panic.** The auth orphaned-user/email-token sweep, the WebAuthn session sweep, the rate-limiter eviction sweep, the jobs poller, and the SIGHUP graceful-restart handler now recover per-iteration panics (logged with a stack trace) instead of letting the goroutine panic propagate unrecovered.
+
 ## 0.28.0 — 2026-06-04
 
 ### Added

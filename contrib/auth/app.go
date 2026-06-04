@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/internal/bgloop"
 	"github.com/oliverandrich/den/document"
 
 	"github.com/oliverandrich/burrow/contrib/session"
@@ -338,16 +339,19 @@ func (a *App[P]) backgroundCleanup(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			purged, err := a.repo.PurgeOrphanedUsers(ctx, maxAge)
-			if err != nil {
-				slog.Error("failed to purge orphaned users", "error", err)
-			} else if purged > 0 {
-				slog.Info("purged orphaned users", "count", purged)
-			}
+			func() {
+				defer bgloop.Recover("auth.backgroundCleanup")
+				purged, err := a.repo.PurgeOrphanedUsers(ctx, maxAge)
+				if err != nil {
+					slog.Error("failed to purge orphaned users", "error", err)
+				} else if purged > 0 {
+					slog.Info("purged orphaned users", "count", purged)
+				}
 
-			if err := a.repo.DeleteExpiredEmailVerificationTokens(ctx); err != nil {
-				slog.Error("failed to delete expired email verification tokens", "error", err)
-			}
+				if err := a.repo.DeleteExpiredEmailVerificationTokens(ctx); err != nil {
+					slog.Error("failed to delete expired email verification tokens", "error", err)
+				}
+			}()
 		}
 	}
 }
