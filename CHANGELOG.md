@@ -7,6 +7,7 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 ### Added
 
 - **contrib/jobs reports worker liveness through `/healthz/ready`.** The jobs app now implements `ReadinessChecker`, returning 503 with a `jobs` entry when the poller stalls so orchestrators stop routing to an instance that can no longer drain its queue.
+- **contrib/jobs admin: worker-status panel.** The `/admin/jobs` page now shows a card with the worker pool's state (running / stopped / stalled), worker count, in-flight jobs, last poll time, and per-status job counts.
 
 ### Fixed
 

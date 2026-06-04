@@ -208,6 +208,22 @@ func (r *Repository) FindByID(ctx context.Context, id string) (*Job, error) {
 	return r.GetByID(ctx, id)
 }
 
+// CountByStatus returns the number of jobs in each lifecycle status. Statuses
+// with no jobs are present with a zero count, so callers always get a complete
+// map. The counts back the admin worker-status panel.
+func (r *Repository) CountByStatus(ctx context.Context) (map[JobStatus]int, error) {
+	statuses := []JobStatus{StatusPending, StatusRunning, StatusFailed, StatusDead, StatusCompleted}
+	counts := make(map[JobStatus]int, len(statuses))
+	for _, s := range statuses {
+		n, err := den.NewQuery[Job](r.db).Where(where.Field("status").Eq(string(s))).Count(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("count jobs by status %q: %w", s, err)
+		}
+		counts[s] = int(n)
+	}
+	return counts, nil
+}
+
 // Delete deletes a job by ID (any status).
 func (r *Repository) Delete(ctx context.Context, id string) error {
 	job, err := den.FindByID[Job](ctx, r.db, id)

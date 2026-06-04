@@ -19,11 +19,17 @@ func (a *App) adminListJobs(w http.ResponseWriter, r *http.Request) error {
 		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to list jobs")
 	}
 
+	workerStatus, err := a.workerStatus(r.Context())
+	if err != nil {
+		return burrow.NewHTTPError(http.StatusInternalServerError, "failed to load worker status")
+	}
+
 	return burrow.Render(w, r, http.StatusOK, "jobs/admin_list", map[string]any{
 		"Jobs":     jobs,
 		"Page":     page,
 		"Status":   string(status),
 		"RawQuery": r.URL.RawQuery,
+		"Worker":   workerStatus,
 	})
 }
 

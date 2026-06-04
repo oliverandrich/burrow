@@ -28,6 +28,13 @@ Status = "Status"
 Type = "Type"
 "Updated At" = "Updated At"
 View = "View"
+"Worker Status" = "Worker Status"
+Workers = "Workers"
+"In Flight" = "In Flight"
+"Last Poll" = "Last Poll"
+"Not Started" = "Not Started"
+Stopped = "Stopped"
+Stalled = "Stalled"
 
 # Messages (full sentences, prompts, confirmations)
 admin-jobs-empty = "No jobs found."
