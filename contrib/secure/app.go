@@ -106,7 +106,7 @@ func (a *App) Flags(configSource func(key string) cli.ValueSource) []cli.Flag {
 }
 
 func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
-	isHTTPS := cfg.Config != nil && cfg.Config.IsHTTPS()
+	isHTTPS := secureHTTPSCapable(cfg, cmd != nil && cmd.IsSet("forwarded-mode"))
 
 	if a.csp == nil {
 		if v := cmd.String("secure-csp"); v != "" {
@@ -147,6 +147,25 @@ func (a *App) Configure(cfg *burrow.AppConfig, cmd *cli.Command) error {
 
 	a.configure(isHTTPS)
 	return nil
+}
+
+// secureHTTPSCapable reports whether the deployment should populate HTTPS
+// response-security options (HSTS, and production mode rather than dev mode).
+// True when the base URL is https, or when the operator explicitly opted into
+// reverse-proxy forwarded headers (a non-off --forwarded-mode) — the public
+// edge is then HTTPS even if the app's own URL is http, and per-request HSTS
+// emission stays gated by unrolled/secure's isSSL, which the forwarded
+// middleware satisfies. The default (unset) forwarded mode is deliberately not
+// treated as a proxy signal, so a plain local http deployment keeps its
+// development-mode defaults.
+func secureHTTPSCapable(cfg *burrow.AppConfig, forwardedExplicit bool) bool {
+	if cfg == nil || cfg.Config == nil {
+		return false
+	}
+	if cfg.Config.IsHTTPS() {
+		return true
+	}
+	return forwardedExplicit && cfg.Config.Server.Forwarded.Mode != "off"
 }
 
 // configure builds the unrolled/secure middleware. Extracted for testability.
