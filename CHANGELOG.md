@@ -10,6 +10,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 - **contrib/jobs admin: worker-status panel.** The `/admin/jobs` page now shows a card with the worker pool's state (running / stopped / stalled), worker count, in-flight jobs, last poll time, and per-status job counts.
 - **Reverse-proxy forwarded-headers support (`--forwarded-mode`, default `private`).** Behind a TLS-terminating proxy the framework now derives the request scheme from a trusted proxy's `X-Forwarded-Proto`, gated on the direct TCP peer: `private` (default) trusts loopback + RFC1918 — covering same-host nginx/Caddy with zero config — while `loopback`, `trusted-cidrs` (with `--forwarded-trusted-cidrs`), and `off` tune the trust boundary. New `burrow.RequestIsHTTPS(r)` reports the per-request scheme. Directly-served requests are unaffected — only requests whose TCP peer is loopback/RFC1918 consult the header.
 
+### Changed
+
+- **contrib/csrf derives the request scheme per-request.** The CSRF origin/referer check now treats a request as HTTPS via `burrow.RequestIsHTTPS(r)` (which honors a trusted proxy's `X-Forwarded-Proto`) instead of the boot-time base-URL scheme. Behind a reverse proxy this fixes the `403 "origin invalid"` that rejected browser POSTs whose `Origin` was `https` while the app saw plain HTTP. The CSRF cookie's own `Secure` attribute still follows the base-URL scheme (gorilla/csrf sets it once at startup).
+
 ### Fixed
 
 - **Background loops no longer crash the process on panic.** The auth orphaned-user/email-token sweep, the WebAuthn session sweep, the rate-limiter eviction sweep, the jobs poller, and the SIGHUP graceful-restart handler now recover per-iteration panics (logged with a stack trace) instead of letting the goroutine panic propagate unrecovered.

@@ -10,6 +10,7 @@ import (
 
 	gorillacsrf "github.com/gorilla/csrf"
 	"github.com/oliverandrich/burrow"
+	"github.com/oliverandrich/burrow/app"
 	"github.com/oliverandrich/burrow/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -498,4 +499,69 @@ func TestExemptPaths_GetOnExemptPathStillSucceeds(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+// TestCSRF_ProxiedPOSTPasses pins the load-bearing fix: behind a trusted proxy
+// (forwarded-proto=https) a browser POST whose Origin is https passes, where an
+// http-base-url app rejected it with "origin invalid" before. gorilla decides
+// http-vs-https purely from the PlaintextHTTPRequest flag, so the per-request
+// RequestIsHTTPS gate — not the boot-static a.secure — is what makes this work.
+func TestCSRF_ProxiedPOSTPasses(t *testing.T) {
+	a := newTestApp(t) // a.secure == false (HTTP base URL)
+
+	var token string
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token = gorillacsrf.Token(r)
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := a.Middleware()[0](inner)
+
+	// GET carries the forwarded-proto flag the server middleware would set.
+	getReq := httptest.NewRequestWithContext(app.WithForwardedProto(t.Context(), "https"), http.MethodGet, "http://example.com/", nil)
+	getRR := httptest.NewRecorder()
+	handler.ServeHTTP(getRR, getReq)
+	require.NotEmpty(t, token)
+
+	postReq := httptest.NewRequestWithContext(app.WithForwardedProto(t.Context(), "https"), http.MethodPost, "http://example.com/", strings.NewReader("x=1"))
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postReq.Header.Set("X-CSRF-Token", token)
+	postReq.Header.Set("Origin", "https://example.com")
+	for _, c := range getRR.Result().Cookies() {
+		postReq.AddCookie(c)
+	}
+	postRR := httptest.NewRecorder()
+	handler.ServeHTTP(postRR, postReq)
+
+	assert.Equal(t, http.StatusOK, postRR.Code, "proxied https POST must pass the origin check")
+}
+
+// TestCSRF_HTTPSOriginRejectedWithoutForwardedFlag is the negative control: the
+// same POST without the trusted-proxy signal is treated as plaintext, so the
+// https Origin mismatches the computed http origin and gorilla returns 403.
+func TestCSRF_HTTPSOriginRejectedWithoutForwardedFlag(t *testing.T) {
+	a := newTestApp(t)
+
+	var token string
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token = gorillacsrf.Token(r)
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := a.Middleware()[0](inner)
+
+	getReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
+	getRR := httptest.NewRecorder()
+	handler.ServeHTTP(getRR, getReq)
+	require.NotEmpty(t, token)
+
+	postReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/", strings.NewReader("x=1"))
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postReq.Header.Set("X-CSRF-Token", token)
+	postReq.Header.Set("Origin", "https://example.com")
+	for _, c := range getRR.Result().Cookies() {
+		postReq.AddCookie(c)
+	}
+	postRR := httptest.NewRecorder()
+	handler.ServeHTTP(postRR, postReq)
+
+	assert.Equal(t, http.StatusForbidden, postRR.Code, "no trusted-proxy signal => plaintext origin check rejects the https Origin")
 }

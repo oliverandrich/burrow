@@ -72,11 +72,14 @@ func (a *App) configure(keyHex string, secure bool) error {
 		return err
 	}
 
+	// a.secure is the boot-time cookie Secure attribute (gorilla sets it once
+	// here). The per-request HTTPS decision for the origin check lives in
+	// csrfMiddleware via burrow.RequestIsHTTPS.
 	a.secure = secure
 	a.exempt = buildExemptMatcher(a.registry)
 	a.protect = gorillacsrf.Protect(
 		key,
-		gorillacsrf.Secure(secure),
+		gorillacsrf.Secure(a.secure),
 		gorillacsrf.SameSite(gorillacsrf.SameSiteLaxMode),
 		gorillacsrf.Path("/"),
 		gorillacsrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -123,10 +126,13 @@ func (a *App) csrfMiddleware(next http.Handler) http.Handler {
 		if a.exempt.matches(r.URL.Path) {
 			r = gorillacsrf.UnsafeSkipCheck(r)
 		}
-		// gorilla/csrf assumes HTTPS by default. For plaintext HTTP
-		// deployments, mark each request so gorilla skips HTTPS-only
-		// referer checks.
-		if !a.secure {
+		// gorilla/csrf assumes HTTPS by default and decides plaintext-vs-secure
+		// solely from this flag. Mark genuinely-plaintext requests so it skips
+		// the HTTPS-only origin/referer checks. The decision is per-request
+		// (RequestIsHTTPS honors a trusted proxy's X-Forwarded-Proto), not the
+		// boot-static scheme — otherwise an https request proxied to a plain-HTTP
+		// app is treated as http and its https Origin is rejected.
+		if !burrow.RequestIsHTTPS(r) {
 			r = gorillacsrf.PlaintextHTTPRequest(r)
 		}
 		wrapped.ServeHTTP(w, r)
