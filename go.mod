@@ -8,9 +8,9 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/go-chi/chi/v5 v5.3.0
-	github.com/go-chi/httplog/v3 v3.3.0
+	github.com/go-chi/httplog/v3 v3.4.0
 	github.com/go-playground/form/v4 v4.3.0
-	github.com/go-playground/validator/v10 v10.30.2
+	github.com/go-playground/validator/v10 v10.30.3
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/csrf v1.7.3
