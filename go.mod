@@ -18,7 +18,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/selfupdate v0.6.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
-	github.com/oliverandrich/den v0.17.0
+	github.com/oliverandrich/den v0.17.1
 	github.com/stretchr/testify v1.11.1
 	github.com/unrolled/secure v1.17.0
 	github.com/urfave/cli/v3 v3.9.0
