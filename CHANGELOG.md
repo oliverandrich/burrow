@@ -12,6 +12,10 @@ All notable changes to Burrow are documented here. The format is based on [Keep 
 
 - **Batch enqueueing: `EnqueueBatch` / `EnqueueBatchAt`.** N jobs of one type insert in a single all-or-nothing transaction (one commit instead of N) — for fan-out callers like one delivery job per follower. On `Enqueuer`/`Queue`, the typed task wrappers, and `contrib/jobs`; see the [Jobs guide](https://burrow.andrich.dev/contrib/jobs/#batch-enqueueing).
 
+### Changed
+
+- **Den bumped to v0.17.1.** Bugfix release: enabling FTS on an already-populated SQLite collection now backfills the index, so rows saved before the first `den:"fts"` registration become searchable without a re-save.
+
 ## 0.29.1 — 2026-06-04
 
 ### Fixed

@@ -45,7 +45,7 @@ Den handles additive schema changes automatically:
 
 - **New fields** — added to existing documents as they are saved
 - **New indexes** — created on the next startup
-- **New FTS indexes** — created on the next startup
+- **New FTS indexes** — created on the next startup, backfilled with existing rows
 
 Removing fields or indexes requires no special handling — unused indexes are simply ignored.
 
