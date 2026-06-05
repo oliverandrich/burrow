@@ -33,9 +33,17 @@ func WithPriority(n int) JobOption {
 
 // Enqueuer provides job submission and cancellation. Use this interface
 // for code that only needs to enqueue jobs, not register handlers.
+//
+// EnqueueBatch and EnqueueBatchAt insert N jobs of one type atomically:
+// either every payload becomes a job or none does. Job IDs are returned in
+// input order, an empty payloads slice returns (nil, nil) without touching
+// the queue, and each job keeps the independent retry/priority semantics of
+// its type — only the insert is batched.
 type Enqueuer interface {
 	Enqueue(ctx context.Context, typeName string, payload any) (string, error)
 	EnqueueAt(ctx context.Context, typeName string, payload any, runAt time.Time) (string, error)
+	EnqueueBatch(ctx context.Context, typeName string, payloads []any) ([]string, error)
+	EnqueueBatchAt(ctx context.Context, typeName string, payloads []any, runAt time.Time) ([]string, error)
 	Dequeue(ctx context.Context, id string) error
 }
 

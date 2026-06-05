@@ -91,7 +91,7 @@ func (a *App) RegisterJobs(q burrow.Queue) {
 jobID, err := a.jobs.Enqueue(ctx, "process-upload", map[string]string{"image_id": "123"})
 ```
 
-The `Enqueuer` interface (`Enqueue`, `EnqueueAt`, `Dequeue`) is available for code that only needs to submit jobs without registering handlers. `Queue` embeds `Enqueuer` and adds `Handle`.
+The `Enqueuer` interface (`Enqueue`, `EnqueueAt`, `EnqueueBatch`, `EnqueueBatchAt`, `Dequeue`) is available for code that only needs to submit jobs without registering handlers. `Queue` embeds `Enqueuer` and adds `Handle`.
 
 ## Enqueueing Jobs
 
@@ -107,6 +107,22 @@ jobID, err := jobsApp.Enqueue(ctx, "send-welcome-email", payload)
 ```
 
 The payload can be any value that `json.Marshal` can serialise. The type must be registered via `Handle()` or `TaskDefinition.Register()` — unknown types return an error.
+
+### Batch enqueueing
+
+When one event fans out into many jobs of the same type (say, one delivery job per follower), `EnqueueBatch` / `EnqueueBatchAt` insert all of them in a single transaction — one commit instead of N independently committed writes:
+
+```go
+var deliverPost = burrow.DefineTask("deliver-post", deliverHandler)
+
+// Typed — payloads is a []DeliveryPayload
+ids, err := deliverPost.EnqueueBatch(ctx, payloads)
+
+// Or via the raw Queue interface:
+ids, err := jobsApp.EnqueueBatch(ctx, "deliver-post", []any{p1, p2, p3})
+```
+
+The insert is all-or-nothing — a payload that fails to marshal rejects the whole batch before anything reaches the database. Job IDs are returned in input order, and an empty slice is a no-op. Each job stays independent after insertion (own retries, own priority from its type), and since all jobs in a batch share one `RunAt`, their relative execution order is not guaranteed.
 
 ## Priority
 

@@ -2,6 +2,7 @@ package tasks_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -17,10 +18,13 @@ type testPayload struct {
 
 // mockQueue records Handle and Enqueue calls for testing TaskDefinition.
 type mockQueue struct {
-	handlers map[string]tasks.JobHandlerFunc
-	opts     map[string][]tasks.JobOption
-	lastType string
-	lastData any
+	handlers      map[string]tasks.JobHandlerFunc
+	opts          map[string][]tasks.JobOption
+	lastType      string
+	lastData      any
+	batchType     string
+	batchPayloads []any
+	batchRunAt    time.Time
 }
 
 func newMockQueue() *mockQueue {
@@ -45,6 +49,21 @@ func (q *mockQueue) EnqueueAt(ctx context.Context, typeName string, payload any,
 	q.lastType = typeName
 	q.lastData = payload
 	return "job-456", nil
+}
+
+func (q *mockQueue) EnqueueBatch(ctx context.Context, typeName string, payloads []any) ([]string, error) {
+	return q.EnqueueBatchAt(ctx, typeName, payloads, time.Time{})
+}
+
+func (q *mockQueue) EnqueueBatchAt(_ context.Context, typeName string, payloads []any, runAt time.Time) ([]string, error) {
+	q.batchType = typeName
+	q.batchPayloads = payloads
+	q.batchRunAt = runAt
+	ids := make([]string, len(payloads))
+	for i := range ids {
+		ids[i] = fmt.Sprintf("job-b%d", i+1)
+	}
+	return ids, nil
 }
 
 func (q *mockQueue) Dequeue(ctx context.Context, id string) error {
@@ -99,6 +118,64 @@ func TestTaskDefinition_EnqueueAt(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "job-456", id)
 	assert.Equal(t, "delayed-task", q.lastType)
+}
+
+func TestTaskDefinition_EnqueueBatch(t *testing.T) {
+	task := tasks.DefineTask("fanout", func(_ context.Context, _ testPayload) error {
+		return nil
+	})
+
+	q := newMockQueue()
+	task.Register(q)
+
+	payloads := []testPayload{{To: "a@b.com"}, {To: "c@d.com"}, {To: "e@f.com"}}
+	ids, err := task.EnqueueBatch(context.Background(), payloads)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"job-b1", "job-b2", "job-b3"}, ids)
+	assert.Equal(t, "fanout", q.batchType)
+	assert.Equal(t, []any{payloads[0], payloads[1], payloads[2]}, q.batchPayloads)
+}
+
+func TestTaskDefinition_EnqueueBatchAt(t *testing.T) {
+	task := tasks.DefineTask("fanout-later", func(_ context.Context, _ testPayload) error {
+		return nil
+	})
+
+	q := newMockQueue()
+	task.Register(q)
+
+	runAt := time.Now().Add(time.Hour)
+	ids, err := task.EnqueueBatchAt(context.Background(), []testPayload{{To: "a@b.com"}}, runAt)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"job-b1"}, ids)
+	assert.Equal(t, "fanout-later", q.batchType)
+	assert.Equal(t, runAt, q.batchRunAt)
+}
+
+func TestTaskDefinition_EnqueueBatchBeforeRegister(t *testing.T) {
+	task := tasks.DefineTask("unregistered", func(_ context.Context, _ testPayload) error {
+		return nil
+	})
+
+	assert.PanicsWithValue(t,
+		`burrow: TaskDefinition "unregistered" used before Register was called`,
+		func() {
+			_, _ = task.EnqueueBatch(context.Background(), []testPayload{{}})
+		},
+	)
+}
+
+func TestTaskDefinition_EnqueueBatchAtBeforeRegister(t *testing.T) {
+	task := tasks.DefineTask("unregistered", func(_ context.Context, _ testPayload) error {
+		return nil
+	})
+
+	assert.PanicsWithValue(t,
+		`burrow: TaskDefinition "unregistered" used before Register was called`,
+		func() {
+			_, _ = task.EnqueueBatchAt(context.Background(), []testPayload{{}}, time.Now())
+		},
+	)
 }
 
 func TestTaskDefinition_EnqueueBeforeRegister(t *testing.T) {

@@ -13,7 +13,7 @@ Full signatures live on [pkg.go.dev](https://pkg.go.dev/github.com/oliverandrich
 | Symbol | Notes |
 |---|---|
 | `Queue` | Embeds `Enqueuer` plus `Handle(typeName, fn, opts...)` for handler registration |
-| `Enqueuer` | `Enqueue(ctx, typeName, payload)`, `EnqueueAt(ctx, typeName, payload, runAt)`, `Dequeue(ctx, id)` — for code that only submits |
+| `Enqueuer` | `Enqueue(ctx, typeName, payload)`, `EnqueueAt(ctx, typeName, payload, runAt)`, `EnqueueBatch(ctx, typeName, payloads)`, `EnqueueBatchAt(ctx, typeName, payloads, runAt)`, `Dequeue(ctx, id)` — for code that only submits |
 | `HasJobs` | App capability — `RegisterJobs(q Queue)` called once during PostConfigure |
 | `JobHandlerFunc` | `func(ctx, []byte) error` — raw handler signature |
 
@@ -21,7 +21,7 @@ Full signatures live on [pkg.go.dev](https://pkg.go.dev/github.com/oliverandrich
 
 | Symbol | Notes |
 |---|---|
-| `TaskDefinition[P any]` | Generic typed task; ships a `Register` method to wire it into a Queue and `Enqueue` / `EnqueueAt` methods that marshal the payload |
+| `TaskDefinition[P any]` | Generic typed task; ships a `Register` method to wire it into a Queue and `Enqueue` / `EnqueueAt` / `EnqueueBatch` / `EnqueueBatchAt` methods that marshal the payload(s) |
 | `DefineTask[P](name, handler, opts...)` | Constructor — handler is `func(ctx, P) error` |
 | `ResultTask[P, R any]` | Like `TaskDefinition` but the handler returns a value that the worker stores via `ResultCapture` |
 | `DefineResultTask[P, R](name, handler, opts...)` | Constructor — handler is `func(ctx, P) (R, error)` |

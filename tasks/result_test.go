@@ -63,6 +63,50 @@ func TestResultTask_EnqueueAt(t *testing.T) {
 	assert.Equal(t, "job-456", id)
 }
 
+func TestResultTask_EnqueueBatch(t *testing.T) {
+	task := tasks.DefineResultTask("batch-compute", func(_ context.Context, _ resultPayload) (resultOutput, error) {
+		return resultOutput{}, nil
+	})
+
+	q := newMockQueue()
+	task.Register(q)
+
+	payloads := []resultPayload{{Input: "a"}, {Input: "b"}}
+	ids, err := task.EnqueueBatch(context.Background(), payloads)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"job-b1", "job-b2"}, ids)
+	assert.Equal(t, "batch-compute", q.batchType)
+	assert.Equal(t, []any{payloads[0], payloads[1]}, q.batchPayloads)
+}
+
+func TestResultTask_EnqueueBatchAt(t *testing.T) {
+	task := tasks.DefineResultTask("batch-later", func(_ context.Context, _ resultPayload) (resultOutput, error) {
+		return resultOutput{}, nil
+	})
+
+	q := newMockQueue()
+	task.Register(q)
+
+	runAt := time.Now().Add(time.Hour)
+	ids, err := task.EnqueueBatchAt(context.Background(), []resultPayload{{Input: "later"}}, runAt)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"job-b1"}, ids)
+	assert.Equal(t, runAt, q.batchRunAt)
+}
+
+func TestResultTask_EnqueueBatchBeforeRegister(t *testing.T) {
+	task := tasks.DefineResultTask("unregistered", func(_ context.Context, _ resultPayload) (resultOutput, error) {
+		return resultOutput{}, nil
+	})
+
+	assert.PanicsWithValue(t,
+		`burrow: ResultTask "unregistered" used before Register was called`,
+		func() {
+			_, _ = task.EnqueueBatch(context.Background(), []resultPayload{{}})
+		},
+	)
+}
+
 func TestResultTask_Name(t *testing.T) {
 	task := tasks.DefineResultTask("my-task", func(_ context.Context, _ resultPayload) (resultOutput, error) {
 		return resultOutput{}, nil
