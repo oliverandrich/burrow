@@ -218,15 +218,18 @@ func TestApp_EnqueueBatch_FullLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ids, 3)
 
+	// Poll the job statuses, not the handler counter — the worker marks a job
+	// completed only after its handler returns.
 	require.Eventually(t, func() bool {
-		return processed.Load() == 3
+		for _, id := range ids {
+			job, err := app.repo.GetByID(context.Background(), id)
+			if err != nil || job.Status != StatusCompleted {
+				return false
+			}
+		}
+		return true
 	}, 2*time.Second, 10*time.Millisecond)
-
-	for _, id := range ids {
-		job, err := app.repo.GetByID(context.Background(), id)
-		require.NoError(t, err)
-		assert.Equal(t, StatusCompleted, job.Status)
-	}
+	assert.EqualValues(t, 3, processed.Load())
 
 	err = app.Shutdown(context.Background())
 	require.NoError(t, err)
