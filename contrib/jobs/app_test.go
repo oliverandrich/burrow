@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"sync/atomic"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/oliverandrich/burrow"
 	"github.com/oliverandrich/burrow/burrowtest"
 	"github.com/oliverandrich/burrow/registry"
+	"github.com/oliverandrich/den"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -102,6 +104,132 @@ func TestApp_Enqueue_InvalidPayload(t *testing.T) {
 	_, err := app.Enqueue(context.Background(), "test", make(chan int))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "marshal payload")
+}
+
+func TestApp_EnqueueBatch(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+
+	app.Handle("fanout", func(_ context.Context, _ []byte) error {
+		return nil
+	}, burrow.WithMaxRetries(5), burrow.WithPriority(2))
+
+	ids, err := app.EnqueueBatch(context.Background(), "fanout",
+		[]any{map[string]int{"n": 1}, map[string]int{"n": 2}, map[string]int{"n": 3}})
+	require.NoError(t, err)
+	require.Len(t, ids, 3)
+
+	// IDs come back in input order with the type's retry/priority settings.
+	for i, id := range ids {
+		job, err := app.repo.GetByID(context.Background(), id)
+		require.NoError(t, err)
+		assert.Equal(t, "fanout", job.Type)
+		assert.JSONEq(t, fmt.Sprintf(`{"n":%d}`, i+1), job.Payload)
+		assert.Equal(t, StatusPending, job.Status)
+		assert.Equal(t, 5, job.MaxRetries)
+		assert.Equal(t, 2, job.Priority)
+	}
+}
+
+func TestApp_EnqueueBatchAt(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+
+	app.Handle("fanout", func(_ context.Context, _ []byte) error { return nil })
+
+	future := time.Now().Add(time.Hour)
+	ids, err := app.EnqueueBatchAt(context.Background(), "fanout", []any{"a", "b"}, future)
+	require.NoError(t, err)
+	require.Len(t, ids, 2)
+
+	for _, id := range ids {
+		job, err := app.repo.GetByID(context.Background(), id)
+		require.NoError(t, err)
+		assert.WithinDuration(t, future, job.RunAt, time.Second)
+	}
+}
+
+func TestApp_EnqueueBatch_UnknownType(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+
+	_, err := app.EnqueueBatch(context.Background(), "nonexistent", []any{"x"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown type")
+
+	// The type check runs before the empty check — an empty batch for an
+	// unregistered type still errors, catching wiring bugs.
+	_, err = app.EnqueueBatch(context.Background(), "nonexistent", nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown type")
+}
+
+func TestApp_EnqueueBatch_Empty(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+
+	app.Handle("fanout", func(_ context.Context, _ []byte) error { return nil })
+
+	ids, err := app.EnqueueBatch(context.Background(), "fanout", nil)
+	require.NoError(t, err)
+	assert.Nil(t, ids)
+}
+
+func TestApp_EnqueueBatch_InvalidPayload(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+
+	app.Handle("fanout", func(_ context.Context, _ []byte) error { return nil })
+
+	// Index 1 cannot be marshaled — the whole batch must be rejected before
+	// anything reaches the database.
+	_, err := app.EnqueueBatch(context.Background(), "fanout", []any{"valid", make(chan int)})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "marshal payload 1")
+
+	count, err := den.NewQuery[Job](db).Count(context.Background())
+	require.NoError(t, err)
+	assert.EqualValues(t, 0, count)
+}
+
+func TestApp_EnqueueBatch_FullLifecycle(t *testing.T) {
+	db := testDB(t)
+	app := New()
+	app.repo = NewRepository(db)
+
+	var processed atomic.Int32
+	app.Handle("batch-lifecycle", func(_ context.Context, _ []byte) error {
+		processed.Add(1)
+		return nil
+	})
+
+	cfg := testWorkerConfig()
+	ctx, cancel := context.WithCancel(context.Background())
+	app.cancelFunc = cancel
+	app.worker = NewWorker(app.repo, app.handlers, cfg, nil)
+	go app.worker.Start(ctx)
+
+	ids, err := app.EnqueueBatch(context.Background(), "batch-lifecycle", []any{"a", "b", "c"})
+	require.NoError(t, err)
+	require.Len(t, ids, 3)
+
+	require.Eventually(t, func() bool {
+		return processed.Load() == 3
+	}, 2*time.Second, 10*time.Millisecond)
+
+	for _, id := range ids {
+		job, err := app.repo.GetByID(context.Background(), id)
+		require.NoError(t, err)
+		assert.Equal(t, StatusCompleted, job.Status)
+	}
+
+	err = app.Shutdown(context.Background())
+	require.NoError(t, err)
 }
 
 func TestApp_FullLifecycle(t *testing.T) {

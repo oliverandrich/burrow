@@ -103,6 +103,20 @@ func (t *ResultTask[P, R]) EnqueueAt(ctx context.Context, payload P, runAt time.
 	return t.queue.EnqueueAt(ctx, t.name, payload, runAt)
 }
 
+// EnqueueBatch enqueues all payloads for immediate processing in one atomic
+// insert (see Enqueuer for the batch contract). Panics if called before Register.
+func (t *ResultTask[P, R]) EnqueueBatch(ctx context.Context, payloads []P) ([]string, error) {
+	t.mustBeRegistered()
+	return t.queue.EnqueueBatch(ctx, t.name, toAnySlice(payloads))
+}
+
+// EnqueueBatchAt enqueues all payloads for processing at the given time in one
+// atomic insert (see Enqueuer for the batch contract). Panics if called before Register.
+func (t *ResultTask[P, R]) EnqueueBatchAt(ctx context.Context, payloads []P, runAt time.Time) ([]string, error) {
+	t.mustBeRegistered()
+	return t.queue.EnqueueBatchAt(ctx, t.name, toAnySlice(payloads), runAt)
+}
+
 func (t *ResultTask[P, R]) mustBeRegistered() {
 	if t.queue == nil {
 		panic(fmt.Sprintf("burrow: ResultTask %q used before Register was called", t.name))

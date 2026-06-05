@@ -46,6 +46,19 @@ func (q *mockQueue) EnqueueAt(_ context.Context, typeName string, payload any, _
 	return "job-1", nil
 }
 
+func (q *mockQueue) EnqueueBatch(_ context.Context, typeName string, payloads []any) ([]string, error) {
+	ids := make([]string, len(payloads))
+	for i, payload := range payloads {
+		q.enqueued = append(q.enqueued, mockEnqueuedJob{typeName: typeName, payload: payload})
+		ids[i] = "job-1"
+	}
+	return ids, nil
+}
+
+func (q *mockQueue) EnqueueBatchAt(ctx context.Context, typeName string, payloads []any, _ time.Time) ([]string, error) {
+	return q.EnqueueBatch(ctx, typeName, payloads)
+}
+
 func (q *mockQueue) Dequeue(_ context.Context, id string) error {
 	q.dequeued = append(q.dequeued, id)
 	return nil

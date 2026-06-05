@@ -38,6 +38,65 @@ func TestRepository_Enqueue(t *testing.T) {
 	assert.Equal(t, 3, job.MaxRetries)
 }
 
+func TestRepository_EnqueueBatch(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	runAt := time.Now()
+	payloads := []string{`{"n":1}`, `{"n":2}`, `{"n":3}`}
+	jobs, err := repo.EnqueueBatch(ctx, "deliver", payloads, 5, 2, runAt)
+	require.NoError(t, err)
+	require.Len(t, jobs, 3)
+
+	seen := make(map[string]bool)
+	for i, job := range jobs {
+		assert.NotEmpty(t, job.ID)
+		assert.False(t, seen[job.ID], "IDs must be distinct")
+		seen[job.ID] = true
+		assert.Equal(t, "deliver", job.Type)
+		assert.JSONEq(t, payloads[i], job.Payload, "jobs must be returned in input order")
+		assert.Equal(t, StatusPending, job.Status)
+		assert.Equal(t, 5, job.MaxRetries)
+		assert.Equal(t, 2, job.Priority)
+		assert.WithinDuration(t, runAt, job.RunAt, time.Second)
+	}
+
+	count, err := den.NewQuery[Job](db).Count(ctx)
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, count)
+}
+
+func TestRepository_EnqueueBatch_Empty(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	jobs, err := repo.EnqueueBatch(ctx, "deliver", nil, 3, 0, time.Now())
+	require.NoError(t, err)
+	assert.Nil(t, jobs)
+
+	count, err := den.NewQuery[Job](db).Count(ctx)
+	require.NoError(t, err)
+	assert.EqualValues(t, 0, count)
+}
+
+func TestRepository_EnqueueBatch_CancelledContext(t *testing.T) {
+	db := testDB(t)
+	repo := NewRepository(db)
+
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := repo.EnqueueBatch(cancelled, "deliver", []string{`{}`, `{}`}, 3, 0, time.Now())
+	require.Error(t, err)
+
+	// Atomicity: the failed batch must not leave partial rows behind.
+	count, err := den.NewQuery[Job](db).Count(context.Background())
+	require.NoError(t, err)
+	assert.EqualValues(t, 0, count)
+}
+
 func TestRepository_Claim(t *testing.T) {
 	db := testDB(t)
 	repo := NewRepository(db)

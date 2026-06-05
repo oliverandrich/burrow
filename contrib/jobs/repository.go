@@ -32,9 +32,9 @@ func NewRepository(db *den.DB) *Repository {
 	return &Repository{db: db}
 }
 
-// Enqueue inserts a new job into the queue.
-func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxRetries, priority int, runAt time.Time) (*Job, error) {
-	job := &Job{
+// newPendingJob builds the Job row shared by the single and batch insert paths.
+func newPendingJob(typeName, payload string, maxRetries, priority int, runAt time.Time) *Job {
+	return &Job{
 		Type:       typeName,
 		Payload:    payload,
 		Status:     StatusPending,
@@ -42,10 +42,32 @@ func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxR
 		MaxRetries: maxRetries,
 		RunAt:      runAt,
 	}
+}
+
+// Enqueue inserts a new job into the queue.
+func (r *Repository) Enqueue(ctx context.Context, typeName, payload string, maxRetries, priority int, runAt time.Time) (*Job, error) {
+	job := newPendingJob(typeName, payload, maxRetries, priority, runAt)
 	if err := den.Save(ctx, r.db, job); err != nil {
 		return nil, fmt.Errorf("enqueue job %q: %w", typeName, err)
 	}
 	return job, nil
+}
+
+// EnqueueBatch inserts a batch of jobs of the same type in a single
+// transaction (den.SaveAll), all-or-nothing. Jobs are returned in input order
+// with their IDs populated; an empty payloads slice is a no-op returning nil.
+func (r *Repository) EnqueueBatch(ctx context.Context, typeName string, payloads []string, maxRetries, priority int, runAt time.Time) ([]*Job, error) {
+	if len(payloads) == 0 {
+		return nil, nil
+	}
+	jobs := make([]*Job, len(payloads))
+	for i, payload := range payloads {
+		jobs[i] = newPendingJob(typeName, payload, maxRetries, priority, runAt)
+	}
+	if err := den.SaveAll(ctx, r.db, jobs); err != nil {
+		return nil, fmt.Errorf("enqueue batch %q: %w", typeName, err)
+	}
+	return jobs, nil
 }
 
 // Claim atomically claims up to limit pending or failed jobs that are ready to run.

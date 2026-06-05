@@ -213,6 +213,44 @@ func (a *App) EnqueueAt(ctx context.Context, typeName string, payload any, runAt
 	return job.ID, nil
 }
 
+// EnqueueBatch adds a batch of jobs of one type for immediate processing
+// (see tasks.Enqueuer for the batch contract).
+func (a *App) EnqueueBatch(ctx context.Context, typeName string, payloads []any) ([]string, error) {
+	return a.EnqueueBatchAt(ctx, typeName, payloads, time.Now())
+}
+
+// EnqueueBatchAt adds a batch of jobs of one type scheduled for a specific
+// time (see tasks.Enqueuer for the batch contract).
+func (a *App) EnqueueBatchAt(ctx context.Context, typeName string, payloads []any, runAt time.Time) ([]string, error) {
+	if _, ok := a.handlers[typeName]; !ok {
+		return nil, fmt.Errorf("jobs: unknown type %q (not registered via Handle)", typeName)
+	}
+	if len(payloads) == 0 {
+		return nil, nil
+	}
+
+	// Marshal everything up front so a bad payload rejects the whole batch
+	// before anything reaches the database.
+	encoded := make([]string, len(payloads))
+	for i, payload := range payloads {
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("jobs: marshal payload %d for %q: %w", i, typeName, err)
+		}
+		encoded[i] = string(data)
+	}
+
+	jobs, err := a.repo.EnqueueBatch(ctx, typeName, encoded, a.retries[typeName], a.priorities[typeName], runAt)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(jobs))
+	for i, job := range jobs {
+		ids[i] = job.ID
+	}
+	return ids, nil
+}
+
 // Dequeue cancels a pending job by its ID.
 func (a *App) Dequeue(ctx context.Context, id string) error {
 	return a.repo.Cancel(ctx, id)

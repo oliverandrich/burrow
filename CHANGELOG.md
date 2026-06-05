@@ -2,6 +2,16 @@
 
 All notable changes to Burrow are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Breaking Changes
+
+- **`tasks.Enqueuer` gains `EnqueueBatch` and `EnqueueBatchAt`.** Custom `Enqueuer`/`Queue` implementations (including test mocks) must add both methods; apps using `contrib/jobs` are unaffected. See the [v0.30 migration guide](https://burrow.andrich.dev/migration/v0.30/).
+
+### Added
+
+- **Batch enqueueing: `EnqueueBatch` / `EnqueueBatchAt`.** N jobs of one type insert in a single all-or-nothing transaction (one commit instead of N) — for fan-out callers like one delivery job per follower. On `Enqueuer`/`Queue`, the typed task wrappers, and `contrib/jobs`; see the [Jobs guide](https://burrow.andrich.dev/contrib/jobs/#batch-enqueueing).
+
 ## 0.29.1 — 2026-06-04
 
 ### Fixed
