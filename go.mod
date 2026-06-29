@@ -21,7 +21,7 @@ require (
 	github.com/oliverandrich/den v0.17.1
 	github.com/stretchr/testify v1.11.1
 	github.com/unrolled/secure v1.17.0
-	github.com/urfave/cli/v3 v3.10.0
+	github.com/urfave/cli/v3 v3.10.1
 	github.com/wneessen/go-mail v0.7.3
 	golang.org/x/crypto v0.53.0
 	golang.org/x/mod v0.37.0
