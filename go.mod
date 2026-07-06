@@ -7,7 +7,7 @@ require (
 	github.com/cloudflare/tableflip v1.2.3
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/getkin/kin-openapi v0.140.0
-	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-chi/httplog/v3 v3.4.0
 	github.com/go-playground/form/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.30.3
@@ -21,11 +21,11 @@ require (
 	github.com/oliverandrich/den v0.17.1
 	github.com/stretchr/testify v1.11.1
 	github.com/unrolled/secure v1.17.0
-	github.com/urfave/cli/v3 v3.10.0
-	github.com/wneessen/go-mail v0.7.3
+	github.com/urfave/cli/v3 v3.10.1
+	github.com/wneessen/go-mail v0.8.0
 	golang.org/x/crypto v0.53.0
 	golang.org/x/mod v0.37.0
-	golang.org/x/text v0.38.0
+	golang.org/x/text v0.39.0
 	golang.org/x/time v0.15.0
 )
 
