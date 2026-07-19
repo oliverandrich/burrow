@@ -1,5 +1,8 @@
 # Burrow
 
+> [!IMPORTANT]
+> **Burrow is archived and no longer maintained.** It was a fun ride, but I've decided to build my projects on Elixir and Python instead. The code stays available under its existing license, but there will be no further development, releases, or support. Thanks to everyone who followed along.
+
 <p align="center">
   <img src="docs/assets/cover.jpg" alt="Burrow — Go gophers building a modular burrow">
 </p>
